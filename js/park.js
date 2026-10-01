@@ -44,7 +44,7 @@ function buildIsle(btn, z) {
   btn.style.setProperty('--img', `url("${new URL(z.art, location.href).href}")`);
   btn.classList.add('st-' + z.status);
   btn.setAttribute('aria-label', `${z.name}（${zoneSub(z)}）`);
-  btn.innerHTML = `<div class="bob"><div class="lift"><div class="foam"></div><div class="shadow"></div><img class="art" src="${esc(z.art)}" alt=""><div class="sink"></div></div></div>`;
+  btn.innerHTML = `<div class="bob"><div class="lift"><div class="foam"></div><div class="shadow"></div><img class="art" src="${esc(z.art)}" alt=""><div class="sink"></div><img class="spark" src="img/fx/sparkle.webp" alt=""></div></div>`;
   if (z.status === 'trial') btn.querySelector('.lift').insertAdjacentHTML('beforeend', '<span class="flag">試營運</span>');
   if (z.status === 'maintenance') btn.querySelector('.lift').insertAdjacentHTML('beforeend', '<span class="flag maint">維修中</span>');
   addUnits(btn.querySelector('.lift'), z.units);
@@ -81,9 +81,60 @@ park.map.slots.forEach((s, i) => {
     b.addEventListener('click', () => !dragged && openCard(z));
   } else {
     buildMist(b);
-    b.addEventListener('click', () => !dragged && showToast('這裡還籠罩在雲霧裡，之後會有新的島出現！'));
+    b.addEventListener('click', () => {
+      if (dragged) return;
+      puff(b);
+      say('map', '雲霧後面還藏著新的島，等新的科目開幕就會出現！');
+    });
   }
   islesLayer.appendChild(b);
+});
+
+// ---------- 海上的小裝飾（燈塔、礁石、海豚…），位置寫在 data/park.json ----------
+const decorLayer = $('#decor');
+(park.decor ?? []).forEach((d, i) => {
+  const el = document.createElement('div');
+  el.className = 'decor ' + (d.anim ?? '');
+  el.style.cssText = `left:${d.left}px;top:${d.top}px;width:${d.width}px;--delay:${-i * 1.7}s`;
+  el.innerHTML = `<img src="${esc(d.img)}" alt="">`;
+  decorLayer.appendChild(el);
+});
+
+// ---------- 特效 ----------
+function fxAt(host, src, cls, x, y, w) {
+  const img = document.createElement('img');
+  img.src = src; img.alt = ''; img.className = 'fx ' + cls;
+  img.style.cssText = `left:${x}px;top:${y}px;width:${w}px`;
+  host.appendChild(img);
+  img.addEventListener('animationend', () => img.remove());
+}
+function puff(btn) {
+  fxAt(btn.parentElement, 'img/fx/smoke.webp', 'puff', btn.offsetLeft + btn.offsetWidth / 2, btn.offsetTop + btn.offsetWidth * .3, btn.offsetWidth * 1.1);
+}
+
+// ---------- 導覽員滴答 ----------
+// 右下角的小幫手：進地圖打招呼、點雲霧會解釋、點他會輪流講提示
+const TICK_TIPS = [
+  ['point', '點一座島，看看島上有什麼好玩的！'],
+  ['map', '守護異世界是英文島，打怪物要靠單字喔。'],
+  ['fly-happy', '地圖可以往右拖，那邊還有雲霧裡的島。'],
+  ['jump', '還在施工的島，蓋好就會開放，敬請期待！'],
+];
+let tipIndex = 0, sayTimer;
+function say(pose, text) {
+  $('#tick-img').src = `img/tick/${pose}.webp`;
+  const bubble = $('#tick-say');
+  bubble.hidden = false;
+  bubble.textContent = text;
+  bubble.style.animation = 'none'; void bubble.offsetWidth; bubble.style.animation = '';
+  const btn = $('#tick-btn');
+  btn.classList.remove('boing'); void btn.offsetWidth; btn.classList.add('boing');
+  clearTimeout(sayTimer);
+  sayTimer = setTimeout(() => { bubble.hidden = true; $('#tick-img').src = 'img/tick/fly.webp'; }, 7000);
+}
+$('#tick-btn').addEventListener('click', () => {
+  const [pose, text] = TICK_TIPS[tipIndex++ % TICK_TIPS.length];
+  say(pose, text);
 });
 
 // ---------- 船 ----------
@@ -188,6 +239,7 @@ function showTitle() {
 function showMap({ animate = true } = {}) {
   title.hidden = true;
   select.hidden = false;
+  say('wave', '嗨，我是滴答！歡迎來到時空冒險樂園，點一座島看看吧。');
   if (animate) {
     select.classList.add('entering');
     setTimeout(() => select.classList.remove('entering'), 1400);
@@ -203,7 +255,11 @@ function go() {
     showMap();
   }, reduceMotion ? 0 : 520);
 }
-$('#start').addEventListener('click', go);
+$('#start').addEventListener('click', () => {
+  const b = $('#start');
+  fxAt(title, 'img/fx/star-burst.webp', 'burst', b.offsetLeft, b.offsetTop + b.offsetHeight / 2, 420);
+  go();
+});
 $('#back').addEventListener('click', () => { history.replaceState(null, '', location.pathname); showTitle(); });
 
 // ---------- 介紹卡 ----------
@@ -217,23 +273,46 @@ function facilityHtml(f, z) {
     `<span class="chip ${f.status}">${st.label}</span>`,
   ].filter(Boolean).join('');
   const action = st.canEnter && url
-    ? `<a class="btn" href="${esc(url)}">開始冒險</a>`
-    : `<span class="note">${esc(st.note ?? '還不能進入。')}</span>`;
+    ? `<a class="btn go" href="${esc(url)}">開始冒險</a>`
+    : `<span class="note"><img src="img/ui/lock.webp" alt="">${esc(st.note ?? '還不能進入。')}</span>`;
   const head = f.name === z.name ? '' : `<h3>${esc(f.name)}</h3>`;
   return `<div class="fac">${head}<div class="chips">${chips}</div><p>${esc(f.description)}</p><div class="row">${action}</div></div>`;
 }
+// 卡片底下滴答說的話：能玩就興奮，還不能玩就說明原因
+function tickLine(facs) {
+  const open = facs.some((f) => STATUS[f.status]?.canEnter && facilityUrl(f));
+  if (open) return ['excited', '準備好了嗎？按「開始冒險」出發！'];
+  if (facs.some((f) => f.status === 'maintenance')) return ['worried', '這裡暫時在維修，修好就能玩了。'];
+  return ['thinking', '這裡還在施工，蓋好了我第一個通知你！'];
+}
 function openCard(z) {
   const facs = facilitiesOf(z.code);
+  const [face, line] = tickLine(facs);
   veil.innerHTML = `<div class="card" role="dialog" aria-modal="true" aria-label="${esc(z.name)}">
-    <img src="${esc(z.art)}" alt="">
+    <button class="x" id="close" aria-label="關閉，回到地圖"></button>
+    <div class="art"><img src="${esc(z.art)}" alt="">${z.badge ? `<img class="badge" src="${esc(z.badge)}" alt="">` : ''}</div>
     <div><h2>${esc(z.name)}</h2><p class="lead">${esc(z.description)}</p>
     ${facs.length ? facs.map((f) => facilityHtml(f, z)).join('') : '<p class="lead">島上的設施還在規劃。</p>'}
-    <div class="row"><button class="ghost" id="close">回到地圖</button></div></div></div>`;
+    <div class="say"><img src="img/tick/${face}.webp" alt="滴答"><p>${line}</p></div></div></div>`;
   veil.hidden = false;
   history.replaceState(null, '', '#map/' + z.code);
   $('#close').onclick = closeCard;
+  veil.querySelectorAll('.btn.go').forEach((a) => a.addEventListener('click', enterFacility));
   (veil.querySelector('.card .btn') ?? $('#close')).focus();
 }
+// 進設施：時空傳送門轉一圈再換頁
+function enterFacility(e) {
+  if (reduceMotion || e.metaKey || e.ctrlKey || e.shiftKey) return;
+  e.preventDefault();
+  const href = e.currentTarget.href;
+  const p = document.createElement('div');
+  p.id = 'portal';
+  p.innerHTML = '<img src="img/fx/portal.webp" alt="">';
+  stage.appendChild(p);
+  setTimeout(() => { location.href = href; }, 1000);
+}
+// 從遊戲按上一頁回來時，把傳送門收掉
+addEventListener('pageshow', () => document.getElementById('portal')?.remove());
 function closeCard() {
   if (veil.hidden) return;
   veil.hidden = true;

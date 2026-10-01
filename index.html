@@ -33,6 +33,7 @@
     <!-- 島嶼地圖：島放在資料裡的 slot 上，沒用到的 slot 是雲霧 -->
     <section class="scene" id="select" aria-label="選擇冒險島嶼" hidden>
       <div id="map">
+        <div class="layer" style="--d:10" id="decor"></div>
         <div class="layer boats" style="--d:10"></div>
         <div class="layer" style="--d:18" id="isles"></div>
       </div>
@@ -40,9 +41,12 @@
         <button class="back" id="back">← 回到開場</button>
         <div class="ribbon">選擇冒險島嶼</div>
       </div>
-      <button class="pan" id="pan-l" aria-label="往左看" hidden>‹</button>
-      <button class="pan" id="pan-r" aria-label="往右看更多島嶼" hidden>›</button>
-      <div class="hint">點一座島看看裡面有什麼</div>
+      <button class="pan" id="pan-l" aria-label="往左看" hidden></button>
+      <button class="pan" id="pan-r" aria-label="往右看更多島嶼" hidden></button>
+      <div id="tick">
+        <div class="bubble" id="tick-say" role="status" aria-live="polite" hidden></div>
+        <button id="tick-btn" aria-label="導覽員滴答，點一下聽下一個提示"><img id="tick-img" src="img/tick/wave.webp" alt=""></button>
+      </div>
     </section>
 
     <div id="veil" hidden></div>
@@ -52,7 +56,7 @@
   </div>
 </div>
 <div id="rotate">把平板或手機橫放，畫面會比較大</div>
-<div id="loading">樂園開門中…</div>
+<div id="loading"><img src="img/tick/boat.webp" alt="">樂園開門中…</div>
 <script type="module" src="js/park.js"></script>
 </body>
 </html>

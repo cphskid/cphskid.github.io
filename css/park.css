@@ -82,10 +82,14 @@ body{margin:0;background:var(--sea-deep);color:var(--ink);font-family:var(--f-bo
 .topbar{position:absolute;left:24px;top:22px;display:flex;align-items:center;gap:16px;z-index:5}
 .back{font:700 20px/1 var(--f-body);color:var(--wood);background:var(--cream);border:3px solid var(--wood);border-radius:14px;padding:10px 16px;box-shadow:0 4px 0 var(--wood);cursor:pointer}
 .back:hover,.back:focus-visible{background:#fff;outline:none;transform:translateY(-2px)}
-.ribbon{font:900 30px/1 var(--f-body);color:var(--cream);background:linear-gradient(var(--wood-2),var(--wood));padding:14px 30px 16px;border-radius:12px;border:3px solid #4a2a12;box-shadow:0 5px 0 #3b200c;text-shadow:0 2px 0 #3b200c}
+.ribbon{width:400px;height:116px;display:grid;place-items:center;padding-bottom:30px;background:url(../img/ui/ribbon.webp) center/100% 100% no-repeat;font:900 30px/1 var(--f-body);color:#fff;text-shadow:0 2px 0 #8e1d14,0 0 6px rgba(120,20,10,.5);filter:drop-shadow(0 6px 8px rgba(0,0,0,.25));margin-top:-14px}
 .hint{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);font:700 18px/1 var(--f-body);color:var(--cream);background:rgba(20,70,110,.5);padding:10px 18px;border-radius:99px;white-space:nowrap;z-index:5;pointer-events:none}
-.pan{position:absolute;top:50%;width:64px;height:64px;margin-top:-32px;border-radius:50%;border:3px solid var(--wood);background:var(--cream);color:var(--wood);font:900 30px/1 var(--f-disp);box-shadow:0 4px 0 var(--wood),0 10px 18px rgba(0,0,0,.25);cursor:pointer;z-index:5}
-.pan:hover,.pan:focus-visible{background:#fff;outline:none}
+.pan{position:absolute;top:50%;width:84px;height:84px;margin-top:-42px;border:0;padding:0;background:center/contain no-repeat;cursor:pointer;z-index:5;filter:drop-shadow(0 8px 10px rgba(0,0,0,.3));transition:transform .2s cubic-bezier(.34,1.7,.5,1)}
+#pan-l{background-image:url(../img/ui/arrow-left.webp)}
+#pan-r{background-image:url(../img/ui/arrow-right.webp);animation:nudge 1.6s ease-in-out infinite}
+@keyframes nudge{0%,100%{translate:0}50%{translate:8px}}
+.pan:hover,.pan:focus-visible{transform:scale(1.1);outline:none}
+.pan:focus-visible{filter:drop-shadow(0 0 0 4px #ffd66e) drop-shadow(0 8px 10px rgba(0,0,0,.3))}
 #pan-l{left:18px} #pan-r{right:18px}
 
 /* Tiny Swords 小兵（圖不在公開 repo，見 README；沒有圖就不顯示） */
@@ -99,9 +103,13 @@ body{margin:0;background:var(--sea-deep);color:var(--ink);font-family:var(--f-bo
 
 /* 介紹卡 */
 #veil{position:absolute;inset:-1200px;background:rgba(10,40,70,.45);display:grid;place-items:center;z-index:10}
-.card{width:680px;max-height:820px;overflow:auto;background:var(--cream);border:5px solid var(--wood);border-radius:28px;box-shadow:0 10px 0 var(--wood),0 30px 60px rgba(0,0,0,.35);padding:30px 36px 34px;display:grid;grid-template-columns:200px 1fr;gap:26px;align-items:start;animation:pop .45s cubic-bezier(.34,1.7,.5,1)}
+.card{position:relative;width:760px;border-style:solid;border-width:60px;border-image:url(../img/ui/panel.webp) 150 fill / 60px stretch;padding:4px 14px 6px;filter:drop-shadow(0 24px 30px rgba(0,0,0,.35));display:grid;grid-template-columns:200px 1fr;gap:26px;align-items:start;animation:pop .45s cubic-bezier(.34,1.7,.5,1)}
 @keyframes pop{from{transform:scale(.7);opacity:0}to{transform:scale(1);opacity:1}}
-.card>img{width:100%;filter:drop-shadow(0 8px 8px rgba(0,0,0,.2))}
+.card .art{position:relative}
+.card .art>img:first-child{width:100%;filter:drop-shadow(0 8px 8px rgba(0,0,0,.2))}
+.card .art>.badge{position:absolute;right:-6px;bottom:-18px;width:78px;filter:drop-shadow(0 4px 6px rgba(0,0,0,.3));animation:pop .6s .15s cubic-bezier(.34,1.7,.5,1) both}
+.card .x{position:absolute;right:-56px;top:-56px;width:72px;height:72px;border:0;padding:0;background:url(../img/ui/close.webp) center/contain no-repeat;cursor:pointer;filter:drop-shadow(0 4px 6px rgba(0,0,0,.3));transition:transform .2s}
+.card .x:hover,.card .x:focus-visible{transform:scale(1.1) rotate(8deg);outline:none}
 .card h2{margin:0 0 6px;font:900 30px/1.2 var(--f-body);color:var(--wood);text-wrap:balance}
 .card .lead{margin:0 0 16px;font:500 18px/1.6 var(--f-body);color:#5a3a1e}
 .fac{background:#fff;border:2px solid var(--cream-2);border-radius:18px;padding:14px 16px;margin-bottom:12px}
@@ -114,7 +122,10 @@ body{margin:0;background:var(--sea-deep);color:var(--ink);font-family:var(--f-bo
 .chip.construction{background:#fde3c5;border-color:#f2b57a}
 .chip.maintenance{background:#e3e7ec;border-color:#b5bec8}
 .card .row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
-.card .btn{font-size:22px;padding:11px 26px 13px}
+.card .btn.go{font:900 24px/1 var(--f-body);color:#fff;text-shadow:0 2px 0 #2f7a1c;background:url(../img/ui/button-green.webp) center/100% 100% no-repeat;border:0;border-radius:0;box-shadow:none;padding:20px 44px 24px;filter:drop-shadow(0 6px 6px rgba(0,0,0,.25))}
+.card .btn.go:hover,.card .btn.go:focus-visible{box-shadow:none;filter:drop-shadow(0 0 8px #ffe28a) drop-shadow(0 6px 6px rgba(0,0,0,.25))}
+.card .note{display:flex;align-items:center;gap:8px}
+.card .note img{width:26px}
 .card .note{font:700 15px/1.4 var(--f-body);color:#8a6a4a}
 .card .ghost{font:700 20px/1 var(--f-body);background:none;border:3px solid var(--cream-2);border-radius:999px;padding:12px 22px;color:var(--wood);cursor:pointer}
 .card .ghost:hover,.card .ghost:focus-visible{border-color:var(--wood);outline:none}
@@ -131,8 +142,45 @@ body{margin:0;background:var(--sea-deep);color:var(--ink);font-family:var(--f-bo
 @keyframes flash{0%{opacity:0}35%{opacity:1}100%{opacity:0}}
 #rotate{position:fixed;inset:auto 16px calc(16px + env(safe-area-inset-bottom,0px));font:700 15px/1.5 var(--f-body);color:var(--cream);background:rgba(15,55,90,.7);padding:10px 14px;border-radius:12px;text-align:center;display:none;z-index:40}
 @media (orientation:portrait) and (max-width:700px){#rotate{display:block}}
-#loading{position:fixed;inset:0;display:grid;place-items:center;font:700 22px/1 var(--f-body);color:var(--cream);z-index:50;pointer-events:none}
+#loading{position:fixed;inset:0;display:grid;place-content:center;justify-items:center;gap:10px;font:700 22px/1 var(--f-body);color:var(--cream);text-shadow:0 2px 4px rgba(0,0,0,.4);z-index:50;pointer-events:none}
+#loading img{width:180px;animation:rock 2.4s ease-in-out infinite}
 
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation:none!important;transition:none!important}
 }
+
+/* 卡片底下滴答的一句話 */
+.say{display:flex;align-items:center;gap:12px;margin-top:4px}
+.say img{width:64px;flex:none;filter:drop-shadow(0 3px 4px rgba(0,0,0,.2))}
+.say p{position:relative;margin:0;font:700 16px/1.5 var(--f-body);color:var(--ink);background:#fff;border:2px solid var(--cream-2);border-radius:14px;padding:8px 12px}
+
+/* 導覽角色滴答：固定在畫面右下角，不跟著地圖拖曳 */
+#tick{position:absolute;right:26px;bottom:6px;z-index:6;display:flex;align-items:flex-end;gap:6px;pointer-events:none}
+#tick .bubble{pointer-events:auto;max-width:380px;margin-bottom:96px;font:700 19px/1.5 var(--f-body);color:var(--ink);background:#fffaf0;border:3px solid var(--wood);border-radius:20px;padding:12px 18px;box-shadow:0 5px 0 var(--wood),0 12px 20px rgba(0,0,0,.2);position:relative;transform-origin:100% 100%;animation:pop .4s cubic-bezier(.34,1.7,.5,1)}
+#tick .bubble::after{content:"";position:absolute;right:-16px;bottom:22px;border:12px solid transparent;border-left:16px solid var(--wood);border-right:0}
+#tick button{pointer-events:auto;border:0;padding:0;background:none;cursor:pointer;width:150px}
+#tick button img{width:100%;display:block;animation:hover 3.2s ease-in-out infinite;filter:drop-shadow(0 14px 10px rgba(10,50,90,.35))}
+#tick button.boing img{animation:boing .5s cubic-bezier(.34,1.7,.5,1),hover 3.2s .5s ease-in-out infinite}
+@keyframes hover{0%,100%{transform:translateY(0) rotate(-2deg)}50%{transform:translateY(-14px) rotate(2deg)}}
+@keyframes boing{0%{transform:scale(1,1)}30%{transform:scale(1.15,.85)}60%{transform:scale(.92,1.1)}100%{transform:scale(1,1)}}
+
+/* 海上的小裝飾 */
+.decor{position:absolute;pointer-events:none;filter:drop-shadow(0 6px 6px rgba(8,50,90,.25))}
+.decor img{width:100%;display:block}
+.decor.bob img{animation:bob 5s ease-in-out infinite;animation-delay:var(--delay,0s)}
+.decor.leap img{animation:leap 7s ease-in-out infinite;animation-delay:var(--delay,0s);transform-origin:50% 90%}
+@keyframes leap{0%,62%,100%{transform:translateY(16px) scale(.9);opacity:0}70%{opacity:1}78%{transform:translateY(-26px) rotate(-8deg) scale(1);opacity:1}88%{transform:translateY(4px) rotate(8deg);opacity:1}94%{opacity:0}}
+
+/* 特效 */
+.isle .spark{position:absolute;width:26%;left:58%;top:-4%;opacity:0;pointer-events:none;transform:scale(.3) rotate(-30deg);transition:opacity .25s,transform .5s cubic-bezier(.34,1.7,.5,1)}
+.isle:hover .spark,.isle:focus-visible .spark{opacity:1;transform:scale(1) rotate(0);animation:twinkle 1.4s ease-in-out .5s infinite}
+@keyframes twinkle{0%,100%{filter:brightness(1)}50%{filter:brightness(1.35);scale:1.12}}
+.fx{position:absolute;pointer-events:none;z-index:8}
+.fx.puff{animation:puff .9s ease-out forwards}
+@keyframes puff{0%{transform:translate(-50%,-50%) scale(.4);opacity:0}30%{opacity:1}100%{transform:translate(-50%,-50%) scale(1.3);opacity:0}}
+.fx.burst{animation:burst .8s ease-out forwards}
+@keyframes burst{0%{transform:translate(-50%,-50%) scale(.3) rotate(0);opacity:1}100%{transform:translate(-50%,-50%) scale(1.5) rotate(40deg);opacity:0}}
+#portal{position:absolute;inset:-1200px;z-index:40;display:grid;place-items:center;background:radial-gradient(circle,rgba(10,40,80,0) 30%,rgba(10,40,80,.85) 75%);animation:fade .3s ease-out}
+#portal img{width:620px;animation:spin 1.2s cubic-bezier(.5,0,.3,1) forwards}
+@keyframes spin{from{transform:scale(.2) rotate(0);opacity:0}40%{opacity:1}to{transform:scale(2.6) rotate(540deg);opacity:1}}
+@keyframes fade{from{opacity:0}}

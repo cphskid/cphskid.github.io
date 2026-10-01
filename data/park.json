@@ -1,5 +1,5 @@
 {
-  "_說明": "樂園地圖的資料。欄位照平台規劃書的 park_zones / park_facilities 設計，P2 會改成從資料庫讀，到時只換讀取的地方。新增科目＝在 zones 加一座島、facilities 加一個設施，放進空的 slot，不用改程式。",
+  "_說明": "樂園地圖的資料。欄位照平台規劃書的 park_zones / park_facilities 設計，P2 會改成從資料庫讀，到時只換讀取的地方。新增科目＝在 zones 加一座島、facilities 加一個設施，放進空的 slot，不用改程式。decor 是海上的小裝飾，只是好看。",
 
   "map": {
     "width": 2200,
@@ -16,6 +16,17 @@
     ]
   },
 
+  "decor": [
+    { "img": "img/decor/lighthouse.webp", "left": 470,  "top": 230, "width": 110, "anim": "" },
+    { "img": "img/decor/buoy.webp",       "left": 545,  "top": 560, "width": 70,  "anim": "bob" },
+    { "img": "img/decor/whale-tail.webp", "left": 990,  "top": 650, "width": 120, "anim": "bob" },
+    { "img": "img/decor/dolphin.webp",    "left": 300,  "top": 770, "width": 110, "anim": "leap" },
+    { "img": "img/decor/rocks.webp",      "left": 1530, "top": 300, "width": 120, "anim": "" },
+    { "img": "img/decor/sandbar.webp",    "left": 2010, "top": 400, "width": 150, "anim": "" },
+    { "img": "img/decor/bottle.webp",     "left": 1580, "top": 470, "width": 64,  "anim": "bob" },
+    { "img": "img/decor/chest.webp",      "left": 1450, "top": 770, "width": 90,  "anim": "" }
+  ],
+
   "zones": [
     {
       "code": "village",
@@ -23,6 +34,7 @@
       "subtitle": "樂園大廳",
       "slot": 1,
       "art": "img/l-01.webp",
+      "badge": "img/badge/clocktower.webp",
       "status": "open",
       "description": "學生在這裡登入、加入班級、換頭像和蓋護照章。老師與家長的設定也從這裡進。",
       "units": "village"
@@ -33,6 +45,7 @@
       "subtitle": "英文",
       "slot": 2,
       "art": "img/l-02.webp",
+      "badge": "img/badge/castle.webp",
       "status": "open",
       "description": "用英文單字守護異世界的城堡。",
       "units": "castle"
@@ -43,6 +56,7 @@
       "subtitle": "社會",
       "slot": 3,
       "art": "img/l-03.webp",
+      "badge": "img/badge/taiwan.webp",
       "status": "open",
       "description": "穿越回不同時代的台灣，從八堡圳開始，一步步開拓這座島。"
     },
