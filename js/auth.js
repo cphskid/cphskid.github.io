@@ -218,3 +218,24 @@ export const feedback = {
   reply:  (id, text) => call('reply_feedback', { p_id: id, p_reply: text }),
   hide:   (id, hidden) => call('hide_feedback', { p_id: id, p_hidden: hidden }),
 };
+
+// ---------- 樂園護照與頭像（P4，supabase/park_passport.sql） ----------
+// 還沒裝這份 SQL 時丟出 missing，畫面會說「護照還在準備中」，其他功能照常。
+async function pcall(fn, args) {
+  if (!db) throw new Error('帳號功能載入失敗，重新整理再試一次');
+  const { data, error } = await db.rpc(fn, args);
+  if (error?.code === 'PGRST202') {
+    const e = new Error('護照的資料庫還沒裝好（缺 ' + fn + '），請管理員套用 park_passport.sql');
+    e.missing = true;
+    throw e;
+  }
+  check(error);
+  return data;
+}
+export const passport = {
+  myProfile:    () => pcall('park_my_profile'),
+  book:         () => pcall('park_passport'),
+  seen:         () => pcall('park_passport_seen'),
+  setAvatar:    (avatar, frame) => pcall('park_set_avatar', { p_avatar: avatar, p_frame: frame }),
+  classAvatars: (code) => pcall('park_class_avatars', { p_code: code }),
+};

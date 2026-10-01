@@ -75,3 +75,19 @@ Settings → Secrets and variables → Actions 加一個 `ASSETS_TOKEN`（能讀
 地圖上的設施狀態以資料庫為準（`park_facility_list`），連不上才用 `data/park.json`；
 學生的班沒開放某個遊戲時，介紹卡會說「請問問老師」。遊戲自己的進場檢查（`park_can_enter`）在 P3 接上。
 後台美術在 `img/admin/`（B-01～B-07，原圖在專案的 art/admin/）。
+
+## 護照與頭像（P4）
+
+- **樂園護照**：地圖左下角的護照（學生才有）、樂園村莊的介紹卡、「我的資料」都打得開。每個遊戲一頁，
+  蓋到的章亮起來、沒蓋到的顯示怎麼拿到，還沒做好的部分顯示「即將開放」。剛蓋的新章第一次打開會「咚」一聲蓋下去。
+- **頭像**：一開始 12 個可以選，其他 12 個靠蓋章或蓋滿一頁解鎖；頭像框 5 種（木頭、天空、銀、金、彩虹）。
+  第一次登入會請小朋友挑一個。頭像會出現在右上角、護照、老師後台的全班總覽（連同章數）。
+- **遊戲怎麼蓋章**（規劃書「遊戲接入規則」第 4 條）：
+  1. 遊戲在學生完成時呼叫 `park_award_stamp(設施代碼, 章代碼)`，回傳 `{ok, new, name, art, unlocked}`，不丟錯。
+  2. 或者提供 `<前綴>_earned_stamps(學生 id) returns setof text`，樂園打開時自己補蓋。
+     有提供的設施，第 1 條也要對得上才蓋得下去（小朋友不能自己叫函式蓋章）。
+  守護異世界走第 2 條（`guardian_earned_stamps`，看伺服器判定的 `level_progress`，暫放在這份 SQL，之後搬回英文 repo）；
+  島嶼開拓者兩條都有（過完一章叫 `park_award_stamp`，`island_earned_stamps` 在它的 `island_pioneer.sql`）。
+- 章的定義（`park_stamps`）與頭像解鎖條件（`park_rewards`）寫在 `supabase/park_passport.sql` 的初始資料；章的圖在 `img/stamp/`，頭像在 `img/avatar/`。
+- 資料庫：`supabase/park_passport.sql`（順序：schema.sql → park_accounts.sql → park_teacher.sql → 這份 → 各遊戲的 SQL）。
+  還沒套的資料庫，地圖照常，護照會說「還在準備中」，頭像退回滴答。

@@ -136,6 +136,7 @@ const TICK_TIPS = [
   ['map', '守護異世界是英文島，打怪物要靠單字喔。'],
   ['fly-happy', '地圖可以往右拖，那邊還有雲霧裡的島。'],
   ['jump', '還在施工的島，蓋好就會開放，敬請期待！'],
+  ['cheer', '在遊戲裡過關會蓋護照章，左下角的護照可以看你蓋了哪些！'],
 ];
 let tipIndex = 0, sayTimer;
 function say(pose, text) {
@@ -255,13 +256,18 @@ function showTitle() {
 }
 function greeting() {
   const w = account.current();
+  const fresh = w.profile?.unseen ?? [];
+  if (w.kind === 'student' && fresh.length) {
+    return `哇！${w.nickname}，你拿到新的護照章「${fresh[fresh.length - 1].name}」${fresh.length > 1 ? `等 ${fresh.length} 個` : ''}！點左下角的護照看看。`;
+  }
   const name = w.kind === 'student' ? w.nickname : w.kind === 'staff' ? w.display_name : '';
   return name ? `嗨，${name}！歡迎來到時空冒險樂園，點一座島看看吧。` : '嗨，我是滴答！歡迎來到時空冒險樂園，點一座島看看吧。';
 }
 function showMap({ animate = true } = {}) {
   title.hidden = true;
   select.hidden = false;
-  say('wave', greeting());
+  paintPassBtn();
+  say(account.current().profile?.unseen?.length ? 'cheer' : 'wave', greeting());
   if (animate) {
     select.classList.add('entering');
     setTimeout(() => select.classList.remove('entering'), 1400);
@@ -319,19 +325,33 @@ function tickLine(facs) {
   if (facs.some((f) => f.status === 'open' && f.mine === false)) return ['thinking', '請老師在後台幫你的班打開這個遊戲喔！'];
   return ['thinking', '這裡還在施工，蓋好了我第一個通知你！'];
 }
+// 樂園村莊沒有遊戲，是放自己東西的地方：護照、頭像、我的資料
+function villageHtml() {
+  const w = account.current();
+  if (w.kind !== 'student') {
+    return `<div class="fac"><h3>樂園護照</h3><p>小朋友在各遊戲完成關卡，就會在護照上蓋章；蓋越多章，可以選的頭像越多。${w.kind === 'staff' ? '老師可以在後台的全班總覽看到每個學生蓋了幾個章。' : ''}</p></div>`;
+  }
+  const p = w.profile;
+  return `<div class="fac"><h3>我的護照與頭像</h3>
+    <div class="row">${account.avatarHtml(p?.avatar, p?.frame, 'mid')}<p>${p ? `你已經蓋了 <b>${p.stamps}</b> 個章。` : ''}在遊戲裡完成關卡就會蓋章，蓋越多章，可以選的頭像和頭像框越多。</p></div>
+    <div class="row"><button type="button" class="btn go" data-open-pass>打開護照</button><button type="button" class="ghost" data-open-av>換頭像</button></div></div>`;
+}
 function openCard(z) {
   const facs = facilitiesOf(z.code);
-  const [face, line] = tickLine(facs);
+  const village = z.code === 'village';
+  const [face, line] = village ? ['happy', '護照上的章，是你在每座島上的冒險紀錄喔！'] : tickLine(facs);
   veil.innerHTML = `<div class="card" role="dialog" aria-modal="true" aria-label="${esc(z.name)}">
     <button class="x" id="close" aria-label="關閉，回到地圖"></button>
     <div class="art"><img src="${esc(z.art)}" alt="">${z.badge ? `<img class="badge" src="${esc(z.badge)}" alt="">` : ''}</div>
     <div><h2>${esc(z.name)}</h2><p class="lead">${esc(z.description)}</p>
-    ${facs.length ? facs.map((f) => facilityHtml(f, z)).join('') : '<p class="lead">島上的設施還在規劃。</p>'}
+    ${village ? villageHtml() : facs.length ? facs.map((f) => facilityHtml(f, z)).join('') : '<p class="lead">島上的設施還在規劃。</p>'}
     <div class="say"><img src="img/tick/${face}.webp" alt="滴答"><p>${line}</p></div></div></div>`;
   veil.hidden = false;
   history.replaceState(null, '', '#map/' + z.code);
   $('#close').onclick = closeCard;
-  veil.querySelectorAll('.btn.go').forEach((a) => a.addEventListener('click', enterFacility));
+  veil.querySelectorAll('a.btn.go').forEach((a) => a.addEventListener('click', enterFacility));
+  veil.querySelector('[data-open-pass]')?.addEventListener('click', () => { closeCard(); account.openPassport(); });
+  veil.querySelector('[data-open-av]')?.addEventListener('click', () => { closeCard(); account.openAvatar(); });
   (veil.querySelector('.card .btn') ?? $('#close')).focus();
 }
 // 進設施：時空傳送門轉一圈再換頁
@@ -363,12 +383,27 @@ function showToast(t) {
   tt = setTimeout(() => { toast.hidden = true; }, 2600);
 }
 
+// ---------- 左下角的護照（學生才有） ----------
+const passBtn = $('#pass-btn');
+function paintPassBtn() {
+  const w = account.current();
+  passBtn.hidden = w.kind !== 'student';
+  const n = w.profile?.unseen?.length ?? 0;
+  const dot = passBtn.querySelector('.dot');
+  dot.hidden = !n;
+  dot.textContent = n;
+  passBtn.classList.toggle('wiggle', n > 0);
+}
+passBtn.addEventListener('click', () => account.openPassport());
+addEventListener('park:profile', paintPassBtn);
+
 // ---------- 從網址決定一開始的畫面 ----------
 // 遊戲裡的「回樂園」按鈕連到 /#map，直接回到島嶼地圖、不用再看一次開場
 const [, route, zoneCode] = location.hash.match(/^#(map)(?:\/([\w-]+))?/) ?? [];
 // 登出了就回到開場
 function onAccountChange(w) {
   syncFacilities();
+  paintPassBtn();
   if (w.kind === 'guest' && !select.hidden) { history.replaceState(null, '', location.pathname); showTitle(); }
 }
 const me = await meReady;

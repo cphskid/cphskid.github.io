@@ -4,6 +4,7 @@
 #
 #   ./tools/test/db.sh                       # 守護異世界的 SQL 從 GitHub 抓 dev 分支
 #   ENGLISH_REPO=../gaming_english_practice ./tools/test/db.sh   # 用本機的那份
+#   ISLAND_REPO=../Taiwan-island ./tools/test/db.sh                # 順便試島嶼開拓者的 SQL
 set -euo pipefail
 
 PGBIN=${PGBIN:-/usr/lib/postgresql/16/bin}
@@ -58,3 +59,16 @@ run -f "$EN/park_guardian.sql" 2>&1 | grep -v NOTICE || true
 
 echo "── P2 教師入口測試"
 run -f supabase/test/park_teacher_test.sql 2>&1 | grep -E "✓|✗|ERROR|──" | sed 's/^psql:[^ ]* NOTICE:  //'
+
+echo "── park_passport.sql"
+run -f supabase/park_passport.sql 2>&1 | grep -v NOTICE || true
+
+echo "── P4 護照與頭像測試"
+run -f supabase/test/park_passport_test.sql 2>&1 | grep -E "✓|✗|ERROR|──" | sed 's/^psql:[^ ]* NOTICE:  //'
+
+# 島嶼開拓者的 SQL（有給 ISLAND_REPO 才跑）：確定它疊在樂園上面套得進去、護照接得到
+if [ -n "${ISLAND_REPO:-}" ]; then
+  echo "── 島嶼開拓者 island_pioneer.sql"
+  run -f "$ISLAND_REPO/supabase/island_pioneer.sql" 2>&1 | grep -v NOTICE || true
+  run -At -c "select case when public.park_earned(s.id, 'island_pioneer') is not null then '  ✓ 護照接得到島嶼開拓者的「該拿到哪些章」' else '  ✗ 護照接不到島嶼開拓者' end from public.students s limit 1"
+fi

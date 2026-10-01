@@ -2,6 +2,7 @@
 //
 // 小朋友是國小學生：填錯了要「講出哪裡不對」，不要讓按鈕變暗不說話（守護異世界踩過的坑）。
 import * as auth from './auth.js';
+import * as passport from './passport.js';
 
 const $ = (s, root = document) => root.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -23,11 +24,21 @@ export function current() { return who; }
 // 帳號功能有沒有載入（supabase.js 載不到時，地圖照常可以逛，只是不能登入）
 export const available = !!auth.db;
 
+// 學生另外帶回頭像、章數、還沒看過的新章（P4；資料庫還沒裝就是 null，畫面退回滴答）
+async function loadWho() {
+  let w;
+  try { w = await auth.me(); } catch { w = { kind: 'guest' }; }
+  if (w.kind === 'student') {
+    try { w.profile = await auth.passport.myProfile(); } catch { w.profile = null; }
+  }
+  return w;
+}
+
 let ready = null;
 export function init(cb) {
   onChange = cb ?? onChange;
   ready = (async () => {
-    try { who = await auth.me(); } catch { who = { kind: 'guest' }; }
+    who = await loadWho();
     paintChip();
     return who;
   })();
@@ -35,17 +46,35 @@ export function init(cb) {
 }
 
 async function refresh() {
-  try { who = await auth.me(); } catch { who = { kind: 'guest' }; }
+  who = await loadWho();
   paintChip();
   onChange(who);
   return who;
 }
 
+// 護照那邊換了頭像、看過新章：只更新頭像這一塊，不用整個重問
+passport.init({
+  me: () => who,
+  changed(patch) {
+    if (who.kind !== 'student' || !who.profile) return;
+    Object.assign(who.profile, patch);
+    paintChip();
+    dispatchEvent(new CustomEvent('park:profile', { detail: who.profile }));
+  },
+});
+export const openPassport = passport.openPassport;
+export const openAvatar = passport.openAvatar;
+export const avatarHtml = passport.avatarHtml;
+
 // 右上角「我是誰」：共用平板一眼看得出現在是誰登入的
 function paintChip() {
   if (!auth.db) { chip.hidden = true; return; }
   chip.hidden = false;
-  if (who.kind === 'student') chip.innerHTML = `<img src="img/tick/happy.webp" alt=""><span><b>${esc(who.nickname)}</b><small>我的資料</small></span>`;
+  if (who.kind === 'student') {
+    const p = who.profile;
+    const n = p?.unseen?.length ?? 0;
+    chip.innerHTML = `${passport.avatarHtml(p?.avatar, p?.frame, 'chip')}<span><b>${esc(who.nickname)}</b><small>${n ? `<i class="new">新章 ×${n}</i>` : '我的資料'}</small></span>`;
+  }
   else if (who.kind === 'staff') chip.innerHTML = `<img src="img/tick/point.webp" alt=""><span><b>${esc(who.display_name)}</b><small>${who.is_admin ? '管理員' : '老師／家長'}</small></span>`;
   else chip.innerHTML = `<img src="img/tick/wave.webp" alt=""><span><b>登入</b><small>還沒登入</small></span>`;
 }
@@ -122,6 +151,8 @@ async function loggedIn() {
   layer.hidden = true;
   layer.innerHTML = '';
   p?.resolve(who);
+  // 第一次登入、還沒選過頭像：請他挑一個（資料庫還沒裝護照時 profile 是 null，就不問）
+  if (who.kind === 'student' && who.profile && !who.profile.avatar) setTimeout(() => passport.openAvatar({ first: true }), 700);
 }
 
 // ---------- 學生：我有帳號／第一次來 ----------
@@ -244,9 +275,13 @@ function classRow(c) {
 function openProfile(section = '') {
   const w = who;
   const classes = w.classes ?? [];
+  const p = w.profile;
   show(`
+    <div class="me-head">${passport.avatarHtml(p?.avatar, p?.frame, 'big')}<div>
     <h2>${esc(w.nickname)}</h2>
     <p class="lead">${w.login_id ? `登入帳號 <b>${esc(w.login_id)}</b>・` : ''}暱稱在所有遊戲都一樣</p>
+    <div class="row"><button type="button" class="btn small" data-passport>樂園護照${p?.stamps ? `（${p.stamps} 個章）` : ''}</button>
+      <button type="button" class="ghost small" data-avatar>換頭像</button></div></div></div>
 
     <h3>我的班級</h3>
     ${classes.length ? `<ul class="classes">${classes.map(classRow).join('')}</ul>` : '<p class="tip">還沒有加入任何班級。</p>'}
@@ -275,6 +310,8 @@ function openProfile(section = '') {
   { tick: 'happy', wide: true });
 
   $('[data-logout]', layer).onclick = logout;
+  $('[data-passport]', layer).onclick = () => { close(); passport.openPassport(); };
+  $('[data-avatar]', layer).onclick = () => { close(); passport.openAvatar(); };
   layer.querySelectorAll('[data-leave]').forEach((b) => {
     b.onclick = async () => {
       if (!confirm(`確定要退出 ${b.dataset.leave} 這個班嗎？`)) return;
@@ -318,5 +355,6 @@ function openProfile(section = '') {
 async function logout() {
   await auth.logout();
   close();
+  passport.close();
   await refresh();
 }

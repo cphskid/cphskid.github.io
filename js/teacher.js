@@ -400,11 +400,14 @@ async function paintOverview(c) {
   const p = $('#p-ov');
   if (!p) return;
   let ov;
+  // 頭像與護照章數（P4）：沒裝 park_passport.sql 就不顯示，總覽照常
+  const avatarsP = auth.passport.classAvatars(c.code).catch(() => null);
   try { ov = await auth.teacher.overview(c.code); }
   catch (e) {
     p.innerHTML = `<div class="head">${h2('chart', '全班總覽')}</div><div class="empty"><img src="img/admin/tick-error.webp" alt=""><p>${esc(e.message)}</p></div>`;
     return;
   }
+  const avs = new Map((await avatarsP ?? []).map((a) => [a.student_id, a]));
   lastOverview = { cls: c, ...ov };
   const games = ov.games;
   const students = ov.students;
@@ -438,7 +441,7 @@ async function paintOverview(c) {
     <div class="tablewrap"><table class="ov">
       <thead><tr><th class="stu">學生</th>${head}<th class="ops">學生管理</th></tr></thead>
       <tbody>${shown.map((s) => `<tr>
-        <td class="stu"><b>${esc(s.nickname)}</b><small>${esc(s.login_id)}</small>
+        <td class="stu">${avCell(avs.get(s.id))}<b>${esc(s.nickname)}</b><small>${esc(s.login_id)}</small>
           ${s.primary ? '' : `<span class="tag" title="這個班不是他的主要班級；守護異世界的排行榜在他的主要班級">${ico('st-info')}另外加入</span>`}
           ${s.locked ? `<span class="tag bad">${ico('st-locked')}密碼鎖住了</span>` : ''}</td>
         ${games.map((g) => cell(g, s)).join('')}
@@ -455,6 +458,13 @@ async function paintOverview(c) {
   $$('[data-pw]', p).forEach((b) => { b.onclick = () => resetPassword(byId.get(b.dataset.pw)); });
   $$('[data-nick]', p).forEach((b) => { b.onclick = () => renameStudent(c, byId.get(b.dataset.nick)); });
   $$('[data-rm]', p).forEach((b) => { b.onclick = () => removeStudent(c, byId.get(b.dataset.rm)); });
+}
+
+// 學生的樂園頭像＋護照章數；沒選過頭像就只顯示章數
+function avCell(a) {
+  if (!a) return '';
+  const img = a.avatar ? `<span class="av fr-${esc(a.frame)}"><img src="img/avatar/${esc(a.avatar)}.webp" alt=""></span>` : '';
+  return `${img}<span class="stamps" title="樂園護照蓋了幾個章">${ico('passport')}${a.stamps}</span>`;
 }
 
 function resetPassword(s) {
