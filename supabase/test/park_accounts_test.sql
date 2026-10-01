@@ -12,14 +12,20 @@ begin
   else raise exception '✗ 這一條不成立：%', p_what; end if;
 end $$;
 
+-- 注意：「應該被擋卻成功」的那個 raise 不能放在有 exception 的同一個區塊裡，
+-- 不然它自己會被自己的 when raise_exception 接住，變成永遠通過。
 create or replace function test_denied(p_sql text, p_what text) returns void
 language plpgsql as $$
+declare v_ok boolean := false;
 begin
-  execute p_sql;
-  raise exception '✗ 這個動作應該被擋掉卻成功了：%', p_what;
-exception
-  when insufficient_privilege or raise_exception or check_violation or unique_violation then
-    raise notice '  ✓ 擋下來了：%', p_what;
+  begin
+    execute p_sql;
+  exception
+    when insufficient_privilege or raise_exception or check_violation or unique_violation then
+      v_ok := true;
+  end;
+  if not v_ok then raise exception '✗ 這個動作應該被擋掉卻成功了：%', p_what; end if;
+  raise notice '  ✓ 擋下來了：%', p_what;
 end $$;
 
 create or replace function test_as(p_uid text, p_anon boolean, p_email text default null) returns void

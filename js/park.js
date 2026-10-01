@@ -2,6 +2,7 @@
 // 地圖上有哪些島、島上有哪些設施、能不能進，全部從 data/park.json 讀（之後改成資料庫）。
 import { addUnits } from './units.js';
 import * as account from './account.js';
+import { facilityStatus } from './auth.js';
 
 // 測試站在 /dev/ 底下：顯示「測試站」標籤，設施連到各遊戲的測試站
 const IS_DEV = /^\/dev(\/|$)/.test(location.pathname);
@@ -24,6 +25,19 @@ const park = await fetch('data/park.json', { cache: 'no-cache' }).then((r) => r.
 const zones = new Map(park.zones.filter((z) => z.status !== 'hidden').map((z) => [z.code, z]));
 const facilitiesOf = (code) => park.facilities.filter((f) => f.zone === code && f.status !== 'hidden');
 const MAP_W = park.map.width;
+
+// 設施狀態以資料庫為準（管理員在老師後台切換，不用重新部署），連不上就照 park.json。
+// 學生登入時還會帶回 mine：自己的班有沒有開放這個設施。
+async function syncFacilities() {
+  const live = await facilityStatus();
+  if (!live) return;
+  for (const f of park.facilities) {
+    const l = live.get(f.code);
+    if (!l) { f.status = 'hidden'; continue; }
+    Object.assign(f, { status: l.status, grade_min: l.grade_min, grade_max: l.grade_max,
+                       url: l.url ?? f.url, url_dev: l.url_dev ?? f.url_dev, mine: l.mine });
+  }
+}
 
 if (IS_DEV) $('#env-tag').hidden = false;
 
@@ -277,22 +291,32 @@ const veil = $('#veil'), toast = $('#toast');
 function facilityHtml(f, z) {
   const st = STATUS[f.status] ?? STATUS.construction;
   const url = facilityUrl(f);
+  const w = account.current();
+  let can = st.canEnter, note = st.note;
+  if (f.status === 'trial') {
+    can = f.mine === true || (w.kind === 'staff' && w.is_admin);
+    if (!can) note = '只開放給試玩班。';
+  } else if (f.status === 'open' && f.mine === false) {
+    can = false;
+    note = '你的班還沒有開放這個遊戲，請問問老師。';
+  }
   const chips = [
     f.subject && `<span class="chip">${esc(f.subject)}</span>`,
     gradeText(f) && `<span class="chip" title="只是建議，不會擋人">${gradeText(f)}（參考）</span>`,
     `<span class="chip ${f.status}">${st.label}</span>`,
   ].filter(Boolean).join('');
-  const action = st.canEnter && url
+  const action = can && url
     ? `<a class="btn go" href="${esc(url)}">開始冒險</a>`
-    : `<span class="note"><img src="img/ui/lock.webp" alt="">${esc(st.note ?? '還不能進入。')}</span>`;
+    : `<span class="note"><img src="img/ui/lock.webp" alt="">${esc(note ?? '還不能進入。')}</span>`;
   const head = f.name === z.name ? '' : `<h3>${esc(f.name)}</h3>`;
   return `<div class="fac">${head}<div class="chips">${chips}</div><p>${esc(f.description)}</p><div class="row">${action}</div></div>`;
 }
 // 卡片底下滴答說的話：能玩就興奮，還不能玩就說明原因
 function tickLine(facs) {
-  const open = facs.some((f) => STATUS[f.status]?.canEnter && facilityUrl(f));
+  const open = facs.some((f) => (f.status === 'open' ? f.mine !== false : f.status === 'trial' && f.mine === true) && facilityUrl(f));
   if (open) return ['excited', '準備好了嗎？按「開始冒險」出發！'];
   if (facs.some((f) => f.status === 'maintenance')) return ['worried', '這裡暫時在維修，修好就能玩了。'];
+  if (facs.some((f) => f.status === 'open' && f.mine === false)) return ['thinking', '請老師在後台幫你的班打開這個遊戲喔！'];
   return ['thinking', '這裡還在施工，蓋好了我第一個通知你！'];
 }
 function openCard(z) {
@@ -344,9 +368,11 @@ function showToast(t) {
 const [, route, zoneCode] = location.hash.match(/^#(map)(?:\/([\w-]+))?/) ?? [];
 // 登出了就回到開場
 function onAccountChange(w) {
+  syncFacilities();
   if (w.kind === 'guest' && !select.hidden) { history.replaceState(null, '', location.pathname); showTitle(); }
 }
 const me = await meReady;
+await syncFacilities();
 if (route && me.kind === 'guest') {
   // 從遊戲回來但已經登出（或換人用平板）：先回開場，按 Start 再登入
   history.replaceState(null, '', location.pathname);
@@ -362,5 +388,10 @@ if (route && me.kind === 'guest') {
 } else {
   title.hidden = false;
   if (account.hasJoinLink && me.kind === 'guest') $('#start').click();   // 老師分享的「帶代碼連結」
+  const staff = new URLSearchParams(location.search).get('staff');
+  if (staff !== null && account.available) {                                // 老師後台的「建立開班帳號」
+    if (me.kind === 'staff') location.replace('teacher.html');
+    else account.openStaffPanel(staff);
+  }
 }
 $('#loading').remove();

@@ -155,3 +155,53 @@ export async function claimFirstAdmin() {
 export async function logout() {
   if (db) await db.auth.signOut();
 }
+
+// ---------- 設施狀態（地圖用，沒登入也可以叫） ----------
+// 回傳 Map(code → {status, grade_min, grade_max, url, url_dev, mine})；資料庫還沒裝 P2 或連不上就回 null，地圖照 park.json。
+export async function facilityStatus() {
+  if (!db) return null;
+  try {
+    const { data, error } = await db.rpc('park_facility_list');
+    if (error || !Array.isArray(data)) return null;
+    return new Map(data.map((f) => [f.code, f]));
+  } catch { return null; }
+}
+
+// ---------- 教師入口（P2，supabase/park_teacher.sql） ----------
+// 每一支都是「呼叫資料庫函式、錯誤翻成白話」。權限一律由資料庫擋。
+async function call(fn, args) {
+  if (!db) throw new Error('帳號功能載入失敗，重新整理再試一次');
+  const { data, error } = await db.rpc(fn, args);
+  if (error?.code === 'PGRST202') {
+    const e = new Error('後台的資料庫還沒裝好（缺 ' + fn + '），請管理員套用 park_teacher.sql');
+    e.missing = true;
+    throw e;
+  }
+  check(error);
+  return data;
+}
+export const teacher = {
+  classes:        () => call('park_teacher_classes'),
+  createClass:    (name, grade, kind) => call('park_create_class', { p_name: name, p_grade: grade, p_kind: kind }),
+  saveClass:      (code, name, grade, kind) => call('park_save_class', { p_code: code, p_name: name, p_grade: grade, p_kind: kind }),
+  setFacilities:  (code, list) => call('park_set_class_facilities', { p_code: code, p_facilities: list }),
+  overview:       (code) => call('park_class_overview', { p_code: code }),
+  setOpen:        (code, open) => call('class_set_open', { p_code: code, p_open: open }),
+  regenerateCode: (code) => call('class_regenerate_code', { p_code: code }),
+  resetPassword:  (id, pw) => call('park_reset_password', { p_student: id, p_password: pw }),
+  setNickname:    (id, nick) => call('park_set_student_nickname', { p_student: id, p_nickname: nick }),
+  removeStudent:  (code, id) => call('park_remove_from_class', { p_code: code, p_student: id }),
+  facilities:     () => call('park_facility_list'),
+};
+export const admin = {
+  facilities:     () => call('park_admin_facilities'),
+  setFacility:    (code, status, gmin, gmax, trials) => call('park_admin_set_facility',
+                    { p_code: code, p_status: status, p_grade_min: gmin, p_grade_max: gmax, p_trials: trials }),
+  classes:        () => call('park_admin_classes'),
+  setClassOwner:  (code, owner) => call('admin_set_class_owner', { p_code: code, p_owner: owner }),
+  teachers:       () => call('admin_list_teachers'),
+  setLimits:      (id, c, s) => call('admin_set_teacher_limits', { p_user: id, p_max_classes: c, p_max_students: s }),
+  setActive:      (id, on) => call('admin_set_teacher_active', { p_user: id, p_active: on }),
+  createTeacher:  (email, pw, name) => call('admin_create_teacher', { p_email: email, p_password: pw, p_display_name: name }),
+  audit:          (n = 100) => call('park_admin_audit', { p_limit: n }),
+};

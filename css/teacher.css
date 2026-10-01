@@ -1,0 +1,221 @@
+/* 老師後台。跟樂園同一套顏色與木框面板，但版面是一般可以捲動的網頁：
+   後台以好讀為主，表格、文字、底色由網頁畫，只有面板外框、按鈕、滴答、徽章用 3D 圖。 */
+:root{
+  --sea:#2f9fd8; --sea-deep:#1d7fbf; --cream:#fff4dc; --cream-2:#f6dfb4; --paper:#fffaf0;
+  --wood:#6b3f1f; --wood-2:#8a5429; --gold:#ffc23d; --ink:#3a2412; --muted:#8a6a4a;
+  --green:#3f9a2a; --green-bg:#dff3d8; --red:#c8432e; --red-bg:#fde0dc; --amber:#c97a12; --amber-bg:#fdecc8;
+  --f-disp:"Fredoka","Noto Sans TC",system-ui,sans-serif;
+  --f-body:"Noto Sans TC","Fredoka",system-ui,sans-serif;
+  --frame:44px;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;background:var(--sea-deep)}
+body{margin:0;min-height:100vh;color:var(--ink);font:500 16px/1.6 var(--f-body);
+  background:linear-gradient(180deg,#5fb7e8 0,#2f9fd8 420px,var(--sea-deep) 1400px) no-repeat var(--sea-deep)}
+a{color:var(--wood-2)}
+button,input,select{font:inherit;color:inherit}
+img{max-width:100%}
+
+/* ---------- 頁首 ---------- */
+.bar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  padding:10px max(16px,env(safe-area-inset-left)) 10px max(16px,env(safe-area-inset-right));
+  background:linear-gradient(var(--wood-2),var(--wood));border-bottom:4px solid #4a2a12;box-shadow:0 6px 16px rgba(0,0,0,.25)}
+.bar .home img{display:block;height:48px;width:auto;filter:drop-shadow(0 3px 4px rgba(0,0,0,.3))}
+.bar .title{font:900 24px/1 var(--f-body);color:var(--cream);text-shadow:0 2px 0 #3b200c;letter-spacing:.04em}
+.bar .env{font:700 13px/1 var(--f-body);color:#fff;background:var(--red);padding:6px 9px;border-radius:8px}
+.bar .spacer{flex:1}
+.bar .ghost{display:inline-flex;align-items:center;gap:6px;color:var(--cream);border-color:rgba(255,244,220,.55);text-decoration:none;padding:5px 14px 5px 6px}
+.bar .ghost img{width:28px;height:28px;object-fit:contain}
+.bar .ghost:hover,.bar .ghost:focus-visible{border-color:var(--gold);color:#fff}
+.who{display:flex;align-items:center;gap:8px;color:var(--cream)}
+.who b{display:block;font:900 16px/1.1 var(--f-body)}
+.who small{font:700 12px/1 var(--f-body);opacity:.8}
+
+/* ---------- 頁首橫幅（B-05）與頭像（B-04） ---------- */
+.hero{position:relative;height:230px;display:flex;align-items:center;gap:18px;
+  padding:0 max(24px,calc((100vw - 1240px) / 2 + 24px));
+  background:url(../img/admin/banner.webp) right 30% / cover no-repeat}
+.hero::after{content:"";position:absolute;inset:auto 0 0;height:60px;background:linear-gradient(rgba(47,159,216,0),#2f9fd8)}
+.hero>*{position:relative;z-index:1}
+.hero #avatar{width:120px;filter:drop-shadow(0 8px 10px rgba(0,0,0,.25))}
+.hero h1{margin:0;font:900 34px/1.2 var(--f-body);color:#fff;text-shadow:0 3px 0 #1d6aa0,0 0 14px rgba(20,80,130,.5)}
+.hero p{margin:6px 0 0;font:700 17px/1.4 var(--f-body);color:#fff;text-shadow:0 2px 6px rgba(20,80,130,.8)}
+
+/* ---------- 分頁（B-07 木牌分頁） ---------- */
+.tabs{display:flex;gap:8px;max-width:1240px;margin:-56px auto 0;padding:0 24px;position:relative;z-index:2}
+.tabs button{border:0;background:url(../img/admin/tab.webp) center/100% 100% no-repeat;min-width:150px;
+  padding:16px 26px 14px;font:900 19px/1 var(--f-body);color:var(--cream);text-shadow:0 2px 0 #4a2a12;cursor:pointer}
+.tabs button.on{background-image:url(../img/admin/tab-active.webp);color:var(--wood);text-shadow:none}
+
+main{max-width:1240px;margin:0 auto;padding:0 16px 60px}
+
+/* ---------- 木框面板（I-05 panel） ---------- */
+.panel{position:relative;margin:0 0 18px;border-style:solid;border-width:var(--frame);
+  border-image:url(../img/ui/panel.webp) 150 fill / var(--frame) stretch;padding:0 6px;
+  filter:drop-shadow(0 14px 18px rgba(0,0,0,.22))}
+.tabs:not([hidden])+main .panel:first-child{margin-top:-6px}
+.panel.narrow{max-width:620px;margin:40px auto}
+.panel.notice{--frame:30px}
+.panel h2{margin:0;display:flex;align-items:center;gap:10px;font:900 26px/1.25 var(--f-body);color:var(--wood);text-wrap:balance}
+.panel h2 .hi{width:44px;height:44px;object-fit:contain;flex:none}
+.ico{width:20px;height:20px;object-fit:contain;vertical-align:-4px;margin-right:5px}
+.ghost .ico{width:22px;height:22px}
+.tag .ico{width:15px;height:15px;margin-right:3px;vertical-align:-3px}
+summary .ico{width:24px;height:24px}
+.lead .ico{width:24px;height:24px}
+.panel h3{margin:0 0 6px;font:900 20px/1.3 var(--f-body);color:var(--ink)}
+.head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+.lead{margin:0 0 14px;color:#5a3a1e}
+.tip{margin:8px 0 0;font-size:14px;color:var(--muted)}
+.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.row.end{justify-content:flex-end}
+.loading{display:flex;align-items:center;gap:12px;justify-content:center;padding:60px 0;font:700 20px/1 var(--f-body);color:var(--cream);text-shadow:0 2px 4px rgba(0,0,0,.4)}
+.panel .loading{color:var(--muted);text-shadow:none;padding:24px 0}
+.loading img{width:80px;animation:bob 2.4s ease-in-out infinite}
+@keyframes bob{50%{transform:translateY(-6px)}}
+.hello{display:flex;gap:16px;align-items:flex-start}
+.hello img{width:96px;flex:none;object-fit:contain}
+.empty{display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px;padding:10px 0}
+.empty img{width:110px}
+.empty.small img{width:70px}
+.empty p{margin:0;max-width:520px}
+
+/* ---------- 按鈕 ---------- */
+.btn{display:inline-block;border:0;cursor:pointer;text-decoration:none;font:900 18px/1 var(--f-body);color:#fff;
+  padding:14px 26px 17px;background:url(../img/ui/button-orange.webp) center/100% 100% no-repeat;
+  text-shadow:0 2px 0 #9a4a10;filter:drop-shadow(0 4px 4px rgba(0,0,0,.2));transition:transform .15s,filter .15s}
+.btn.go{background-image:url(../img/ui/button-green.webp);text-shadow:0 2px 0 #2f7a1c}
+.btn.small{font-size:15px;padding:10px 18px 12px}
+.btn.danger{background:var(--red);border-radius:999px;box-shadow:0 4px 0 #8d2c1d;text-shadow:none;filter:none}
+.btn:hover,.btn:focus-visible{transform:translateY(-2px);filter:drop-shadow(0 0 6px #ffe28a) drop-shadow(0 4px 4px rgba(0,0,0,.2));outline:none}
+.btn:disabled{opacity:.6;cursor:wait;transform:none}
+.ghost{background:none;border:2px solid var(--cream-2);border-radius:999px;padding:8px 16px;font:700 16px/1 var(--f-body);color:var(--wood);cursor:pointer;white-space:nowrap}
+.ghost.small{font-size:14px;padding:6px 12px}
+.ghost:hover,.ghost:focus-visible{border-color:var(--wood);outline:none;background:rgba(255,255,255,.6)}
+.ghost.danger{color:var(--red)}
+.ghost.danger:hover{border-color:var(--red)}
+.ghost:disabled{opacity:.5;cursor:wait}
+.toggle{display:inline-flex;align-items:center;gap:10px;background:#fff;border:2px solid var(--cream-2);border-radius:999px;
+  padding:6px 16px 6px 6px;font:700 16px/1 var(--f-body);cursor:pointer;color:var(--muted)}
+.toggle i{width:54px;height:32px;background:url(../img/admin/toggle-off.webp) center/contain no-repeat}
+.toggle.on{color:var(--green);border-color:#a9d79b}
+.toggle.on i{background-image:url(../img/admin/toggle-on.webp)}
+.toggle.small{font-size:14px;padding:4px 12px 4px 4px}
+.toggle.small i{width:44px;height:26px}
+
+/* ---------- 標籤 ---------- */
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{font:700 13px/1 var(--f-body);padding:6px 10px;border-radius:99px;background:var(--cream);border:2px solid var(--cream-2);color:var(--ink);white-space:nowrap}
+.chip.fit,.chip.st-open{background:var(--green-bg);border-color:#a9d79b}
+.chip.st-trial{background:var(--red-bg);border-color:#f0a397}
+.chip.st-construction{background:var(--amber-bg);border-color:#f2b57a}
+.chip.st-maintenance,.chip.st-hidden{background:#e3e7ec;border-color:#b5bec8}
+.tag{display:inline-block;margin-left:6px;font:700 12px/1 var(--f-body);padding:4px 7px;border-radius:6px;background:var(--cream-2);color:var(--wood);vertical-align:2px;white-space:nowrap}
+.tag.bad{background:var(--red-bg);color:var(--red)}
+.tag.gold{background:#ffe9a8;color:#8a5a00}
+.warn{color:var(--red)}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:14px}
+
+/* ---------- 表單 ---------- */
+.form{display:flex;flex-direction:column;gap:12px}
+.form.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));align-items:end;margin:10px 0}
+.form label,.dlg label{display:flex;flex-direction:column;gap:6px;font:700 15px/1.2 var(--f-body);color:var(--wood)}
+input,select{width:100%;min-height:44px;padding:8px 12px;border:2px solid var(--cream-2);border-radius:12px;background:#fff;font-size:17px}
+input:focus,select:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(255,194,61,.35)}
+td select,td input{min-height:38px;font-size:15px;padding:6px 8px}
+td.nowrap select{width:auto}
+.msg{margin:0;padding:10px 12px;border-radius:12px;background:var(--red-bg);color:var(--red);font-weight:700}
+.msg.ok{background:var(--green-bg);color:var(--green)}
+.msg[hidden]{display:none}
+details{margin-top:14px;border-top:2px dashed var(--cream-2);padding-top:10px}
+summary{cursor:pointer;font:700 16px/1.4 var(--f-body);color:var(--wood-2)}
+
+/* ---------- 我的班級 ---------- */
+.classtabs{display:flex;gap:10px;flex-wrap:wrap}
+.classtabs button{display:flex;flex-direction:column;align-items:flex-start;gap:4px;min-width:150px;padding:12px 16px;
+  border:3px solid var(--cream-2);border-radius:16px;background:#fff;cursor:pointer;text-align:left}
+.classtabs b{font:900 18px/1.2 var(--f-body)}
+.classtabs small{font:700 13px/1 var(--f-body);color:var(--muted)}
+.classtabs button.on{border-color:var(--gold);background:#fff6d6;box-shadow:0 4px 0 #e2a92a}
+.classtabs button:hover,.classtabs button:focus-visible{border-color:var(--wood-2);outline:none}
+.codebox{display:grid;grid-template-columns:auto 1fr;gap:6px 18px;align-items:center;background:#fff;border:2px solid var(--cream-2);border-radius:18px;padding:14px 18px;margin-bottom:14px}
+.codebox small{display:block;font:700 13px/1 var(--f-body);color:var(--muted)}
+.codebox .code{font:700 44px/1.1 var(--f-disp);letter-spacing:.12em;color:var(--wood)}
+.codebox p{margin:0;font-size:15px;color:#5a3a1e}
+.codebox .row{grid-column:1/-1}
+.facs{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.facs li label{display:grid;grid-template-columns:auto 56px 1fr auto;gap:12px;align-items:center;padding:10px 14px;border:2px solid var(--cream-2);border-radius:16px;background:#fff;cursor:pointer}
+.facs li.on label{border-color:#a9d79b;background:#f4fbef}
+.facs input{-webkit-appearance:none;appearance:none;width:34px;height:34px;min-height:0;margin:0;padding:0;border:0;border-radius:0;
+  background:url(../img/admin/checkbox.webp) center/contain no-repeat;cursor:pointer}
+.facs input:checked{background-image:url(../img/admin/checkbox-checked.webp)}
+.facs input:focus-visible{outline:3px solid var(--gold);outline-offset:2px;box-shadow:none}
+.facs img{width:56px;height:56px;object-fit:contain}
+.facs b{display:block;font:900 18px/1.3 var(--f-body)}
+.facs small{color:var(--muted);font-weight:700}
+.facs em{display:block;font-style:normal;font-size:14px;color:var(--amber)}
+
+/* ---------- 全班總覽 ---------- */
+.tablewrap{overflow-x:auto;-webkit-overflow-scrolling:touch;background:#fff;border:2px solid var(--cream-2);border-radius:16px}
+table{border-collapse:collapse;width:100%;font-size:15px}
+th,td{padding:10px 12px;border-bottom:1px solid #f1e4c9;text-align:left;vertical-align:top}
+thead th{background:var(--cream);font:900 15px/1.3 var(--f-body);color:var(--wood);position:sticky;top:0}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:hover td{background:#fffbf1}
+td.stu{min-width:150px}
+td.stu b,td b{font-weight:900}
+td.stu small,td small{display:block;font-size:13px;color:var(--muted)}
+td.ops{white-space:nowrap}
+td.ops .ghost{margin:2px 0}
+td.num{white-space:nowrap}
+td.nowrap,th.nowrap{white-space:nowrap}
+td.na{color:#c9b89a}
+.gh{display:flex;align-items:center;gap:8px}
+.gh img{width:40px;height:40px;object-fit:contain}
+.gh b{display:block}
+.gh a{font:700 13px/1 var(--f-body)}
+.gh small{display:block}
+.ov td:not(.stu):not(.ops){min-width:190px}
+.prog{display:block;height:16px;border-style:solid;border-width:0 8px;border-image:url(../img/admin/progress-track.webp) 0 40 fill / 0 8px stretch;position:relative}
+.prog i{position:absolute;left:-8px;top:0;bottom:0;min-width:16px;max-width:calc(100% + 16px);border-style:solid;border-width:0 8px;
+  border-image:url(../img/admin/progress-fill.webp) 0 40 fill / 0 8px stretch;box-sizing:border-box}
+.pct{display:flex;justify-content:space-between;gap:8px;margin-top:4px;font:900 15px/1.2 var(--f-body)}
+.pct span{font:700 13px/1.2 var(--f-body);color:var(--muted)}
+.st{font-size:13px;color:#5a3a1e;margin-top:2px}
+.why{margin-top:4px;font:700 13px/1.4 var(--f-body);color:var(--red)}
+.why .ico{width:16px;height:16px;margin-right:4px;vertical-align:-3px}
+td.att{background:#fff6f3}
+
+/* ---------- 對話框與提示 ---------- */
+dialog{border:0;padding:0;background:none;max-width:min(520px,calc(100vw - 32px));width:100%}
+dialog::backdrop{background:rgba(10,40,70,.5)}
+.dlg{border-style:solid;border-width:36px;border-image:url(../img/ui/panel.webp) 150 fill / 36px stretch;padding:0 4px;display:flex;flex-direction:column;gap:12px}
+.dlg h3{margin:0;font:900 22px/1.3 var(--f-body);color:var(--wood)}
+.dlg .lead{margin:0}
+.result{margin:0;font-size:18px;line-height:1.9}
+.result .big{font:700 28px/1.2 var(--f-disp);letter-spacing:.06em;color:var(--wood)}
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:50;max-width:calc(100vw - 32px);
+  font:700 17px/1.4 var(--f-body);background:var(--cream);color:var(--wood);border:3px solid var(--wood);border-radius:16px;padding:12px 18px;box-shadow:0 5px 0 var(--wood)}
+#toast.bad{background:var(--red-bg);color:var(--red);border-color:var(--red);box-shadow:0 5px 0 #8d2c1d}
+
+@media (max-width:720px){
+  :root{--frame:26px}
+  .bar .home img{height:36px}
+  .bar .ghost{font-size:0;gap:0;padding:4px}
+  .hero{height:170px}
+  .hero #avatar{width:80px}
+  .hero h1{font-size:24px}
+  .hero p{font-size:14px}
+  .tabs{margin-top:-40px;padding:0 12px}
+  .tabs button{min-width:0;padding:13px 18px 11px;font-size:16px}
+  .bar .title{font-size:19px}
+  .who small{display:none}
+  .panel h2{font-size:22px}
+  .codebox{grid-template-columns:1fr}
+  .codebox .code{font-size:36px}
+  .facs li label{grid-template-columns:auto 40px 1fr}
+  .facs li label .chips{grid-column:2/-1}
+  .facs img{width:40px;height:40px}
+  .hello img{width:64px}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}

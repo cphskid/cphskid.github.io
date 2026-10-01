@@ -5,8 +5,6 @@ import * as auth from './auth.js';
 
 const $ = (s, root = document) => root.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const IS_DEV = /^\/dev(\/|$)/.test(location.pathname);
-const ENGLISH_URL = IS_DEV ? '/gaming_english_practice/dev/' : '/gaming_english_practice/';
 
 const layer = $('#acct');
 const chip = $('#me-chip');
@@ -172,6 +170,8 @@ function openLogin(tab = 'login') {
 }
 
 // ---------- 老師／家長：登入／第一次使用 ----------
+// 老師後台（teacher.html）的「建立帳號」連到 /?staff=signup，會直接打開這張
+export function openStaffPanel(tab) { openStaff(tab === 'signup' ? 'signup' : 'login'); }
 function openStaff(tab = 'login') {
   const reg = tab === 'signup';
   show(`
@@ -207,11 +207,11 @@ function openStaff(tab = 'login') {
     if (reg) await auth.staffSignUp(v('email'), f.elements.pw.value, v('name'), true);
     else await auth.staffLogin(v('email'), f.elements.pw.value);
     await loggedIn();
-    openStaffHome();
+    location.href = 'teacher.html';   // 老師登入後直接進後台
   });
 }
 
-// ---------- 老師入口（P1 先放身分、認領管理員；開班與全班總覽是 P2） ----------
+// ---------- 老師入口：身分、認領管理員、進老師後台（teacher.html） ----------
 function openStaffHome() {
   const w = who;
   show(`
@@ -219,8 +219,8 @@ function openStaffHome() {
     <div class="chips"><span class="chip">${w.is_admin ? '管理員' : '開班帳號'}</span>${w.email ? `<span class="chip">${esc(w.email)}</span>` : ''}${w.class_count != null ? `<span class="chip">開了 ${w.class_count} 個班</span>` : ''}</div>
     ${w.has_admin === false ? `<div class="fac"><h3>這個系統還沒有管理員</h3><p>你是第一個使用者的話，按下面的按鈕成為管理員。有了管理員之後，這顆按鈕就沒有作用了。</p>
       <form class="form" data-claim><p class="msg" hidden></p><button class="btn go" type="submit">我是第一個使用者</button></form></div>` : ''}
-    <div class="fac"><h3>開班與全班進度</h3><p>開班、選年級、看全班在各遊戲的進度、幫學生重設密碼，下一步會搬進樂園。現在請先用守護異世界的老師後台，登入狀態是共用的，不用再登入一次。</p>
-      <div class="row"><a class="btn go" href="${ENGLISH_URL}">打開老師後台</a></div></div>
+    <div class="fac"><h3>老師後台</h3><p>開班、選年級、決定班上開放哪些遊戲、看全班在各遊戲的進度、幫學生重設密碼，都在這裡。${w.is_admin ? '管理員的設施與老師管理也在裡面。' : ''}</p>
+      <div class="row"><a class="btn go" href="teacher.html">進入老師後台</a></div></div>
     <div class="row end"><button type="button" class="ghost" data-map>逛逛樂園地圖</button><button type="button" class="ghost" data-logout>登出</button></div>`,
   { tick: 'point', wide: true });
 

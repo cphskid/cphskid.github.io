@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>老師後台｜時空冒險樂園</title>
+<meta name="description" content="時空冒險樂園的老師、家長、管理員後台：開班、開放遊戲、看全班進度、重設學生密碼。">
+<link rel="icon" href="img/admin/class.webp">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Noto+Sans+TC:wght@500;700;900&display=swap">
+<link rel="stylesheet" href="css/teacher.css">
+</head>
+<body>
+<header class="bar">
+  <a class="home" href="./#map" title="回樂園地圖"><img src="img/logo.webp" alt="時空冒險樂園"></a>
+  <div class="title">老師後台</div>
+  <span class="env" id="env" hidden>測試站</span>
+  <span class="spacer"></span>
+  <span class="who" id="who" hidden></span>
+  <a class="ghost" href="./#map"><img src="img/admin/park.webp" alt="">回樂園</a>
+  <button class="ghost" id="logout" hidden><img src="img/admin/logout.webp" alt="">登出</button>
+</header>
+<section class="hero" id="hero" hidden>
+  <img id="avatar" src="img/admin/av-teacher.webp" alt="">
+  <div><h1 id="hi"></h1><p id="role"></p></div>
+</section>
+<nav class="tabs" id="tabs" hidden>
+  <button data-view="classes" class="on">我的班級</button>
+  <button data-view="admin" id="tab-admin" hidden>管理員</button>
+</nav>
+<main id="view"><p class="loading"><img src="img/tick/boat.webp" alt="">後台開門中…</p></main>
+<div id="toast" role="status" hidden></div>
+<dialog id="dlg"></dialog>
+<script src="js/vendor/supabase.js"></script>
+<script type="module" src="js/teacher.js"></script>
+</body>
+</html>

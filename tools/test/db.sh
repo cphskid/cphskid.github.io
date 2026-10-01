@@ -48,3 +48,9 @@ run -f supabase/park_accounts.sql 2>&1 | grep -v NOTICE || true
 
 echo "── 權限測試"
 run -f supabase/test/park_accounts_test.sql 2>&1 | grep -E "✓|✗|ERROR|──" | sed 's/^psql:[^ ]* NOTICE:  //'
+
+echo "── park_teacher.sql"
+run -f supabase/park_teacher.sql 2>&1 | grep -v NOTICE || true
+
+echo "── P2 教師入口測試"
+run -f supabase/test/park_teacher_test.sql 2>&1 | grep -E "✓|✗|ERROR|──" | sed 's/^psql:[^ ]* NOTICE:  //'
