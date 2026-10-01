@@ -20,10 +20,11 @@ fi
 EN="$PGROOT/english"
 mkdir -p "$EN"
 if [ -n "${ENGLISH_REPO:-}" ]; then
-  cp "$ENGLISH_REPO/supabase/schema.sql" "$ENGLISH_REPO/supabase/test/00_supabase_stub.sql" "$EN/"
+  cp "$ENGLISH_REPO/supabase/schema.sql" "$ENGLISH_REPO/supabase/park_guardian.sql" "$ENGLISH_REPO/supabase/test/00_supabase_stub.sql" "$EN/"
 else
   RAW=https://raw.githubusercontent.com/cphskid/gaming_english_practice/dev/supabase
   curl -fsSL "$RAW/schema.sql" -o "$EN/schema.sql"
+  curl -fsSL "$RAW/park_guardian.sql" -o "$EN/park_guardian.sql"
   curl -fsSL "$RAW/test/00_supabase_stub.sql" -o "$EN/00_supabase_stub.sql"
 fi
 
@@ -51,6 +52,9 @@ run -f supabase/test/park_accounts_test.sql 2>&1 | grep -E "✓|✗|ERROR|──
 
 echo "── park_teacher.sql"
 run -f supabase/park_teacher.sql 2>&1 | grep -v NOTICE || true
+
+echo "── 守護異世界的 park_guardian.sql（全班摘要）"
+run -f "$EN/park_guardian.sql" 2>&1 | grep -v NOTICE || true
 
 echo "── P2 教師入口測試"
 run -f supabase/test/park_teacher_test.sql 2>&1 | grep -E "✓|✗|ERROR|──" | sed 's/^psql:[^ ]* NOTICE:  //'

@@ -5,7 +5,7 @@
 -- 英文正式站和它原本的老師後台照常可以用。
 --
 -- 怎麼套：Supabase 後台 → SQL Editor → 整份貼上 → Run。可以重複執行。
--- 順序：守護異世界的 schema.sql → park_accounts.sql → 這份。
+-- 順序：守護異世界的 schema.sql → park_accounts.sql → 這份 → 守護異世界的 park_guardian.sql。
 -- 守護異世界重跑 schema.sql 之後，park_accounts.sql 和這份都要再跑一次（它會收回權限）。
 -- =============================================================================
 
@@ -568,63 +568,11 @@ language sql stable security definer set search_path = public, pg_temp as $$
 $$;
 
 -- -----------------------------------------------------------------------------
--- 7. 守護異世界的全班摘要（規劃書「遊戲接入規則」第 3 條）
---    只讀守護異世界現有的表，不改它。P3 接上守護異世界時會搬進它自己的 repo。
---    欄位固定：學生、進度 0–100、最後遊玩、一句目前狀態、是否需要注意、一句原因。
+-- 7. 各遊戲的全班摘要（規劃書「遊戲接入規則」第 3 條）
+--    每個遊戲在自己的 repo 提供 <前綴>_class_summary，例如守護異世界的
+--    gaming_english_practice/supabase/park_guardian.sql（P3 從這份搬過去）。
+--    還沒裝的遊戲，全班總覽那一欄會顯示「摘要函式還沒裝到資料庫」，其他欄照常。
 -- -----------------------------------------------------------------------------
-create or replace function public.guardian_class_summary(p_code text)
-returns table (student_id uuid, progress int, last_played timestamptz,
-               status text, attention boolean, reason text)
-language sql stable security definer set search_path = public, pg_temp as $$
-  with target as (select upper(btrim(coalesce(p_code, ''))) as code),
-  total as (select greatest(count(*), 1) as n from public.levels),
-  kids as (
-    select s.id, s.locked_until
-      from public.park_class_members m
-      join public.students s on s.id = m.student_id
-      join target t on t.code = m.class_code
-     where public.is_teacher_of(t.code)
-  ),
-  stat as (
-    select k.id, k.locked_until,
-           (select count(*) from public.level_progress lp
-             where lp.student_id = k.id and lp.cleared_at is not null) as cleared,
-           (select l.chapter || ':' || l.no || ':' || l.name
-              from public.level_progress lp join public.levels l on l.id = lp.level_id
-             where lp.student_id = k.id and lp.cleared_at is not null
-             order by l.no desc limit 1) as best,
-           (select max(ae.at) from public.answer_events ae where ae.student_id = k.id) as last_at,
-           (select round(100 * avg(case when x.correct then 1 else 0 end))::int
-              from (select ae.correct from public.answer_events ae
-                     where ae.student_id = k.id order by ae.at desc limit 50) x) as recent_acc,
-           (select count(*) from (select 1 from public.answer_events ae
-                     where ae.student_id = k.id order by ae.at desc limit 50) x) as recent_n
-      from kids k
-  )
-  select st.id,
-         least(100, round(100.0 * st.cleared / (select n from total)))::int,
-         st.last_at,
-         case
-           when st.last_at is null then '還沒開始'
-           when st.best is null then '還在挑戰第 1 關'
-           else '已過第 ' || split_part(st.best, ':', 2) || ' 關「' || split_part(st.best, ':', 3)
-                || '」（第' || substr('一二三四五', split_part(st.best, ':', 1)::int, 1) || '章）'
-         end,
-         (coalesce(st.locked_until > now(), false)
-          or st.last_at is null
-          or st.last_at < now() - interval '7 days'
-          or (st.recent_n >= 20 and st.recent_acc < 60)),
-         case
-           when coalesce(st.locked_until > now(), false) then '密碼試錯太多次被鎖住了，可以幫他重設密碼'
-           when st.last_at is null then '還沒玩過'
-           when st.last_at < now() - interval '7 days'
-             then extract(day from now() - st.last_at)::int || ' 天沒玩了'
-           when st.recent_n >= 20 and st.recent_acc < 60
-             then '最近 ' || st.recent_n || ' 題只答對 ' || st.recent_acc || '%'
-           else null
-         end
-    from stat st;
-$$;
 
 -- -----------------------------------------------------------------------------
 -- 8. 權限
@@ -637,7 +585,7 @@ revoke all on function
   public.park_class_overview(text), public.park_reset_password(uuid, text),
   public.park_set_student_nickname(uuid, text), public.park_remove_from_class(text, uuid),
   public.park_admin_facilities(), public.park_admin_set_facility(text, text, int, int, text[]),
-  public.park_admin_classes(), public.park_admin_audit(int), public.guardian_class_summary(text)
+  public.park_admin_classes(), public.park_admin_audit(int)
   from public, anon, authenticated;
 
 -- 地圖：沒登入也能看狀態
@@ -649,5 +597,5 @@ grant execute on function
   public.park_class_overview(text), public.park_reset_password(uuid, text),
   public.park_set_student_nickname(uuid, text), public.park_remove_from_class(text, uuid),
   public.park_admin_facilities(), public.park_admin_set_facility(text, text, int, int, text[]),
-  public.park_admin_classes(), public.park_admin_audit(int), public.guardian_class_summary(text)
+  public.park_admin_classes(), public.park_admin_audit(int)
   to authenticated;

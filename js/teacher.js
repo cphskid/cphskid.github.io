@@ -166,8 +166,9 @@ async function start() {
   $('#tabs').hidden = false;
   $('#tab-admin').hidden = !who.is_admin;
   const want = location.hash.slice(1);
-  tab = want === 'admin' && who.is_admin ? 'admin' : 'classes';
+  tab = want === 'admin' && who.is_admin ? 'admin' : want === 'feedback' ? 'feedback' : 'classes';
   paintTabs();
+  paintFeedbackDot();
   await show();
 }
 // 頁首橫幅：管理員、老師、家長（開的全是家庭班）用不同的頭像
@@ -191,6 +192,7 @@ async function show() {
   view.innerHTML = '<p class="loading"><img src="img/tick/boat.webp" alt="">讀取中…</p>';
   try {
     if (tab === 'admin') await renderAdmin();
+    else if (tab === 'feedback') await renderFeedback();
     else await renderClasses();
   } catch (e) {
     if (e.missing) return renderMissing(e.message);
@@ -520,11 +522,93 @@ function exportCsv() {
 }
 
 // =============================================================================
+// 問題回報（P3 從守護異世界的管理員頁搬過來）
+// 管理員：看全部、改分類、回覆給本人、刪除（＝隱藏，可救回）。
+// 老師／家長：只看得到自己班學生的回報，唯讀（list_feedback 在伺服器過濾）。
+// =============================================================================
+const FB_STATUS = {
+  new: '還沒看', bug: 'Bug 要修', request: '需求', unclear: '要 Chuck 決定', fixed: '修好了', dup: '重複', wontfix: '不處理',
+};
+const FB_KIND = { bug: '🐞 壞掉了', confusing: '❓ 看不懂', idea: '💡 想法' };
+const isPending = (r) => r.status === 'new' || r.status === 'unclear';
+let fbFilter = '';
+
+// 分頁上的紅點：管理員有還沒處理的回報
+async function paintFeedbackDot(rows) {
+  if (!who.is_admin) return;
+  try {
+    const all = rows ?? await auth.feedback.list();
+    $('#fb-dot').hidden = !all.some(isPending);
+  } catch { /* 紅點而已，失敗就不亮 */ }
+}
+
+async function renderFeedback() {
+  const manage = !!who.is_admin;
+  const hidden = fbFilter === 'hidden';
+  const status = fbFilter && fbFilter !== 'pending' && !hidden ? fbFilter : null;
+  const all = await auth.feedback.list(status, hidden);
+  const rows = fbFilter === 'pending' ? all.filter(isPending) : all;
+  if (!fbFilter) paintFeedbackDot(all);
+  const pending = hidden ? 0 : rows.filter(isPending).length;
+
+  view.innerHTML = `<section class="panel">
+    <div class="head">${h2('mail', `${manage ? '問題回報' : '班上的回報'}${pending ? `（${pending} 則待處理）` : ''}`)}
+      <select id="fbf" class="auto">
+        <option value="">全部</option><option value="pending">待處理</option>
+        ${Object.entries(FB_STATUS).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}
+        ${manage ? '<option value="hidden">🗑 已刪除</option>' : ''}
+      </select></div>
+    <p class="lead">${manage
+      ? '學生和老師在遊戲裡按「💬 問題回報」送來的。回覆會出現在他的「我的回報」，按鈕會亮紅點。'
+      : '你班上學生在遊戲裡按「💬 問題回報」送來的。處理進度由管理員更新。'}</p>
+    ${rows.length ? `<div class="fb-list">${rows.slice(0, 100).map((r) => `<article class="fb" data-id="${r.id}">
+      <div class="row"><b>${FB_KIND[r.kind] ?? esc(r.kind)}</b><span>${esc(r.who)}${r.class_code ? `<small class="mono">${esc(r.class_code)}</small>` : ''}</span>
+        <span class="spacer"></span>
+        ${manage && !hidden
+          ? `<select data-status class="auto">${Object.entries(FB_STATUS).map(([k, v]) => `<option value="${k}" ${r.status === k ? 'selected' : ''}>${v}</option>`).join('')}</select>`
+          : `<span class="chip">${esc(FB_STATUS[r.status] ?? r.status)}</span>`}</div>
+      <p class="fb-msg">${esc(r.message)}</p>
+      ${manage && r.triage_note ? `<p class="tip">內部筆記：${esc(r.triage_note)}</p>` : ''}
+      ${manage && !hidden ? `<form class="row fb-reply" data-reply><input name="reply" maxlength="300" value="${esc(r.reply ?? '')}" placeholder="回覆給本人（他看得到）">
+        <button class="btn small" type="submit">${r.reply ? '改回覆' : '回覆'}</button></form>`
+        : r.reply ? `<p class="fb-answer">💌 ${esc(r.reply)}</p>` : ''}
+      <div class="row tip"><span>${esc(when(r.created_at))}・守護異世界${r.screen ? '・' + esc(r.screen) : ''}${typeof r.context?.level === 'string' ? '・' + esc(r.context.level) : ''}${typeof r.context?.ver === 'string' ? '・v' + esc(r.context.ver) : ''}</span>
+        <span class="spacer"></span>
+        ${manage ? (hidden ? '<button class="ghost small" data-restore>救回</button>' : `<button class="ghost small danger" data-hide>${ico('delete')}刪除</button>`) : ''}</div>
+    </article>`).join('')}</div>`
+    : `<div class="empty small"><img src="img/admin/tick-empty.webp" alt=""><p>${hidden ? '沒有刪除的回報。' : '沒有回報。'}</p></div>`}
+  </section>`;
+
+  const sel = $('#fbf');
+  sel.value = fbFilter;
+  sel.onchange = () => { fbFilter = sel.value; show(); };
+  const reload = () => renderFeedback().catch((e) => toast(e.message, true));
+  $$('article.fb').forEach((el) => {
+    const id = Number(el.dataset.id);
+    const st = $('[data-status]', el);
+    if (st) st.onchange = () => run(st, async () => { await auth.feedback.triage(id, st.value); toast(`改成「${FB_STATUS[st.value]}」`); await reload(); });
+    const form = $('[data-reply]', el);
+    form?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      run($('button', form), async () => { await auth.feedback.reply(id, form.elements.reply.value.trim()); toast('回覆送出了'); await reload(); });
+    });
+    const hide = $('[data-hide]', el);
+    if (hide) hide.onclick = () => {
+      if (!confirm('刪除這則回報？刪掉的可以在「已刪除」救回來。')) return;
+      run(hide, async () => { await auth.feedback.hide(id, true); toast('刪掉了'); await reload(); });
+    };
+    const back = $('[data-restore]', el);
+    if (back) back.onclick = () => run(back, async () => { await auth.feedback.hide(id, false); toast('救回來了'); await reload(); });
+  });
+}
+
+// =============================================================================
 // 管理員
 // =============================================================================
 async function renderAdmin() {
-  const [facs, teachers, all, log] = await Promise.all([
+  const [facs, teachers, all, log, words, flagged] = await Promise.all([
     auth.admin.facilities(), auth.admin.teachers(), auth.admin.classes(), auth.admin.audit(80),
+    auth.admin.bannedWords(), auth.admin.flaggedNicknames(),
   ]);
   const activeT = teachers.filter((t) => t.active);
   const fresh = (t) => t.self_signup && Date.now() - new Date(t.created_at).getTime() < 7 * 86400e3;
@@ -596,9 +680,63 @@ async function renderAdmin() {
     : '<div class="empty small"><img src="img/admin/tick-empty.webp" alt=""><p>還沒有紀錄。</p></div>'}
   </section>
 
-  <section class="panel notice">
-    <p class="lead">${ico('help')}問題回報收件匣和暱稱禁用字目前還在守護異世界的管理員頁：<a href="${ENGLISH_URL}">打開守護異世界</a>，從老師後台按「管理員」。</p>
+  <section class="panel" id="banned">
+    <div class="head">${h2('st-attention', `暱稱禁用字（${words.length}）`)}</div>
+    <p class="lead">學生註冊和改暱稱時會擋掉含這些字的名字，空白、符號、全形、大小寫都繞不過去。勾「整個名字才擋」的字只擋剛好叫這個名字的人，給 ass 這種短字用，不然 class 也會被擋。暱稱全站共用，所以這份清單管的是樂園裡所有遊戲。</p>
+    ${flagged.length ? `<p class="lead"><b>這些人的暱稱現在會被擋，幫他們換一個：</b></p>
+    <div class="tablewrap"><table class="adm">
+      <thead><tr><th>暱稱</th><th>主要班級</th><th></th></tr></thead>
+      <tbody>${flagged.map((f) => `<tr data-flag="${esc(f.student_id)}" data-nick="${esc(f.nickname)}">
+        <td><b>${esc(f.nickname)}</b></td>
+        <td>${esc(f.class_name || f.class_code || '沒有班級')}${f.class_code ? `<small class="mono">${esc(f.class_code)}</small>` : ''}</td>
+        <td><button class="ghost small" data-rename>${ico('edit')}改暱稱</button></td></tr>`).join('')}</tbody></table></div>` : ''}
+    <form class="form grid" id="bw" novalidate>
+      <label>要擋的字<input name="word" maxlength="30" autocomplete="off" spellcheck="false"></label>
+      <label class="check"><span><input type="checkbox" name="whole"> 整個名字才擋</span></label>
+      <div class="row"><button class="btn small" type="submit">加入</button></div>
+    </form>
+    <details><summary>看清單（點字可以刪掉）</summary>
+      <div class="chips words">${words.map((w) => `<button class="chip" data-word="${esc(w.word)}" title="點一下刪掉">${esc(w.word)}${w.whole ? '（整個）' : ''} ✕</button>`).join('') || '<span class="tip">清單是空的。</span>'}</div>
+    </details>
   </section>`;
+
+  // 暱稱禁用字
+  $$('tr[data-flag]').forEach((tr) => {
+    $('[data-rename]', tr).onclick = () => ask({
+      title: `幫「${tr.dataset.nick}」換一個暱稱`,
+      fields: [{ name: 'nick', label: '新暱稱', max: 12 }],
+      ok: '改好',
+      onOk: async ({ nick }) => {
+        if (!nick) return false;
+        const next = await auth.teacher.setNickname(tr.dataset.flag, nick);
+        toast(`${tr.dataset.nick} 改名叫 ${next} 了`);
+        await renderAdmin();
+      },
+    });
+  });
+  $('#bw').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const f = e.currentTarget;
+    const word = f.elements.word.value.trim();
+    if (!word) return;
+    run($('button', f), async () => {
+      const saved = await auth.admin.addBannedWord(word, f.elements.whole.checked);
+      toast(`加進去了：${saved}`);
+      await renderAdmin();
+      $('#banned')?.scrollIntoView({ block: 'start' });
+    });
+  });
+  $$('[data-word]').forEach((b) => {
+    b.onclick = () => {
+      if (!confirm(`把「${b.dataset.word}」從禁用字拿掉？`)) return;
+      run(b, async () => {
+        await auth.admin.removeBannedWord(b.dataset.word);
+        toast(`拿掉了：${b.dataset.word}`);
+        await renderAdmin();
+        $('#banned')?.scrollIntoView({ block: 'start' });
+      });
+    };
+  });
 
   // 設施
   $$('tr[data-fac]').forEach((tr) => {

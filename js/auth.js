@@ -204,4 +204,17 @@ export const admin = {
   setActive:      (id, on) => call('admin_set_teacher_active', { p_user: id, p_active: on }),
   createTeacher:  (email, pw, name) => call('admin_create_teacher', { p_email: email, p_password: pw, p_display_name: name }),
   audit:          (n = 100) => call('park_admin_audit', { p_limit: n }),
+  // 暱稱禁用字（守護異世界 schema.sql 的函式，P3 從英文管理員頁搬過來）
+  bannedWords:    () => call('admin_list_banned_words'),
+  addBannedWord:  (word, whole) => call('admin_add_banned_word', { p_word: word, p_whole: whole }),
+  removeBannedWord: (word) => call('admin_remove_banned_word', { p_word: word }),
+  flaggedNicknames: () => call('admin_flagged_nicknames'),
+};
+// 問題回報收件匣（守護異世界 schema.sql 的函式，P3 從英文管理員頁搬過來）。
+// 管理員看全部、可以分類／回覆／刪除；老師只看得到自己班學生的回報（伺服器過濾），唯讀。
+export const feedback = {
+  list:   (status = null, hidden = false) => call('list_feedback', { p_status: status, p_hidden: hidden }),
+  triage: (id, status) => call('triage_feedback', { p_id: id, p_status: status, p_note: '' }),
+  reply:  (id, text) => call('reply_feedback', { p_id: id, p_reply: text }),
+  hide:   (id, hidden) => call('hide_feedback', { p_id: id, p_hidden: hidden }),
 };
