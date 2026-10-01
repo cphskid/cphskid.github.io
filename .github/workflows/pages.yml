@@ -1,0 +1,77 @@
+# 把樂園大門發佈到 GitHub Pages（https://cphskid.github.io/）。
+#
+# 一個網站放兩份：
+#   /       正式站 ← main
+#   /dev/   測試站 ← dev
+# GitHub Pages 只准預設分支發佈，所以推 dev 時只是「請 main 重發一次」，
+# 真正的建置永遠從 main 跑、兩份一起包（跟守護異世界同一套做法）。
+#
+# 各遊戲自己的 repo 照舊掛在自己的路徑（例如 /gaming_english_practice/），不受這裡影響。
+name: pages
+
+on:
+  push:
+    branches: [main, dev]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+  actions: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  kick:
+    if: github.ref == 'refs/heads/dev'
+    runs-on: ubuntu-latest
+    steps:
+      - run: gh workflow run pages.yml --repo "$GITHUB_REPOSITORY" --ref main
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+  build:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    env:
+      HAS_ASSETS_TOKEN: ${{ secrets.ASSETS_TOKEN != '' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: site
+      - uses: actions/checkout@v4
+        with:
+          ref: dev
+          path: dev-src
+      # 禁散布的圖（Tiny Swords 小兵）放在私有 repo；沒設 ASSETS_TOKEN 就跳過，網站照常、只是沒有小兵
+      - if: env.HAS_ASSETS_TOKEN == 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: cphskid/gaming_english_assets
+          token: ${{ secrets.ASSETS_TOKEN }}
+          path: private-assets
+      - if: env.HAS_ASSETS_TOKEN == 'true'
+        run: |
+          sh site/tools/private-assets.sh private-assets site
+          sh site/tools/private-assets.sh private-assets dev-src
+      - name: assemble
+        run: |
+          rm -rf site/.git site/.github dev-src/.git dev-src/.github
+          rm -rf site/dev && cp -R dev-src site/dev
+          touch site/.nojekyll
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
