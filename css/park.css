@@ -184,3 +184,51 @@ body{margin:0;background:var(--sea-deep);color:var(--ink);font-family:var(--f-bo
 #portal img{width:620px;animation:spin 1.2s cubic-bezier(.5,0,.3,1) forwards}
 @keyframes spin{from{transform:scale(.2) rotate(0);opacity:0}40%{opacity:1}to{transform:scale(2.6) rotate(540deg);opacity:1}}
 @keyframes fade{from{opacity:0}}
+
+/* ---------- 帳號：右上角「我是誰」、登入／註冊／我的資料卡片 ---------- */
+.env-tag{left:22px;right:auto;top:auto;bottom:20px}
+#me-chip{position:absolute;right:22px;top:18px;z-index:9;display:flex;align-items:center;gap:8px;padding:6px 16px 6px 6px;background:var(--cream);border:3px solid var(--wood);border-radius:999px;box-shadow:0 4px 0 var(--wood),0 10px 18px rgba(0,0,0,.2);cursor:pointer;font:inherit;color:var(--ink);transition:transform .2s cubic-bezier(.34,1.7,.5,1)}
+#me-chip:hover,#me-chip:focus-visible{transform:translateY(-2px) scale(1.04);outline:none}
+#me-chip img{width:48px;height:48px;object-fit:contain;border-radius:50%;background:#fff;border:2px solid var(--cream-2)}
+#me-chip span{display:flex;flex-direction:column;align-items:flex-start;gap:3px;line-height:1}
+#me-chip b{font:900 19px/1 var(--f-body);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#me-chip small{font:700 13px/1 var(--f-body);color:#8a6a4a}
+
+#acct{position:absolute;inset:-1200px;background:rgba(10,40,70,.5);display:grid;place-items:center;z-index:12}
+.card.acct{width:640px;grid-template-columns:150px 1fr}
+.card.acct.wide{width:800px}
+.card.acct .art .tick{width:100%;filter:drop-shadow(0 8px 8px rgba(0,0,0,.2));animation:hover 3.2s ease-in-out infinite}
+.card.acct .body{max-height:690px;overflow:auto;padding-right:6px;overscroll-behavior:contain}
+.card.acct h3{margin:18px 0 8px;font:900 20px/1.2 var(--f-body);color:var(--wood)}
+.card.acct .fac h3{margin-top:0}
+.tabs{display:flex;gap:8px;margin:4px 0 14px}
+.tabs button{flex:1;font:900 19px/1 var(--f-body);padding:12px 10px;border-radius:14px;border:3px solid var(--cream-2);background:#fff;color:#8a6a4a;cursor:pointer}
+.tabs button.on{background:var(--gold);border-color:var(--wood);color:var(--wood);box-shadow:0 3px 0 var(--wood)}
+.form{display:flex;flex-direction:column;gap:12px}
+.form label{display:flex;flex-direction:column;gap:6px;font:700 16px/1.2 var(--f-body);color:var(--wood)}
+.form input:not([type=checkbox]){width:100%;font:500 21px/1.2 var(--f-body);color:var(--ink);padding:11px 14px;border:3px solid var(--cream-2);border-radius:14px;background:#fff;outline:none}
+.form input:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(255,194,61,.35)}
+.form label.check{flex-direction:row;align-items:center;gap:10px;font-size:17px;color:var(--ink)}
+.form label.check input{width:24px;height:24px;accent-color:var(--wood)}
+.form .btn.go{align-self:flex-start}
+.form.inline{flex-direction:row;flex-wrap:wrap;align-items:center;gap:10px;margin-top:10px}
+.form.inline input{flex:1;min-width:0}
+.form.inline .msg{flex-basis:100%}
+.msg{margin:0;font:700 16px/1.4 var(--f-body);color:#c0392b}
+.msg.ok{color:#2f7a1c}
+.tip{margin:12px 0 0;font:500 15px/1.6 var(--f-body);color:#8a6a4a}
+.link{margin-top:10px;padding:4px 0;border:0;background:none;font:700 17px/1 var(--f-body);color:var(--wood);text-decoration:underline;text-underline-offset:4px;cursor:pointer}
+.card .btn.small{font:900 18px/1 var(--f-body);padding:12px 22px 13px;border-width:3px;box-shadow:inset 0 2px 0 rgba(255,255,255,.9),0 4px 0 var(--wood)}
+.card .btn.small:hover,.card .btn.small:focus-visible{transform:translateY(-2px);box-shadow:inset 0 2px 0 rgba(255,255,255,.9),0 6px 0 var(--wood),0 0 0 4px rgba(255,214,110,.7)}
+.card .btn:disabled{opacity:.6;cursor:wait}
+.card .ghost.small{font-size:16px;padding:8px 16px;border-width:2px}
+ul.classes{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+ul.classes li{display:flex;align-items:center;justify-content:space-between;gap:12px;background:#fff;border:2px solid var(--cream-2);border-radius:14px;padding:10px 14px}
+ul.classes li div{display:flex;flex-direction:column;gap:4px}
+ul.classes b{font:900 19px/1.2 var(--f-body)}
+ul.classes small{font:700 14px/1 var(--f-body);color:#8a6a4a}
+.card.acct details{margin-top:14px;background:#fff;border:2px solid var(--cream-2);border-radius:14px;padding:10px 14px}
+.card.acct summary{font:900 18px/1.2 var(--f-body);color:var(--wood);cursor:pointer}
+.card.acct details .form{margin-top:10px}
+.card.acct details .tip{margin-top:8px}
+.card .row.end{justify-content:flex-end;margin-top:16px}

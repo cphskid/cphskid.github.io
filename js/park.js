@@ -1,6 +1,7 @@
 // 樂園大門：開場畫面 → 島嶼地圖 → 島的介紹卡 → 進入設施（遊戲）。
 // 地圖上有哪些島、島上有哪些設施、能不能進，全部從 data/park.json 讀（之後改成資料庫）。
 import { addUnits } from './units.js';
+import * as account from './account.js';
 
 // 測試站在 /dev/ 底下：顯示「測試站」標籤，設施連到各遊戲的測試站
 const IS_DEV = /^\/dev(\/|$)/.test(location.pathname);
@@ -17,6 +18,8 @@ const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const reduceMotion = matchMedia('(prefers-reduced-motion:reduce)').matches;
 
+// 先問「我是誰」，跟讀地圖資料同時進行
+const meReady = account.init((w) => onAccountChange(w));
 const park = await fetch('data/park.json', { cache: 'no-cache' }).then((r) => r.json());
 const zones = new Map(park.zones.filter((z) => z.status !== 'hidden').map((z) => [z.code, z]));
 const facilitiesOf = (code) => park.facilities.filter((f) => f.zone === code && f.status !== 'hidden');
@@ -63,7 +66,7 @@ document.querySelectorAll('#title .isle').forEach((b) => {
   const z = zones.get(b.dataset.zone);
   if (!z) return b.remove();
   buildIsle(b, z);
-  b.addEventListener('click', go);
+  b.addEventListener('click', () => $('#start').click());
 });
 
 // 地圖：每個 slot 放一座島，沒有島的 slot 放雲霧
@@ -236,10 +239,15 @@ function showTitle() {
   select.hidden = true;
   title.hidden = false;
 }
+function greeting() {
+  const w = account.current();
+  const name = w.kind === 'student' ? w.nickname : w.kind === 'staff' ? w.display_name : '';
+  return name ? `嗨，${name}！歡迎來到時空冒險樂園，點一座島看看吧。` : '嗨，我是滴答！歡迎來到時空冒險樂園，點一座島看看吧。';
+}
 function showMap({ animate = true } = {}) {
   title.hidden = true;
   select.hidden = false;
-  say('wave', '嗨，我是滴答！歡迎來到時空冒險樂園，點一座島看看吧。');
+  say('wave', greeting());
   if (animate) {
     select.classList.add('entering');
     setTimeout(() => select.classList.remove('entering'), 1400);
@@ -255,10 +263,12 @@ function go() {
     showMap();
   }, reduceMotion ? 0 : 520);
 }
-$('#start').addEventListener('click', () => {
+// 進樂園要先登入（帳號功能載入失敗時照樣放行，地圖本身不需要資料庫）
+$('#start').addEventListener('click', async () => {
   const b = $('#start');
   fxAt(title, 'img/fx/star-burst.webp', 'burst', b.offsetLeft, b.offsetTop + b.offsetHeight / 2, 420);
-  go();
+  const w = await account.requireLogin();
+  if (w || !account.available) go();
 });
 $('#back').addEventListener('click', () => { history.replaceState(null, '', location.pathname); showTitle(); });
 
@@ -332,7 +342,16 @@ function showToast(t) {
 // ---------- 從網址決定一開始的畫面 ----------
 // 遊戲裡的「回樂園」按鈕連到 /#map，直接回到島嶼地圖、不用再看一次開場
 const [, route, zoneCode] = location.hash.match(/^#(map)(?:\/([\w-]+))?/) ?? [];
-if (route) {
+// 登出了就回到開場
+function onAccountChange(w) {
+  if (w.kind === 'guest' && !select.hidden) { history.replaceState(null, '', location.pathname); showTitle(); }
+}
+const me = await meReady;
+if (route && me.kind === 'guest') {
+  // 從遊戲回來但已經登出（或換人用平板）：先回開場，按 Start 再登入
+  history.replaceState(null, '', location.pathname);
+  title.hidden = false;
+} else if (route) {
   showMap({ animate: false });
   const z = zones.get(zoneCode);
   if (z) {
@@ -342,5 +361,6 @@ if (route) {
   }
 } else {
   title.hidden = false;
+  if (account.hasJoinLink && me.kind === 'guest') $('#start').click();   // 老師分享的「帶代碼連結」
 }
 $('#loading').remove();
