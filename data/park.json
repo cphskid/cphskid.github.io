@@ -1,0 +1,114 @@
+{
+  "_說明": "樂園地圖的資料。欄位照平台規劃書的 park_zones / park_facilities 設計，P2 會改成從資料庫讀，到時只換讀取的地方。新增科目＝在 zones 加一座島、facilities 加一個設施，放進空的 slot，不用改程式。",
+
+  "map": {
+    "width": 2200,
+    "height": 900,
+    "slots": [
+      { "slot": 1, "left": 50,   "top": 330, "width": 430 },
+      { "slot": 2, "left": 600,  "top": 105, "width": 400 },
+      { "slot": 3, "left": 1085, "top": 310, "width": 470 },
+      { "slot": 4, "left": 660,  "top": 585, "width": 290 },
+      { "slot": 5, "left": 130,  "top": 125, "width": 240 },
+      { "slot": 6, "left": 1240, "top": 40,  "width": 260 },
+      { "slot": 7, "left": 1660, "top": 170, "width": 320 },
+      { "slot": 8, "left": 1700, "top": 560, "width": 300 }
+    ]
+  },
+
+  "zones": [
+    {
+      "code": "village",
+      "name": "樂園村莊",
+      "subtitle": "樂園大廳",
+      "slot": 1,
+      "art": "img/l-01.webp",
+      "status": "open",
+      "description": "學生在這裡登入、加入班級、換頭像和蓋護照章。老師與家長的設定也從這裡進。",
+      "units": "village"
+    },
+    {
+      "code": "castle",
+      "name": "守護異世界",
+      "subtitle": "英文",
+      "slot": 2,
+      "art": "img/l-02.webp",
+      "status": "open",
+      "description": "用英文單字守護異世界的城堡。",
+      "units": "castle"
+    },
+    {
+      "code": "taiwan",
+      "name": "穿越吧！島嶼開拓者",
+      "subtitle": "社會",
+      "slot": 3,
+      "art": "img/l-03.webp",
+      "status": "open",
+      "description": "穿越回不同時代的台灣，從八堡圳開始，一步步開拓這座島。"
+    },
+    {
+      "code": "science",
+      "name": "科學戰士",
+      "subtitle": "自然",
+      "slot": 4,
+      "art": "img/l-04.webp",
+      "status": "construction",
+      "description": "自然科的島還在蓋，完成後會在這裡開放。"
+    }
+  ],
+
+  "facilities": [
+    {
+      "code": "lobby",
+      "zone": "village",
+      "name": "樂園大廳",
+      "subject": null,
+      "grade_min": null,
+      "grade_max": null,
+      "status": "construction",
+      "url": null,
+      "url_dev": null,
+      "summary_fn": null,
+      "description": "登入、註冊、加入班級、頭像與護照。下一步（統一帳號）就會開放。"
+    },
+    {
+      "code": "guardian",
+      "zone": "castle",
+      "name": "守護異世界",
+      "subject": "英文",
+      "grade_min": 3,
+      "grade_max": 6,
+      "status": "open",
+      "url": "/gaming_english_practice/",
+      "url_dev": "/gaming_english_practice/dev/",
+      "summary_fn": null,
+      "description": "用英文單字守護異世界的城堡，打倒怪物、收集寶石。"
+    },
+    {
+      "code": "island_pioneer",
+      "zone": "taiwan",
+      "name": "穿越吧！島嶼開拓者",
+      "subject": "社會",
+      "grade_min": null,
+      "grade_max": null,
+      "status": "construction",
+      "url": null,
+      "url_dev": null,
+      "summary_fn": null,
+      "description": "穿越回不同時代的台灣，從八堡圳開始，一步步開拓這座島。遊戲正在開發中。"
+    },
+    {
+      "code": "science_warrior",
+      "zone": "science",
+      "name": "科學戰士",
+      "subject": "自然",
+      "grade_min": null,
+      "grade_max": null,
+      "status": "construction",
+      "url": null,
+      "url_dev": null,
+      "summary_fn": null,
+      "description": "自然科的島還在蓋，完成後會在這裡開放。"
+    }
+  ]
+}
