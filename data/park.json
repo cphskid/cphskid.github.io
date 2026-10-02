@@ -1,5 +1,5 @@
 {
-  "_說明": "樂園地圖的資料。欄位照平台規劃書的 park_zones / park_facilities 設計，P2 會改成從資料庫讀，到時只換讀取的地方。新增科目＝在 zones 加一座島、facilities 加一個設施，放進空的 slot，不用改程式。decor 是海上的小裝飾，只是好看。",
+  "_說明": "樂園地圖的資料。欄位照平台規劃書的 park_zones / park_facilities 設計，P2 會改成從資料庫讀，到時只換讀取的地方。新增一座島＝在 zones 加一座島、facilities 加一個設施，放進空的 slot，不用改程式。decor 是海上的小裝飾，只是好看。",
 
   "map": {
     "width": 2200,
@@ -36,38 +36,38 @@
       "art": "img/l-01.webp",
       "badge": "img/badge/clocktower.webp",
       "status": "open",
-      "description": "學生在這裡登入、加入班級、換頭像和蓋護照章。老師與家長的設定也從這裡進。",
+      "description": "冒險從這裡出發：登入、換頭像、翻翻你的樂園護照。老師與家長的設定也從這裡進。",
       "units": "village"
     },
     {
       "code": "castle",
       "name": "守護異世界",
-      "subtitle": "英文",
+      "subtitle": "塔防・打怪",
       "slot": 2,
       "art": "img/l-02.webp",
       "badge": "img/badge/castle.webp",
       "status": "open",
-      "description": "用英文單字守護異世界的城堡。",
+      "description": "怪物大軍來襲！快來守住異世界的城堡。",
       "units": "castle"
     },
     {
       "code": "taiwan",
       "name": "穿越吧！島嶼開拓者",
-      "subtitle": "社會",
+      "subtitle": "解謎・冒險",
       "slot": 3,
       "art": "img/l-03.webp",
       "badge": "img/badge/taiwan.webp",
       "status": "open",
-      "description": "穿越回不同時代的台灣，從八堡圳開始，一步步開拓這座島。"
+      "description": "穿越時空回到過去，跟夥伴一起把這座島開拓起來。"
     },
     {
       "code": "science",
       "name": "科學戰士",
-      "subtitle": "自然",
+      "subtitle": "神秘新島",
       "slot": 4,
       "art": "img/l-04.webp",
       "status": "construction",
-      "description": "自然科的島還在蓋，完成後會在這裡開放。"
+      "description": "雲霧裡浮出一座神秘的新島，工人們正在趕工，蓋好就會開放！"
     }
   ],
 
@@ -90,39 +90,45 @@
       "zone": "castle",
       "name": "守護異世界",
       "subject": "英文",
+      "genre": "塔防・打怪",
+      "stars": 2,
       "grade_min": 3,
       "grade_max": 6,
       "status": "open",
       "url": "/gaming_english_practice/",
       "url_dev": "/gaming_english_practice/dev/",
       "summary_fn": null,
-      "description": "用英文單字守護異世界的城堡，打倒怪物、收集寶石。"
+      "description": "喊出單字咒語擊退一波波怪物，收集閃亮亮的寶石。"
     },
     {
       "code": "island_pioneer",
       "zone": "taiwan",
       "name": "穿越吧！島嶼開拓者",
       "subject": "社會",
+      "genre": "解謎・冒險",
+      "stars": 2,
       "grade_min": null,
       "grade_max": null,
       "status": "construction",
       "url": null,
       "url_dev": null,
       "summary_fn": null,
-      "description": "穿越回不同時代的台灣，從八堡圳開始，一步步開拓這座島。遊戲正在開發中。"
+      "description": "解開每個時代的謎題，蓋水圳、開墾土地，看著荒地一步步變成家園。"
     },
     {
       "code": "science_warrior",
       "zone": "science",
       "name": "科學戰士",
       "subject": "自然",
+      "genre": "神秘新島",
+      "stars": null,
       "grade_min": null,
       "grade_max": null,
       "status": "construction",
       "url": null,
       "url_dev": null,
       "summary_fn": null,
-      "description": "自然科的島還在蓋，完成後會在這裡開放。"
+      "description": "雲霧裡浮出一座神秘的新島，工人們正在趕工，蓋好就會開放！"
     }
   ]
 }

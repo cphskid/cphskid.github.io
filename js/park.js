@@ -41,16 +41,16 @@ async function syncFacilities() {
 
 if (IS_DEV) $('#env-tag').hidden = false;
 
-// ---------- 年級、狀態、連結 ----------
-function gradeText(f) {
-  if (!f.grade_min && !f.grade_max) return '';
-  if (f.grade_min === f.grade_max) return `${f.grade_min} 年級`;
-  return `${f.grade_min ?? 1}–${f.grade_max ?? 6} 年級`;
+// ---------- 玩法、挑戰度、狀態、連結 ----------
+// 小朋友看到的只有玩法類型和挑戰星等；科目、年級只放老師後台，免得一看就覺得是功課。
+function starsHtml(n) {
+  if (!n) return '';
+  return `<span class="chip stars" title="挑戰度">${'★'.repeat(n)}${'☆'.repeat(3 - n)}</span>`;
 }
 function facilityUrl(f) {
   return (IS_DEV ? f.url_dev : f.url) || null;
 }
-// 島的名牌下面那行：科目，或島的狀態（施工中、維修中、試營運）
+// 島的名牌下面那行：玩法類型，或島的狀態（施工中、維修中、試營運）
 function zoneSub(z) {
   return z.status === 'open' ? z.subtitle : `${z.subtitle}・${STATUS[z.status]?.label ?? ''}`;
 }
@@ -101,7 +101,7 @@ park.map.slots.forEach((s, i) => {
     b.addEventListener('click', () => {
       if (dragged) return;
       puff(b);
-      say('map', '雲霧後面還藏著新的島，等新的科目開幕就會出現！');
+      say('map', '雲霧後面還藏著新的島，探險隊正在開路，很快就會出現！');
     });
   }
   islesLayer.appendChild(b);
@@ -133,10 +133,10 @@ function puff(btn) {
 // 右下角的小幫手：進地圖打招呼、點雲霧會解釋、點他會輪流講提示
 const TICK_TIPS = [
   ['point', '點一座島，看看島上有什麼好玩的！'],
-  ['map', '守護異世界是英文島，打怪物要靠單字喔。'],
+  ['map', '守護異世界的怪物最怕單字咒語，會的咒語越多越厲害！'],
   ['fly-happy', '地圖可以往右拖，那邊還有雲霧裡的島。'],
   ['jump', '還在施工的島，蓋好就會開放，敬請期待！'],
-  ['cheer', '在遊戲裡過關會蓋護照章，左下角的護照可以看你蓋了哪些！'],
+  ['cheer', '在遊戲裡完成任務會蓋護照章，左下角的護照可以看你蓋了哪些！'],
 ];
 let tipIndex = 0, sayTimer;
 function say(pose, text) {
@@ -307,8 +307,8 @@ function facilityHtml(f, z) {
     note = '你的班還沒有開放這個遊戲，請問問老師。';
   }
   const chips = [
-    f.subject && `<span class="chip">${esc(f.subject)}</span>`,
-    gradeText(f) && `<span class="chip" title="只是建議，不會擋人">${gradeText(f)}（參考）</span>`,
+    f.genre && `<span class="chip">${esc(f.genre)}</span>`,
+    starsHtml(f.stars),
     `<span class="chip ${f.status}">${st.label}</span>`,
   ].filter(Boolean).join('');
   const action = can && url
@@ -329,11 +329,11 @@ function tickLine(facs) {
 function villageHtml() {
   const w = account.current();
   if (w.kind !== 'student') {
-    return `<div class="fac"><h3>樂園護照</h3><p>小朋友在各遊戲完成關卡，就會在護照上蓋章；蓋越多章，可以選的頭像越多。${w.kind === 'staff' ? '老師可以在後台的全班總覽看到每個學生蓋了幾個章。' : ''}</p></div>`;
+    return `<div class="fac"><h3>樂園護照</h3><p>小朋友在各遊戲完成任務，就會在護照上蓋章；蓋越多章，可以選的頭像越多。${w.kind === 'staff' ? '老師可以在後台的全班總覽看到每個學生蓋了幾個章。' : ''}</p></div>`;
   }
   const p = w.profile;
   return `<div class="fac"><h3>我的護照與頭像</h3>
-    <div class="row">${account.avatarHtml(p?.avatar, p?.frame, 'mid')}<p>${p ? `你已經蓋了 <b>${p.stamps}</b> 個章。` : ''}在遊戲裡完成關卡就會蓋章，蓋越多章，可以選的頭像和頭像框越多。</p></div>
+    <div class="row">${account.avatarHtml(p?.avatar, p?.frame, 'mid')}<p>${p ? `你已經蓋了 <b>${p.stamps}</b> 個章。` : ''}在遊戲裡完成任務就會蓋章，蓋越多章，可以選的頭像和頭像框越多。</p></div>
     <div class="row"><button type="button" class="btn go" data-open-pass>打開護照</button><button type="button" class="ghost" data-open-av>換頭像</button></div></div>`;
 }
 function openCard(z) {

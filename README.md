@@ -20,8 +20,8 @@
 
 全部在 `data/park.json`，不用改程式：
 
-1. `zones` 加一座島：`code`、`name`、`subtitle`（科目）、`slot`（放在地圖哪個空位）、`art`（去背島圖）、`status`。
-2. `facilities` 加一個設施：所屬 `zone`、`name`、`subject`、`grade_min`/`grade_max`（只當參考、不擋人）、`status`、`url`（正式站）、`url_dev`（測試站）。
+1. `zones` 加一座島：`code`、`name`、`subtitle`（名牌下的玩法類型，不寫科目）、`slot`（放在地圖哪個空位）、`art`（去背島圖）、`status`。
+2. `facilities` 加一個設施：所屬 `zone`、`name`、`genre`（玩法類型）、`stars`（挑戰度 1–3）、`subject`、`grade_min`/`grade_max`（科目和年級只給老師後台看，學生畫面不顯示）、`status`、`url`（正式站）、`url_dev`（測試站）。
 3. 空位不夠時，在 `map.slots` 往右加，並把 `map.width` 加大，地圖會自動可以左右拖曳。
 
 狀態有五種：`open` 開放中、`trial` 試營運、`construction` 施工中、`maintenance` 維修中、`hidden`（當作沒有，空位顯示雲霧）。

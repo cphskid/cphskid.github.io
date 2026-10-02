@@ -59,7 +59,7 @@ function problem(e) {
     <button class="x" data-close aria-label="關閉"></button>
     <img class="tick" src="img/tick/${e.missing ? 'thinking' : 'worried'}.webp" alt="">
     <div><h2>${e.missing ? '護照還在印' : '打不開護照'}</h2>
-    <p class="lead">${esc(e.missing ? '樂園護照還在準備中，很快就能用了！先去遊戲裡玩，完成的關卡之後都會補蓋章。' : e.message)}</p>
+    <p class="lead">${esc(e.missing ? '樂園護照還在準備中，很快就能用了！先去遊戲裡玩，完成的任務之後都會補蓋章。' : e.message)}</p>
     <div class="row"><button class="btn small" data-close>好</button></div></div></div>`);
 }
 
@@ -136,9 +136,9 @@ function render() {
     </section>
     <section class="leaf right">
       ${p ? `<h2>${esc(p.name)}</h2>
-      <p class="lead">${esc(p.subject ?? '')}・這一頁蓋了 ${got} / ${p.stamps.length} 個章</p>
+      <p class="lead">這一頁蓋了 ${got} / ${p.stamps.length} 個章</p>
       <div class="grid">${p.stamps.map(cell).join('')}</div>
-      ${p.full ? '<div class="full">這一頁蓋滿了！</div>' : ''}` : '<p class="lead">護照還是空的，去遊戲裡完成關卡就會蓋章！</p>'}
+      ${p.full ? '<div class="full">這一頁蓋滿了！</div>' : ''}` : '<p class="lead">護照還是空的，去遊戲裡完成任務就會蓋章！</p>'}
     </section></div>`);
 
   layer.querySelectorAll('[data-page]').forEach((b) => { b.onclick = () => { page = +b.dataset.page; clearFresh(); render(); }; });
