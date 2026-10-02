@@ -68,7 +68,7 @@ pet.init({ api, me: () => ({ kind: 'student', nickname: '測試' }), host: () =>
 document.getElementById('pisle').onclick = () => pet.openIsland();
 await pet.load();
 if (q.get('open')) pet.open();
-if (q.get('isle')) pet.openIsland();
+if (q.get('isle')) pet.open();
 </script>
 </body>
 </html>

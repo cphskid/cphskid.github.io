@@ -120,7 +120,7 @@ park.map.slots.forEach((s, i) => {
   islesLayer.appendChild(b);
 });
 
-// ---------- 主島桌寵：坐在樂園村莊上（js/pet.js） ----------
+// ---------- 主島桌寵：住在寵物島（js/pet.js） ----------
 pet.init({ me: () => account.current(), host: () => islesLayer, dragged: () => dragged,
   island: () => park.map.slots.find((s) => s.slot === park.map.pet_slot && !bySlot.has(s.slot)) });
 
@@ -399,7 +399,7 @@ function villageHtml() {
   return `<div class="fac"><h3>我的護照與頭像</h3>
     <div class="row">${account.avatarHtml(p?.avatar, p?.frame, 'mid')}<p>${p ? `你已經蓋了 <b>${p.stamps}</b> 個章。` : ''}在遊戲裡完成任務就會蓋章，蓋越多章，可以選的頭像和頭像框越多。</p></div>
     <div class="row"><button type="button" class="btn go" data-open-pass>打開護照</button><button type="button" class="ghost" data-open-av>換頭像</button></div></div>
-    <div class="fac"><h3>我的桌寵</h3><p>你的桌寵住在村莊裡。牠會肚子餓，記得常回來餵牠、陪牠玩；在各島完成任務還會拿到牠最愛的點心。</p>
+    <div class="fac"><h3>我的桌寵</h3><p>你的桌寵住在村莊旁邊的寵物島。照顧中的那隻會肚子餓，記得常回來餵牠、陪牠玩；在各島完成任務還會拿到牠最愛的點心。</p>
     <div class="row"><button type="button" class="btn go" data-open-pet>去看桌寵</button></div></div>`;
 }
 function openCard(z) {

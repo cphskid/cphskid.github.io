@@ -494,7 +494,7 @@ ul.classes small{font:700 14px/1 var(--f-body);color:#8a6a4a}
 #isle-pets .mini img{width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 4px 3px rgba(20,50,30,.4));animation:petHop 1.2s ease-in-out infinite;transform-origin:50% 100%}
 #isle-pets .mini{width:54px;height:54px}
 #isle-pets .mini img{position:absolute;inset:0}
-#isle-pets .mini img:first-child{animation:walkStep .5s steps(1) -.25s infinite}
+#isle-pets .mini img:not(.w2):not(.glint){animation:walkStep .5s steps(1) -.25s infinite}
 #isle-pets .mini .w2{animation:walkStep .5s steps(1) infinite}
 @keyframes walkStep{0%{opacity:0}50%{opacity:1}}
 @keyframes miniWalk{0%,100%{transform:translateX(0) scaleX(1)}45%{transform:translateX(var(--dist)) scaleX(1)}50%{transform:translateX(var(--dist)) scaleX(-1)}95%{transform:translateX(0) scaleX(-1)}}
@@ -530,3 +530,78 @@ ul.classes small{font:700 14px/1 var(--f-body);color:#8a6a4a}
 #snd-btn[data-mode="off"] .w1,#snd-btn[data-mode="off"] .w2{display:none}
 #snd-btn[data-mode="off"] .mute{display:inline}
 .card.acct.solo{width:700px;grid-template-columns:1fr}
+/* ---------- 寵物島場景（js/pet.js openScene） ---------- */
+.pisle{position:relative;width:1570px;height:870px;display:grid;grid-template-columns:1120px 1fr;gap:18px;align-items:center;padding:14px 18px;border-radius:34px;
+  background:radial-gradient(ellipse at 35% 55%,#7fd6f2,#38a9dc 55%,#1f7fb8);box-shadow:inset 0 0 0 5px var(--wood-2),inset 0 0 0 9px rgba(255,214,110,.55),0 30px 50px rgba(0,0,0,.45);animation:pop .45s cubic-bezier(.34,1.7,.5,1)}
+#petroom .pisle>.x{right:-26px;top:-26px}
+.pisle .ground{position:relative;touch-action:none;user-select:none;-webkit-user-select:none}
+.pisle .land{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;-webkit-user-drag:none;filter:drop-shadow(0 18px 18px rgba(0,40,80,.35))}
+.pisle .actors{position:absolute;inset:0}
+.pisle .hint{position:absolute;left:50%;bottom:-2px;transform:translateX(-50%);margin:0;padding:8px 18px;border-radius:99px;background:rgba(255,255,255,.85);font:700 16px/1 var(--f-body);color:var(--wood);white-space:nowrap;pointer-events:none}
+.actor{position:absolute;width:calc(var(--h) * var(--d));height:calc(var(--h) * var(--d));transform:translate(-50%,-92%);border:0;padding:0;background:none;cursor:grab;touch-action:none}
+.actor .body{position:absolute;inset:0;transform-origin:50% 100%;transition:transform .15s}
+.actor .body img{width:100%;height:100%;object-fit:contain;transform:scaleX(var(--f));pointer-events:none;-webkit-user-drag:none;filter:drop-shadow(0 4px 3px rgba(20,50,30,.3))}
+.actor .shadow{position:absolute;left:18%;right:18%;bottom:2%;height:14%;border-radius:50%;background:rgba(30,60,20,.28);transition:transform .15s,opacity .15s}
+.actor .tag{position:absolute;left:50%;top:100%;transform:translate(-50%,2px);font:900 14px/1 var(--f-body);color:#fff;background:rgba(107,63,31,.75);padding:4px 9px;border-radius:99px;white-space:nowrap;pointer-events:none}
+.actor.tending .tag{background:#2f7a1c}
+.actor.sel .shadow{background:rgba(255,220,90,.75);box-shadow:0 0 0 3px #fff;left:10%;right:10%}
+.actor .bub{position:absolute;left:50%;bottom:100%;transform:translate(-50%,-4px);pointer-events:none;white-space:nowrap;z-index:2}
+.actor .bub.mark{font:900 22px/1 var(--f-disp);color:#e2553f;background:#fff;border:3px solid var(--wood);border-radius:50%;width:38px;height:38px;display:grid;place-items:center;animation:bob 1.6s ease-in-out infinite}
+.actor .bub.talk{max-width:300px;white-space:normal;width:max-content;font:900 18px/1.4 var(--f-body);color:var(--ink);background:#fff;border:3px solid var(--wood);border-radius:18px;padding:8px 14px;box-shadow:0 4px 0 var(--wood);animation:pop .3s ease-out}
+.actor.held{cursor:grabbing}
+.actor.held .body{transform:translateY(-34px) rotate(-6deg) scale(1.08)}
+.actor.held .shadow{transform:scale(.6);opacity:.6}
+.actor.held.bad .shadow{background:rgba(226,85,63,.7)}
+.actor.drop .body{animation:petDrop .45s cubic-bezier(.34,1.7,.5,1)}
+.actor.nope .body{animation:petShake .35s ease-in-out 2}
+.actor .float{position:absolute;left:50%;top:10%;z-index:3;font:900 24px/1 var(--f-disp);color:#e2553f;text-shadow:0 2px 0 #fff,0 0 8px #fff;pointer-events:none;white-space:nowrap;animation:floatUp 1.3s ease-out forwards}
+@keyframes petDrop{0%{transform:translateY(-34px)}60%{transform:translateY(0) scale(1.1,.88)}100%{transform:none}}
+.actor.egg-nest{--h:120px;--d:1;cursor:pointer}
+.actor.egg-nest img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;animation:eggWobble 2.2s ease-in-out infinite;transform-origin:50% 90%}
+.actor.egg-nest .glint{width:60%;height:auto;inset:auto;left:-6%;top:-4%;animation:twinkle 1.4s ease-in-out infinite}
+.bowl{position:absolute;width:calc(64px * var(--d));height:calc(64px * var(--d));transform:translate(-50%,-80%);pointer-events:none;animation:pop .35s ease-out}
+.bowl img,.bowl span{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:grid;place-items:center;font-size:44px;transform:scale(calc(.45 + .55 * var(--left,1)));transform-origin:50% 90%;transition:transform .3s}
+.bowl.done{opacity:0;transition:opacity .5s}
+/* 右邊照顧面板 */
+aside.care{height:840px;display:flex;flex-direction:column;gap:12px;min-width:0}
+aside.care .who{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;display:flex;flex-direction:column;gap:6px;padding:18px;border-radius:24px;background:radial-gradient(circle at 30% 10%,#fffdf6,#fff4dc 60%,#f8e6c2);box-shadow:inset 0 0 0 4px var(--wood-2)}
+aside.care .nm{display:flex;align-items:center;gap:12px}
+aside.care .kind{margin:0;font:700 17px/1.4 var(--f-body);color:#8a6a4a}
+aside.care .mood{font-weight:900;color:#2f7a1c}
+aside.care .mood.m-hungry,.care .mood.m-angry{color:#e2553f}
+aside.care .mood.m-asleep,.care .mood.m-quiet{color:#4a6fa8}
+aside.care .xp{height:18px;border-radius:99px;background:#efdcb8;box-shadow:inset 0 2px 3px rgba(107,63,31,.3);overflow:hidden;margin-top:4px}
+aside.care .xp i{display:block;height:100%;border-radius:99px;background:linear-gradient(#ffe08a,#f0a830)}
+aside.care .xpt{font:700 14px/1.3 var(--f-body);color:#a0825f}
+aside.care h3 small{font:700 13px/1 var(--f-body);color:#a0825f;margin-left:6px}
+aside.care .gauge{grid-template-columns:44px auto 1fr}
+aside.care .gauge i{width:22px;height:22px;font-size:18px}
+aside.care .gauge small{font-size:13px}
+aside.care .food .ic{height:44px}
+aside.care .food .ic img{width:44px;height:44px}
+aside.care .food b{font-size:14px}
+aside.care .lead{margin:6px 0;font:700 17px/1.55 var(--f-body);color:#6b4a2a}
+aside.care .note{margin:4px 0 0;font:700 14px/1.4 var(--f-body);color:#a0825f}
+aside.care .wish{margin-top:auto}
+aside.care .wish p{font-size:14px}
+aside.care .wish span img{width:40px;height:40px}
+aside.care .roster{padding:12px 16px;border-radius:24px;background:rgba(255,250,235,.92);box-shadow:inset 0 0 0 4px var(--wood-2)}
+aside.care .roster h3{margin:0 0 8px}
+.pals-s{display:flex;gap:10px;flex-wrap:wrap}
+.pal-s{position:relative;width:72px;height:72px;border-radius:18px;border:3px solid var(--cream-2);background:#fff;padding:4px;cursor:pointer;display:grid;place-items:center}
+.pal-s img{width:100%;height:100%;object-fit:contain}
+.pal-s i{position:absolute;left:50%;bottom:-9px;transform:translateX(-50%);font:900 11px/1 var(--f-body);font-style:normal;background:var(--wood);color:#fff;padding:3px 6px;border-radius:99px;white-space:nowrap}
+.pal-s.care i{background:#2f7a1c}
+.pal-s.on{border-color:var(--gold);box-shadow:0 4px 0 var(--wood)}
+.pal-s.new{border-color:var(--gold);background:#fffaf0}
+.pal-s.new .egg{width:44px;height:54px}
+.pal-s.locked{cursor:default}
+.pal-s.locked img{filter:brightness(0) opacity(.22)}
+.pal-s.locked i{background:#9aa0a8}
+/* 地圖上寵物島的小夥伴 */
+#isle-pets .mini.still,#isle-pets .mini.still img{animation:none;opacity:1}
+#isle-pets .mini .mp-bub{position:absolute;left:50%;top:-20px;transform:translateX(-50%);font:900 15px/1 var(--f-disp);color:#e2553f;background:#fff;border:2px solid var(--wood);border-radius:50%;width:24px;height:24px;display:grid;place-items:center;z-index:2;animation:none}
+#isle-pets .mini.care{width:62px;height:62px}
+#isle-pets .mini.egg-wait{width:44px;height:54px;animation:none}
+#isle-pets .mini.egg-wait .glint{position:absolute;width:40px;left:-8px;top:-8px;animation:twinkle 1.4s ease-in-out infinite}
+@media (prefers-reduced-motion:reduce){.actor .bub.mark,.actor.egg-nest img{animation:none}}
