@@ -223,12 +223,19 @@ function setPan(v) {
   $('#pan-l').hidden = pan <= lo + 1;
   $('#pan-r').hidden = pan >= hi - 1;
 }
+// 手機、平板跳出鍵盤時畫面高度會變矮，照算會把整個舞台縮到看不見。
+// 正在打字而且寬度沒變（沒有轉向）就不重算，鍵盤收起來再算。
+let fitW = 0;
+const typing = () => document.activeElement?.matches?.('input:not([type=checkbox]),textarea,select');
 function fit() {
+  if (typing() && innerWidth === fitW) return;
+  fitW = innerWidth;
   scale = Math.min(innerWidth / 1600, innerHeight / 900);
   stage.style.setProperty('--s', scale);
   setPan(pan);
 }
 addEventListener('resize', fit);
+addEventListener('focusout', () => setTimeout(() => { if (!typing()) fit(); }, 300));
 fit();
 setPan(panRange()[0]);
 world.addEventListener('pointermove', (e) => {
