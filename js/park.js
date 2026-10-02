@@ -307,6 +307,7 @@ snd.preload(['SE-01', 'SE-02', 'SE-03', 'SE-10', 'SE-11', 'SE-12', 'SE-14', 'SE-
 const title = $('#title'), flash = $('#flash');
 function showTitle() {
   closeCard();
+  try { sessionStorage.removeItem('park:entered'); } catch {}
   snd.music('MU-01'); snd.ambience('SE-16');
   select.hidden = true;
   title.hidden = false;
@@ -343,6 +344,7 @@ function go() {
   setTimeout(() => {
     title.classList.remove('leaving');
     history.replaceState(null, '', '#map');
+    try { sessionStorage.setItem('park:entered', '1'); } catch {}
     showMap();
   }, reduceMotion ? 0 : 520);
 }
@@ -468,8 +470,13 @@ passBtn.addEventListener('click', () => account.openPassport());
 addEventListener('park:profile', paintPassBtn);
 
 // ---------- 從網址決定一開始的畫面 ----------
-// 遊戲裡的「回樂園」按鈕連到 /#map，直接回到島嶼地圖、不用再看一次開場
+// 遊戲裡的「回樂園」按鈕連到 /#map，直接回到島嶼地圖、不用再看一次開場；
+// 就算連結沒帶 #map，這個分頁從開場進過樂園也會直接回地圖（按「回到開場」或登出就重來）
 const [, route, zoneCode] = location.hash.match(/^#(map)(?:\/([\w-]+))?/) ?? [];
+function enteredThisTab() {
+  if (me.kind === 'guest') return false;
+  try { return sessionStorage.getItem('park:entered') === '1'; } catch { return false; }
+}
 // 登出了就回到開場
 function onAccountChange(w) {
   syncFacilities();
@@ -483,7 +490,9 @@ if (route && me.kind === 'guest') {
   // 從遊戲回來但已經登出（或換人用平板）：先回開場，按 Start 再登入
   history.replaceState(null, '', location.pathname);
   title.hidden = false;
-} else if (route) {
+} else if (route || enteredThisTab()) {
+  // 這個分頁已經從開場進過樂園（例如從遊戲按「回樂園」回來），就直接回地圖，不再看一次開場
+  if (!route) history.replaceState(null, '', '#map');
   showMap({ animate: false });
   const z = zones.get(zoneCode);
   if (z) {
