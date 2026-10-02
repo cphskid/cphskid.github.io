@@ -529,3 +529,4 @@ ul.classes small{font:700 14px/1 var(--f-body);color:#8a6a4a}
 #snd-btn[data-mode="sfx"] .w2{display:none}
 #snd-btn[data-mode="off"] .w1,#snd-btn[data-mode="off"] .w2{display:none}
 #snd-btn[data-mode="off"] .mute{display:inline}
+.card.acct.solo{width:700px;grid-template-columns:1fr}

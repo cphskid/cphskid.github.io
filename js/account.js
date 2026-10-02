@@ -87,9 +87,9 @@ chip.addEventListener('click', () => {
 
 // ---------- 卡片外框 ----------
 function show(html, { tick = 'wave', wide = false } = {}) {
-  layer.innerHTML = `<div class="card acct${wide ? ' wide' : ''}" role="dialog" aria-modal="true">
+  layer.innerHTML = `<div class="card acct${wide ? ' wide' : ''}${tick ? '' : ' solo'}" role="dialog" aria-modal="true">
     <button class="x" data-close aria-label="關閉"></button>
-    <div class="art"><img class="tick" src="img/tick/${tick}.webp" alt="導覽員滴答"></div>
+    ${tick ? `<div class="art"><img class="tick" src="img/tick/${tick}.webp" alt="導覽員滴答"></div>` : ''}
     <div class="body">${html}</div></div>`;
   layer.hidden = false;
   $('[data-close]', layer).onclick = close;
@@ -309,7 +309,7 @@ function openProfile(section = '') {
       </form></details>
 
     <div class="row end"><button type="button" class="ghost" data-logout>登出</button></div>`,
-  { tick: 'happy', wide: true });
+  { tick: null });   // 我的資料以自己的頭像為主，不放滴答
 
   $('[data-logout]', layer).onclick = logout;
   $('[data-passport]', layer).onclick = () => { close(); passport.openPassport(); };
