@@ -43,6 +43,8 @@ function needText(r, short = false) {
 
 // ---------- 外框 ----------
 function show(html) {
+  // 已經開著時只換內容，不再跳一次彈出動畫（不然每按一下整個視窗會閃）
+  layer.classList.toggle('again', !layer.hidden);
   layer.innerHTML = html;
   layer.hidden = false;
   layer.querySelectorAll('[data-close]').forEach((b) => { b.onclick = close; });
