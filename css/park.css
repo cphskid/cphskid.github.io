@@ -382,7 +382,7 @@ ul.classes small{font:700 14px/1 var(--f-body);color:#8a6a4a}
 #map-pet.gift::after{content:"";position:absolute;left:-10px;top:-8px;width:26px;height:26px;border-radius:50%;background:var(--gold);border:3px solid #fff;box-shadow:0 2px 4px rgba(0,0,0,.3);animation:wiggle 1.6s ease-in-out infinite}
 #map-pet.egg-wait{width:64px;height:78px}
 #map-pet .glint{position:absolute;width:70px;left:-4px;top:-6px;pointer-events:none;animation:twinkle 1.4s ease-in-out infinite}
-.egg{display:block;width:100%;height:100%;border-radius:50% 50% 46% 46%/58% 58% 42% 42%;background:radial-gradient(circle at 34% 28%,#fff 0 12%,transparent 13%),radial-gradient(circle at 60% 62%,#ffd97a 0 9%,transparent 10%),radial-gradient(circle at 30% 70%,#9fd8ff 0 8%,transparent 9%),linear-gradient(160deg,#fff7e0,#ffe2a6 55%,#f2b85a);border:3px solid var(--wood);box-shadow:inset -6px -8px 0 rgba(160,100,30,.18),0 6px 8px rgba(20,50,30,.35);animation:eggWobble 2.2s ease-in-out infinite;transform-origin:50% 90%}
+.egg{display:block;width:100%;height:100%;background:url(../img/pet/egg/glow.webp) center bottom/contain no-repeat;filter:drop-shadow(0 6px 6px rgba(20,50,30,.35));animation:eggWobble 2.2s ease-in-out infinite;transform-origin:50% 90%}
 @keyframes petIdle{0%,100%{transform:scale(1,1)}50%{transform:scale(1.03,.97)}}
 @keyframes petHop{0%,100%{transform:translateY(0)}40%{transform:translateY(-14px) rotate(-4deg)}60%{transform:translateY(-14px) rotate(4deg)}}
 @keyframes petDroop{0%,100%{transform:rotate(-3deg) translateY(2px)}50%{transform:rotate(3deg) translateY(4px)}}
@@ -408,11 +408,11 @@ ul.classes small{font:700 14px/1 var(--f-body);color:#8a6a4a}
 .den{position:relative;width:1180px;height:700px;display:grid;grid-template-columns:560px 1fr;gap:26px;padding:26px;border-radius:30px;background:radial-gradient(circle at 30% 20%,#fffdf6,#fff4dc 60%,#f8e6c2);box-shadow:inset 0 0 0 5px var(--wood-2),inset 0 0 0 9px rgba(255,214,110,.55),0 30px 50px rgba(0,0,0,.45);animation:pop .45s cubic-bezier(.34,1.7,.5,1)}
 .den.small{width:640px;height:auto;grid-template-columns:150px 1fr;align-items:center}
 .den.small .tick{width:100%}
-.nest{position:relative;border-radius:22px;overflow:hidden;background:linear-gradient(#cdeeff 0 46%,#bfe3a6 46% 100%);box-shadow:inset 0 0 0 4px rgba(107,63,31,.25);display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding-bottom:70px}
-.nest::before{content:"";position:absolute;left:0;right:0;top:0;height:46%;background:repeating-linear-gradient(90deg,transparent 0 58px,rgba(255,255,255,.35) 58px 62px)}
+.nest{position:relative;border-radius:22px;overflow:hidden;background:url(../img/pet/den.webp) center/cover,linear-gradient(#cdeeff 0 46%,#bfe3a6 46% 100%);box-shadow:inset 0 0 0 4px rgba(107,63,31,.25);display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding-bottom:70px}
+.nest::before{display:none;content:"";position:absolute;left:0;right:0;top:0;height:46%;background:repeating-linear-gradient(90deg,transparent 0 58px,rgba(255,255,255,.35) 58px 62px)}
 .nest .bubble{position:absolute;left:40px;right:40px;top:34px;background:#fff;border:3px solid var(--wood);border-radius:22px;padding:14px 18px;font:900 22px/1.45 var(--f-body);color:var(--ink);text-align:center;box-shadow:0 4px 0 var(--wood);animation:pop .3s ease-out}
 .nest .bubble::after{content:"";position:absolute;left:50%;bottom:-16px;width:24px;height:24px;background:#fff;border:3px solid var(--wood);border-top:0;border-left:0;transform:translateX(-50%) rotate(45deg)}
-.nest .rug{position:absolute;left:50%;bottom:44px;width:330px;height:70px;transform:translateX(-50%);border-radius:50%;background:radial-gradient(#f5c97a,#d99a4a);box-shadow:inset 0 0 0 6px rgba(255,255,255,.35)}
+.nest .rug{display:none;position:absolute;left:50%;bottom:44px;width:330px;height:70px;transform:translateX(-50%);border-radius:50%;background:radial-gradient(#f5c97a,#d99a4a);box-shadow:inset 0 0 0 6px rgba(255,255,255,.35)}
 .nest .pet{position:relative;z-index:1;border:0;padding:0;background:none;cursor:pointer;width:300px;height:300px;transform-origin:50% 100%}
 .nest .pet img{width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 12px 10px rgba(30,60,30,.35));animation:petIdle 2.4s ease-in-out infinite;transform-origin:50% 100%}
 .nest .pet.s-1{width:220px;height:220px}
@@ -441,7 +441,8 @@ ul.classes small{font:700 14px/1 var(--f-body);color:#8a6a4a}
 .info .xpt{font:700 15px/1.3 var(--f-body);color:#a0825f}
 .bag{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
 .food{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 6px;border-radius:16px;border:3px solid var(--cream-2);background:#fff;cursor:pointer;font:inherit;color:var(--ink);transition:transform .15s}
-.food .ic{font-size:40px;line-height:1.1}
+.food .ic{font-size:40px;line-height:1.1;height:52px;display:grid;place-items:center}
+.food .ic img,.wish span img{width:52px;height:52px;object-fit:contain}
 .food b{font:900 16px/1.2 var(--f-body);color:var(--wood);text-align:center}
 .food small{font:700 14px/1 var(--f-body);color:#8a6a4a}
 .food:hover:not(:disabled),.food:focus-visible{transform:translateY(-3px);border-color:var(--gold);outline:none}
@@ -491,6 +492,11 @@ ul.classes small{font:700 14px/1 var(--f-body);color:#8a6a4a}
 #isle-pets{position:absolute;height:60px;z-index:3;pointer-events:none}
 #isle-pets .mini{position:absolute;width:46px;height:46px;border:0;padding:0;background:none;cursor:pointer;pointer-events:auto;animation:miniWalk calc(9s + var(--i) * 2s) ease-in-out infinite;animation-delay:calc(var(--i) * -3s)}
 #isle-pets .mini img{width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 4px 3px rgba(20,50,30,.4));animation:petHop 1.2s ease-in-out infinite;transform-origin:50% 100%}
+#isle-pets .mini{width:54px;height:54px}
+#isle-pets .mini img{position:absolute;inset:0}
+#isle-pets .mini img:first-child{animation:walkStep .5s steps(1) -.25s infinite}
+#isle-pets .mini .w2{animation:walkStep .5s steps(1) infinite}
+@keyframes walkStep{0%{opacity:0}50%{opacity:1}}
 @keyframes miniWalk{0%,100%{transform:translateX(0) scaleX(1)}45%{transform:translateX(var(--dist)) scaleX(1)}50%{transform:translateX(var(--dist)) scaleX(-1)}95%{transform:translateX(0) scaleX(-1)}}
 /* 寵物島畫面 */
 .den.isle{display:flex;flex-direction:column;gap:18px;height:auto;padding:34px 40px;background:radial-gradient(circle at 30% 10%,#f4fdff,#d8f2ff 55%,#bfe6c4)}
@@ -509,7 +515,7 @@ ul.classes small{font:700 14px/1 var(--f-body);color:#8a6a4a}
 .buddy.locked img{filter:brightness(0) opacity(.25);animation:none}
 .buddy.locked b{color:#a0a0a0}
 .den.isle .row.end{justify-content:flex-end}
-@keyframes eggHatch{0%{transform:rotate(0)}20%{transform:rotate(-10deg)}35%{transform:rotate(10deg)}50%{transform:rotate(-14deg)}65%{transform:rotate(14deg)}85%{transform:scale(1.15);opacity:1}100%{transform:scale(1.5);opacity:0}}
+@keyframes eggHatch{0%{transform:rotate(0);background-image:url(../img/pet/egg/wobble.webp)}45%{background-image:url(../img/pet/egg/wobble.webp)}50%{background-image:url(../img/pet/egg/crack.webp)}75%{background-image:url(../img/pet/egg/crack.webp)}80%{background-image:url(../img/pet/egg/burst.webp)}20%{transform:rotate(-10deg)}35%{transform:rotate(10deg)}50%{transform:rotate(-14deg)}65%{transform:rotate(14deg)}85%{transform:scale(1.15);opacity:1}100%{transform:scale(1.5);opacity:0}}
 @keyframes hatchPop{from{transform:scale(.2);opacity:0}to{transform:scale(1);opacity:1}}
 @media (prefers-reduced-motion:reduce){#map-pet img,.nest .pet img,.egg{animation:none!important}}
 

@@ -98,7 +98,7 @@ park.map.slots.forEach((s, i) => {
   if (s.slot === park.map.pet_slot && !z) {
     b.classList.add('pet-isle');
     b.setAttribute('aria-label', '寵物島');
-    b.innerHTML = `<div class="bob"><div class="lift"><div class="foam"></div><img class="art" src="img/decor/sandbar.webp" alt=""></div></div><div class="plate"><b>寵物島</b><span>夥伴們住的地方</span></div>`;
+    b.innerHTML = `<div class="bob"><div class="lift"><div class="foam"></div><img class="art" src="img/l-07.webp" alt=""></div></div><div class="plate"><b>寵物島</b><span>夥伴們住的地方</span></div>`;
     b.addEventListener('click', () => {
       if (dragged) return;
       if (account.current().kind !== 'student') return say('map', '這裡是寵物島！登入以後就能領養自己的夥伴喔。');

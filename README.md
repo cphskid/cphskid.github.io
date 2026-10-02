@@ -108,5 +108,7 @@ Settings → Secrets and variables → Actions 加一個 `ASSETS_TOKEN`（能讀
   其他夥伴縮小在島上走動，不會餓也不會長大；點島可以把一隻帶回小窩（小窩那隻餓、生氣、睡著時不肯走）。
   護照蓋到 3 個章、6 個章各多一顆時光蛋，可以再領養一隻起始夥伴，還沒解鎖的顯示灰色剪影。
 - **老師**：後台「我的班級」可以打開「上課時間桌寵休息」（週一到週五 8:00–16:00，臺灣時間），任何一個班開了就算。
-- 圖：三隻先用頭像圖當佔位（`img/pet/<種類>.webp`），正式的 T 系列動作表做好直接換檔；道具圖示先用表情符號。
+- 圖：PT 系列（原圖與切格在 project-files art/pet）。`img/pet/<種類>/<階段 1-3>-<動作>.webp`，動作有 idle、walk1、walk2、jump、eat、chew、play、pat、hungry、angry、sleep、cheer
+  （pat 用歡呼格，因為原本被摸那格有人手或只有頭）；蛋 `img/pet/egg/`、點心 `img/pet/food/`、小窩背景 `img/pet/den.webp`、寵物島 `img/l-07.webp`。
+  玩具頭飾 PT-11 二期商店再接；沒有圖的道具用資料庫裡的表情符號。
 - 本機看畫面不用連資料庫：`python3 -m http.server` 後開 `/tools/test/pet-preview.html`（網址參數見檔案開頭）。

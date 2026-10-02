@@ -43,7 +43,11 @@ export function init(h) {
 const myPet = () => state?.pets?.find((p) => p.active) ?? null;
 const speciesName = (code) => state?.species?.find((s) => s.code === code)?.name ?? '';
 const item = (code) => state?.items?.find((i) => i.code === code);
-const art = (species) => `img/pet/${esc(species)}.webp`;
+// 圖：img/pet/<種類>/<階段>-<動作>.webp（PT 系列動作表切出來的）
+const art = (species, stage = 1, pose = 'idle') => `img/pet/${esc(species)}/${stage}-${pose}.webp`;
+const POSE = { normal: 'idle', happy: 'cheer', hungry: 'hungry', angry: 'angry', asleep: 'sleep', quiet: 'sleep', island: 'idle' };
+const FOOD_IMG = new Set(['kibble', 'rice-ball', 'magic-fruit']);           // 有 PT-10 圖的道具，其他先用表情符號
+const icon = (i) => FOOD_IMG.has(i.code) ? `<img src="img/pet/food/${esc(i.code)}.webp" alt="">` : esc(i.icon);
 const owned = (code) => state?.pets?.some((p) => p.species === code);
 const freeStarters = () => (state?.species ?? []).filter((s) => s.starter && !owned(s.code));
 const canAdopt = () => !!state && state.pets.length < (state.slots ?? 1) && freeStarters().length > 0;
@@ -101,7 +105,7 @@ function paintMap() {
   const mark = { hungry: '!', angry: '💢', asleep: 'Zz', quiet: 'Zz', happy: '♥' }[m] ?? '';
   el.className = `mp m-${m} s-${p.stage}${news.length ? ' gift' : ''}`;
   el.setAttribute('aria-label', `我的桌寵${p.name}（${m === 'quiet' ? '上課時間在休息' : MOOD[m]}），點一下去窩裡看牠`);
-  el.innerHTML = `<span class="ride">${mark ? `<span class="mp-bub">${mark}</span>` : ''}<img src="${art(p.species)}" alt=""></span>`;
+  el.innerHTML = `<span class="ride">${mark ? `<span class="mp-bub">${mark}</span>` : ''}<img src="${art(p.species, p.stage, POSE[m])}" alt=""></span>`;
 }
 
 // 寵物島上縮小的夥伴：在島上來回走。點了就打開寵物島。
@@ -116,9 +120,9 @@ function paintIslandMinis() {
     box.id = 'isle-pets';
     host.appendChild(box);
   }
-  box.style.cssText = `left:${spot.left + spot.width * .22}px;top:${spot.top + spot.width * .42}px;width:${spot.width * .56}px`;
-  box.innerHTML = others.map((p, i) => `<button type="button" class="mini" style="--i:${i};--dist:${Math.round(spot.width * (.18 + .08 * i))}px;left:${8 + i * 26}%;top:${(i % 2) * 18}px"
-      aria-label="${esc(p.name)}在寵物島上散步"><img src="${art(p.species)}" alt=""></button>`).join('');
+  box.style.cssText = `left:${spot.left + spot.width * .5}px;top:${spot.top + spot.width * .27}px;width:${spot.width * .3}px`;   // 草原那一塊
+  box.innerHTML = others.map((p, i) => `<button type="button" class="mini" style="--i:${i};--dist:${Math.round(spot.width * (.12 + .05 * i))}px;left:${i * 22}%;top:${(i % 2) * 14}px"
+      aria-label="${esc(p.name)}在寵物島上散步"><img src="${art(p.species, p.stage, 'walk1')}" alt=""><img class="w2" src="${art(p.species, p.stage, 'walk2')}" alt=""></button>`).join('');
   box.querySelectorAll('.mini').forEach((b) => { b.onclick = (e) => { e.stopPropagation(); if (!hooks.dragged?.()) openIsland(); }; });
 }
 
@@ -203,7 +207,7 @@ function hatch(s, more) {
   state = { ...state, ...s, granted: [] };
   const p = state.pets.find((x) => x.species === s.adopted) ?? myPet();
   show(`<div class="den hatch" role="dialog" aria-modal="true" aria-label="孵蛋">
-    <div class="egg big"></div><img class="pop" src="${art(p.species)}" alt="">
+    <div class="egg big"></div><img class="pop" src="${art(p.species, 1, 'cheer')}" alt="">
     <p>${esc(p.name)}孵出來了！</p></div>`);
   setTimeout(() => {
     paintMap();
@@ -218,7 +222,7 @@ function wish() {
   const want = state.items.filter((i) => i.kind === 'special' && !inv[i.code] && i.facility_name);
   if (!want.length) return '';
   const w = want[Math.floor(Date.now() / 3.6e6) % want.length];      // 每小時換一個想吃的
-  return `<div class="wish"><span>${esc(w.icon)}</span><p>我好想吃<b>${esc(w.name)}</b>！在「${esc(w.facility_name)}」完成任務就拿得到喔。</p></div>`;
+  return `<div class="wish"><span>${icon(w)}</span><p>我好想吃<b>${esc(w.name)}</b>！在「${esc(w.facility_name)}」完成任務就拿得到喔。</p></div>`;
 }
 function newsHtml() {
   if (!news.length) return '';
@@ -238,14 +242,14 @@ function paintRoom() {
   const bag = state.items.map((i) => {
     const n = inv[i.code] ?? 0;
     return `<button type="button" class="food${n ? '' : ' none'}" data-feed="${esc(i.code)}" ${n && m !== 'quiet' ? '' : 'disabled'}
-      aria-label="餵${esc(i.name)}（還有 ${n} 個）"><span class="ic">${esc(i.icon)}</span><b>${esc(i.name)}</b><small>× ${n}</small></button>`;
+      aria-label="餵${esc(i.name)}（還有 ${n} 個）"><span class="ic">${icon(i)}</span><b>${esc(i.name)}</b><small>× ${n}</small></button>`;
   }).join('');
   const pct = p.next_xp ? Math.min(100, Math.round(p.xp / p.next_xp * 100)) : 100;
   show(`<div class="den" role="dialog" aria-modal="true" aria-label="${esc(p.name)}的窩">
     <button class="x" data-close aria-label="關閉，回到地圖"></button>
     <section class="nest">
       <div class="bubble">${esc(line)}</div>
-      <button type="button" class="pet m-${m} s-${p.stage}" data-pat aria-label="摸摸${esc(p.name)}"><img src="${art(p.species)}" alt=""></button>
+      <button type="button" class="pet m-${m} s-${p.stage}" data-pat aria-label="摸摸${esc(p.name)}"><img src="${art(p.species, p.stage, POSE[m])}" alt=""></button>
       <div class="rug"></div>
     </section>
     <section class="info">
@@ -311,7 +315,7 @@ function paintIsland() {
   // 還沒解鎖的：每個還沒到的門檻放一個剪影（起始夥伴領完就不放）
   const locked = (state.unlock_at ?? []).filter((n) => stamps < n).slice(0, Math.max(0, left.length - (canAdopt() ? 1 : 0)));
   const cards = pets.map((p) => `<div class="buddy${p.active ? ' home' : ''}">
-      <img src="${art(p.species)}" alt="">
+      <img src="${art(p.species, p.stage)}" alt="">
       <b>${esc(p.name)}</b><small>${esc(speciesName(p.species))}・${STAGE[p.stage]}</small>
       ${p.active ? '<span class="tag">在小窩</span>' : `<button type="button" class="btn small" data-swap="${p.id}">帶回小窩</button>`}
     </div>`).join('')
@@ -356,8 +360,8 @@ async function act(kind, code) {
     line = reply(r, p, code);
     paintRoom();
     const el = $('.pet', layer);
-    if (kind === 'feed') { el.classList.add('eat'); floatUp(item(code)?.icon ?? '✨', r.xp); }
-    else if (p.mood === 'happy') { el.classList.add('wag'); floatUp('♥', r.xp); }
+    if (kind === 'feed') { el.classList.add('eat'); floatUp(item(code)?.icon ?? '✨', r.xp); poses(el, p, ['eat', 'chew', 'eat', 'chew']); }
+    else if (p.mood === 'happy') { el.classList.add('wag'); floatUp('♥', r.xp); poses(el, p, ['pat', 'jump']); }
     else el.classList.add('nope');
   } catch (err) {
     line = err.message;
@@ -366,6 +370,13 @@ async function act(kind, code) {
   } finally {
     busy = false;
   }
+}
+// 播幾格動作，再回到心情的樣子
+function poses(el, p, list) {
+  const img = $('img', el);
+  const rest = img.src;
+  list.forEach((pose, i) => setTimeout(() => { img.src = art(p.species, p.stage, pose); }, i * 350));
+  setTimeout(() => { if (img.isConnected) img.src = rest; }, list.length * 350 + 200);
 }
 function reply(r, p, code) {
   if (r.did === 'feed') {
