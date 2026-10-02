@@ -91,3 +91,18 @@ Settings → Secrets and variables → Actions 加一個 `ASSETS_TOKEN`（能讀
 - 章的定義（`park_stamps`）與頭像解鎖條件（`park_rewards`）寫在 `supabase/park_passport.sql` 的初始資料；章的圖在 `img/stamp/`，頭像在 `img/avatar/`。
 - 資料庫：`supabase/park_passport.sql`（順序：schema.sql → park_accounts.sql → park_teacher.sql → 這份 → 各遊戲的 SQL）。
   還沒套的資料庫，地圖照常，護照會說「還在準備中」，頭像退回滴答。
+
+## 主島桌寵（一期）
+
+規劃書：<https://claude.ai/code/artifact/9bf0398a-f6c6-4f6d-b9ff-eda3994cd702>。學生才有，資料庫在 `supabase/park_pet.sql`
+（順序：schema.sql → park_accounts.sql → park_teacher.sql → park_passport.sql → 這份，可重複執行）。還沒套的資料庫，地圖上就不出現桌寵。
+
+- **地圖**：樂園村莊上坐著自己的桌寵，還沒領養的是一顆時光蛋。餓了冒「!」、生氣冒「💢」、睡著冒「Zz」，滴答打招呼也會提醒。
+- **領養**：小狗、小貓、黃金鼠三選一，或選「隨機」；可以取名（1～8 個字，跟暱稱一樣過濾不雅字），之後也能改。
+- **餓的規則**：一天沒餵會餓、再一天生氣、7 天沒來睡著（不會死）。生氣時餵飽了還要摸摸哄一下；睡著的點一下叫醒，醒來是餓的。週末寒暑假不暫停。
+- **道具**：每天在主島免費領 3 份時光飼料（背包最多 9 份）；在一個遊戲蓋到護照章，就送那座島的招牌點心
+  （守護異世界＝異世界魔法果、島嶼開拓者＝八堡圳米糰），以前蓋的章也會補送。飼料 3 小時內只吃一次，點心隨時吃。
+- **長大**：飼料 +1、點心 +5、摸摸一天 +1；12 點長成「成長期」、40 點「完全體」。
+- **老師**：後台「我的班級」可以打開「上課時間桌寵休息」（週一到週五 8:00–16:00，臺灣時間），任何一個班開了就算。
+- 圖：三隻先用頭像圖當佔位（`img/pet/<種類>.webp`），正式的 T 系列動作表做好直接換檔；道具圖示先用表情符號。
+- 本機看畫面不用連資料庫：`python3 -m http.server` 後開 `/tools/test/pet-preview.html`（網址參數見檔案開頭）。

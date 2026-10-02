@@ -313,6 +313,10 @@ function paintInfo(c) {
         <i></i>${c.open ? '開放加入中' : '已關閉加入'}</button>
       <span class="tip">${c.open ? '上課讓全班註冊完，就可以關起來，代碼流出去也沒用。' : '關起來了，沒加入過的人進不來。'}</span>
     </div>
+    <div class="row" data-petq-row hidden>
+      <button class="toggle" data-petq aria-pressed="false"><i></i>上課時間桌寵休息</button>
+      <span class="tip" data-petq-tip></span>
+    </div>
     <details><summary>${ico('edit')}修改班級資料、換代碼</summary>
       <form class="form grid" data-save novalidate>${classForm(c)}
         <div class="row"><button class="btn" type="submit">儲存</button></div><p class="msg" hidden></p></form>
@@ -326,6 +330,7 @@ function paintInfo(c) {
     toast(c.open ? '打開了，現在可以加入' : '關起來了，新的人進不來');
     paintInfo(c);
   });
+  paintPetQuiet(c, p);
   $('[data-regen]', p).onclick = (e) => {
     if (!confirm(`要把 ${c.code} 換成新的代碼嗎？舊代碼會失效，班上的人都還在。`)) return;
     run(e.currentTarget, async () => {
@@ -344,6 +349,29 @@ function paintInfo(c) {
       toast('班級資料存好了');
       await renderClasses();
     } catch (err) { msg.textContent = err.message; msg.hidden = false; }
+  });
+}
+
+// 主島桌寵：上課時間（週一到週五 8:00–16:00）讓這個班的桌寵休息。資料庫還沒裝 park_pet.sql 就不顯示。
+async function paintPetQuiet(c, p) {
+  const row = $('[data-petq-row]', p);
+  const btn = $('[data-petq]', p);
+  const tip = $('[data-petq-tip]', p);
+  let on;
+  try { on = await auth.pet.classQuiet(c.code); } catch { return; }
+  const paint = () => {
+    btn.classList.toggle('on', on);
+    btn.setAttribute('aria-pressed', on);
+    btn.lastChild.textContent = on ? '上課時間桌寵休息中' : '上課時間也能玩桌寵';
+    tip.textContent = on ? '週一到週五 8:00–16:00，這個班的小朋友打開桌寵會看到牠在睡覺，放學後照常。'
+                         : '打開後，週一到週五 8:00–16:00 桌寵會休息，小朋友上課不會分心。';
+  };
+  paint();
+  row.hidden = false;
+  btn.onclick = () => run(btn, async () => {
+    on = await auth.pet.setClassQuiet(c.code, !on);
+    toast(on ? '上課時間桌寵會休息' : '上課時間也能玩桌寵了');
+    paint();
   });
 }
 

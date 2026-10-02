@@ -239,3 +239,26 @@ export const passport = {
   setAvatar:    (avatar, frame) => pcall('park_set_avatar', { p_avatar: avatar, p_frame: frame }),
   classAvatars: (code) => pcall('park_class_avatars', { p_code: code }),
 };
+
+// ---------- 主島桌寵（一期，supabase/park_pet.sql） ----------
+// 還沒裝這份 SQL 時丟出 missing，地圖上就不出現桌寵，其他功能照常。
+async function petcall(fn, args) {
+  if (!db) throw new Error('帳號功能載入失敗，重新整理再試一次');
+  const { data, error } = await db.rpc(fn, args);
+  if (error?.code === 'PGRST202') {
+    const e = new Error('桌寵的資料庫還沒裝好（缺 ' + fn + '），請管理員套用 park_pet.sql');
+    e.missing = true;
+    throw e;
+  }
+  check(error);
+  return data;
+}
+export const pet = {
+  me:            () => petcall('park_pet_me'),
+  adopt:         (species, name) => petcall('park_pet_adopt', { p_species: species, p_name: name }),
+  feed:          (item) => petcall('park_pet_feed', { p_item: item }),
+  pat:           () => petcall('park_pet_pat'),
+  rename:        (name) => petcall('park_pet_rename', { p_name: name }),
+  classQuiet:    (code) => petcall('park_pet_class_quiet', { p_code: code }),
+  setClassQuiet: (code, on) => petcall('park_pet_set_class_quiet', { p_code: code, p_quiet: on }),
+};

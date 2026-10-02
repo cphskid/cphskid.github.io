@@ -2,6 +2,7 @@
 // 地圖上有哪些島、島上有哪些設施、能不能進，全部從 data/park.json 讀（之後改成資料庫）。
 import { addUnits } from './units.js';
 import * as account from './account.js';
+import * as pet from './pet.js';
 import { facilityStatus } from './auth.js';
 
 // 測試站在 /dev/ 底下：顯示「測試站」標籤，設施連到各遊戲的測試站
@@ -107,6 +108,9 @@ park.map.slots.forEach((s, i) => {
   islesLayer.appendChild(b);
 });
 
+// ---------- 主島桌寵：坐在樂園村莊上（js/pet.js） ----------
+pet.init({ me: () => account.current(), host: () => islesLayer, dragged: () => dragged });
+
 // ---------- 海上的小裝飾（燈塔、礁石、海豚…），位置寫在 data/park.json ----------
 const decorLayer = $('#decor');
 (park.decor ?? []).forEach((d, i) => {
@@ -137,6 +141,7 @@ const TICK_TIPS = [
   ['fly-happy', '地圖可以往右拖，那邊還有雲霧裡的島。'],
   ['jump', '還在施工的島，蓋好就會開放，敬請期待！'],
   ['cheer', '在遊戲裡完成任務會蓋護照章，左下角的護照可以看你蓋了哪些！'],
+  ['happy', '樂園村莊住著你的桌寵，記得回來餵牠！各島蓋到章還會拿到點心喔。'],
 ];
 let tipIndex = 0, sayTimer;
 function say(pose, text) {
@@ -260,6 +265,8 @@ function greeting() {
   if (w.kind === 'student' && fresh.length) {
     return `哇！${w.nickname}，你拿到新的護照章「${fresh[fresh.length - 1].name}」${fresh.length > 1 ? `等 ${fresh.length} 個` : ''}！點左下角的護照看看。`;
   }
+  const petNews = w.kind === 'student' ? pet.notice() : null;
+  if (petNews) return petNews;
   const name = w.kind === 'student' ? w.nickname : w.kind === 'staff' ? w.display_name : '';
   return name ? `嗨，${name}！歡迎來到時空冒險樂園，點一座島看看吧。` : '嗨，我是滴答！歡迎來到時空冒險樂園，點一座島看看吧。';
 }
@@ -334,7 +341,9 @@ function villageHtml() {
   const p = w.profile;
   return `<div class="fac"><h3>我的護照與頭像</h3>
     <div class="row">${account.avatarHtml(p?.avatar, p?.frame, 'mid')}<p>${p ? `你已經蓋了 <b>${p.stamps}</b> 個章。` : ''}在遊戲裡完成任務就會蓋章，蓋越多章，可以選的頭像和頭像框越多。</p></div>
-    <div class="row"><button type="button" class="btn go" data-open-pass>打開護照</button><button type="button" class="ghost" data-open-av>換頭像</button></div></div>`;
+    <div class="row"><button type="button" class="btn go" data-open-pass>打開護照</button><button type="button" class="ghost" data-open-av>換頭像</button></div></div>
+    <div class="fac"><h3>我的桌寵</h3><p>你的桌寵住在村莊裡。牠會肚子餓，記得常回來餵牠、陪牠玩；在各島完成任務還會拿到牠最愛的點心。</p>
+    <div class="row"><button type="button" class="btn go" data-open-pet>去看桌寵</button></div></div>`;
 }
 function openCard(z) {
   const facs = facilitiesOf(z.code);
@@ -352,6 +361,7 @@ function openCard(z) {
   veil.querySelectorAll('a.btn.go').forEach((a) => a.addEventListener('click', enterFacility));
   veil.querySelector('[data-open-pass]')?.addEventListener('click', () => { closeCard(); account.openPassport(); });
   veil.querySelector('[data-open-av]')?.addEventListener('click', () => { closeCard(); account.openAvatar(); });
+  veil.querySelector('[data-open-pet]')?.addEventListener('click', () => { closeCard(); pet.open(); });
   (veil.querySelector('.card .btn') ?? $('#close')).focus();
 }
 // 進設施：時空傳送門轉一圈再換頁
@@ -404,10 +414,11 @@ const [, route, zoneCode] = location.hash.match(/^#(map)(?:\/([\w-]+))?/) ?? [];
 function onAccountChange(w) {
   syncFacilities();
   paintPassBtn();
+  pet.load();
   if (w.kind === 'guest' && !select.hidden) { history.replaceState(null, '', location.pathname); showTitle(); }
 }
 const me = await meReady;
-await syncFacilities();
+await Promise.all([syncFacilities(), pet.load()]);
 if (route && me.kind === 'guest') {
   // 從遊戲回來但已經登出（或換人用平板）：先回開場，按 Start 再登入
   history.replaceState(null, '', location.pathname);

@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>桌寵預覽</title>
+<!-- 本機看桌寵畫面用：不連資料庫，用假的資料。python3 -m http.server 後開 /tools/test/pet-preview.html
+     ?mood=hungry|angry|sulky|asleep|happy|quiet  ?new=1（還沒領養）  ?stage=2 -->
+<base href="../../">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Noto+Sans+TC:wght@500;700;900&display=swap">
+<link rel="stylesheet" href="css/park.css">
+</head>
+<body>
+<div id="world"><div id="sea"></div><div id="stage">
+  <section class="scene" id="select"><div id="map" style="width:1600px"><div class="layer" style="--d:0" id="isles">
+    <button class="isle" style="left:50px;top:330px;width:430px"><div class="bob"><div class="lift"><img class="art" src="img/l-01.webp" alt=""></div></div></button>
+  </div></div></section>
+  <div id="petroom" hidden></div>
+</div></div>
+<script type="module">
+import * as pet from './js/pet.js';
+const q = new URLSearchParams(location.search);
+const mood = q.get('mood') ?? 'normal';
+const now = Date.now();
+const S = {
+  pets: q.get('new') ? [] : [{ id: 1, species: q.get('sp') ?? 'puppy', name: '豆豆', active: true, xp: +(q.get('xp') ?? 7),
+    stage: +(q.get('stage') ?? 1), next_xp: 12, mood: mood === 'sulky' || mood === 'quiet' ? (mood === 'sulky' ? 'angry' : 'normal') : mood,
+    sulky: mood === 'sulky', fed_at: new Date(now - 3600e3).toISOString() }],
+  inventory: { kibble: 3, 'magic-fruit': 1 },
+  species: [{ code: 'puppy', name: '小狗', starter: true }, { code: 'kitten', name: '小貓', starter: true }, { code: 'hamster', name: '黃金鼠', starter: true }],
+  items: [{ code: 'kibble', kind: 'food', name: '時光飼料', icon: '🥣', xp: 1 },
+          { code: 'magic-fruit', kind: 'special', name: '異世界魔法果', icon: '🍎', xp: 5, facility: 'guardian', facility_name: '守護異世界' },
+          { code: 'rice-ball', kind: 'special', name: '八堡圳米糰', icon: '🍙', xp: 5, facility: 'island_pioneer', facility_name: '穿越吧！島嶼開拓者' }],
+  quiet: mood === 'quiet',
+  granted: q.get('gift') ? [{ source: 'daily', item: 'kibble', qty: 3 }, { source: 'stamp', item: 'magic-fruit', qty: 1 }] : [],
+};
+const clone = () => JSON.parse(JSON.stringify(S));
+const api = {
+  me: async () => clone(),
+  adopt: async (sp, name) => { const code = sp === 'random' ? 'hamster' : sp; S.pets = [{ id: 1, species: code, name: name || S.species.find((s) => s.code === code).name, active: true, xp: 0, stage: 1, next_xp: 12, mood: 'normal', sulky: false, fed_at: new Date().toISOString() }]; return clone(); },
+  feed: async (code) => { const p = S.pets[0]; const was = p.mood; if (!S.inventory[code]) throw new Error('背包裡沒有了');
+    S.inventory[code]--; const xp = code === 'kibble' ? 1 : 5; p.xp += xp; p.mood = was === 'angry' ? 'angry' : 'normal'; p.sulky = was === 'angry';
+    return { ...clone(), did: 'feed', was, xp }; },
+  pat: async () => { const p = S.pets[0]; const was = p.mood;
+    if (was === 'asleep') p.mood = 'hungry'; else if ((was === 'hungry' || was === 'angry') && !p.sulky) {} else { p.mood = 'happy'; p.sulky = false; }
+    return { ...clone(), did: 'pat', was, xp: p.mood === 'happy' ? 1 : 0 }; },
+  rename: async (n) => { S.pets[0].name = n; return clone(); },
+};
+const stage = document.getElementById('stage');
+const fit = () => stage.style.setProperty('--s', Math.min(innerWidth / 1600, innerHeight / 900));
+addEventListener('resize', fit); fit();
+pet.init({ api, me: () => ({ kind: 'student', nickname: '測試' }), host: () => document.getElementById('isles') });
+await pet.load();
+if (q.get('open')) pet.open();
+</script>
+</body>
+</html>

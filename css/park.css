@@ -357,3 +357,117 @@ ul.classes small{font:700 14px/1 var(--f-body);color:#8a6a4a}
 .pick .need img{width:16px}
 .pick.locked:not(.on) .need{color:#a0825f}
 .choose .msg{margin-top:12px}
+
+/* ---------- 主島桌寵（js/pet.js） ---------- */
+/* 地圖上：坐在樂園村莊，頭上冒狀態符號 */
+#map-pet{position:absolute;left:300px;top:478px;width:92px;height:92px;border:0;padding:0;background:none;cursor:pointer;z-index:3;transition:transform .2s cubic-bezier(.34,1.7,.5,1)}
+#map-pet .ride{position:relative;display:block;width:100%;height:100%;animation:bob 6s ease-in-out infinite}   /* 跟著村莊島一起浮 */
+#map-pet img{width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 6px 5px rgba(20,50,30,.4));animation:petIdle 2.4s ease-in-out infinite;transform-origin:50% 100%}
+#map-pet:hover,#map-pet:focus-visible{transform:translateY(-6px) scale(1.12);outline:none}
+#map-pet.s-1{width:70px;height:70px}
+#map-pet.s-2{width:84px;height:84px}
+#map-pet.m-happy img{animation:petHop .9s ease-in-out infinite}
+#map-pet.m-hungry img{animation:petDroop 2.6s ease-in-out infinite}
+#map-pet.m-angry img{animation:petHuff .5s ease-in-out infinite;filter:drop-shadow(0 6px 5px rgba(20,50,30,.4)) sepia(.3) saturate(1.6) hue-rotate(-15deg)}
+#map-pet.m-asleep img,#map-pet.m-quiet img{animation:petSleep 3.6s ease-in-out infinite;filter:drop-shadow(0 6px 5px rgba(20,50,30,.4)) brightness(.85)}
+.mp-bub{position:absolute;right:-14px;top:-18px;min-width:36px;height:36px;padding:0 8px;border-radius:99px;background:#fff;border:3px solid var(--wood);font:900 18px/30px var(--f-disp);color:#e2553f;text-align:center;box-shadow:0 3px 0 var(--wood);animation:bob 1.6s ease-in-out infinite}
+#map-pet.m-asleep .mp-bub,#map-pet.m-quiet .mp-bub{color:#4a6fa8;font-size:15px}
+#map-pet.m-happy .mp-bub{color:#e2553f}
+#map-pet.gift::after{content:"";position:absolute;left:-10px;top:-8px;width:26px;height:26px;border-radius:50%;background:var(--gold);border:3px solid #fff;box-shadow:0 2px 4px rgba(0,0,0,.3);animation:wiggle 1.6s ease-in-out infinite}
+#map-pet.egg-wait{width:64px;height:78px}
+#map-pet .glint{position:absolute;width:70px;left:-4px;top:-6px;pointer-events:none;animation:twinkle 1.4s ease-in-out infinite}
+.egg{display:block;width:100%;height:100%;border-radius:50% 50% 46% 46%/58% 58% 42% 42%;background:radial-gradient(circle at 34% 28%,#fff 0 12%,transparent 13%),radial-gradient(circle at 60% 62%,#ffd97a 0 9%,transparent 10%),radial-gradient(circle at 30% 70%,#9fd8ff 0 8%,transparent 9%),linear-gradient(160deg,#fff7e0,#ffe2a6 55%,#f2b85a);border:3px solid var(--wood);box-shadow:inset -6px -8px 0 rgba(160,100,30,.18),0 6px 8px rgba(20,50,30,.35);animation:eggWobble 2.2s ease-in-out infinite;transform-origin:50% 90%}
+@keyframes petIdle{0%,100%{transform:scale(1,1)}50%{transform:scale(1.03,.97)}}
+@keyframes petHop{0%,100%{transform:translateY(0)}40%{transform:translateY(-14px) rotate(-4deg)}60%{transform:translateY(-14px) rotate(4deg)}}
+@keyframes petDroop{0%,100%{transform:rotate(-3deg) translateY(2px)}50%{transform:rotate(3deg) translateY(4px)}}
+@keyframes petHuff{0%,100%{transform:translateX(0) scaleX(-1)}50%{transform:translateX(-3px) scaleX(-1)}}
+@keyframes petSleep{0%,100%{transform:scale(1,.94) rotate(-6deg)}50%{transform:scale(1.02,.9) rotate(-6deg)}}
+@keyframes eggWobble{0%,70%,100%{transform:rotate(0)}76%{transform:rotate(-8deg)}84%{transform:rotate(7deg)}92%{transform:rotate(-3deg)}}
+
+/* 桌寵的窩 */
+#petroom{position:absolute;inset:-1200px;background:rgba(10,40,70,.55);display:grid;place-items:center;z-index:13}
+#petroom .x{position:absolute;right:-30px;top:-30px;width:72px;height:72px;border:0;padding:0;background:url(../img/ui/close.webp) center/contain no-repeat;cursor:pointer;filter:drop-shadow(0 4px 6px rgba(0,0,0,.3));transition:transform .2s;z-index:2}
+#petroom .x:hover,#petroom .x:focus-visible{transform:scale(1.1) rotate(8deg);outline:none}
+#petroom h2{margin:0;font:900 34px/1.2 var(--f-body);color:var(--wood)}
+#petroom h3{margin:16px 0 8px;font:900 20px/1.2 var(--f-body);color:var(--wood)}
+#petroom .lead{margin:0 0 14px;font:700 18px/1.5 var(--f-body);color:#8a6a4a}
+#petroom .row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+#petroom .btn.small{font:900 20px/1 var(--f-body);padding:13px 30px 14px;border-width:3px;box-shadow:inset 0 2px 0 rgba(255,255,255,.9),0 4px 0 var(--wood)}
+#petroom .btn.go{font:900 24px/1 var(--f-body);color:#fff;text-shadow:0 2px 0 #2f7a1c;background:url(../img/ui/button-green.webp) center/100% 100% no-repeat;border:0;border-radius:0;box-shadow:none;padding:20px 40px 24px;filter:drop-shadow(0 6px 6px rgba(0,0,0,.25))}
+#petroom .btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+#petroom .ghost{font:700 17px/1 var(--f-body);background:none;border:3px solid var(--cream-2);border-radius:999px;padding:9px 18px;color:var(--wood);cursor:pointer}
+#petroom .ghost:hover,#petroom .ghost:focus-visible{border-color:var(--wood);outline:none}
+#petroom .msg{margin:10px 0 0;font:700 17px/1.4 var(--f-body);color:#c0392b}
+.den{position:relative;width:1180px;height:700px;display:grid;grid-template-columns:560px 1fr;gap:26px;padding:26px;border-radius:30px;background:radial-gradient(circle at 30% 20%,#fffdf6,#fff4dc 60%,#f8e6c2);box-shadow:inset 0 0 0 5px var(--wood-2),inset 0 0 0 9px rgba(255,214,110,.55),0 30px 50px rgba(0,0,0,.45);animation:pop .45s cubic-bezier(.34,1.7,.5,1)}
+.den.small{width:640px;height:auto;grid-template-columns:150px 1fr;align-items:center}
+.den.small .tick{width:100%}
+.nest{position:relative;border-radius:22px;overflow:hidden;background:linear-gradient(#cdeeff 0 46%,#bfe3a6 46% 100%);box-shadow:inset 0 0 0 4px rgba(107,63,31,.25);display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding-bottom:70px}
+.nest::before{content:"";position:absolute;left:0;right:0;top:0;height:46%;background:repeating-linear-gradient(90deg,transparent 0 58px,rgba(255,255,255,.35) 58px 62px)}
+.nest .bubble{position:absolute;left:40px;right:40px;top:34px;background:#fff;border:3px solid var(--wood);border-radius:22px;padding:14px 18px;font:900 22px/1.45 var(--f-body);color:var(--ink);text-align:center;box-shadow:0 4px 0 var(--wood);animation:pop .3s ease-out}
+.nest .bubble::after{content:"";position:absolute;left:50%;bottom:-16px;width:24px;height:24px;background:#fff;border:3px solid var(--wood);border-top:0;border-left:0;transform:translateX(-50%) rotate(45deg)}
+.nest .rug{position:absolute;left:50%;bottom:44px;width:330px;height:70px;transform:translateX(-50%);border-radius:50%;background:radial-gradient(#f5c97a,#d99a4a);box-shadow:inset 0 0 0 6px rgba(255,255,255,.35)}
+.nest .pet{position:relative;z-index:1;border:0;padding:0;background:none;cursor:pointer;width:300px;height:300px;transform-origin:50% 100%}
+.nest .pet img{width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 12px 10px rgba(30,60,30,.35));animation:petIdle 2.4s ease-in-out infinite;transform-origin:50% 100%}
+.nest .pet.s-1{width:220px;height:220px}
+.nest .pet.s-2{width:260px;height:260px}
+.nest .pet.m-happy img{animation:petHop .9s ease-in-out infinite}
+.nest .pet.m-hungry img{animation:petDroop 2.6s ease-in-out infinite}
+.nest .pet.m-angry img{animation:petHuff .5s ease-in-out infinite;filter:drop-shadow(0 12px 10px rgba(30,60,30,.35)) sepia(.3) saturate(1.6) hue-rotate(-15deg)}
+.nest .pet.m-asleep img,.nest .pet.m-quiet img{animation:petSleep 3.6s ease-in-out infinite;filter:drop-shadow(0 12px 10px rgba(30,60,30,.35)) brightness(.85)}
+.nest .pet.eat img{animation:petChomp .25s ease-in-out 4}
+.nest .pet.wag img{animation:petHop .45s ease-in-out 3}
+.nest .pet.nope img{animation:petShake .35s ease-in-out 2}
+.nest .float{position:absolute;left:50%;top:44%;z-index:2;font:900 34px/1 var(--f-disp);color:#e2553f;text-shadow:0 2px 0 #fff,0 0 8px #fff;pointer-events:none;animation:floatUp 1.3s ease-out forwards}
+@keyframes petChomp{0%,100%{transform:scale(1,1)}50%{transform:scale(1.08,.9)}}
+@keyframes petShake{0%,100%{transform:translateX(0)}25%{transform:translateX(-10px)}75%{transform:translateX(10px)}}
+@keyframes floatUp{from{transform:translate(-50%,0);opacity:1}to{transform:translate(-50%,-140px);opacity:0}}
+.info{min-width:0;display:flex;flex-direction:column;gap:6px;overflow-y:auto;overscroll-behavior:contain;padding:6px 6px 6px 0}
+.info .nm{display:flex;align-items:center;gap:14px}
+.info .rn{display:flex;gap:10px;align-items:center}
+.info .rn input,.adopt .name input{font:700 22px/1 var(--f-body);padding:10px 14px;border:3px solid var(--cream-2);border-radius:14px;width:220px;color:var(--ink);background:#fff}
+.info .kind{margin:0;font:700 19px/1.4 var(--f-body);color:#8a6a4a}
+.info .mood{font-weight:900;color:#2f7a1c}
+.info .mood.m-hungry,.info .mood.m-angry{color:#e2553f}
+.info .mood.m-asleep,.info .mood.m-quiet{color:#4a6fa8}
+.info .xp{height:22px;border-radius:99px;background:#efdcb8;box-shadow:inset 0 2px 3px rgba(107,63,31,.3);overflow:hidden;margin-top:6px}
+.info .xp i{display:block;height:100%;border-radius:99px;background:linear-gradient(#ffe08a,#f0a830);box-shadow:inset 0 2px 0 rgba(255,255,255,.6)}
+.info .xpt{font:700 15px/1.3 var(--f-body);color:#a0825f}
+.bag{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.food{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 6px;border-radius:16px;border:3px solid var(--cream-2);background:#fff;cursor:pointer;font:inherit;color:var(--ink);transition:transform .15s}
+.food .ic{font-size:40px;line-height:1.1}
+.food b{font:900 16px/1.2 var(--f-body);color:var(--wood);text-align:center}
+.food small{font:700 14px/1 var(--f-body);color:#8a6a4a}
+.food:hover:not(:disabled),.food:focus-visible{transform:translateY(-3px);border-color:var(--gold);outline:none}
+.food:disabled{cursor:not-allowed}
+.food.none{opacity:.45;filter:grayscale(.8)}
+.info>.row{margin-top:10px}
+.wish{margin-top:auto;display:flex;gap:12px;align-items:center;background:#fff7d6;border:2px solid var(--gold);border-radius:16px;padding:10px 14px}
+.wish span{font-size:38px}
+.wish p{margin:0;font:700 16px/1.5 var(--f-body)}
+.wish b{color:#c07a10}
+.gotnew{display:flex;gap:10px;align-items:center;background:#e9f8df;border:2px solid #7cc35a;border-radius:16px;padding:8px 14px}
+.gotnew img{width:40px;animation:twinkle 1.4s ease-in-out infinite}
+.gotnew p{margin:0;font:700 16px/1.45 var(--f-body);color:#2f6a1c}
+/* 領養 */
+.den.adopt{display:flex;flex-direction:column;gap:20px;height:auto;padding:34px 40px}
+.adopt .say{display:flex;gap:16px;align-items:center}
+.adopt .say img{width:110px}
+.adopt .say p{margin:0;font:900 24px/1.5 var(--f-body);color:var(--wood)}
+.pals{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}
+.pal{display:flex;flex-direction:column;align-items:center;gap:8px;padding:18px 10px;border-radius:22px;border:4px solid var(--cream-2);background:#fff;cursor:pointer;font:inherit;transition:transform .15s}
+.pal img{width:170px;height:170px;object-fit:contain}
+.pal .egg{width:120px;height:150px;margin:10px 0}
+.pal b{font:900 26px/1 var(--f-body);color:var(--wood)}
+.pal small{font:700 15px/1 var(--f-body);color:#a0825f}
+.pal:hover,.pal:focus-visible{transform:translateY(-4px);border-color:var(--gold);outline:none}
+.pal.on{border-color:var(--wood);background:#fff7e0;box-shadow:0 5px 0 var(--wood)}
+.adopt .name{display:flex;align-items:center;justify-content:space-between;gap:20px}
+.adopt .name label{display:flex;align-items:center;gap:14px;font:900 22px/1 var(--f-body);color:var(--wood)}
+.den.hatch{width:560px;height:520px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px}
+.den.hatch .egg.big{width:200px;height:250px;animation:eggHatch 1.6s ease-in forwards}
+.den.hatch .pop{width:280px;height:280px;object-fit:contain;position:absolute;opacity:0;animation:hatchPop .7s cubic-bezier(.34,1.7,.5,1) 1.5s forwards}
+.den.hatch p{position:absolute;bottom:40px;margin:0;font:900 30px/1 var(--f-body);color:var(--wood);opacity:0;animation:showIn .4s 1.9s forwards}
+@keyframes showIn{to{opacity:1}}
+@keyframes eggHatch{0%{transform:rotate(0)}20%{transform:rotate(-10deg)}35%{transform:rotate(10deg)}50%{transform:rotate(-14deg)}65%{transform:rotate(14deg)}85%{transform:scale(1.15);opacity:1}100%{transform:scale(1.5);opacity:0}}
+@keyframes hatchPop{from{transform:scale(.2);opacity:0}to{transform:scale(1);opacity:1}}
+@media (prefers-reduced-motion:reduce){#map-pet img,.nest .pet img,.egg{animation:none!important}}
