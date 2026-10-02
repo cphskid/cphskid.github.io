@@ -420,22 +420,46 @@ function openCard(z) {
   history.replaceState(null, '', '#map/' + z.code);
   $('#close').onclick = closeCard;
   veil.querySelectorAll('a.btn.go').forEach((a) => a.addEventListener('click', enterFacility));
+  if (veil.querySelector('a.btn.go')) warm('img/fx/portal');
   veil.querySelector('[data-open-pass]')?.addEventListener('click', () => { closeCard(); account.openPassport(); });
   veil.querySelector('[data-open-av]')?.addEventListener('click', () => { closeCard(); account.openAvatar(); });
   veil.querySelector('[data-open-pet]')?.addEventListener('click', () => { closeCard(); pet.open(); });
   (veil.querySelector('.card .btn') ?? $('#close')).focus();
 }
 // 進設施：時空傳送門轉一圈再換頁
-function enterFacility(e) {
-  if (reduceMotion || e.metaKey || e.ctrlKey || e.shiftKey) return;
+// 傳送門轉的同時，先把遊戲的網頁和程式抓下來（下面一條進度），到了那邊就不用再等
+async function enterFacility(e) {
+  if (e.metaKey || e.ctrlKey || e.shiftKey) return;
   e.preventDefault();
   snd.sfx('SE-12');
   const href = e.currentTarget.href;
   const p = document.createElement('div');
   p.id = 'portal';
-  p.innerHTML = '<img src="img/fx/portal.webp" alt="">';
+  p.innerHTML = '<img src="img/fx/portal.webp" alt=""><div class="bar"><i></i></div><b>穿越時空中…</b>';
+  const bar = p.querySelector('.bar i');
+  // 傳送門的圖還沒到就先等一下（最多 0.6 秒），不然轉場會是空的
+  await settle([p.querySelector('img')], 600);
   stage.appendChild(p);
-  setTimeout(() => { location.href = href; }, 1000);
+  const go = () => { location.href = href; };
+  if (reduceMotion) return go();
+  const minTime = new Promise((ok) => setTimeout(ok, 1100));
+  await Promise.race([Promise.all([minTime, prefetchGame(href, (f) => { bar.style.width = `${Math.round(f * 100)}%`; })]),
+                      new Promise((ok) => setTimeout(ok, 10000))]);
+  bar.style.width = '100%';
+  setTimeout(go, 150);
+}
+// 只抓同一個網站底下的遊戲（GitHub Pages 上的各遊戲），讀它首頁裡的 js、css，放進瀏覽器快取
+async function prefetchGame(href, onProgress) {
+  const url = new URL(href, location.href);
+  if (url.origin !== location.origin) return;
+  try {
+    const html = await fetch(url).then((r) => (r.ok ? r.text() : ''));
+    const deps = [...html.matchAll(/<(?:script|link)\b[^>]*?(?:src|href)="([^"]+\.(?:js|css))"/g)]
+      .map((m) => new URL(m[1], url).href).filter((u) => u.startsWith(location.origin));
+    let done = 0;
+    onProgress(0.1);
+    await Promise.all(deps.map((u) => fetch(u).catch(() => {}).then(() => onProgress(0.1 + 0.9 * (++done / deps.length)))));
+  } catch { /* 抓不到就直接過去 */ }
 }
 // 從遊戲按上一頁回來時，把傳送門收掉
 addEventListener('pageshow', () => document.getElementById('portal')?.remove());
@@ -526,7 +550,7 @@ function warmStudent() {
   warm('img/avatar/', 'img/stamp/', 'img/pet/island', 'img/pet/egg/', 'img/pet/food/', ...pets, 'img/pet/furniture/');
 }
 setTimeout(() => {
-  warm('img/ui/', 'img/badge/', 'img/tick/');
+  warm('img/ui/', 'img/badge/', 'img/fx/portal', 'img/tick/');
   if (account.current().kind === 'student') warmStudent();
   warm('img/fx/');
 }, 800);

@@ -189,7 +189,11 @@ body{margin:0;background:var(--sea-deep);color:var(--ink);font-family:var(--f-bo
 .fx.burst{animation:burst .8s ease-out forwards}
 @keyframes burst{0%{transform:translate(-50%,-50%) scale(.3) rotate(0);opacity:1}100%{transform:translate(-50%,-50%) scale(1.5) rotate(40deg);opacity:0}}
 #portal{position:absolute;inset:-1200px;z-index:40;display:grid;place-items:center;background:radial-gradient(circle,rgba(10,40,80,0) 30%,rgba(10,40,80,.85) 75%);animation:fade .3s ease-out}
-#portal img{width:620px;animation:spin 1.2s cubic-bezier(.5,0,.3,1) forwards}
+#portal img{width:620px;animation:spin 1.2s cubic-bezier(.5,0,.3,1) forwards,spin-on 2.4s linear 1.2s infinite}
+#portal .bar{position:absolute;left:50%;top:calc(50% + 300px);width:360px;height:18px;margin-left:-180px;border-radius:12px;background:rgba(255,255,255,.2);box-shadow:inset 0 0 0 3px rgba(255,214,120,.85);overflow:hidden;animation:fade .4s .3s both}
+#portal .bar i{display:block;width:0;height:100%;background:linear-gradient(#ffd877,#f0a52a);border-radius:12px;transition:width .25s}
+#portal b{position:absolute;left:0;right:0;top:calc(50% + 250px);text-align:center;font:900 24px/1 var(--f-body);color:#fff7e0;text-shadow:0 2px 6px rgba(0,0,0,.5);animation:fade .4s .3s both}
+@keyframes spin-on{from{transform:scale(2.6) rotate(540deg)}to{transform:scale(2.6) rotate(900deg)}}
 @keyframes spin{from{transform:scale(.2) rotate(0);opacity:0}40%{opacity:1}to{transform:scale(2.6) rotate(540deg);opacity:1}}
 @keyframes fade{from{opacity:0}}
 
