@@ -12,7 +12,7 @@
 html,body{height:100%}
 body{margin:0;background:var(--sea-deep);color:var(--ink);font-family:var(--f-body);overflow:hidden;-webkit-tap-highlight-color:transparent;overscroll-behavior:none}
 #world{position:fixed;inset:0;overflow:hidden;background:var(--sea-deep);touch-action:none}
-#sea{position:absolute;inset:-30px;background:url(../img/sea.jpg) center/cover no-repeat;transform:translate(calc(var(--px,0)*-8px),calc(var(--py,0)*-5px));transition:transform .4s ease-out}
+#sea{position:absolute;inset:-30px;background:url(../img/sea.webp) center/cover no-repeat;transform:translate(calc(var(--px,0)*-8px),calc(var(--py,0)*-5px));transition:transform .4s ease-out}
 #stage{position:absolute;left:50%;top:50%;width:1600px;height:900px;transform:translate(-50%,-50%) scale(var(--s,1));transform-origin:center}
 .scene{position:absolute;inset:0}
 .layer{position:absolute;inset:0;pointer-events:none;transform:translate(calc(var(--px,0)*var(--d)*-1px),calc(var(--py,0)*var(--d)*-0.6px));transition:transform .35s ease-out}
@@ -145,6 +145,7 @@ body{margin:0;background:var(--sea-deep);color:var(--ink);font-family:var(--f-bo
 @media (orientation:portrait) and (max-width:700px){#rotate{display:block}}
 #loading{position:fixed;inset:0;display:grid;place-content:center;justify-items:center;gap:10px;font:700 22px/1 var(--f-body);color:var(--cream);text-shadow:0 2px 4px rgba(0,0,0,.4);z-index:50;pointer-events:none}
 #loading img{width:180px;animation:rock 2.4s ease-in-out infinite}
+#loading.out{opacity:0;transition:opacity .35s}
 
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation:none!important;transition:none!important}

@@ -113,3 +113,9 @@ Settings → Secrets and variables → Actions 加一個 `ASSETS_TOKEN`（能讀
   （pat 用歡呼格，因為原本被摸那格有人手或只有頭）；蛋 `img/pet/egg/`、點心 `img/pet/food/`、小窩背景 `img/pet/den.webp`、寵物島 `img/l-07.webp`。
   玩具頭飾 PT-11 二期商店再接；沒有圖的道具用資料庫裡的表情符號。
 - 本機看畫面不用連資料庫：`python3 -m http.server` 後開 `/tools/test/pet-preview.html`（網址參數見檔案開頭）。
+
+## 圖片載入（不要掉圖）
+
+- 開門前等首屏的圖（海、標題、三座島）都到齊才淡出「樂園開門中」，最多等 4 秒；index.html 用 preload 讓首屏圖與程式一開始就抓。
+- 開門後 js/warm.js 在背景、一次幾張地預熱下一步會用到的圖（介紹卡、滴答、徽章；學生再加頭像、護照章、寵物島、自己的夥伴；最後是傳送門）。
+- 清單在 `data/warm.json`：**新增或刪掉 img/ 底下的圖後跑 `node tools/warm-list.mjs` 再 commit**（忘了也不會壞，只是新圖不會先抓）。

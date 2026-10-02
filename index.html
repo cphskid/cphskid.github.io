@@ -10,6 +10,20 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Noto+Sans+TC:wght@500;700;900&display=swap">
 <link rel="stylesheet" href="css/park.css">
+<!-- 首屏的圖和程式一開始就抓，不用等程式一層層讀完才發現要用（島圖帶 crossorigin，跟島上的遮罩共用同一份，不會抓兩次） -->
+<link rel="preload" as="image" href="img/sea.webp">
+<link rel="preload" as="image" href="img/logo.webp">
+<link rel="preload" as="image" href="img/l-01.webp" crossorigin="anonymous">
+<link rel="preload" as="image" href="img/l-02.webp" crossorigin="anonymous">
+<link rel="preload" as="image" href="img/l-03.webp" crossorigin="anonymous">
+<link rel="modulepreload" href="js/park.js">
+<link rel="modulepreload" href="js/account.js">
+<link rel="modulepreload" href="js/auth.js">
+<link rel="modulepreload" href="js/passport.js">
+<link rel="modulepreload" href="js/pet.js">
+<link rel="modulepreload" href="js/audio.js">
+<link rel="modulepreload" href="js/units.js">
+<link rel="modulepreload" href="js/warm.js">
 </head>
 <body>
 <div id="world">

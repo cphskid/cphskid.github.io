@@ -5,6 +5,7 @@ import * as account from './account.js';
 import * as pet from './pet.js';
 import { facilityStatus } from './auth.js';
 import * as snd from './audio.js';
+import { settle, warm } from './warm.js';
 
 // 測試站在 /dev/ 底下：顯示「測試站」標籤，設施連到各遊戲的測試站
 const IS_DEV = /^\/dev(\/|$)/.test(location.pathname);
@@ -63,7 +64,7 @@ function buildIsle(btn, z) {
   btn.style.setProperty('--img', `url("${new URL(z.art, location.href).href}")`);
   btn.classList.add('st-' + z.status);
   btn.setAttribute('aria-label', `${z.name}（${zoneSub(z)}）`);
-  btn.innerHTML = `<div class="bob"><div class="lift"><div class="foam"></div><div class="shadow"></div><img class="art" src="${esc(z.art)}" alt=""><div class="sink"></div><img class="spark" src="img/fx/sparkle.webp" alt=""></div></div>`;
+  btn.innerHTML = `<div class="bob"><div class="lift"><div class="foam"></div><div class="shadow"></div><img class="art" crossorigin="anonymous" src="${esc(z.art)}" alt=""><div class="sink"></div><img class="spark" src="img/fx/sparkle.webp" alt=""></div></div>`;
   if (z.status === 'trial') btn.querySelector('.lift').insertAdjacentHTML('beforeend', '<span class="flag">試營運</span>');
   if (z.status === 'maintenance') btn.querySelector('.lift').insertAdjacentHTML('beforeend', '<span class="flag maint">維修中</span>');
   addUnits(btn.querySelector('.lift'), z.units);
@@ -410,7 +411,7 @@ function openCard(z) {
   const [face, line] = village ? ['happy', '護照上的章，是你在每座島上的冒險紀錄喔！'] : tickLine(facs);
   veil.innerHTML = `<div class="card" role="dialog" aria-modal="true" aria-label="${esc(z.name)}">
     <button class="x" id="close" aria-label="關閉，回到地圖"></button>
-    <div class="art"><img src="${esc(z.art)}" alt="">${z.badge ? `<img class="badge" src="${esc(z.badge)}" alt="">` : ''}</div>
+    <div class="art"><img crossorigin="anonymous" src="${esc(z.art)}" alt="">${z.badge ? `<img class="badge" src="${esc(z.badge)}" alt="">` : ''}</div>
     <div><h2>${esc(z.name)}</h2><p class="lead">${esc(z.description)}</p>
     ${village ? villageHtml() : facs.length ? facs.map((f) => facilityHtml(f, z)).join('') : '<p class="lead">島上的設施還在規劃。</p>'}
     <div class="say"><img src="img/tick/${face}.webp" alt="滴答"><p>${line}</p></div></div></div>`;
@@ -481,7 +482,7 @@ function enteredThisTab() {
 function onAccountChange(w) {
   syncFacilities();
   paintPassBtn();
-  pet.load();
+  pet.load().then(() => { if (w.kind === 'student') warmStudent(); });
   if (w.kind === 'guest' && !select.hidden) { history.replaceState(null, '', location.pathname); showTitle(); }
 }
 const me = await meReady;
@@ -509,5 +510,23 @@ if (route && me.kind === 'guest') {
     else account.openStaffPanel(staff);
   }
 }
+// 開門前等眼前這一幕的圖（海、標題、島）都到齊，免得門一開島才一座座冒出來；
+// 音樂（1MB）也等圖好了才開始抓，不跟圖搶頻寬
+await settle([...(title.hidden ? select : title).querySelectorAll('img')]);
 snd.music('MU-01'); snd.ambience('SE-16');
-$('#loading').remove();
+const loading = $('#loading');
+loading.classList.add('out');
+setTimeout(() => loading.remove(), 400);
+
+// ---------- 背景預熱：下一步會用到的圖先抓好，點開介紹卡、護照、寵物島時不用等 ----------
+// 先抓介紹卡的木框與按鈕、徽章、滴答的表情；學生再加頭像、護照章、寵物島和自己的夥伴；最後是進設施的傳送門
+function warmStudent() {
+  const pets = [...document.querySelectorAll('#isle-pets img')]
+    .map((i) => i.getAttribute('src')?.match(/^img\/pet\/[\w-]+\/\d+-/)?.[0]).filter(Boolean);
+  warm('img/avatar/', 'img/stamp/', 'img/pet/island', 'img/pet/egg/', 'img/pet/food/', ...pets, 'img/pet/furniture/');
+}
+setTimeout(() => {
+  warm('img/ui/', 'img/badge/', 'img/tick/');
+  if (account.current().kind === 'student') warmStudent();
+  warm('img/fx/');
+}, 800);
