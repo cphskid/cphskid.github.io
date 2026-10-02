@@ -5,6 +5,7 @@
 // 頭像：一開始 12 個可以選，其他的靠蓋章、蓋滿一頁解鎖；頭像框也一樣。
 // 解鎖條件一律由資料庫判斷，這裡只負責畫出來。
 import * as auth from './auth.js';
+import { sfx } from './audio.js';
 
 const $ = (s, root = document) => root.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -221,6 +222,7 @@ export async function openAvatar({ first = false, back = false } = {}) {
         const p = await auth.passport.setAvatar(av, fr);
         book.avatar = p.avatar; book.frame = p.frame;
         hooks.changed({ avatar: p.avatar, frame: p.frame });
+        sfx('SE-20');
         if (back) render(); else close();
       } catch (err) {
         say(err.message);

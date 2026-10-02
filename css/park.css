@@ -471,3 +471,14 @@ ul.classes small{font:700 14px/1 var(--f-body);color:#8a6a4a}
 @keyframes eggHatch{0%{transform:rotate(0)}20%{transform:rotate(-10deg)}35%{transform:rotate(10deg)}50%{transform:rotate(-14deg)}65%{transform:rotate(14deg)}85%{transform:scale(1.15);opacity:1}100%{transform:scale(1.5);opacity:0}}
 @keyframes hatchPop{from{transform:scale(.2);opacity:0}to{transform:scale(1);opacity:1}}
 @media (prefers-reduced-motion:reduce){#map-pet img,.nest .pet img,.egg{animation:none!important}}
+
+/* ---------- 喇叭：全開／只有音效／全關（js/audio.js） ---------- */
+#snd-btn{position:absolute;left:170px;bottom:26px;z-index:6;display:flex;align-items:center;gap:6px;padding:6px 14px 6px 8px;background:var(--cream);border:3px solid var(--wood);border-radius:999px;box-shadow:0 4px 0 var(--wood),0 8px 14px rgba(0,0,0,.2);cursor:pointer;font:inherit;color:var(--ink);transition:transform .2s cubic-bezier(.34,1.7,.5,1)}
+#snd-btn:hover,#snd-btn:focus-visible{transform:translateY(-2px) scale(1.04);outline:none}
+#snd-btn svg{width:30px;height:30px;fill:none;stroke:var(--wood);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+#snd-btn svg path:first-child{fill:var(--wood)}
+#snd-btn b{font:900 15px/1 var(--f-body);white-space:nowrap}
+#snd-btn .mute{display:none}
+#snd-btn[data-mode="sfx"] .w2{display:none}
+#snd-btn[data-mode="off"] .w1,#snd-btn[data-mode="off"] .w2{display:none}
+#snd-btn[data-mode="off"] .mute{display:inline}
