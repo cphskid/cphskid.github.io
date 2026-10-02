@@ -605,3 +605,12 @@ aside.care .roster h3{margin:0 0 8px}
 #isle-pets .mini.egg-wait{width:44px;height:54px;animation:none}
 #isle-pets .mini.egg-wait .glint{position:absolute;width:40px;left:-8px;top:-8px;animation:twinkle 1.4s ease-in-out infinite}
 @media (prefers-reduced-motion:reduce){.actor .bub.mark,.actor.egg-nest img{animation:none}}
+/* 寵物島傢俱（可拖曳） */
+.prop{position:absolute;transform:translate(-50%,-88%);border:0;padding:0;background:none;cursor:grab;touch-action:none}
+.prop img{position:relative;display:block;width:100%;height:auto;pointer-events:none;-webkit-user-drag:none;filter:drop-shadow(0 4px 3px rgba(20,50,30,.3));transition:transform .15s}
+.prop .shadow{position:absolute;left:12%;right:12%;bottom:0;height:16%;border-radius:50%;background:rgba(30,60,20,.25);transition:transform .15s,opacity .15s}
+.prop.held{cursor:grabbing}
+.prop.held img{transform:translateY(-24px) scale(1.05)}
+.prop.held .shadow{transform:scale(.7);opacity:.6}
+.prop.held.bad .shadow{background:rgba(226,85,63,.7)}
+.prop.drop img{animation:petDrop .45s cubic-bezier(.34,1.7,.5,1)}

@@ -46,7 +46,12 @@ const petById = (id) => state?.pets?.find((p) => p.id === id) ?? null;
 const speciesName = (code) => state?.species?.find((s) => s.code === code)?.name ?? '';
 const item = (code) => state?.items?.find((i) => i.code === code);
 // 圖：img/pet/<種類>/<階段>-<動作>.webp（PT 系列動作表切出來的）
-const art = (species, stage = 1, pose = 'idle') => `img/pet/${esc(species)}/${stage}-${pose}.webp`;
+// 補充動作（Gemini 產的 PT-05A～07A）目前只有幼年；其他階段先借相近的格
+const EXTRA = { lift: 'jump', lift2: 'jump', land: 'idle', front1: 'walk1', front2: 'walk2', back1: 'walk1', back2: 'walk2',
+                sniff: 'idle', look: 'idle', roll: 'play', yawn: 'sleep', dig: 'play', lie: 'idle' };
+const EXTRA_STAGES = [1];
+const art = (species, stage = 1, pose = 'idle') =>
+  `img/pet/${esc(species)}/${stage}-${EXTRA[pose] && !EXTRA_STAGES.includes(stage) ? EXTRA[pose] : pose}.webp`;
 const POSE = { normal: 'idle', happy: 'cheer', hungry: 'hungry', angry: 'angry', asleep: 'sleep', quiet: 'sleep', island: 'idle' };
 const FOOD_IMG = new Set(['kibble', 'rice-ball', 'magic-fruit']);           // 有 PT-10 圖的道具，其他先用表情符號
 const icon = (i) => FOOD_IMG.has(i.code) ? `<img src="img/pet/food/${esc(i.code)}.webp" alt="">` : esc(i.icon);
@@ -265,13 +270,18 @@ function walkable(x, y) {
   }
   return inside;
 }
-function somewhere(near) {
-  for (let k = 0; k < 60; k++) {
+// from：從哪裡走過去（整條路都要能走，才不會穿過湖）
+function somewhere(near, from) {
+  for (let k = 0; k < 80; k++) {
     const x = near ? near.x + rnd(-.18, .18) : rnd(.18, .93);
     const y = near ? near.y + rnd(-.12, .12) : rnd(.29, .84);
-    if (walkable(x, y)) return { x, y };
+    if (walkable(x, y) && (!from || clearPath(from, { x, y }))) return { x, y };
   }
-  return { x: .7, y: .68 };
+  return from ? { x: from.x, y: from.y } : { x: .7, y: .68 };
+}
+function clearPath(a, b) {
+  for (let t = .1; t < 1; t += .1) if (!walkable(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t)) return false;
+  return true;
 }
 // 前面（y 大）的看起來大一點
 const depth = (y) => .78 + (y - .29) * .55;
@@ -299,10 +309,11 @@ function openScene({ select, say: first } = {}) {
     <section class="ground" style="width:${GW}px;height:${GH}px">
       <img class="land" src="img/pet/island.webp" alt="">
       <div class="actors"></div>
-      <p class="hint">點一下看牠，按住可以把牠拎到別的地方</p>
+      <p class="hint">點一下看牠，按住可以把牠拎到別的地方；傢俱也搬得動</p>
     </section>
     <aside class="care"></aside></div>`);
   const box = $('.actors', layer);
+  addProps(box);
   state.pets.forEach((p) => addActor(box, p));
   if (canAdopt()) addEgg(box);
   paintCare();
@@ -327,6 +338,69 @@ function addActor(box, p, at) {
   place(a);
   return a;
 }
+// ---------- 傢俱（先放幾件試擺；二期改成用時光幣換、存在資料庫）----------
+// 擺的位置先記在這台電腦（localStorage），拖曳方式跟拎寵物一樣
+const PROPS = [
+  { id: 'bed', x: .8, y: .72, w: 130 }, { id: 'tent', x: .88, y: .62, w: 130 },
+  { id: 'slide', x: .3, y: .64, w: 130 }, { id: 'fountain', x: .64, y: .79, w: 84 },
+];
+const PROP_KEY = 'park-pet-props';
+function propSpots() {
+  try { return JSON.parse(localStorage.getItem(PROP_KEY) ?? '{}'); } catch { return {}; }
+}
+function addProps(box) {
+  const saved = propSpots();
+  for (const d of PROPS) {
+    const at = saved[d.id] && walkable(saved[d.id].x, saved[d.id].y) ? saved[d.id] : d;
+    const el = document.createElement('button');
+    el.type = 'button';
+    el.className = 'prop';
+    el.setAttribute('aria-label', '傢俱（按住可以搬到別的地方）');
+    el.innerHTML = `<span class="shadow"></span><img src="img/pet/furniture/${d.id}.webp" alt="">`;
+    const o = { el, x: at.x, y: at.y };
+    const put = () => {
+      el.style.cssText = `left:${o.x * GW}px;top:${o.y * GH}px;width:${d.w * depth(o.y)}px;z-index:${el.classList.contains('held') ? 2000 : Math.round(o.y * 1000) - 2}`;
+    };
+    put();
+    box.appendChild(el);
+    el.addEventListener('pointerdown', (e) => {
+      if (busy || e.button > 0) return;
+      const g = $('.ground', layer).getBoundingClientRect();
+      const k = g.width / GW;
+      const sx = e.clientX, sy = e.clientY;
+      let held = false, ok = { x: o.x, y: o.y };
+      const move = (ev) => {
+        if (!held && Math.hypot(ev.clientX - sx, ev.clientY - sy) < 8) return;
+        held = true;
+        el.classList.add('held');
+        o.x = Math.min(.98, Math.max(.02, (ev.clientX - g.left) / k / GW));
+        o.y = Math.min(.95, Math.max(.05, (ev.clientY - g.top) / k / GH + .03));
+        const good = walkable(o.x, o.y);
+        el.classList.toggle('bad', !good);
+        if (good) ok = { x: o.x, y: o.y };
+        put();
+      };
+      const up = () => {
+        removeEventListener('pointermove', move);
+        removeEventListener('pointerup', up);
+        removeEventListener('pointercancel', up);
+        if (!held) return;
+        el.classList.remove('held', 'bad');
+        if (!walkable(o.x, o.y)) { o.x = ok.x; o.y = ok.y; }
+        el.classList.add('drop');
+        setTimeout(() => el.classList.remove('drop'), 450);
+        put();
+        const all = propSpots();
+        all[d.id] = { x: +o.x.toFixed(3), y: +o.y.toFixed(3) };
+        try { localStorage.setItem(PROP_KEY, JSON.stringify(all)); } catch { /* 存不了就算了，下次回到原位 */ }
+      };
+      addEventListener('pointermove', move);
+      addEventListener('pointerup', up);
+      addEventListener('pointercancel', up);
+    });
+  }
+}
+
 function addEgg(box) {
   const el = document.createElement('button');
   el.type = 'button';
@@ -385,14 +459,16 @@ function tick(now) {
       } else {
         a.x += dx / d * speed * dt / GW;
         a.y += dy / d * speed * dt / GH;
+        // 主要往上下走就用正面／背面的走路格，往左右走用側面
+        const dir = Math.abs(dy) > Math.abs(dx) * 1.2 ? (dy > 0 ? 'front' : 'back') : 'walk';
         if (Math.abs(dx) > 2) a.face = dx > 0 ? 1 : -1;
         a.frame = Math.floor(now / 230) % 2;
-        setPose(a, a.frame ? 'walk2' : 'walk1');
+        setPose(a, dir + (a.frame ? 2 : 1));
       }
     } else if (a.mode === 'rest') {
       setPose(a, a.restPose ?? POSE[m]);
       if (now > a.until) {
-        const t = somewhere(Math.random() < .6 ? a : null);
+        const t = somewhere(Math.random() < .6 ? a : null, a);
         a.tx = t.x; a.ty = t.y; a.mode = 'walk';
       }
     }
@@ -405,7 +481,7 @@ function restPose(a) {
   const m = moodOf(a.p);
   if (m === 'hungry') return 'hungry';
   if (m === 'happy') return pick(['cheer', 'jump', 'idle']);
-  return pick(['idle', 'idle', 'play', 'jump', ...(a.p.active ? [] : ['sleep'])]);
+  return pick(['idle', 'idle', 'look', 'sniff', 'play', 'jump', 'dig', 'roll', 'lie', 'yawn', ...(a.p.active ? [] : ['sleep'])]);
 }
 
 // 拎起來：按住拖動；沒拖動就是點一下（選牠；選了再點＝摸摸）
@@ -425,7 +501,8 @@ function grab(a) {
         el.setPointerCapture?.(e.pointerId);
         a.mode = 'held';
         el.classList.add('held');
-        setPose(a, 'jump');               // 之後換成「被拎起來」的動作格
+        setPose(a, 'lift');
+        a.kick = setInterval(() => setPose(a, a.pose === 'lift' ? 'lift2' : 'lift'), 380);   // 被拎著時腳晃來晃去
       }
       // 手指拎在背上，所以腳在手指下方一點
       const x = (ev.clientX - g.left) / k / GW, y = (ev.clientY - g.top) / k / GH + .05;
@@ -440,17 +517,22 @@ function grab(a) {
       removeEventListener('pointerup', up);
       removeEventListener('pointercancel', up);
       if (!held) { tap(a); return; }
+      clearInterval(a.kick);
       el.classList.remove('held', 'bad');
       if (!walkable(a.x, a.y)) { a.x = ok.x; a.y = ok.y; }
       a.tx = a.x; a.ty = a.y;
       el.classList.add('drop');
       setTimeout(() => el.classList.remove('drop'), 450);
-      a.mode = start.mode === 'still' ? 'still' : 'rest';
-      a.until = performance.now() + rnd(1200, 2500);
-      a.restPose = 'cheer';
-      dress(a);
-      if (a.mode === 'still') setPose(a, POSE[moodOf(a.p)]);
+      setPose(a, 'land');
+      a.mode = 'show';
       place(a);
+      setTimeout(() => {
+        a.mode = start.mode === 'still' ? 'still' : 'rest';
+        a.until = performance.now() + rnd(1200, 2500);
+        a.restPose = 'cheer';
+        dress(a);
+        if (a.mode === 'still') setPose(a, POSE[moodOf(a.p)]);
+      }, 420);
     };
     addEventListener('pointermove', move);
     addEventListener('pointerup', up);
