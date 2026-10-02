@@ -3,6 +3,7 @@
 // 小朋友是國小學生：填錯了要「講出哪裡不對」，不要讓按鈕變暗不說話（守護異世界踩過的坑）。
 import * as auth from './auth.js';
 import * as passport from './passport.js';
+import { sfx } from './audio.js';
 
 const $ = (s, root = document) => root.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -151,6 +152,7 @@ async function loggedIn() {
   layer.hidden = true;
   layer.innerHTML = '';
   p?.resolve(who);
+  sfx('SE-18');
   // 第一次登入、還沒選過頭像：請他挑一個（資料庫還沒裝護照時 profile 是 null，就不問）
   if (who.kind === 'student' && who.profile && !who.profile.avatar) setTimeout(() => passport.openAvatar({ first: true }), 700);
 }

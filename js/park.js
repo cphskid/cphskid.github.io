@@ -4,6 +4,7 @@ import { addUnits } from './units.js';
 import * as account from './account.js';
 import * as pet from './pet.js';
 import { facilityStatus } from './auth.js';
+import * as snd from './audio.js';
 
 // 測試站在 /dev/ 底下：顯示「測試站」標籤，設施連到各遊戲的測試站
 const IS_DEV = /^\/dev(\/|$)/.test(location.pathname);
@@ -66,6 +67,7 @@ function buildIsle(btn, z) {
   if (z.status === 'trial') btn.querySelector('.lift').insertAdjacentHTML('beforeend', '<span class="flag">試營運</span>');
   if (z.status === 'maintenance') btn.querySelector('.lift').insertAdjacentHTML('beforeend', '<span class="flag maint">維修中</span>');
   addUnits(btn.querySelector('.lift'), z.units);
+  btn.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') hoverSound(); });
   return btn;
 }
 
@@ -111,6 +113,7 @@ park.map.slots.forEach((s, i) => {
     b.addEventListener('click', () => {
       if (dragged) return;
       puff(b);
+      snd.sfx('SE-13');
       say('map', '雲霧後面還藏著新的島，探險隊正在開路，很快就會出現！');
     });
   }
@@ -166,6 +169,7 @@ function say(pose, text) {
   sayTimer = setTimeout(() => { bubble.hidden = true; $('#tick-img').src = 'img/tick/fly.webp'; }, 7000);
 }
 $('#tick-btn').addEventListener('click', () => {
+  snd.sfx('SE-14');
   const [pose, text] = TICK_TIPS[tipIndex++ % TICK_TIPS.length];
   say(pose, text);
 });
@@ -262,10 +266,41 @@ select.addEventListener('wheel', (e) => {
 $('#pan-l').addEventListener('click', () => setPan(pan - 600));
 $('#pan-r').addEventListener('click', () => setPan(pan + 600));
 
+// ---------- 聲音（js/audio.js） ----------
+// 一般按鈕都「啵」一下；有自己聲音的（Start、島、關閉、滴答、進設施、喇叭）在各自的地方放
+const OWN_SOUND = '#start,.isle,#close,.x,#tick-btn,a.btn.go,#snd-btn,[data-close],[data-save]';
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('button,a.btn');
+  if (b && !b.disabled && !b.closest(OWN_SOUND)) snd.sfx('SE-01');
+}, true);
+let hoverAt = 0;
+function hoverSound() {
+  const now = performance.now();
+  if (now - hoverAt > 350) { hoverAt = now; snd.sfx('SE-11'); }
+}
+// 左下角的喇叭：全開 → 只有音效 → 全關
+const SND_LABEL = { all: '聲音全開', sfx: '只有音效', off: '聲音關' };
+const sndBtn = $('#snd-btn');
+function paintSnd() {
+  const m = snd.getMode();
+  sndBtn.dataset.mode = m;
+  sndBtn.querySelector('b').textContent = SND_LABEL[m];
+  sndBtn.setAttribute('aria-label', `${SND_LABEL[m]}，點一下切換`);
+}
+sndBtn.addEventListener('click', () => {
+  const next = { all: 'sfx', sfx: 'off', off: 'all' }[snd.getMode()];
+  snd.setMode(next);
+  paintSnd();
+  snd.sfx('SE-01');
+});
+paintSnd();
+snd.preload(['SE-01', 'SE-02', 'SE-03', 'SE-10', 'SE-11', 'SE-12', 'SE-14', 'SE-15']);
+
 // ---------- 換場 ----------
 const title = $('#title'), flash = $('#flash');
 function showTitle() {
   closeCard();
+  snd.music('MU-01'); snd.ambience('SE-16');
   select.hidden = true;
   title.hidden = false;
 }
@@ -284,7 +319,11 @@ function showMap({ animate = true } = {}) {
   title.hidden = true;
   select.hidden = false;
   paintPassBtn();
-  say(account.current().profile?.unseen?.length ? 'cheer' : 'wave', greeting());
+  snd.music('MU-01'); snd.ambience('SE-16');
+  const stamped = account.current().profile?.unseen?.length;
+  snd.sfx('SE-15');
+  if (stamped) setTimeout(() => snd.sfx('SE-19'), 700);
+  say(stamped ? 'cheer' : 'wave', greeting());
   if (animate) {
     select.classList.add('entering');
     setTimeout(() => select.classList.remove('entering'), 1400);
@@ -303,6 +342,7 @@ function go() {
 // 進樂園要先登入（帳號功能載入失敗時照樣放行，地圖本身不需要資料庫）
 $('#start').addEventListener('click', async () => {
   const b = $('#start');
+  snd.sfx('SE-10');
   fxAt(title, 'img/fx/star-burst.webp', 'burst', b.offsetLeft, b.offsetTop + b.offsetHeight / 2, 420);
   const w = await account.requireLogin();
   if (w || !account.available) go();
@@ -366,6 +406,7 @@ function openCard(z) {
     ${village ? villageHtml() : facs.length ? facs.map((f) => facilityHtml(f, z)).join('') : '<p class="lead">島上的設施還在規劃。</p>'}
     <div class="say"><img src="img/tick/${face}.webp" alt="滴答"><p>${line}</p></div></div></div>`;
   veil.hidden = false;
+  snd.sfx('SE-03');
   history.replaceState(null, '', '#map/' + z.code);
   $('#close').onclick = closeCard;
   veil.querySelectorAll('a.btn.go').forEach((a) => a.addEventListener('click', enterFacility));
@@ -378,6 +419,7 @@ function openCard(z) {
 function enterFacility(e) {
   if (reduceMotion || e.metaKey || e.ctrlKey || e.shiftKey) return;
   e.preventDefault();
+  snd.sfx('SE-12');
   const href = e.currentTarget.href;
   const p = document.createElement('div');
   p.id = 'portal';
@@ -389,6 +431,7 @@ function enterFacility(e) {
 addEventListener('pageshow', () => document.getElementById('portal')?.remove());
 function closeCard() {
   if (veil.hidden) return;
+  snd.sfx('SE-02');
   veil.hidden = true;
   veil.innerHTML = '';
   if (!select.hidden) history.replaceState(null, '', '#map');
@@ -450,4 +493,5 @@ if (route && me.kind === 'guest') {
     else account.openStaffPanel(staff);
   }
 }
+snd.music('MU-01'); snd.ambience('SE-16');
 $('#loading').remove();

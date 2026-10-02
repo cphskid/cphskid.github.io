@@ -21,7 +21,7 @@
   "decor": [
     { "img": "img/decor/lighthouse.webp", "left": 470,  "top": 230, "width": 110, "anim": "" },
     { "img": "img/decor/buoy.webp",       "left": 545,  "top": 560, "width": 70,  "anim": "bob" },
-    { "img": "img/decor/whale-tail.webp", "left": 990,  "top": 650, "width": 120, "anim": "bob" },
+    { "img": "img/decor/whale-tail.webp", "left": 990,  "top": 650, "width": 120, "anim": "tail" },
     { "img": "img/decor/dolphin.webp",    "left": 300,  "top": 770, "width": 110, "anim": "leap" },
     { "img": "img/decor/rocks.webp",      "left": 1530, "top": 300, "width": 120, "anim": "" },
     { "img": "img/decor/sandbar.webp",    "left": 2010, "top": 400, "width": 150, "anim": "" },
