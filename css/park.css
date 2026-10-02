@@ -648,3 +648,17 @@ aside.care .roster h3{margin:0 0 8px}
 .pisle .skychip{position:absolute;left:18px;top:10px;margin:0;padding:7px 14px;border-radius:99px;background:rgba(255,255,255,.85);font:800 16px/1 var(--f-body);color:var(--wood);pointer-events:none;z-index:2200}
 .pisle .hint{z-index:2200}
 @media (prefers-reduced-motion:reduce){.actor.sway .body,.actor.wade .shadow,.prop.rustle img,.pisle .haze{animation:none}}
+/* 我的傢俱 */
+.pisle .furn-btn{position:absolute;right:18px;top:8px;z-index:2200;border:3px solid var(--wood);border-radius:99px;background:#fff8e6;padding:7px 16px;font:900 17px/1 var(--f-body);color:var(--wood);cursor:pointer;box-shadow:0 3px 0 var(--wood)}
+.pisle .furn-btn:hover,.pisle .furn-btn:focus-visible{background:#fff;outline:none;transform:translateY(-1px)}
+.pisle .furn{position:absolute;right:18px;top:58px;width:430px;z-index:2300;background:#fff8e6;border:4px solid var(--wood);border-radius:22px;padding:14px 16px;box-shadow:0 8px 0 var(--wood-2),0 16px 30px rgba(0,0,0,.3);animation:pop .25s ease-out}
+.pisle .furn h3{margin:0 0 10px}
+.pisle .furn h3 small{font:700 15px/1 var(--f-body);color:#8a6a4a;margin-left:6px}
+.pisle .furn-list{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.pisle .furn-i{position:relative;display:grid;justify-items:center;gap:4px;padding:6px 4px;border-radius:14px;background:#fff;border:2px solid #ecd9b8}
+.pisle .furn-i img{width:62px;height:52px;object-fit:contain}
+.pisle .furn-i b{font:800 13px/1.2 var(--f-body);color:var(--ink);text-align:center}
+.pisle .furn-i.locked img{filter:grayscale(1) brightness(.75) opacity(.55)}
+.pisle .furn-i.locked b{color:#a08a70}
+.pisle .furn-i i{position:absolute;right:4px;top:2px;font-style:normal;font-size:16px}
+.pisle .furn .note{margin:10px 0 8px;font:700 14px/1.5 var(--f-body);color:#8a6a4a}
