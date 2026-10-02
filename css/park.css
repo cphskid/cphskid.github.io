@@ -536,12 +536,12 @@ ul.classes small{font:700 14px/1 var(--f-body);color:#8a6a4a}
   background:radial-gradient(ellipse at 35% 55%,#7fd6f2,#38a9dc 55%,#1f7fb8);box-shadow:inset 0 0 0 5px var(--wood-2),inset 0 0 0 9px rgba(255,214,110,.55),0 30px 50px rgba(0,0,0,.45);animation:pop .45s cubic-bezier(.34,1.7,.5,1)}
 #petroom .pisle>.x{right:-26px;top:-26px}
 .pisle .ground{position:relative;touch-action:none;user-select:none;-webkit-user-select:none}
-.pisle .land{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;-webkit-user-drag:none;filter:drop-shadow(0 18px 18px rgba(0,40,80,.35))}
+.pisle .land{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;-webkit-user-drag:none;filter:var(--tod) var(--wx) drop-shadow(0 18px 18px rgba(0,40,80,.35))}
 .pisle .actors{position:absolute;inset:0}
 .pisle .hint{position:absolute;left:50%;bottom:-2px;transform:translateX(-50%);margin:0;padding:8px 18px;border-radius:99px;background:rgba(255,255,255,.85);font:700 16px/1 var(--f-body);color:var(--wood);white-space:nowrap;pointer-events:none}
 .actor{position:absolute;width:calc(var(--h) * var(--d));height:calc(var(--h) * var(--d));transform:translate(-50%,-92%);border:0;padding:0;background:none;cursor:grab;touch-action:none}
 .actor .body{position:absolute;inset:0;transform-origin:50% 100%;transition:transform .15s}
-.actor .body img{width:100%;height:100%;object-fit:contain;transform:scaleX(var(--f));pointer-events:none;-webkit-user-drag:none;filter:drop-shadow(0 4px 3px rgba(20,50,30,.3))}
+.actor .body img{width:100%;height:100%;object-fit:contain;transform:scaleX(var(--f));pointer-events:none;-webkit-user-drag:none;filter:var(--tod) var(--wx) drop-shadow(0 4px 3px rgba(20,50,30,.3))}
 .actor .shadow{position:absolute;left:18%;right:18%;bottom:2%;height:14%;border-radius:50%;background:rgba(30,60,20,.28);transition:transform .15s,opacity .15s}
 .actor .tag{position:absolute;left:50%;top:100%;transform:translate(-50%,2px);font:900 14px/1 var(--f-body);color:#fff;background:rgba(107,63,31,.75);padding:4px 9px;border-radius:99px;white-space:nowrap;pointer-events:none}
 .actor.tending .tag{background:#2f7a1c}
@@ -608,10 +608,43 @@ aside.care .roster h3{margin:0 0 8px}
 @media (prefers-reduced-motion:reduce){.actor .bub.mark,.actor.egg-nest img{animation:none}}
 /* 寵物島傢俱（可拖曳） */
 .prop{position:absolute;transform:translate(-50%,-88%);border:0;padding:0;background:none;cursor:grab;touch-action:none}
-.prop img{position:relative;display:block;width:100%;height:auto;pointer-events:none;-webkit-user-drag:none;filter:drop-shadow(0 4px 3px rgba(20,50,30,.3));transition:transform .15s}
+.prop img{position:relative;display:block;width:100%;height:auto;pointer-events:none;-webkit-user-drag:none;filter:var(--tod) var(--wx) drop-shadow(0 4px 3px rgba(20,50,30,.3));transition:transform .15s}
 .prop .shadow{position:absolute;left:12%;right:12%;bottom:0;height:16%;border-radius:50%;background:rgba(30,60,20,.25);transition:transform .15s,opacity .15s}
 .prop.held{cursor:grabbing}
 .prop.held img{transform:translateY(-24px) scale(1.05)}
 .prop.held .shadow{transform:scale(.7);opacity:.6}
 .prop.held.bad .shadow{background:rgba(226,85,63,.7)}
 .prop.drop img{animation:petDrop .45s cubic-bezier(.34,1.7,.5,1)}
+/* 用傢俱、泡水 */
+.actor{transition:opacity .25s}
+.actor.up .shadow{opacity:0}
+.actor.inside{opacity:0;pointer-events:none}
+.actor.sway .body{animation:petSway 1.8s ease-in-out infinite;transform-origin:50% -50%}
+.actor.wade .body{clip-path:inset(-40% -20% 24% -20%)}
+.actor.wade .shadow{bottom:22%;height:16%;left:4%;right:4%;background:rgba(255,255,255,.5);box-shadow:0 0 0 4px rgba(255,255,255,.25);animation:ripple 1.4s ease-in-out infinite}
+.prop.rustle img{animation:rustle .45s ease-in-out infinite;transform-origin:50% 100%}
+.prop.aim img{transform:scale(1.06);filter:var(--tod) var(--wx) brightness(1.12) drop-shadow(0 0 6px #fff7b0) drop-shadow(0 0 4px #fff7b0)}
+@keyframes petSway{0%,100%{transform:rotate(-8deg)}50%{transform:rotate(8deg)}}
+@keyframes ripple{0%,100%{transform:scale(1);opacity:.9}50%{transform:scale(1.12);opacity:.55}}
+@keyframes rustle{0%,100%{transform:rotate(0)}25%{transform:rotate(-2.5deg) scale(1.02,.98)}75%{transform:rotate(2.5deg) scale(1.02,.98)}}
+/* 天空：日夜（data-tod）、天氣（data-wx）、季節（data-season）；粒子在 canvas.sky */
+.pisle{--tod:brightness(1);--wx:brightness(1)}
+.pisle[data-tod=dusk]{--tod:sepia(.3) saturate(1.25) brightness(.92) hue-rotate(-8deg);background:radial-gradient(ellipse at 35% 55%,#f6c08a,#d98a6a 50%,#5a5f9a)}
+.pisle[data-tod=night]{--tod:brightness(.56) saturate(.75) hue-rotate(10deg);
+  background:radial-gradient(circle at 12% 18%,#fff 0 1.5px,transparent 2.5px),radial-gradient(circle at 78% 10%,#fff 0 1.5px,transparent 2.5px),radial-gradient(circle at 92% 70%,#fff 0 1px,transparent 2px),radial-gradient(circle at 6% 80%,#fff 0 1px,transparent 2px),radial-gradient(circle at 55% 6%,#fff 0 1px,transparent 2px),radial-gradient(ellipse at 35% 55%,#2c4f86,#1a2f5c 55%,#0e1a3a)}
+.pisle[data-wx=cloudy]{--wx:brightness(.93) saturate(.85)}
+.pisle[data-wx=rain]{--wx:brightness(.8) saturate(.7)}
+.pisle[data-wx=snow]{--wx:brightness(1.04) saturate(.75)}
+.pisle[data-wx=fog]{--wx:saturate(.8) contrast(.9)}
+.pisle[data-wx=rain]:not([data-tod=night]),.pisle[data-wx=fog]:not([data-tod=night]){background:radial-gradient(ellipse at 35% 55%,#9fb8c8,#6f8ea8 55%,#4d6a86)}
+.pisle .sky{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:2100}
+.pisle .haze{position:absolute;inset:0;pointer-events:none;z-index:2050;-webkit-mask:url(../img/pet/island.webp) center/100% 100% no-repeat;mask:url(../img/pet/island.webp) center/100% 100% no-repeat}
+.pisle[data-wx=cloudy] .haze{background:radial-gradient(ellipse 22% 16% at 30% 40%,rgba(30,50,80,.2),transparent),radial-gradient(ellipse 26% 18% at 75% 70%,rgba(30,50,80,.18),transparent);background-size:200% 100%;animation:clouds 50s linear infinite alternate}
+.pisle[data-wx=fog] .haze{-webkit-mask:none;mask:none;background:radial-gradient(ellipse 40% 22% at 30% 50%,rgba(255,255,255,.55),transparent),radial-gradient(ellipse 45% 25% at 75% 65%,rgba(255,255,255,.5),transparent),rgba(235,242,248,.28);background-size:160% 100%;animation:clouds 30s ease-in-out infinite alternate}
+.pisle[data-season=winter][data-wx=snow] .haze{background:rgba(255,255,255,.14)}
+.pisle:is([data-tod=night],[data-tod=dusk]) .p-lantern::after{content:"";position:absolute;left:50%;top:30%;width:420%;aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle,rgba(255,214,110,.6),rgba(255,214,110,.15) 40%,transparent 68%);pointer-events:none;mix-blend-mode:screen;animation:twinkle 3s ease-in-out infinite}
+.pisle[data-tod=night] .p-lantern img{filter:brightness(1.05) drop-shadow(0 0 10px rgba(255,214,110,.9))}
+@keyframes clouds{from{background-position:0 0}to{background-position:100% 0}}
+.pisle .skychip{position:absolute;left:18px;top:10px;margin:0;padding:7px 14px;border-radius:99px;background:rgba(255,255,255,.85);font:800 16px/1 var(--f-body);color:var(--wood);pointer-events:none;z-index:2200}
+.pisle .hint{z-index:2200}
+@media (prefers-reduced-motion:reduce){.actor.sway .body,.actor.wade .shadow,.prop.rustle img,.pisle .haze{animation:none}}

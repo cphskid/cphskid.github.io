@@ -6,8 +6,10 @@
 //   餵食：碗出現在旁邊，牠走過去慢慢吃完。
 //   護照章 3 個、6 個各多一顆時光蛋，可以再領養一隻。
 // 規則（會不會餓、能不能吃、長大）全部由資料庫判斷，這裡只負責畫出來和講話。
-// 之後的傢俱擺放沿用同一套拎起／放下（actors）。
+// 傢俱：寵物會自己去用（床上睡、溜滑梯、盪鞦韆、泡水、鑽帳篷…），把牠拎到傢俱上放開也會直接用；湖也能泡。
+// 天空（js/petsky.js）：日夜跟著真的時間、季節跟著月份、天氣每天換，寵物會跟著反應（下雨躲帳篷、晚上想睡）。
 import * as auth from './auth.js';
+import { readSky, makeSky, SKY_NAME } from './petsky.js';
 
 const $ = (s, root = document) => root.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -25,6 +27,11 @@ const LINES = {
   asleep: ['Zzz…（摸摸牠叫醒牠）'],
   quiet:  ['上課中，我先睡一下，放學見！'],
   island: ['我在島上玩得很開心！', '這裡有好多好玩的東西～', '湖邊好涼快！'],
+};
+const SKY_LINES = {
+  rain: ['下雨了！快去帳篷躲雨～', '滴滴答答，下雨了耶'], snow: ['哇！下雪了！', '雪花好冰喔，嘿嘿'],
+  fog: ['霧好大，看不太清楚耶'], sunny: ['太陽好大，想去泡水！'], cloudy: ['雲好多，涼涼的好舒服'],
+  night: ['好睏喔…想睡覺了', '晚上的島好安靜～'], dusk: ['夕陽好漂亮！'],
 };
 
 let api = auth.pet;
@@ -48,7 +55,8 @@ const item = (code) => state?.items?.find((i) => i.code === code);
 // 圖：img/pet/<種類>/<階段>-<動作>.webp（PT 系列動作表切出來的）
 // 補充動作（Gemini 產的 PT-05A～07A）目前只有幼年；其他階段先借相近的格
 const EXTRA = { lift: 'jump', lift2: 'jump', land: 'idle', front1: 'walk1', front2: 'walk2', back1: 'walk1', back2: 'walk2',
-                sniff: 'idle', look: 'idle', roll: 'play', yawn: 'sleep', dig: 'play', lie: 'idle' };
+                sniff: 'idle', look: 'idle', roll: 'play', yawn: 'sleep', dig: 'play', lie: 'idle',
+                sit: 'idle', perch: 'idle', slide: 'jump', swim1: 'walk1', swim2: 'walk2', float: 'sleep', shake: 'play' };
 const EXTRA_STAGES = [1];
 const art = (species, stage = 1, pose = 'idle') =>
   `img/pet/${esc(species)}/${stage}-${EXTRA[pose] && !EXTRA_STAGES.includes(stage) ? EXTRA[pose] : pose}.webp`;
@@ -288,6 +296,8 @@ const depth = (y) => .78 + (y - .29) * .55;
 const SIZE = [0, 128, 150, 172];
 
 let actors = [];            // { p, el, img, x, y, tx, ty, mode, until, face, frame, speed }
+let props = [];             // 島上的傢俱 { id, el, x, y, user }
+let sky = null, skyFx = null;
 let selected = null;        // 選到哪一隻（id）
 let raf = 0, last = 0;
 let busy = false;           // 餵食／摸摸的動畫還在跑
@@ -296,7 +306,10 @@ let talkTimer = 0;
 function stopScene() {
   cancelAnimationFrame(raf);
   raf = 0;
+  actors.forEach((a) => (a.timers ?? []).forEach(clearTimeout));
   actors = [];
+  props = [];
+  skyFx = null;
   clearTimeout(talkTimer);
 }
 
@@ -304,21 +317,29 @@ function openScene({ select, say: first } = {}) {
   const home = myPet();
   selected = select ?? selected ?? home?.id ?? state.pets[0]?.id;
   if (!petById(selected)) selected = home?.id ?? state.pets[0]?.id;
-  show(`<div class="pisle" role="dialog" aria-modal="true" aria-label="寵物島">
+  sky = readSky();
+  show(`<div class="pisle" role="dialog" aria-modal="true" aria-label="寵物島" data-wx="${sky.wx}" data-tod="${sky.tod}" data-season="${sky.season}">
     <button class="x" data-close aria-label="關閉，回到地圖"></button>
     <section class="ground" style="width:${GW}px;height:${GH}px">
       <img class="land" src="img/pet/island.webp" alt="">
       <div class="actors"></div>
-      <p class="hint">點一下看牠，按住可以把牠拎到別的地方；傢俱也搬得動</p>
+      <div class="haze" aria-hidden="true"></div>
+      <p class="skychip">${SKY_NAME.wx[sky.wx]}・${SKY_NAME.season[sky.season]}・${SKY_NAME.tod[sky.tod]}</p>
+      <p class="hint">點一下看牠，按住可以把牠拎到傢俱上、湖裡或別的地方；傢俱也搬得動</p>
     </section>
     <aside class="care"></aside></div>`);
   const box = $('.actors', layer);
   addProps(box);
   state.pets.forEach((p) => addActor(box, p));
   if (canAdopt()) addEgg(box);
+  skyFx = makeSky($('.ground', layer), sky, { w: GW, h: GH, lake: LAKE });
   paintCare();
   if (first) say(first, selected);
-  else if (home) say(pick(LINES[moodOf(home) === 'angry' && home.sulky ? 'sulky' : moodOf(home)] ?? LINES.normal), home.id);
+  else if (home) {
+    const m = moodOf(home);
+    const weather = m === 'normal' && Math.random() < .5 ? SKY_LINES[sky.tod !== 'day' ? sky.tod : sky.wx] : null;
+    say(pick(weather ?? LINES[m === 'angry' && home.sulky ? 'sulky' : m] ?? LINES.normal), home.id);
+  }
   news = [];
   last = performance.now();
   raf = requestAnimationFrame(tick);
@@ -331,22 +352,61 @@ function addActor(box, p, at) {
   el.innerHTML = '<span class="shadow"></span><span class="body"><img alt=""></span><span class="tag"></span><span class="bub" hidden></span>';
   box.appendChild(el);
   const pos = at ?? somewhere();
-  const a = { p, el, img: $('img', el), x: pos.x, y: pos.y, tx: pos.x, ty: pos.y, mode: 'rest', until: performance.now() + rnd(300, 1500), face: Math.random() < .5 ? 1 : -1, frame: 0, pose: '' };
+  const a = { p, el, img: $('img', el), x: pos.x, y: pos.y, tx: pos.x, ty: pos.y, mode: 'rest', until: performance.now() + rnd(300, 1500),
+              face: Math.random() < .5 ? 1 : -1, frame: 0, pose: '', lift: 0, timers: [] };
   actors.push(a);
   dress(a);
   grab(a);
   place(a);
   return a;
 }
-// ---------- 傢俱（先放幾件試擺；二期改成用時光幣換、存在資料庫）----------
+// ---------- 傢俱（二期改成用時光幣換、存在資料庫）----------
 // 擺的位置先記在這台電腦（localStorage），拖曳方式跟拎寵物一樣
 const PROPS = [
-  { id: 'bed', x: .8, y: .72, w: 130 }, { id: 'tent', x: .88, y: .62, w: 130 },
-  { id: 'slide', x: .3, y: .64, w: 130 }, { id: 'fountain', x: .64, y: .79, w: 84 },
+  { id: 'bed', x: .8, y: .72, w: 120 }, { id: 'tent', x: .88, y: .62, w: 120 },
+  { id: 'slide', x: .3, y: .68, w: 130 }, { id: 'fountain', x: .64, y: .79, w: 80 },
+  { id: 'pool', x: .25, y: .5, w: 115 }, { id: 'swing', x: .44, y: .64, w: 100 },
+  { id: 'bench', x: .68, y: .62, w: 105 }, { id: 'tunnel', x: .5, y: .8, w: 95 },
+  { id: 'toybox', x: .57, y: .6, w: 62 }, { id: 'flowers', x: .24, y: .38, w: 54 },
+  { id: 'lantern', x: .67, y: .45, w: 40 },
 ];
+// 圖的高／寬
+const ASPECT = { bed: .77, tent: .985, slide: .835, tunnel: .815, scratcher: 1.408, swing: 1.081, pool: .68, fountain: 1.136,
+                 bench: .705, lantern: 1.626, flowers: 1.081, toybox: .885 };
+// 怎麼用：at＝在傢俱圖上的哪一點（左上 0,0；右下 1,1），door＝從地上哪裡過去（預設 at 正下方的地面）
+const USE = {
+  bed:      { kind: 'lie', at: [.5, .58] },
+  tent:     { kind: 'hide', at: [.45, .9], door: [.45, 1.03] },
+  tunnel:   { kind: 'through', at: [.2, .82], door: [.14, .95], out: [.88, .8] },
+  slide:    { kind: 'slide', door: [.9, 1.02], top: [.6, .16], end: [.05, .95] },
+  swing:    { kind: 'sit', at: [.56, .7], sway: true },
+  bench:    { kind: 'sit', at: [.3, .76] },
+  pool:     { kind: 'swim', at: [.5, .62] },
+  fountain: { kind: 'play', at: [.2, 1.02], poses: ['eat', 'chew'], every: 420, line: '咕嚕咕嚕，好涼！' },
+  toybox:   { kind: 'play', at: [.5, 1.08], poses: ['play', 'roll', 'jump', 'cheer'], every: 900 },
+  flowers:  { kind: 'play', at: [.5, 1.08], poses: ['sniff', 'look', 'sniff', 'cheer'], every: 1000, line: '花好香喔～' },
+};
 const PROP_KEY = 'park-pet-props';
 function propSpots() {
   try { return JSON.parse(localStorage.getItem(PROP_KEY) ?? '{}'); } catch { return {}; }
+}
+const propW = (o) => o.w * depth(o.y);
+const propZ = (o) => Math.round(o.y * 1000) - 2;
+// 傢俱圖上的一點 → 島上的座標
+function propPoint(o, [fx, fy]) {
+  const w = propW(o), h = w * (ASPECT[o.id] ?? 1);
+  return { x: o.x + (fx - .5) * w / GW, y: o.y + (fy - .88) * h / GH };
+}
+// 拎著的東西底下是哪件傢俱
+function propAt(x, y) {
+  let hit = null;
+  for (const o of props) {
+    if (!USE[o.id]) continue;
+    const w = propW(o), h = w * (ASPECT[o.id] ?? 1);
+    const px = x * GW, py = y * GH, cx = o.x * GW, top = o.y * GH - .88 * h;
+    if (px > cx - w * .5 && px < cx + w * .5 && py > top + h * .1 && py < top + h * 1.08 && (!hit || propZ(o) > propZ(hit))) hit = o;
+  }
+  return hit;
 }
 function addProps(box) {
   const saved = propSpots();
@@ -354,12 +414,13 @@ function addProps(box) {
     const at = saved[d.id] && walkable(saved[d.id].x, saved[d.id].y) ? saved[d.id] : d;
     const el = document.createElement('button');
     el.type = 'button';
-    el.className = 'prop';
+    el.className = `prop p-${d.id}`;
     el.setAttribute('aria-label', '傢俱（按住可以搬到別的地方）');
     el.innerHTML = `<span class="shadow"></span><img src="img/pet/furniture/${d.id}.webp" alt="">`;
-    const o = { el, x: at.x, y: at.y };
+    const o = { id: d.id, w: d.w, el, x: at.x, y: at.y, user: null };
+    props.push(o);
     const put = () => {
-      el.style.cssText = `left:${o.x * GW}px;top:${o.y * GH}px;width:${d.w * depth(o.y)}px;z-index:${el.classList.contains('held') ? 2000 : Math.round(o.y * 1000) - 2}`;
+      el.style.cssText = `left:${o.x * GW}px;top:${o.y * GH}px;width:${propW(o)}px;z-index:${el.classList.contains('held') ? 2000 : propZ(o)}`;
     };
     put();
     box.appendChild(el);
@@ -371,6 +432,7 @@ function addProps(box) {
       let held = false, ok = { x: o.x, y: o.y };
       const move = (ev) => {
         if (!held && Math.hypot(ev.clientX - sx, ev.clientY - sy) < 8) return;
+        if (!held && o.user) leave(o.user);            // 有寵物在用：先下來
         held = true;
         el.classList.add('held');
         o.x = Math.min(.98, Math.max(.02, (ev.clientX - g.left) / k / GW));
@@ -401,6 +463,217 @@ function addProps(box) {
   }
 }
 
+// ---------- 用傢俱、泡湖水 ----------
+// 照天氣、時間挑想去哪：下雨躲帳篷、晴天想泡水、晚上想睡
+function liking(id) {
+  const { wx, tod, season } = sky;
+  let w = 1;
+  if (wx === 'rain' || wx === 'snow') w *= { tent: 6, tunnel: 3, pool: .2, lake: wx === 'snow' ? 0 : .2, swing: .4 }[id] ?? .6;
+  else if (wx === 'sunny' && tod === 'day') w *= { pool: 1.6, lake: 1.4, fountain: 1.6 }[id] ?? 1;
+  if (season === 'summer' && (id === 'pool' || id === 'lake')) w *= 1.6;
+  if (season === 'winter' && (id === 'pool' || id === 'lake')) w *= .3;
+  if (tod === 'night') w *= { bed: 5, tent: 2 }[id] ?? .5;
+  return w;
+}
+// 湖邊找一個走得到的岸邊點
+function shore(from) {
+  for (let k = 0; k < 24; k++) {
+    const t = Math.random() * Math.PI * 2;
+    const p = { x: LAKE.x + Math.cos(t) * LAKE.rx * 1.08, y: LAKE.y + Math.sin(t) * LAKE.ry * 1.12 };
+    if (walkable(p.x, p.y) && (!from || clearPath(from, p))) return p;
+  }
+  return null;
+}
+const inLake = (x, y) => ((x - LAKE.x) / LAKE.rx) ** 2 + ((y - LAKE.y) / LAKE.ry) ** 2 < 1;
+function doorOf(o) {
+  const u = USE[o.id];
+  return propPoint(o, u.door ?? [u.at[0], Math.max(1.03, u.at[1])]);
+}
+// 停下來後要不要去玩傢俱；要的話走過去（a.next：走到了再開始用）
+function wantUse(a) {
+  const opts = [];
+  for (const o of props) {
+    if (!USE[o.id] || o.user || o.el.classList.contains('held')) continue;
+    const d = doorOf(o);
+    if (!walkable(d.x, d.y) || !clearPath(a, d)) continue;
+    opts.push({ o, d, w: liking(o.id) });
+  }
+  const s = liking('lake') ? shore(a) : null;
+  if (s) opts.push({ o: null, d: s, w: liking('lake') });
+  const total = opts.reduce((n, x) => n + x.w, 0);
+  if (!total) return false;
+  let r = Math.random() * total;
+  const c = opts.find((x) => (r -= x.w) < 0) ?? opts[0];
+  if (c.o) { c.o.user = a; a.using = c.o; }
+  a.tx = c.d.x; a.ty = c.d.y; a.mode = 'walk';
+  a.next = () => (c.o ? useProp(a, c.o) : swimLake(a));
+  return true;
+}
+
+const wait = (a, ms) => new Promise((r) => a.timers.push(setTimeout(r, ms)));
+// 從現在的位置滑／跳到 to（arc＞0 會跳一個弧線），poses 會輪播
+function glide(a, to, ms, { arc = 0, poses = null, every = 220 } = {}) {
+  return new Promise((done) => { a.tw = { x0: a.x, y0: a.y, x1: to.x, y1: to.y, t0: performance.now(), ms, arc, poses, every, done }; });
+}
+function loop(a, poses, every) { a.cycle = poses ? { poses, every } : null; if (poses) setPose(a, poses[0]); }
+
+async function useProp(a, o, dropped = false) {
+  const u = USE[o.id];
+  const id = a.useId = (a.useId ?? 0) + 1;
+  const still = () => a.useId === id && a.el.isConnected;
+  o.user = a; a.using = o;
+  a.mode = 'use'; a.next = null;
+  a.z = propZ(o) + 1;
+  const P = (f) => propPoint(o, f);
+  const door = doorOf(o);
+  let exit = door;
+  if (u.kind === 'lie' || u.kind === 'sit' || u.kind === 'swim') {
+    a.el.classList.add('up');
+    await glide(a, P(u.at), 480, { arc: 46, poses: ['jump'] });
+    if (!still()) return;
+    if (u.kind === 'lie') {
+      setPose(a, 'lie');
+      a.face = Math.random() < .5 ? 1 : -1;
+      const sleepy = sky.tod === 'night' || !a.p.active;
+      await wait(a, sleepy ? 1400 : rnd(4000, 6500));
+      if (!still()) return;
+      if (sleepy) { setPose(a, 'sleep'); floatUp(a, 'Zz'); await wait(a, rnd(5000, 9000)); if (!still()) return; setPose(a, 'yawn'); await wait(a, 1000); }
+    } else if (u.kind === 'sit') {
+      setPose(a, 'perch');
+      if (u.sway) a.el.classList.add('sway');
+      await wait(a, rnd(4000, 7500));
+      if (!still()) return;
+      a.el.classList.remove('sway');
+    } else {
+      a.el.classList.add('wade');
+      floatUp(a, '💦');
+      for (let k = 0; k < 2; k++) {
+        const c = P(u.at), t = { x: c.x + rnd(-.015, .015), y: c.y + rnd(-.008, .008) };
+        a.face = t.x > a.x ? 1 : -1;
+        await glide(a, t, 1600, { poses: ['swim1', 'swim2'], every: 380 });
+        if (!still()) return;
+      }
+      setPose(a, 'float');
+      await wait(a, rnd(2500, 4000));
+      if (!still()) return;
+      a.el.classList.remove('wade');
+      exit = P([.5, 1.1]);
+    }
+    await glide(a, exit, 420, { arc: 34, poses: ['jump'] });
+    if (!still()) return;
+    a.el.classList.remove('up');
+    if (u.kind === 'swim') { setPose(a, 'shake'); floatUp(a, '💦'); await wait(a, 1100); }
+  } else if (u.kind === 'hide' || u.kind === 'through') {
+    if (dropped) await glide(a, door, 300, { arc: 20, poses: ['jump'] });
+    if (!still()) return;
+    await glide(a, P(u.at), 450, { poses: ['back1', 'back2'] });
+    if (!still()) return;
+    a.el.classList.add('inside');
+    o.el.classList.add('rustle');
+    if (u.kind === 'through') {
+      exit = P(u.out);
+      a.face = exit.x > a.x ? 1 : -1;
+      await glide(a, exit, 1800);
+    } else await wait(a, rnd(3500, 7000));
+    if (!still()) return;
+    o.el.classList.remove('rustle');
+    a.el.classList.remove('inside');
+    if (u.kind === 'hide') await glide(a, door, 450, { poses: ['front1', 'front2'] });
+    if (!still()) return;
+    setPose(a, 'cheer');
+    await wait(a, 800);
+  } else if (u.kind === 'slide') {
+    if (!dropped) {
+      a.el.classList.add('up');
+      a.face = 1;
+      await glide(a, P(u.top), 1100, { poses: ['back1', 'back2'], every: 200 });
+    } else await glide(a, P(u.top), 300, { arc: 20, poses: ['lift'] });
+    if (!still()) return;
+    a.el.classList.add('up');
+    a.face = -1;
+    setPose(a, 'look');
+    await wait(a, 500);
+    if (!still()) return;
+    exit = P(u.end);
+    await glide(a, exit, 650, { poses: ['slide'] });
+    if (!still()) return;
+    a.el.classList.remove('up');
+    setPose(a, 'land');
+    await wait(a, 280);
+    setPose(a, 'cheer');
+    floatUp(a, pick(['好好玩！', '再一次！', '咻～']));
+    await wait(a, 900);
+  } else {
+    if (dropped) await glide(a, P(u.at), 300, { arc: 20, poses: ['jump'] });
+    a.face = o.x > a.x ? 1 : -1;
+    if (u.line && Math.random() < .5) floatUp(a, u.line);
+    loop(a, u.poses, u.every);
+    await wait(a, rnd(2600, 4200));
+    loop(a, null);
+    exit = { x: a.x, y: a.y };
+  }
+  if (still()) leave(a, exit);
+}
+
+// 泡湖水：從岸邊走進去游一游，再上岸甩水
+async function swimLake(a, at) {
+  const id = a.useId = (a.useId ?? 0) + 1;
+  const still = () => a.useId === id && a.el.isConnected;
+  a.mode = 'use'; a.next = null; a.using = null;
+  a.el.classList.add('wade');
+  const ang = Math.atan2((a.y - LAKE.y) / LAKE.ry, (a.x - LAKE.x) / LAKE.rx);
+  const ring = (t, r) => ({ x: LAKE.x + Math.cos(t) * LAKE.rx * r, y: LAKE.y + Math.sin(t) * LAKE.ry * r });
+  floatUp(a, '💦');
+  let t = ang;
+  if (!at) {
+    const p = ring(t, .62);
+    a.face = p.x > a.x ? 1 : -1;
+    await glide(a, p, 700, { poses: ['swim1', 'swim2'], every: 380 });
+  }
+  for (let k = 0; k < 2; k++) {
+    if (!still()) return;
+    t += rnd(-.6, .6);
+    const p = ring(t, rnd(.35, .62));
+    a.face = p.x > a.x ? 1 : -1;
+    await glide(a, p, 2200, { poses: ['swim1', 'swim2'], every: 380 });
+  }
+  if (!still()) return;
+  setPose(a, 'float');
+  await wait(a, rnd(2500, 4000));
+  if (!still()) return;
+  // 游回最近的岸邊
+  let out = null;
+  for (let k = 0; k < 16 && !out; k++) {
+    const tt = t + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * .35, p = ring(tt, 1.1);
+    if (walkable(p.x, p.y)) out = p;
+  }
+  out ??= somewhere(null);
+  a.face = out.x > a.x ? 1 : -1;
+  await glide(a, out, 900, { poses: ['swim1', 'swim2'], every: 380 });
+  if (!still()) return;
+  a.el.classList.remove('wade');
+  setPose(a, 'shake');
+  floatUp(a, '💦');
+  await wait(a, 1100);
+  if (still()) leave(a, out);
+}
+
+// 結束（或被打斷）：放開傢俱、回到地上；to＝要站的位置（不給就留在原地）
+function leave(a, to) {
+  a.useId = (a.useId ?? 0) + 1;
+  a.timers.forEach(clearTimeout);
+  a.timers = [];
+  a.tw = null; a.cycle = null; a.next = null; a.lift = 0; a.z = null;
+  if (a.using) { a.using.user = null; a.using.el.classList.remove('rustle'); a.using = null; }
+  a.el.classList.remove('up', 'sway', 'wade', 'inside');
+  if (to === undefined && a.mode === 'use' && !walkable(a.x, a.y)) to = somewhere({ x: a.x, y: a.y });
+  if (to && !walkable(to.x, to.y)) to = somewhere(to);
+  if (to) { a.x = to.x; a.y = to.y; }
+  a.tx = a.x; a.ty = a.y;
+  if (a.mode === 'use' || a.mode === 'walk') { a.mode = 'rest'; a.until = performance.now() + rnd(1500, 3500); a.restPose = restPose(a); }
+  place(a);
+}
+
 function addEgg(box) {
   const el = document.createElement('button');
   el.type = 'button';
@@ -425,8 +698,10 @@ function dress(a) {
   const mark = p.active ? MARK[m] ?? '' : '';
   const bub = $('.bub', a.el);
   if (!a.talking) { bub.textContent = mark; bub.hidden = !mark; bub.className = 'bub mark'; }
-  if (['asleep', 'quiet', 'angry'].includes(m) && !['held', 'eat', 'goeat', 'show'].includes(a.mode)) { a.mode = 'still'; setPose(a, POSE[m]); }
-  else if (a.mode === 'still') { a.mode = 'rest'; a.until = 0; }
+  if (['asleep', 'quiet', 'angry'].includes(m) && !['held', 'eat', 'goeat', 'show'].includes(a.mode)) {
+    if (a.mode === 'use' || a.using) leave(a);
+    a.mode = 'still'; setPose(a, POSE[m]);
+  } else if (a.mode === 'still') { a.mode = 'rest'; a.until = 0; }
 }
 function setPose(a, pose) {
   if (a.pose === pose) return;
@@ -435,17 +710,29 @@ function setPose(a, pose) {
 }
 function place(a) {
   a.el.style.left = (a.x * GW) + 'px';
-  a.el.style.top = (a.y * GH) + 'px';
-  a.el.style.zIndex = a.mode === 'held' ? 2000 : Math.round(a.y * 1000);
+  a.el.style.top = (a.y * GH - (a.lift ?? 0)) + 'px';
+  a.el.style.zIndex = a.mode === 'held' ? 2000 : a.z ?? Math.round(a.y * 1000);
   a.el.style.setProperty('--d', depth(a.y).toFixed(3));
   a.el.style.setProperty('--f', a.face);
 }
 
-// 每一格：走路、休息、玩、打瞌睡
+// 每一格：走路、休息、玩、打瞌睡、用傢俱
 function tick(now) {
   const dt = Math.min(.05, (now - last) / 1000);
   last = now;
+  skyFx?.step(dt);
   for (const a of actors) {
+    if (a.mode === 'use') {
+      if (a.tw) {
+        const w = a.tw, t = Math.min(1, (now - w.t0) / w.ms);
+        a.x = w.x0 + (w.x1 - w.x0) * t; a.y = w.y0 + (w.y1 - w.y0) * t;
+        a.lift = w.arc * Math.sin(Math.PI * t);
+        if (w.poses) setPose(a, w.poses[Math.floor(now / w.every) % w.poses.length]);
+        if (t >= 1) { a.tw = null; a.lift = 0; w.done(); }
+      } else if (a.cycle) setPose(a, a.cycle.poses[Math.floor(now / a.cycle.every) % a.cycle.poses.length]);
+      place(a);
+      continue;
+    }
     if (a.mode === 'held' || a.mode === 'still' || a.mode === 'eat' || a.mode === 'show') continue;
     const m = moodOf(a.p);
     if (a.mode === 'walk' || a.mode === 'goeat') {
@@ -455,6 +742,7 @@ function tick(now) {
       if (d < 3) {
         a.x = a.tx; a.y = a.ty;
         if (a.mode === 'goeat') { a.mode = 'eat'; a.arrive?.(); }
+        else if (a.next) { const go = a.next; a.next = null; go(); }
         else { a.mode = 'rest'; a.until = now + rnd(1500, 4500); a.restPose = restPose(a); }
       } else {
         a.x += dx / d * speed * dt / GW;
@@ -467,37 +755,47 @@ function tick(now) {
       }
     } else if (a.mode === 'rest') {
       setPose(a, a.restPose ?? POSE[m]);
-      if (now > a.until) {
-        const t = somewhere(Math.random() < .6 ? a : null, a);
-        a.tx = t.x; a.ty = t.y; a.mode = 'walk';
+      if (now > a.until && !busy) {
+        // 照顧中的那隻餓了就不去玩；其他時候偶爾去用傢俱、泡水
+        const fun = m === 'hungry' ? 0 : a.p.active ? .3 : .4;
+        if (!(Math.random() < fun && wantUse(a))) {
+          const t = somewhere(Math.random() < .6 ? a : null, a);
+          a.tx = t.x; a.ty = t.y; a.mode = 'walk';
+        }
       }
     }
     place(a);
   }
   raf = requestAnimationFrame(tick);
 }
-// 停下來時做什麼：島上的會玩、跳、打瞌睡；照顧中的看心情
+// 停下來時做什麼：島上的會玩、跳、打瞌睡；照顧中的看心情；下雨下雪會甩甩身體
 function restPose(a) {
   const m = moodOf(a.p);
   if (m === 'hungry') return 'hungry';
   if (m === 'happy') return pick(['cheer', 'jump', 'idle']);
-  return pick(['idle', 'idle', 'look', 'sniff', 'play', 'jump', 'dig', 'roll', 'lie', 'yawn', ...(a.p.active ? [] : ['sleep'])]);
+  const wet = sky && (sky.wx === 'rain' || sky.wx === 'snow') ? ['shake', 'shake'] : [];
+  const night = sky?.tod === 'night' && !a.p.active ? ['sleep', 'sleep', 'yawn'] : [];
+  return pick(['idle', 'idle', 'sit', 'look', 'sniff', 'play', 'jump', 'dig', 'roll', 'lie', 'yawn', ...wet, ...night, ...(a.p.active ? [] : ['sleep'])]);
 }
 
 // 拎起來：按住拖動；沒拖動就是點一下（選牠；選了再點＝摸摸）
+// 放到傢俱上就直接用（床上躺、鞦韆坐、泳池泡水…），放進湖裡就游泳
 function grab(a) {
   const el = a.el;
   el.addEventListener('pointerdown', (e) => {
     if (busy || e.button > 0) return;
     const g = $('.ground', layer).getBoundingClientRect();
     const k = g.width / GW;
-    const start = { x: e.clientX, y: e.clientY, ax: a.x, ay: a.y, mode: a.mode };
-    let held = false, ok = { x: a.x, y: a.y };
+    const start = { x: e.clientX, y: e.clientY, mode: a.mode };
+    let held = false, ok = { x: a.x, y: a.y }, aim = null;
     const move = (ev) => {
       const dx = ev.clientX - start.x, dy = ev.clientY - start.y;
       if (!held && Math.hypot(dx, dy) < 8) return;
       if (!held) {
         held = true;
+        if (a.mode === 'use' || a.using) leave(a, null);
+        start.mode = a.mode;
+        a.next = null;
         el.setPointerCapture?.(e.pointerId);
         a.mode = 'held';
         el.classList.add('held');
@@ -507,9 +805,13 @@ function grab(a) {
       // 手指拎在背上，所以腳在手指下方一點
       const x = (ev.clientX - g.left) / k / GW, y = (ev.clientY - g.top) / k / GH + .05;
       a.x = Math.min(.98, Math.max(.02, x)); a.y = Math.min(.95, Math.max(.05, y));
-      const good = walkable(a.x, a.y);
+      const can = start.mode !== 'still';
+      const hit = can ? propAt(a.x, a.y - .05) ?? propAt(a.x, a.y) : null;     // 手指或腳碰到都算
+      const target = hit && !hit.user ? hit : null;
+      if (target !== aim) { aim?.el.classList.remove('aim'); target?.el.classList.add('aim'); aim = target; }
+      const good = walkable(a.x, a.y) || !!aim || (can && inLake(a.x, a.y));
       el.classList.toggle('bad', !good);
-      if (good) ok = { x: a.x, y: a.y };
+      if (walkable(a.x, a.y)) ok = { x: a.x, y: a.y };
       place(a);
     };
     const up = () => {
@@ -519,10 +821,13 @@ function grab(a) {
       if (!held) { tap(a); return; }
       clearInterval(a.kick);
       el.classList.remove('held', 'bad');
-      if (!walkable(a.x, a.y)) { a.x = ok.x; a.y = ok.y; }
-      a.tx = a.x; a.ty = a.y;
+      aim?.el.classList.remove('aim');
       el.classList.add('drop');
       setTimeout(() => el.classList.remove('drop'), 450);
+      if (aim && !aim.user) { a.mode = 'use'; useProp(a, aim, true); return; }
+      if (start.mode !== 'still' && inLake(a.x, a.y)) { a.mode = 'use'; swimLake(a, true); return; }
+      if (!walkable(a.x, a.y)) { a.x = ok.x; a.y = ok.y; }
+      a.tx = a.x; a.ty = a.y;
       setPose(a, 'land');
       a.mode = 'show';
       place(a);
@@ -660,6 +965,7 @@ async function feed(code) {
     paintCare();
     return;
   }
+  if (a.mode === 'use' || a.using || a.next) leave(a);
   const i = item(code);
   const side = a.x > .7 ? -1 : 1;
   let spot = { x: a.x + side * .07, y: a.y + .015 };
@@ -713,6 +1019,7 @@ async function pat() {
   busy = true;
   try {
     const r = await api.pat();
+    if (a.mode === 'use' || a.using || a.next) leave(a);
     const was = a.mode;
     refresh(r);
     say(reply(r, a.p, null), a.p.id);
