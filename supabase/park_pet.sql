@@ -7,6 +7,9 @@
 -- 道具：每天主島免費領基本飼料；各島的招牌點心只從任務拿（在那個遊戲蓋到護照章就送一個）。
 -- 成長：吃東西、被摸會長經驗，分幼年、成長、完全體三階段。
 -- 老師：班級可以開「上課時間桌寵休息」（週一到週五 8:00–16:00，臺灣時間）。
+-- 寵物島：第一隻免費領；護照章蓋到 3 個、6 個，各可以再領一隻起始夥伴。一次只有一隻在小窩（active），
+--   其他的住在寵物島，自給自足不會餓、也不會長大。換回小窩的時候是吃飽的；
+--   小窩那隻餓了、生氣、睡著時不肯走，要先照顧好才能換。
 --
 -- 一樣只「加表、加函式」，守護異世界的東西一個都不動。
 --
@@ -125,6 +128,13 @@ create policy park_pet_inventory_read on public.park_pet_inventory for select to
 -- 4. 小幫手（不開給人直接叫）
 -- -----------------------------------------------------------------------------
 
+-- 可以養幾隻：第一隻免費，護照章 3 個、6 個各多一隻
+create or replace function public.park_pet_slots(p_student uuid)
+returns int language sql stable security definer set search_path = public, pg_temp as $$
+  select 1 + (n >= 3)::int + (n >= 6)::int
+    from (select count(*) as n from public.park_student_stamps x where x.student_id = p_student) c;
+$$;
+
 -- 經驗 → 階段：0 幼年、12 成長、40 完全體
 create or replace function public.park_pet_stage(p_xp int)
 returns int language sql immutable set search_path = public, pg_temp as $$
@@ -154,14 +164,31 @@ returns text language sql stable set search_path = public, pg_temp as $$
     else 'normal' end;
 $$;
 
+-- 給畫面看的一隻。小窩那隻加上兩排狀態（0～5 格）：
+--   full 飽足：剛吃完 5 格，一天後歸零（＝餓了）；hungry_in：還有幾分鐘會餓
+--   joy 心情：剛被摸 5 格，6 小時內慢慢降到 3；平常 2；餓了 1；生氣、睡著 0
+-- 寵物島上的（active = false）自給自足，mood 固定是 island。
 create or replace function public.park_pet_json(p public.park_pets)
 returns jsonb language sql stable set search_path = public, pg_temp as $$
+  with m as (
+    select public.park_pet_mood(p) as mood,
+           extract(epoch from now() - p.fed_at) / 3600 as fed_h,
+           extract(epoch from now() - p.patted_at) / 3600 as pat_h
+  )
   select jsonb_build_object(
     'id', p.id, 'species', p.species, 'name', p.name, 'active', p.active,
     'xp', p.xp, 'stage', public.park_pet_stage(p.xp),
     'next_xp', case public.park_pet_stage(p.xp) when 1 then 12 when 2 then 40 else null end,
-    'mood', public.park_pet_mood(p), 'fed_at', p.fed_at,
-    'sulky', p.sulky and now() - p.fed_at < interval '1 day');   -- 吃飽了還在鬧脾氣（要摸摸）
+    'mood', case when p.active then m.mood else 'island' end, 'fed_at', p.fed_at,
+    'sulky', p.sulky and now() - p.fed_at < interval '1 day',   -- 吃飽了還在鬧脾氣（要摸摸）
+    'full', case when not p.active then 5 else greatest(0, least(5, ceil(5 - m.fed_h * 5 / 24)))::int end,
+    'hungry_in', case when p.active then greatest(0, round((24 - m.fed_h) * 60))::int end,
+    'joy', case when not p.active then 4
+                when m.mood in ('angry', 'asleep') then 0
+                when m.mood = 'hungry' then 1
+                when m.pat_h < 6 then (3 + ceil((6 - m.pat_h) / 3))::int
+                else 2 end)
+  from m;
 $$;
 
 -- 發道具：每天的免費飼料（背包最多放 9 份）、每個護照章送那座島的招牌點心。回傳這次新發的。
@@ -219,6 +246,9 @@ returns jsonb language sql stable security definer set search_path = public, pg_
                                                   'facility_name', (select f.name from public.park_facilities f where f.code = i.facility))
                                order by i.sort) from public.park_pet_items i),
     'quiet', public.park_pet_quiet(p_student),
+    'slots', public.park_pet_slots(p_student),
+    'stamps', (select count(*) from public.park_student_stamps x where x.student_id = p_student),
+    'unlock_at', jsonb_build_array(3, 6),
     'granted', p_granted);
 $$;
 
@@ -261,22 +291,53 @@ begin
 end;
 $$;
 
--- 領養：p_species 給 null 或 'random' 就從一開始的三隻隨機挑。只有第一隻能這樣領。
+-- 領養：p_species 給 null 或 'random' 就從還沒養的起始夥伴裡隨機挑。
+-- 第一隻直接住進小窩；之後解鎖的住到寵物島。
 create or replace function public.park_pet_adopt(p_species text, p_name text)
 returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
-declare v_me uuid := public.current_student_id(); v_sp text; v_name text;
+declare v_me uuid := public.current_student_id(); v_sp text; v_name text; v_have int;
 begin
   if v_me is null then raise exception '請先登入學生帳號'; end if;
-  if exists (select 1 from public.park_pets p where p.student_id = v_me) then raise exception '你已經有桌寵了'; end if;
+  select count(*) into v_have from public.park_pets p where p.student_id = v_me;
+  if v_have >= public.park_pet_slots(v_me) then
+    raise exception '%', case when v_have = 0 then '現在不能領養' when v_have >= 3 then '起始夥伴都領養完了'
+                              else '再多蓋幾個護照章，就能領養下一隻夥伴' end;
+  end if;
   if p_species is null or p_species = 'random' then
-    select s.code into v_sp from public.park_pet_species s where s.starter order by random() limit 1;
+    select s.code into v_sp from public.park_pet_species s
+     where s.starter and not exists (select 1 from public.park_pets p where p.student_id = v_me and p.species = s.code)
+     order by random() limit 1;
   else
     select s.code into v_sp from public.park_pet_species s where s.code = p_species and s.starter;
+    if exists (select 1 from public.park_pets p where p.student_id = v_me and p.species = v_sp) then
+      raise exception '你已經有這隻了';
+    end if;
   end if;
   if v_sp is null then raise exception '沒有這種桌寵'; end if;
   v_name := public.park_pet_name_ok(coalesce(nullif(btrim(p_name), ''), (select name from public.park_pet_species where code = v_sp)));
-  insert into public.park_pets (student_id, species, name) values (v_me, v_sp, v_name);
-  return public.park_pet_state(v_me);
+  insert into public.park_pets (student_id, species, name, active) values (v_me, v_sp, v_name, v_have = 0);
+  return public.park_pet_state(v_me) || jsonb_build_object('adopted', v_sp);
+end;
+$$;
+
+-- 換寵物：把寵物島上的一隻帶回小窩，原本小窩那隻回島上。
+create or replace function public.park_pet_swap(p_pet bigint)
+returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
+declare v_me uuid := public.current_student_id(); v public.park_pets; v_mood text;
+begin
+  v := public.park_pet_mine(v_me);
+  if v.id = p_pet then raise exception '牠已經在小窩裡了'; end if;
+  if not exists (select 1 from public.park_pets p where p.id = p_pet and p.student_id = v_me) then
+    raise exception '找不到這隻寵物';
+  end if;
+  v_mood := public.park_pet_mood(v);
+  if v_mood = 'asleep' then raise exception '%', v.name || '在睡覺，先叫醒牠、餵飽牠才能換'; end if;
+  if v_mood = 'hungry' then raise exception '%', v.name || '肚子餓了，不肯走，先餵牠吃東西'; end if;
+  if v_mood = 'angry' then raise exception '%', v.name || '還在生氣，先把牠照顧好才能換'; end if;
+  update public.park_pets set active = false where id = v.id;
+  -- 在島上自給自足：回到小窩時是吃飽的
+  update public.park_pets set active = true, fed_at = now(), sulky = false, patted_at = null where id = p_pet;
+  return public.park_pet_state(v_me) || jsonb_build_object('did', 'swap');
 end;
 $$;
 
@@ -377,11 +438,12 @@ revoke all on function
   public.park_pet_mood(public.park_pets, timestamptz), public.park_pet_json(public.park_pets),
   public.park_pet_grant(uuid), public.park_pet_state(uuid, jsonb), public.park_pet_name_ok(text),
   public.park_pet_mine(uuid), public.park_pet_me(), public.park_pet_adopt(text, text),
+  public.park_pet_slots(uuid), public.park_pet_swap(bigint),
   public.park_pet_feed(text), public.park_pet_pat(), public.park_pet_rename(text),
   public.park_pet_class_quiet(text), public.park_pet_set_class_quiet(text, boolean)
   from public, anon, authenticated;
 grant execute on function
-  public.park_pet_me(), public.park_pet_adopt(text, text), public.park_pet_feed(text),
+  public.park_pet_me(), public.park_pet_adopt(text, text), public.park_pet_feed(text), public.park_pet_swap(bigint),
   public.park_pet_pat(), public.park_pet_rename(text),
   public.park_pet_class_quiet(text), public.park_pet_set_class_quiet(text, boolean)
   to authenticated;

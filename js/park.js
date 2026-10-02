@@ -93,7 +93,16 @@ park.map.slots.forEach((s, i) => {
   b.className = 'isle';
   b.style.cssText = `left:${s.left}px;top:${s.top}px;width:${s.width}px;--in:${(i * .05).toFixed(2)}s;--delay:${-i * 1.3}s`;
   const z = bySlot.get(s.slot);
-  if (z) {
+  if (s.slot === park.map.pet_slot && !z) {
+    b.classList.add('pet-isle');
+    b.setAttribute('aria-label', '寵物島');
+    b.innerHTML = `<div class="bob"><div class="lift"><div class="foam"></div><img class="art" src="img/decor/sandbar.webp" alt=""></div></div><div class="plate"><b>寵物島</b><span>夥伴們住的地方</span></div>`;
+    b.addEventListener('click', () => {
+      if (dragged) return;
+      if (account.current().kind !== 'student') return say('map', '這裡是寵物島！登入以後就能領養自己的夥伴喔。');
+      pet.openIsland();
+    });
+  } else if (z) {
     buildIsle(b, z);
     b.insertAdjacentHTML('beforeend', `<div class="plate"><b>${esc(z.name)}</b><span>${esc(zoneSub(z))}</span></div>`);
     b.addEventListener('click', () => !dragged && openCard(z));
@@ -109,7 +118,8 @@ park.map.slots.forEach((s, i) => {
 });
 
 // ---------- 主島桌寵：坐在樂園村莊上（js/pet.js） ----------
-pet.init({ me: () => account.current(), host: () => islesLayer, dragged: () => dragged });
+pet.init({ me: () => account.current(), host: () => islesLayer, dragged: () => dragged,
+  island: () => park.map.slots.find((s) => s.slot === park.map.pet_slot && !bySlot.has(s.slot)) });
 
 // ---------- 海上的小裝飾（燈塔、礁石、海豚…），位置寫在 data/park.json ----------
 const decorLayer = $('#decor');

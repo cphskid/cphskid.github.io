@@ -256,6 +256,7 @@ async function petcall(fn, args) {
 export const pet = {
   me:            () => petcall('park_pet_me'),
   adopt:         (species, name) => petcall('park_pet_adopt', { p_species: species, p_name: name }),
+  swap:          (id) => petcall('park_pet_swap', { p_pet: id }),
   feed:          (item) => petcall('park_pet_feed', { p_item: item }),
   pat:           () => petcall('park_pet_pat'),
   rename:        (name) => petcall('park_pet_rename', { p_name: name }),

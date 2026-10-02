@@ -34,7 +34,7 @@ select public.park_pet_adopt('hamster', '') as s \gset
 select test_ok(:'s'::jsonb -> 'pets' -> 0 ->> 'name' = '黃金鼠', '沒取名就用種類的名字');
 select test_ok(:'s'::jsonb -> 'pets' -> 0 ->> 'mood' = 'normal', '剛領養：普通');
 select test_ok((:'s'::jsonb -> 'pets' -> 0 ->> 'stage')::int = 1, '剛領養：幼年');
-select test_denied($$select public.park_pet_adopt('random', '再一隻')$$, '只能領第一隻');
+select test_denied($$select public.park_pet_adopt('random', '再一隻')$$, '沒有章：只能領第一隻');
 select test_ok((public.park_pet_rename('豆豆') -> 'pets' -> 0 ->> 'name') = '豆豆', '可以改名');
 
 \echo '── 隨機'
@@ -93,6 +93,52 @@ set role authenticated;
 select test_as('d0000000-0000-0000-0000-000000000011', true);
 select test_ok((public.park_pet_me() -> 'pets' -> 0 ->> 'stage')::int = 2, '12 點以上：成長期');
 select test_ok((public.park_pet_feed('magic-fruit') -> 'pets' -> 0 ->> 'stage')::int = 3, '40 點以上：完全體');
+
+\echo '── 狀態欄'
+select public.park_pet_me() -> 'pets' -> 0 as p \gset
+select test_ok((:'p'::jsonb ->> 'full')::int = 5, '剛吃完：飽足 5 格');
+select test_ok((:'p'::jsonb ->> 'hungry_in')::int between 1430 and 1440, '大約 24 小時後會餓');
+select test_ok((public.park_pet_pat() -> 'pets' -> 0 ->> 'joy')::int = 5, '剛摸完：心情 5 格');
+reset role;
+update public.park_pets set fed_at = now() - interval '13 hours', patted_at = now() - interval '5 hours' where student_id = :'amy';
+set role authenticated;
+select test_as('d0000000-0000-0000-0000-000000000011', true);
+select public.park_pet_me() -> 'pets' -> 0 as p \gset
+select test_ok((:'p'::jsonb ->> 'full')::int = 3, '13 小時沒吃：飽足剩 3 格');
+select test_ok((:'p'::jsonb ->> 'joy')::int = 4, '5 小時前摸過：心情 4 格');
+
+\echo '── 寵物島：蓋章解鎖第二隻、換回小窩'
+select public.park_pet_me() as s \gset
+select test_ok((:'s'::jsonb ->> 'slots')::int = 1 + ((:'s'::jsonb ->> 'stamps')::int >= 3)::int + ((:'s'::jsonb ->> 'stamps')::int >= 6)::int, '可以養幾隻跟著章數走');
+reset role;
+-- 讓艾咪剛好 3 個章：第二隻解鎖、第三隻還沒
+delete from public.park_student_stamps where student_id = :'amy' and (facility, stamp) not in (select facility, stamp from public.park_student_stamps where student_id = :'amy' order by awarded_at limit 3);
+set role authenticated;
+select test_as('d0000000-0000-0000-0000-000000000011', true);
+select test_ok((public.park_pet_me() ->> 'slots')::int = 2, '3 個章：可以養兩隻');
+select public.park_pet_adopt('random', '小二') as s \gset
+select test_ok(jsonb_array_length(:'s'::jsonb -> 'pets') = 2, '領養了第二隻');
+select test_ok((select count(*) from jsonb_array_elements(:'s'::jsonb -> 'pets') x where (x ->> 'active')::boolean) = 1, '一次只有一隻在小窩');
+select test_ok(:'s'::jsonb -> 'pets' -> 1 ->> 'mood' = 'island', '第二隻住在寵物島');
+select test_ok((select count(distinct x ->> 'species') from jsonb_array_elements(:'s'::jsonb -> 'pets') x) = 2, '隨機不會抽到已經有的');
+select test_denied($$select public.park_pet_adopt('random', '小三')$$, '還沒 6 個章：不能領第三隻');
+select (:'s'::jsonb -> 'pets' -> 1 ->> 'id')::bigint as second \gset
+select (:'s'::jsonb -> 'pets' -> 0 ->> 'id')::bigint as first \gset
+reset role;
+update public.park_pets set fed_at = now() - interval '30 hours' where student_id = :'amy' and active;
+update public.park_pets set fed_at = now() - interval '30 days', xp = 3 where id = :second;
+set role authenticated;
+select test_as('d0000000-0000-0000-0000-000000000011', true);
+select test_denied(format('select public.park_pet_swap(%s)', :second), '小窩那隻餓了不肯走');
+select public.park_pet_feed('kibble') as s \gset
+select public.park_pet_swap(:second) as s \gset
+select test_ok((select x ->> 'id' from jsonb_array_elements(:'s'::jsonb -> 'pets') x where (x ->> 'active')::boolean)::bigint = :second, '餵飽之後換成功');
+select test_ok((select x ->> 'mood' from jsonb_array_elements(:'s'::jsonb -> 'pets') x where (x ->> 'active')::boolean) = 'normal', '島上一個月也不會餓：回小窩是吃飽的');
+select test_ok((select x ->> 'xp' from jsonb_array_elements(:'s'::jsonb -> 'pets') x where (x ->> 'active')::boolean)::int = 3, '在島上不會長大');
+select test_denied(format('select public.park_pet_swap(%s)', :second), '已經在小窩的不用換');
+select test_as('d0000000-0000-0000-0000-000000000012', true);
+select test_denied(format('select public.park_pet_swap(%s)', :first), '不能換別人的寵物');
+select test_as('d0000000-0000-0000-0000-000000000011', true);
 
 \echo '── 老師：上課時間桌寵休息'
 select test_denied(format('select public.park_pet_set_class_quiet(%L, true)', :'c2'), '學生不能改班級設定');

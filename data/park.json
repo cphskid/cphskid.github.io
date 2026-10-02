@@ -4,6 +4,8 @@
   "map": {
     "width": 2200,
     "height": 900,
+    "_pet_slot": "寵物島放在哪個 slot（主島桌寵，js/pet.js）；這個 slot 就不放雲霧",
+    "pet_slot": 5,
     "slots": [
       { "slot": 1, "left": 50,   "top": 330, "width": 430 },
       { "slot": 2, "left": 600,  "top": 105, "width": 400 },
