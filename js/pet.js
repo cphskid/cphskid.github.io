@@ -53,11 +53,11 @@ const petById = (id) => state?.pets?.find((p) => p.id === id) ?? null;
 const speciesName = (code) => state?.species?.find((s) => s.code === code)?.name ?? '';
 const item = (code) => state?.items?.find((i) => i.code === code);
 // 圖：img/pet/<種類>/<階段>-<動作>.webp（PT 系列動作表切出來的）
-// 補充動作（Gemini 產的 PT-05A～07A）目前只有幼年；其他階段先借相近的格
+// 補充動作（Gemini 產的 PT-05～07，三個階段都有）；EXTRA 是萬一缺圖時借的格
 const EXTRA = { lift: 'jump', lift2: 'jump', land: 'idle', front1: 'walk1', front2: 'walk2', back1: 'walk1', back2: 'walk2',
                 sniff: 'idle', look: 'idle', roll: 'play', yawn: 'sleep', dig: 'play', lie: 'idle',
                 sit: 'idle', perch: 'idle', slide: 'jump', swim1: 'walk1', swim2: 'walk2', float: 'sleep', shake: 'play' };
-const EXTRA_STAGES = [1];
+const EXTRA_STAGES = [1, 2, 3];
 const art = (species, stage = 1, pose = 'idle') =>
   `img/pet/${esc(species)}/${stage}-${EXTRA[pose] && !EXTRA_STAGES.includes(stage) ? EXTRA[pose] : pose}.webp`;
 const POSE = { normal: 'idle', happy: 'cheer', hungry: 'hungry', angry: 'angry', asleep: 'sleep', quiet: 'sleep', island: 'idle' };
@@ -324,6 +324,8 @@ function openScene({ select, say: first } = {}) {
       <img class="land" src="img/pet/island.webp" alt="">
       <div class="actors"></div>
       <div class="haze" aria-hidden="true"></div>
+      <button type="button" class="furn-btn" data-furn>🛋️ 我的傢俱</button>
+      <div class="furn" hidden></div>
       <p class="skychip">${SKY_NAME.wx[sky.wx]}・${SKY_NAME.season[sky.season]}・${SKY_NAME.tod[sky.tod]}</p>
       <p class="hint">點一下看牠，按住可以把牠拎到傢俱上、湖裡或別的地方；傢俱也搬得動</p>
     </section>
@@ -333,6 +335,7 @@ function openScene({ select, say: first } = {}) {
   state.pets.forEach((p) => addActor(box, p));
   if (canAdopt()) addEgg(box);
   skyFx = makeSky($('.ground', layer), sky, { w: GW, h: GH, lake: LAKE });
+  $('[data-furn]', layer).onclick = toggleFurn;
   paintCare();
   if (first) say(first, selected);
   else if (home) {
@@ -387,6 +390,17 @@ const USE = {
   flowers:  { kind: 'play', at: [.5, 1.08], poses: ['sniff', 'look', 'sniff', 'cheer'], every: 1000, line: '花好香喔～' },
 };
 const PROP_KEY = 'park-pet-props';
+// 一開始送三件；其他的之後在樂園商店用時光幣換（二期，資料庫）。現在先記在這台電腦，網址加 ?furn=all 可以全部看
+const STARTER = ['bed', 'slide', 'pool'];
+const FURN_NAME = { bed: '軟軟小床', tent: '露營帳篷', slide: '溜滑梯', fountain: '噴水池', pool: '小泳池', swing: '盪鞦韆',
+                    bench: '野餐桌椅', tunnel: '鑽鑽隧道', toybox: '玩具箱', flowers: '花盆', lantern: '小燈籠' };
+const OWN_KEY = 'park-pet-furniture';
+function ownedFurniture() {
+  if (new URLSearchParams(location.search).get('furn') === 'all') return PROPS.map((d) => d.id);
+  let got = [];
+  try { got = JSON.parse(localStorage.getItem(OWN_KEY) ?? '[]'); } catch { /* 讀不到就只有基本的 */ }
+  return [...STARTER, ...got.filter((id) => !STARTER.includes(id))];
+}
 function propSpots() {
   try { return JSON.parse(localStorage.getItem(PROP_KEY) ?? '{}'); } catch { return {}; }
 }
@@ -410,7 +424,8 @@ function propAt(x, y) {
 }
 function addProps(box) {
   const saved = propSpots();
-  for (const d of PROPS) {
+  const own = ownedFurniture();
+  for (const d of PROPS.filter((x) => own.includes(x.id))) {
     const at = saved[d.id] && walkable(saved[d.id].x, saved[d.id].y) ? saved[d.id] : d;
     const el = document.createElement('button');
     el.type = 'button';
@@ -461,6 +476,20 @@ function addProps(box) {
       addEventListener('pointercancel', up);
     });
   }
+}
+
+// 傢俱清單：有的擺在島上；沒有的上鎖，等樂園商店開張用時光幣換
+function toggleFurn() {
+  const box = $('.furn', layer);
+  if (!box.hidden) { box.hidden = true; return; }
+  const own = ownedFurniture();
+  box.innerHTML = `<h3>我的傢俱 <small>${own.length} / ${PROPS.length}</small></h3>
+    <div class="furn-list">${PROPS.map((d) => `<span class="furn-i${own.includes(d.id) ? '' : ' locked'}">
+      <img src="img/pet/furniture/${d.id}.webp" alt=""><b>${FURN_NAME[d.id]}</b>${own.includes(d.id) ? '' : '<i>🔒</i>'}</span>`).join('')}</div>
+    <p class="note">上鎖的傢俱之後可以在樂園商店用時光幣換；擺在島上的按住就能搬。</p>
+    <button type="button" class="ghost small" data-furn-close>關起來</button>`;
+  $('[data-furn-close]', box).onclick = () => { box.hidden = true; };
+  box.hidden = false;
 }
 
 // ---------- 用傢俱、泡湖水 ----------
