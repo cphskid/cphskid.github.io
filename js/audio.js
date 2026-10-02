@@ -33,14 +33,25 @@ function audio() {
   try { ctx = new C(); } catch { return null; }
   return ctx;
 }
+// iPad／iPhone 的 Safari 只認 touchend、click 這類「放開手指」的點擊，pointerdown 不算；
+// 所以每種點擊都聽，一直試到真的出聲為止，不是只試第一下。
+const GESTURES = ['pointerdown', 'pointerup', 'touchend', 'click', 'keydown'];
 function unlock() {
   const a = audio();
-  if (a && a.state === 'suspended') a.resume().then(resumeWanted);
-  else resumeWanted();
+  if (!a) return done();
+  try { // iOS 老規矩：在點擊裡先播一個無聲的音
+    const s = a.createBufferSource();
+    s.buffer = a.createBuffer(1, 1, 22050);
+    s.connect(a.destination);
+    s.start(0);
+  } catch { /* 播不了就算了 */ }
+  if (a.state === 'running') { resumeWanted(); return done(); }
+  a.resume().then(() => { if (a.state === 'running') { resumeWanted(); done(); } }).catch(() => {});
 }
-const once = () => { unlock(); removeEventListener('pointerdown', once, true); removeEventListener('keydown', once, true); };
-addEventListener('pointerdown', once, true);
-addEventListener('keydown', once, true);
+function done() { GESTURES.forEach((e) => removeEventListener(e, unlock, true)); }
+GESTURES.forEach((e) => addEventListener(e, unlock, true));
+// iPhone 側邊靜音鍵打開時，網頁聲音預設會被吃掉；宣告成「播放」就照樣出聲（要安靜用左下角喇叭）
+try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch { /* 舊版沒有 */ }
 
 function load(code) {
   const have = buffers.get(code);
@@ -129,5 +140,7 @@ document.addEventListener('visibilitychange', () => {
   const a = ctx;
   if (!a) return;
   if (document.hidden) a.suspend();
-  else a.resume().then(resumeWanted);
+  else a.resume().then(resumeWanted, () => {}).then(() => {
+    if (a.state !== 'running') GESTURES.forEach((e) => addEventListener(e, unlock, true)); // 沒接回來就等下一次點擊
+  });
 });
