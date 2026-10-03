@@ -443,9 +443,11 @@ async function enterFacility(e) {
   const go = () => { location.href = href; };
   if (reduceMotion) return go();
   const minTime = new Promise((ok) => setTimeout(ok, 1100));
-  await Promise.race([Promise.all([minTime, prefetchGame(href, (f) => { bar.style.width = `${Math.round(f * 100)}%`; })]),
-                      new Promise((ok) => setTimeout(ok, 10000))]);
-  bar.style.width = '100%';
+  const label = p.querySelector('b');
+  const show = (f) => { const n = Math.round(f * 100); bar.style.width = `${n}%`; label.textContent = `穿越時空中… ${n}%`; };
+  // 最多等 4 秒；沒抓完的到了遊戲那邊會接著抓（那邊有自己的進度條）
+  await Promise.race([Promise.all([minTime, prefetchGame(href, show)]), new Promise((ok) => setTimeout(ok, 4000))]);
+  show(1);
   setTimeout(go, 150);
 }
 // 只抓同一個網站底下的遊戲（GitHub Pages 上的各遊戲），讀它首頁裡的 js、css，放進瀏覽器快取
