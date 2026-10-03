@@ -57,6 +57,13 @@ create table if not exists public.park_pets (
   unique (student_id, species)
 );
 create unique index if not exists park_pets_one_active on public.park_pets (student_id) where active;
+-- 心情點數（0～20，每小時少 1）：摸摸、玩、完成願望慢慢加上去；play_*：一天最多算幾次願望
+alter table public.park_pets add column if not exists joy      int not null default 8;
+alter table public.park_pets add column if not exists joy_at   timestamptz not null default now();
+alter table public.park_pets add column if not exists played_at timestamptz;
+alter table public.park_pets add column if not exists play_day date;
+alter table public.park_pets add column if not exists play_n   int not null default 0;
+alter table public.park_pets add column if not exists ate_at   timestamptz;
 
 -- 背包
 create table if not exists public.park_pet_inventory (
@@ -152,7 +159,13 @@ returns boolean language sql stable security definer set search_path = public, p
                   where m.student_id = p_student and s.pet_quiet);
 $$;
 
--- 桌寵現在的狀態：asleep 睡著 / angry 生氣 / hungry 餓了 / happy 開心 / normal 普通
+-- 現在的心情點數（存的點數扣掉經過的小時）
+create or replace function public.park_pet_joy_now(p public.park_pets, p_at timestamptz default now())
+returns numeric language sql stable set search_path = public, pg_temp as $$
+  select greatest(0, p.joy - extract(epoch from p_at - p.joy_at) / 3600)::numeric;
+$$;
+
+-- 桌寵現在的狀態：asleep 睡著 / angry 生氣 / hungry 餓了 / happy 開心（心情 13 點以上）/ normal 普通
 create or replace function public.park_pet_mood(p public.park_pets, p_at timestamptz default now())
 returns text language sql stable set search_path = public, pg_temp as $$
   select case
@@ -160,20 +173,28 @@ returns text language sql stable set search_path = public, pg_temp as $$
     when p_at - p.fed_at >= interval '2 days' then 'angry'
     when p_at - p.fed_at >= interval '1 day'  then 'hungry'
     when p.sulky then 'angry'
-    when p.patted_at is not null and p_at - p.patted_at < interval '6 hours' then 'happy'
+    when public.park_pet_joy_now(p, p_at) >= 13 then 'happy'
     else 'normal' end;
 $$;
 
+-- 加心情點數（最多 20）
+create or replace function public.park_pet_add_joy(p_id bigint, p_pts int)
+returns void language sql security definer set search_path = public, pg_temp as $$
+  update public.park_pets p
+     set joy = least(20, round(public.park_pet_joy_now(p) + p_pts)::int), joy_at = now()
+   where p.id = p_id;
+$$;
+
 -- 給畫面看的一隻。小窩那隻加上兩排狀態（0～5 格）：
---   full 飽足：剛吃完 5 格，一天後歸零（＝餓了）；hungry_in：還有幾分鐘會餓
---   joy 心情：剛被摸 5 格，6 小時內慢慢降到 3；平常 2；餓了 1；生氣、睡著 0
+--   full 飽足：還能撐幾小時（滿的是 24 小時，一格約 5 小時）；hungry_in：還有幾分鐘會餓
+--   joy 心情：心情點數每 4 點一格（最少 1 格）；餓了 1；生氣、睡著 0
 -- 寵物島上的（active = false）自給自足，mood 固定是 island。
 create or replace function public.park_pet_json(p public.park_pets)
 returns jsonb language sql stable set search_path = public, pg_temp as $$
   with m as (
     select public.park_pet_mood(p) as mood,
            extract(epoch from now() - p.fed_at) / 3600 as fed_h,
-           extract(epoch from now() - p.patted_at) / 3600 as pat_h
+           public.park_pet_joy_now(p) as joy_pts
   )
   select jsonb_build_object(
     'id', p.id, 'species', p.species, 'name', p.name, 'active', p.active,
@@ -186,8 +207,7 @@ returns jsonb language sql stable set search_path = public, pg_temp as $$
     'joy', case when not p.active then 4
                 when m.mood in ('angry', 'asleep') then 0
                 when m.mood = 'hungry' then 1
-                when m.pat_h < 6 then (3 + ceil((6 - m.pat_h) / 3))::int
-                else 2 end)
+                else greatest(1, least(5, ceil(m.joy_pts / 4)))::int end)
   from m;
 $$;
 
@@ -336,12 +356,13 @@ begin
   if v_mood = 'angry' then raise exception '%', v.name || '還在生氣，先把牠照顧好才能換'; end if;
   update public.park_pets set active = false where id = v.id;
   -- 在島上自給自足：回到小窩時是吃飽的
-  update public.park_pets set active = true, fed_at = now(), sulky = false, patted_at = null where id = p_pet;
+  update public.park_pets set active = true, fed_at = now(), sulky = false, patted_at = null, joy = 8, joy_at = now() where id = p_pet;
   return public.park_pet_state(v_me) || jsonb_build_object('did', 'swap');
 end;
 $$;
 
--- 餵食：飼料吃飽了就不吃（3 小時內餵過），點心隨時都吃
+-- 餵食：一份飼料撐 6 小時（約一格多），點心撐 10 小時；肚子是滿的就不吃。
+-- 飼料要隔 15 分鐘才能再餵（慢慢吃）；點心隨時都吃。吃東西心情也 +1。
 create or replace function public.park_pet_feed(p_item text)
 returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
 declare
@@ -356,20 +377,26 @@ begin
   if v_mood = 'asleep' then raise exception '牠在睡覺，先點一下叫醒牠'; end if;
   select * into v_i from public.park_pet_items i where i.code = p_item;
   if v_i.code is null then raise exception '沒有這種食物'; end if;
-  if v_i.kind = 'food' and now() - v.fed_at < interval '3 hours' then raise exception '牠吃飽了，等一下再餵'; end if;
+  if v_i.kind = 'food' and now() - v.fed_at < interval '1 hour' then raise exception '牠吃得飽飽的，等一下再餵'; end if;
+  if v_i.kind = 'food' and v.ate_at is not null and now() - v.ate_at < interval '15 minutes' then
+    raise exception '牠還在消化，等一下再餵'; end if;
   update public.park_pet_inventory set qty = qty - 1
    where student_id = v_me and item = p_item and qty > 0
   returning qty into v_left;
   if v_left is null then raise exception '背包裡沒有了'; end if;
+  -- fed_at＝「肚子空掉的時間往前推 24 小時」：吃一份就往後加幾小時，最多加到現在（滿）
   update public.park_pets
-     set fed_at = now(), xp = xp + v_i.xp,
+     set fed_at = least(now(), greatest(fed_at, now() - interval '1 day')
+                               + case when v_i.kind = 'food' then interval '6 hours' else interval '10 hours' end),
+         ate_at = case when v_i.kind = 'food' then now() else ate_at end, xp = xp + v_i.xp,
          sulky = (v_mood = 'angry')        -- 餓到生氣：吃飽了還在鬧脾氣
    where id = v.id;
+  perform public.park_pet_add_joy(v.id, 1);
   return public.park_pet_state(v_me) || jsonb_build_object('did', 'feed', 'was', v_mood, 'xp', v_i.xp);
 end;
 $$;
 
--- 摸摸：睡著的叫醒（醒來是餓的）；鬧脾氣的哄好；平常會變開心，一天長一次經驗
+-- 摸摸：睡著的叫醒（醒來是餓的）；鬧脾氣的哄好；平常心情 +2（3 分鐘內一直摸不再加），一天長一次經驗
 create or replace function public.park_pet_pat()
 returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
 declare
@@ -378,6 +405,7 @@ declare
   v_mood text;
   v_today date := (now() at time zone 'Asia/Taipei')::date;
   v_xp int := 0;
+  v_tired boolean := false;
 begin
   v := public.park_pet_mine(v_me);
   v_mood := public.park_pet_mood(v);
@@ -387,11 +415,41 @@ begin
     null;   -- 餓的時候不給摸，要先餵
   else
     if v.pat_xp_on is distinct from v_today then v_xp := 1; end if;
+    if v.patted_at is null or now() - v.patted_at >= interval '3 minutes' then
+      perform public.park_pet_add_joy(v.id, 2);
+    else v_tired := true;
+    end if;
     update public.park_pets
        set patted_at = now(), sulky = false, xp = xp + v_xp, pat_xp_on = v_today
      where id = v.id;
   end if;
-  return public.park_pet_state(v_me) || jsonb_build_object('did', 'pat', 'was', v_mood, 'xp', v_xp);
+  return public.park_pet_state(v_me) || jsonb_build_object('did', 'pat', 'was', v_mood, 'xp', v_xp, 'tired', v_tired);
+end;
+$$;
+
+-- 一起玩：p_kind = 'wish'（完成牠的願望：心情 +4，一天前 3 次各長 1 點經驗）／'ball'（丟球：心情 +2）
+-- 1 分鐘內連續玩不再加（畫面上的願望、丟球不會那麼快，擋的是連點）
+create or replace function public.park_pet_play(p_kind text)
+returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
+declare
+  v_me uuid := public.current_student_id();
+  v public.park_pets;
+  v_mood text;
+  v_today date := (now() at time zone 'Asia/Taipei')::date;
+  v_xp int := 0;
+  v_n int;
+begin
+  if p_kind not in ('wish', 'ball') then raise exception '不知道要玩什麼'; end if;
+  v := public.park_pet_mine(v_me);
+  v_mood := public.park_pet_mood(v);
+  if v_mood in ('asleep', 'hungry', 'angry') then raise exception '牠現在不想玩，先照顧好牠'; end if;
+  if v.played_at is null or now() - v.played_at >= interval '1 minute' then
+    perform public.park_pet_add_joy(v.id, case p_kind when 'wish' then 4 else 2 end);
+  end if;
+  v_n := case when v.play_day = v_today then v.play_n else 0 end;
+  if p_kind = 'wish' and v_n < 3 then v_xp := 1; v_n := v_n + 1; end if;
+  update public.park_pets set played_at = now(), play_day = v_today, play_n = v_n, xp = xp + v_xp where id = v.id;
+  return public.park_pet_state(v_me) || jsonb_build_object('did', 'play', 'was', v_mood, 'xp', v_xp);
 end;
 $$;
 
@@ -436,6 +494,7 @@ $$;
 revoke all on function
   public.park_pet_stage(int), public.park_pet_quiet(uuid, timestamptz),
   public.park_pet_mood(public.park_pets, timestamptz), public.park_pet_json(public.park_pets),
+  public.park_pet_joy_now(public.park_pets, timestamptz), public.park_pet_add_joy(bigint, int), public.park_pet_play(text),
   public.park_pet_grant(uuid), public.park_pet_state(uuid, jsonb), public.park_pet_name_ok(text),
   public.park_pet_mine(uuid), public.park_pet_me(), public.park_pet_adopt(text, text),
   public.park_pet_slots(uuid), public.park_pet_swap(bigint),
@@ -444,6 +503,6 @@ revoke all on function
   from public, anon, authenticated;
 grant execute on function
   public.park_pet_me(), public.park_pet_adopt(text, text), public.park_pet_feed(text), public.park_pet_swap(bigint),
-  public.park_pet_pat(), public.park_pet_rename(text),
+  public.park_pet_pat(), public.park_pet_play(text), public.park_pet_rename(text),
   public.park_pet_class_quiet(text), public.park_pet_set_class_quiet(text, boolean)
   to authenticated;

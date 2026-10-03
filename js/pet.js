@@ -248,14 +248,15 @@ function gauges(p, m) {
   if (m === 'asleep') fullTip = '睡著了，叫醒牠吧';
   else if (p.full === 0) fullTip = '餓了，快餵牠！';
   else if (p.hungry_in < 60) fullTip = '快要餓了';
-  else fullTip = `大約 ${Math.round(p.hungry_in / 60)} 小時後會餓`;
+  else fullTip = `大約 ${Math.round(p.hungry_in / 60)} 小時後會餓${p.full < 5 ? '，還吃得下' : ''}`;
   if (m === 'quiet') joyTip = '上課時間在休息';
   else if (m === 'asleep') joyTip = '在睡覺';
   else if (m === 'angry') joyTip = p.sulky ? '吃飽了，摸摸牠就不氣了' : '餓到生氣了';
+  else if (m === 'hungry') joyTip = '肚子餓，沒心情玩';
+  else if (p.joy >= 5) joyTip = '超開心！';
   else if (p.joy >= 4) joyTip = '好開心！';
-  else if (p.joy === 3) joyTip = '還想再被摸摸';
-  else if (p.joy === 2) joyTip = '有點無聊，摸摸牠吧';
-  else joyTip = '肚子餓，沒心情玩';
+  else if (p.joy === 3) joyTip = '再陪牠玩一下';
+  else joyTip = '有點無聊：摸摸、丟球、完成牠的願望';
   return `<div class="gauges">
     <div class="gauge" aria-label="飽足 ${p.full} 格（滿 5 格）"><b>飽足</b><span>${pips(p.full, 'meat')}</span><small>${fullTip}</small></div>
     <div class="gauge" aria-label="心情 ${p.joy} 格（滿 5 格）"><b>心情</b><span>${pips(p.joy, 'heart')}</span><small>${joyTip}</small></div>
@@ -744,8 +745,8 @@ function wishDone(a, what) {
   try { localStorage.setItem(WISH_KEY, JSON.stringify(book)); } catch { /* 存不了就算了 */ }
   for (let k = 0; k < 3; k++) a.timers.push(setTimeout(() => floatUp(a, '♥'), k * 250));
   say(pick(['謝謝你！你最懂我了！', '耶～好開心！', '最喜歡你了！']), a.p.id);
-  // 照顧中的那隻：算一次摸摸（心情變好，資料庫會判斷能不能加經驗）
-  if (a.p.active && !busy && !state.quiet) api.pat().then(refresh).catch(() => {});
+  // 照顧中的那隻：心情 +4、經驗 +1（一天前 3 次，資料庫判斷）
+  if (a.p.active && !state.quiet) api.play('wish').then(refresh).catch(() => {});
   if (book.done[a.p.id] < 3) laterWish(a, rnd(25000, 45000));
 }
 
@@ -823,7 +824,8 @@ async function throwBall(at) {
   }
   if (ball) { const b = ball.el; b.classList.add('gone'); setTimeout(() => b.remove(), 500); ball = null; }
   if (a.useId !== id) return;
-  wishDone(a, 'ball');
+  if (a.wish === 'ball') wishDone(a, 'ball');
+  else if (a.p.active && !state.quiet) api.play('ball').then(refresh).catch(() => {});   // 陪牠玩：心情 +2
   leave(a);
 }
 
@@ -1237,10 +1239,11 @@ async function pat() {
     const was = a.mode;
     refresh(r);
     say(reply(r, a.p, null), a.p.id);
-    if (a.p.mood === 'happy') {
+    if (r.tired) { say(pick(['嘿嘿，摸好多次了～換個方式陪我玩嘛（丟球、幫我完成願望）', '好舒服…可是我想玩丟球！']), a.p.id); }
+    if (['normal', 'happy'].includes(a.p.mood) && !['hungry', 'asleep'].includes(r.was)) {
       a.mode = 'show';
       ['pat', 'jump', 'cheer', 'jump'].forEach((pose, k) => setTimeout(() => setPose(a, pose), k * 380));
-      for (let k = 0; k < 3; k++) setTimeout(() => floatUp(a, k === 0 && r.xp ? `♥ +${r.xp}` : '♥'), k * 300);
+      for (let k = 0; k < (r.tired ? 1 : 3); k++) setTimeout(() => floatUp(a, k === 0 && r.xp ? `♥ +${r.xp}` : '♥'), k * 300);
       setTimeout(() => { a.mode = 'rest'; a.until = performance.now() + 1500; a.restPose = 'cheer'; dress(a); busy = false; }, 1700);
       return;
     }

@@ -50,7 +50,7 @@ select test_ok((select count(*) from jsonb_array_elements(:'s'::jsonb -> 'grante
 select test_ok(jsonb_array_length(public.park_pet_me() -> 'granted') = 0, '同一個章不會送第二次');
 
 \echo '── 餵食'
-select test_denied($$select public.park_pet_feed('kibble')$$, '剛領養是飽的：3 小時內不吃飼料');
+select test_denied($$select public.park_pet_feed('kibble')$$, '剛領養是飽的：不吃飼料');
 select public.park_pet_feed('rice-ball') as s \gset
 select test_ok((:'s'::jsonb -> 'pets' -> 0 ->> 'xp')::int = 5, '點心隨時都吃，長 5 點經驗');
 select test_ok(not (:'s'::jsonb -> 'inventory' ? 'rice-ball'), '米糰吃掉了');
@@ -67,13 +67,13 @@ select test_ok(public.park_pet_pat() -> 'pets' -> 0 ->> 'mood' = 'hungry', '餓�
 select test_ok(public.park_pet_feed('kibble') -> 'pets' -> 0 ->> 'mood' = 'normal', '餵飽就好了');
 
 reset role;
-update public.park_pets set fed_at = now() - interval '3 days' where student_id = :'amy';
+update public.park_pets set fed_at = now() - interval '3 days', ate_at = null where student_id = :'amy';
 set role authenticated;
 select test_as('d0000000-0000-0000-0000-000000000011', true);
 select test_ok(public.park_pet_me() -> 'pets' -> 0 ->> 'mood' = 'angry', '兩天以上沒餵：生氣');
 select test_ok(public.park_pet_feed('kibble') -> 'pets' -> 0 ->> 'mood' = 'angry', '生氣時餵飽了還在鬧脾氣');
 select public.park_pet_pat() as s \gset
-select test_ok(:'s'::jsonb -> 'pets' -> 0 ->> 'mood' = 'happy', '摸摸哄一下就開心了');
+select test_ok(:'s'::jsonb -> 'pets' -> 0 ->> 'mood' in ('normal', 'happy'), '摸摸哄一下就不生氣了');
 select test_ok((:'s'::jsonb ->> 'xp')::int = 1, '摸摸長 1 點經驗');
 select test_ok((public.park_pet_pat() ->> 'xp')::int = 0, '同一天再摸不再長經驗');
 
@@ -94,18 +94,49 @@ select test_as('d0000000-0000-0000-0000-000000000011', true);
 select test_ok((public.park_pet_me() -> 'pets' -> 0 ->> 'stage')::int = 2, '12 點以上：成長期');
 select test_ok((public.park_pet_feed('magic-fruit') -> 'pets' -> 0 ->> 'stage')::int = 3, '40 點以上：完全體');
 
-\echo '── 狀態欄'
-select public.park_pet_me() -> 'pets' -> 0 as p \gset
-select test_ok((:'p'::jsonb ->> 'full')::int = 5, '剛吃完：飽足 5 格');
-select test_ok((:'p'::jsonb ->> 'hungry_in')::int between 1430 and 1440, '大約 24 小時後會餓');
-select test_ok((public.park_pet_pat() -> 'pets' -> 0 ->> 'joy')::int = 5, '剛摸完：心情 5 格');
+\echo '── 飽足、心情慢慢加'
 reset role;
-update public.park_pets set fed_at = now() - interval '13 hours', patted_at = now() - interval '5 hours' where student_id = :'amy';
+update public.park_pets set fed_at = now() - interval '30 hours', ate_at = null where student_id = :'amy';
+update public.park_pet_inventory set qty = 5 where student_id = :'amy' and item = 'kibble';
+set role authenticated;
+select test_as('d0000000-0000-0000-0000-000000000011', true);
+select public.park_pet_feed('kibble') -> 'pets' -> 0 as p \gset
+select test_ok((:'p'::jsonb ->> 'hungry_in')::int between 355 and 365, '餓的時候吃一份飼料：撐 6 小時');
+select test_ok((:'p'::jsonb ->> 'full')::int = 2, '吃一份：飽足 2 格（不會一下就滿）');
+select test_denied($$select public.park_pet_feed('kibble')$$, '飼料要隔 15 分鐘才能再餵');
+reset role;
+update public.park_pets set ate_at = now() - interval '20 minutes' where student_id = :'amy';
+set role authenticated;
+select test_as('d0000000-0000-0000-0000-000000000011', true);
+select public.park_pet_feed('kibble') -> 'pets' -> 0 as p \gset
+select test_ok((:'p'::jsonb ->> 'hungry_in')::int between 715 and 725, '再吃一份：加到 12 小時');
+reset role;
+update public.park_pets set fed_at = now(), joy = 0, joy_at = now(), patted_at = null, play_day = null, play_n = 0, played_at = null where student_id = :'amy';
+set role authenticated;
+select test_as('d0000000-0000-0000-0000-000000000011', true);
+select public.park_pet_me() -> 'pets' -> 0 as p \gset
+select test_ok((:'p'::jsonb ->> 'full')::int = 5, '吃滿：飽足 5 格');
+select test_ok((:'p'::jsonb ->> 'hungry_in')::int between 1430 and 1440, '大約 24 小時後會餓');
+select public.park_pet_pat() as s \gset
+select test_ok((:'s'::jsonb -> 'pets' -> 0 ->> 'joy')::int = 1, '摸一下：心情只加一點（1 格）');
+select test_ok((public.park_pet_pat() ->> 'tired')::boolean, '3 分鐘內一直摸：不再加');
+select public.park_pet_play('wish') as s \gset
+select test_ok((:'s'::jsonb -> 'pets' -> 0 ->> 'joy')::int = 2, '完成願望：心情 +4（2 格）');
+select test_ok((:'s'::jsonb ->> 'xp')::int = 1, '完成願望長 1 點經驗');
+select test_ok((public.park_pet_play('ball') -> 'pets' -> 0 ->> 'joy')::int = 2, '1 分鐘內連續玩不再加');
+select test_denied($$select public.park_pet_play('dance')$$, '不認得的玩法');
+reset role;
+update public.park_pets set joy = 20, joy_at = now() - interval '5 hours' where student_id = :'amy';
+set role authenticated;
+select test_as('d0000000-0000-0000-0000-000000000011', true);
+select test_ok(public.park_pet_me() -> 'pets' -> 0 ->> 'mood' = 'happy', '心情點數高：開心');
+reset role;
+update public.park_pets set fed_at = now() - interval '13 hours' where student_id = :'amy';
 set role authenticated;
 select test_as('d0000000-0000-0000-0000-000000000011', true);
 select public.park_pet_me() -> 'pets' -> 0 as p \gset
 select test_ok((:'p'::jsonb ->> 'full')::int = 3, '13 小時沒吃：飽足剩 3 格');
-select test_ok((:'p'::jsonb ->> 'joy')::int = 4, '5 小時前摸過：心情 4 格');
+select test_ok((:'p'::jsonb ->> 'joy')::int = 4, '滿心情過了 5 小時：剩 4 格');
 
 \echo '── 寵物島：蓋章解鎖第二隻、換回小窩'
 select public.park_pet_me() as s \gset
@@ -125,7 +156,7 @@ select test_denied($$select public.park_pet_adopt('random', '小三')$$, '還沒
 select (:'s'::jsonb -> 'pets' -> 1 ->> 'id')::bigint as second \gset
 select (:'s'::jsonb -> 'pets' -> 0 ->> 'id')::bigint as first \gset
 reset role;
-update public.park_pets set fed_at = now() - interval '30 hours' where student_id = :'amy' and active;
+update public.park_pets set fed_at = now() - interval '30 hours', ate_at = null where student_id = :'amy' and active;
 update public.park_pets set fed_at = now() - interval '30 days', xp = 3 where id = :second;
 set role authenticated;
 select test_as('d0000000-0000-0000-0000-000000000011', true);

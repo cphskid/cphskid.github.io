@@ -40,6 +40,7 @@ const S = {
   quiet: mood === 'quiet',
   granted: q.get('gift') ? [{ source: 'daily', item: 'kibble', qty: 3 }, { source: 'stamp', item: 'magic-fruit', qty: 1 }] : [],
 };
+function joy(p, n) { p.pts = Math.min(20, (p.pts ?? 4) + n); p.joy = Math.max(1, Math.ceil(p.pts / 4)); }
 const clone = () => JSON.parse(JSON.stringify(S));
 const api = {
   me: async () => clone(),
@@ -52,12 +53,19 @@ const api = {
     if (['hungry', 'angry', 'asleep'].includes(cur.mood)) throw new Error(`${cur.name}肚子餓了，不肯走，先餵牠吃東西`);
     S.pets.forEach((p) => { p.active = p.id === id; p.mood = p.active ? 'normal' : 'island'; p.full = 5; p.joy = p.active ? 2 : 4; p.hungry_in = 1440; });
     return clone(); },
+  // 跟資料庫一樣：一份飼料撐 6 小時（點心 10），摸摸 +2 心情點、願望 +4、丟球 +2（每 4 點一格，13 點以上開心）
   feed: async (code) => { const p = S.pets.find((x) => x.active); const was = p.mood; if (!S.inventory[code]) throw new Error('背包裡沒有了');
-    S.inventory[code]--; const xp = code === 'kibble' ? 1 : 5; p.xp += xp; p.mood = was === 'angry' ? 'angry' : 'normal'; p.sulky = was === 'angry'; p.full = 5; p.hungry_in = 1440;
+    if (code === 'kibble' && p.hungry_in > 1380) throw new Error('牠吃得飽飽的，等一下再餵');
+    S.inventory[code]--; const xp = code === 'kibble' ? 1 : 5; p.xp += xp; p.sulky = was === 'angry';
+    p.hungry_in = Math.min(1440, Math.max(0, p.hungry_in ?? 0) + (code === 'kibble' ? 360 : 600)); p.full = Math.ceil(p.hungry_in / 288);
+    joy(p, 1); p.mood = p.sulky ? 'angry' : p.pts >= 13 ? 'happy' : 'normal';
     return { ...clone(), did: 'feed', was, xp }; },
-  pat: async () => { const p = S.pets.find((x) => x.active); const was = p.mood;
-    if (was === 'asleep') p.mood = 'hungry'; else if ((was === 'hungry' || was === 'angry') && !p.sulky) {} else { p.mood = 'happy'; p.sulky = false; p.joy = 5; }
-    return { ...clone(), did: 'pat', was, xp: p.mood === 'happy' ? 1 : 0 }; },
+  pat: async () => { const p = S.pets.find((x) => x.active); const was = p.mood; let tired = false;
+    if (was === 'asleep') p.mood = 'hungry'; else if ((was === 'hungry' || was === 'angry') && !p.sulky) {} else {
+      tired = Date.now() - (p.patted ?? 0) < 180000; if (!tired) joy(p, 2); p.patted = Date.now(); p.sulky = false; p.mood = p.pts >= 13 ? 'happy' : 'normal'; }
+    return { ...clone(), did: 'pat', was, xp: 0, tired }; },
+  play: async (kind) => { const p = S.pets.find((x) => x.active); joy(p, kind === 'wish' ? 4 : 2); p.mood = p.pts >= 13 ? 'happy' : 'normal';
+    return { ...clone(), did: 'play', was: p.mood, xp: kind === 'wish' ? 1 : 0 }; },
   rename: async (n) => { S.pets.find((x) => x.active).name = n; return clone(); },
 };
 const stage = document.getElementById('stage');

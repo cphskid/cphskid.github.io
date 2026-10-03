@@ -259,6 +259,7 @@ export const pet = {
   swap:          (id) => petcall('park_pet_swap', { p_pet: id }),
   feed:          (item) => petcall('park_pet_feed', { p_item: item }),
   pat:           () => petcall('park_pet_pat'),
+  play:          (kind) => petcall('park_pet_play', { p_kind: kind }),
   rename:        (name) => petcall('park_pet_rename', { p_name: name }),
   classQuiet:    (code) => petcall('park_pet_class_quiet', { p_code: code }),
   setClassQuiet: (code, on) => petcall('park_pet_set_class_quiet', { p_code: code, p_quiet: on }),
