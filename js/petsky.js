@@ -1,4 +1,4 @@
-// 寵物島的天空：日夜跟著真的時間、季節跟著真的月份、天氣每天換一次（同一天每個人看到的一樣）。
+// 寵物島的天空：日夜跟著真的時間、季節跟著真的月份、天氣每 4 小時換一次（同一時段每個人看到的一樣）。
 // 網址可以指定來看效果：?wx=sunny|cloudy|rain|snow|fog  &tod=day|dusk|night  &season=spring|summer|autumn|winter
 const SEASONS = ['winter', 'winter', 'spring', 'spring', 'spring', 'summer', 'summer', 'summer', 'autumn', 'autumn', 'autumn', 'winter'];
 export const SKY_NAME = {
@@ -11,9 +11,9 @@ export function readSky(now = new Date()) {
   const h = now.getHours() + now.getMinutes() / 60;
   const tod = h >= 6 && h < 16.5 ? 'day' : h < 18.5 && h >= 16.5 ? 'dusk' : 'night';
   const season = SEASONS[now.getMonth()];
-  // 用日期當種子，一天換一次天氣
-  let x = now.getFullYear() * 512 + now.getMonth() * 32 + now.getDate();
-  x ^= x << 13; x ^= x >>> 17; x ^= x << 5;
+  // 用日期和時段當種子：每 4 小時換一次天氣（同一時段每個人看到的一樣）
+  let x = (now.getFullYear() * 400 + now.getMonth() * 32 + now.getDate()) * 6 + Math.floor(now.getHours() / 4);
+  x = Math.imul(x ^ (x >>> 16), 0x45d9f3b); x = Math.imul(x ^ (x >>> 16), 0x45d9f3b); x ^= x >>> 16;
   const r = (x >>> 0) / 2 ** 32;
   let wx = r < .45 ? 'sunny' : r < .68 ? 'cloudy' : r < .9 ? 'rain' : 'fog';
   if (season === 'winter' && wx === 'rain' && r > .8) wx = 'snow';
