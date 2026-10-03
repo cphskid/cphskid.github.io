@@ -302,6 +302,7 @@ let selected = null;        // 選到哪一隻（id）
 let raf = 0, last = 0;
 let busy = false;           // 餵食／摸摸的動畫還在跑
 let talkTimer = 0;
+let sceneTimers = [];
 
 function stopScene() {
   cancelAnimationFrame(raf);
@@ -310,6 +311,9 @@ function stopScene() {
   actors = [];
   props = [];
   skyFx = null;
+  ball = null;
+  sceneTimers.forEach(clearTimeout);
+  sceneTimers = [];
   clearTimeout(talkTimer);
 }
 
@@ -327,17 +331,28 @@ function openScene({ select, say: first } = {}) {
       <button type="button" class="furn-btn" data-furn>🛋️ 我的傢俱</button>
       <div class="furn" hidden></div>
       <p class="skychip">${SKY_NAME.wx[sky.wx]}・${SKY_NAME.season[sky.season]}・${SKY_NAME.tod[sky.tod]}</p>
-      <p class="hint">點一下看牠，按住可以把牠拎到傢俱上、湖裡或別的地方；傢俱也搬得動</p>
+      <p class="hint">點寵物看牠想做什麼，按住拎到傢俱上或湖裡；點空地丟球</p>
     </section>
     <aside class="care"></aside></div>`);
   const box = $('.actors', layer);
+  const fresh = freshFurniture();
   addProps(box);
+  fresh.forEach((id) => props.find((o) => o.id === id)?.el.classList.add('new'));
   state.pets.forEach((p) => addActor(box, p));
+  actors.forEach((a) => { if (Math.random() < .7) laterWish(a, rnd(2500, 9000)); });
+  // 點空地丟球
+  $('.ground', layer).addEventListener('click', (e) => {
+    if (e.target.closest('.actor,.prop,.furn,.furn-btn')) return;
+    const g = $('.ground', layer).getBoundingClientRect(), k = g.width / GW;
+    const at = { x: (e.clientX - g.left) / k / GW, y: (e.clientY - g.top) / k / GH };
+    if (walkable(at.x, at.y)) throwBall(at);
+  });
   if (canAdopt()) addEgg(box);
   skyFx = makeSky($('.ground', layer), sky, { w: GW, h: GH, lake: LAKE });
   $('[data-furn]', layer).onclick = toggleFurn;
   paintCare();
   if (first) say(first, selected);
+  else if (fresh.length && home) say(`哇！新的傢俱：${fresh.map((id) => FURN_NAME[id]).join('、')}！謝謝你去過關～`, home.id);
   else if (home) {
     const m = moodOf(home);
     const weather = m === 'normal' && Math.random() < .5 ? SKY_LINES[sky.tod !== 'day' ? sky.tod : sky.wx] : null;
@@ -352,7 +367,7 @@ function addActor(box, p, at) {
   const el = document.createElement('button');
   el.type = 'button';
   el.className = 'actor';
-  el.innerHTML = '<span class="shadow"></span><span class="body"><img alt=""></span><span class="tag"></span><span class="bub" hidden></span>';
+  el.innerHTML = '<span class="shadow"></span><span class="body"><img alt=""></span><span class="tag"></span><span class="bub" hidden></span><span class="wish" hidden></span>';
   box.appendChild(el);
   const pos = at ?? somewhere();
   const a = { p, el, img: $('img', el), x: pos.x, y: pos.y, tx: pos.x, ty: pos.y, mode: 'rest', until: performance.now() + rnd(300, 1500),
@@ -390,16 +405,24 @@ const USE = {
   flowers:  { kind: 'play', at: [.5, 1.08], poses: ['sniff', 'look', 'sniff', 'cheer'], every: 1000, line: '花好香喔～' },
 };
 const PROP_KEY = 'park-pet-props';
-// 一開始送三件；其他的之後在樂園商店用時光幣換（二期，資料庫）。現在先記在這台電腦，網址加 ?furn=all 可以全部看
+// 一開始送三件；其他的蓋護照章解鎖（FURN_STAMP：蓋到第幾個章）。之後樂園商店再加只能用時光幣換的。網址加 ?furn=all 可以全部看
 const STARTER = ['bed', 'slide', 'pool'];
+const FURN_STAMP = { tent: 1, swing: 2, fountain: 4, toybox: 5, bench: 7, tunnel: 8, flowers: 10, lantern: 12 };
 const FURN_NAME = { bed: '軟軟小床', tent: '露營帳篷', slide: '溜滑梯', fountain: '噴水池', pool: '小泳池', swing: '盪鞦韆',
                     bench: '野餐桌椅', tunnel: '鑽鑽隧道', toybox: '玩具箱', flowers: '花盆', lantern: '小燈籠' };
-const OWN_KEY = 'park-pet-furniture';
+const OWN_KEY = 'park-pet-furniture-seen';
 function ownedFurniture() {
   if (new URLSearchParams(location.search).get('furn') === 'all') return PROPS.map((d) => d.id);
-  let got = [];
-  try { got = JSON.parse(localStorage.getItem(OWN_KEY) ?? '[]'); } catch { /* 讀不到就只有基本的 */ }
-  return [...STARTER, ...got.filter((id) => !STARTER.includes(id))];
+  const stamps = state?.stamps ?? 0;
+  return PROPS.map((d) => d.id).filter((id) => STARTER.includes(id) || stamps >= (FURN_STAMP[id] ?? 99));
+}
+// 這次打開才解鎖的傢俱（記在這台電腦，只慶祝一次）
+function freshFurniture() {
+  let seen = null;
+  try { seen = JSON.parse(localStorage.getItem(OWN_KEY) ?? 'null'); } catch { /* 讀不到就當第一次 */ }
+  const own = ownedFurniture();
+  try { localStorage.setItem(OWN_KEY, JSON.stringify(own)); } catch { /* 存不了就算了 */ }
+  return own.filter((id) => !(seen ?? STARTER).includes(id));
 }
 function propSpots() {
   try { return JSON.parse(localStorage.getItem(PROP_KEY) ?? '{}'); } catch { return {}; }
@@ -485,8 +508,9 @@ function toggleFurn() {
   const own = ownedFurniture();
   box.innerHTML = `<h3>我的傢俱 <small>${own.length} / ${PROPS.length}</small></h3>
     <div class="furn-list">${PROPS.map((d) => `<span class="furn-i${own.includes(d.id) ? '' : ' locked'}">
-      <img src="img/pet/furniture/${d.id}.webp" alt=""><b>${FURN_NAME[d.id]}</b>${own.includes(d.id) ? '' : '<i>🔒</i>'}</span>`).join('')}</div>
-    <p class="note">上鎖的傢俱之後可以在樂園商店用時光幣換；擺在島上的按住就能搬。</p>
+      <img src="img/pet/furniture/${d.id}.webp" alt=""><b>${FURN_NAME[d.id]}</b>${own.includes(d.id) ? ''
+        : `<i>🔒</i><small>${FURN_STAMP[d.id]} 個章</small>`}</span>`).join('')}</div>
+    <p class="note">去各個島嶼過關、蓋護照章，蓋到幾個章就解鎖那件傢俱。現在有 ${state?.stamps ?? 0} 個章。擺在島上的傢俱按住就能搬。</p>
     <button type="button" class="ghost small" data-furn-close>關起來</button>`;
   $('[data-furn-close]', box).onclick = () => { box.hidden = true; };
   box.hidden = false;
@@ -553,6 +577,7 @@ async function useProp(a, o, dropped = false) {
   o.user = a; a.using = o;
   a.mode = 'use'; a.next = null;
   a.z = propZ(o) + 1;
+  if (dropped) wishDone(a, o.id);
   const P = (f) => propPoint(o, f);
   const door = doorOf(o);
   let exit = door;
@@ -649,6 +674,7 @@ async function swimLake(a, at) {
   const id = a.useId = (a.useId ?? 0) + 1;
   const still = () => a.useId === id && a.el.isConnected;
   a.mode = 'use'; a.next = null; a.using = null;
+  if (at) wishDone(a, 'lake');
   a.el.classList.add('wade');
   const ang = Math.atan2((a.y - LAKE.y) / LAKE.ry, (a.x - LAKE.x) / LAKE.rx);
   const ring = (t, r) => ({ x: LAKE.x + Math.cos(t) * LAKE.rx * r, y: LAKE.y + Math.sin(t) * LAKE.ry * r });
@@ -687,12 +713,166 @@ async function swimLake(a, at) {
   if (still()) leave(a, out);
 }
 
+// ---------- 小願望：寵物頭上冒出想做的事，幫牠完成就很開心（一隻一天最多 3 個）----------
+const WISH_TEXT = { bed: '想去床上躺躺', slide: '想溜滑梯！', pool: '想去泳池泡水～', tent: '想躲進帳篷', swing: '想盪鞦韆！',
+                    fountain: '想喝水', toybox: '想玩玩具', bench: '想坐下來休息', tunnel: '想鑽隧道', flowers: '想去聞花香',
+                    lake: '想去湖裡游泳！', ball: '想玩丟球！（點一下地上）' };
+const WISH_KEY = 'park-pet-wish';
+const today = () => new Date().toLocaleDateString('sv');
+function wishBook() {
+  try { const w = JSON.parse(localStorage.getItem(WISH_KEY) ?? '{}'); if (w.date === today()) return w; } catch { /* 讀不到就重來 */ }
+  return { date: today(), done: {} };
+}
+const canWish = (a) => !['hungry', 'angry', 'asleep', 'quiet'].includes(moodOf(a.p)) && sky?.wx !== 'snow';
+function giveWish(a) {
+  if (!a.el.isConnected || a.wish || !canWish(a) || (wishBook().done[a.p.id] ?? 0) >= 3) return;
+  const opts = [...ownedFurniture().filter((id) => USE[id]), 'ball', ...(sky.wx === 'rain' ? [] : ['lake'])];
+  a.wish = pick(opts);
+  const w = $('.wish', a.el);
+  w.innerHTML = USE[a.wish] ? `<img src="img/pet/furniture/${a.wish}.webp" alt="">` : `<span>${a.wish === 'lake' ? '🌊' : '⚾'}</span>`;
+  w.hidden = false;
+  a.el.setAttribute('aria-description', WISH_TEXT[a.wish]);
+}
+function laterWish(a, ms) { sceneTimers.push(setTimeout(() => giveWish(a), ms)); }
+function wishDone(a, what) {
+  if (!a.wish || a.wish !== what) return;
+  a.wish = null;
+  $('.wish', a.el).hidden = true;
+  a.el.removeAttribute('aria-description');
+  const book = wishBook();
+  book.done[a.p.id] = (book.done[a.p.id] ?? 0) + 1;
+  try { localStorage.setItem(WISH_KEY, JSON.stringify(book)); } catch { /* 存不了就算了 */ }
+  for (let k = 0; k < 3; k++) a.timers.push(setTimeout(() => floatUp(a, '♥'), k * 250));
+  say(pick(['謝謝你！你最懂我了！', '耶～好開心！', '最喜歡你了！']), a.p.id);
+  // 照顧中的那隻：算一次摸摸（心情變好，資料庫會判斷能不能加經驗）
+  if (a.p.active && !busy && !state.quiet) api.pat().then(refresh).catch(() => {});
+  if (book.done[a.p.id] < 3) laterWish(a, rnd(25000, 45000));
+}
+
+// ---------- 丟球：點地上，球飛過去，寵物追過去推著玩 ----------
+let ball = null;
+function addBall(from) {
+  const el = document.createElement('span');
+  el.className = 'ball';
+  $('.actors', layer).appendChild(el);
+  ball = { el, x: from.x, y: from.y, lift: 0, tw: null };
+  placeBall();
+  return ball;
+}
+function placeBall() {
+  const b = ball;
+  b.el.style.cssText = `left:${b.x * GW}px;top:${b.y * GH - b.lift}px;z-index:${Math.round(b.y * 1000) + 1};--d:${depth(b.y).toFixed(3)}`;
+}
+function flyBall(to, ms, arc) {
+  return new Promise((done) => { ball.tw = { x0: ball.x, y0: ball.y, x1: to.x, y1: to.y, t0: performance.now(), ms, arc, done }; });
+}
+function stepBall(now) {
+  const w = ball?.tw;
+  if (!w) return;
+  const t = Math.min(1, (now - w.t0) / w.ms);
+  ball.x = w.x0 + (w.x1 - w.x0) * t; ball.y = w.y0 + (w.y1 - w.y0) * t;
+  ball.lift = w.arc * Math.sin(Math.PI * t) * (1 - t * .35);
+  ball.el.style.transform = `translate(-50%,-100%) rotate(${t * 540}deg)`;
+  placeBall();
+  if (t >= 1) { ball.tw = null; ball.lift = 0; w.done(); }
+}
+// 走過去（看方向用正面／背面／側面的格），speed 是每秒幾點
+function runTo(a, to, speed = 140) {
+  const dx = (to.x - a.x) * GW, dy = (to.y - a.y) * GH;
+  if (Math.abs(dx) > 2) a.face = dx > 0 ? 1 : -1;
+  const dir = Math.abs(dy) > Math.abs(dx) * 1.2 ? (dy > 0 ? 'front' : 'back') : 'walk';
+  return glide(a, to, Math.max(250, Math.hypot(dx, dy) / (speed * depth(a.y)) * 1000), { poses: [dir + 1, dir + 2], every: 160 });
+}
+const free = (a) => ['rest', 'walk'].includes(a.mode) && !a.using && !['asleep', 'quiet', 'angry'].includes(moodOf(a.p));
+async function throwBall(at) {
+  if (ball || busy) return;
+  const a = actors.find((x) => x.p.id === selected && (free(x) || x.mode === 'use')) ?? actors.find(free);
+  if (!a) return;
+  if (a.mode === 'use' || a.using) leave(a);
+  const id = a.useId = (a.useId ?? 0) + 1;
+  const still = () => a.useId === id && a.el.isConnected && ball;
+  a.mode = 'use'; a.next = null;
+  addBall({ x: .55, y: .92 });
+  say(pick(['球！球！', '我來了！', '看我的！']), a.p.id);
+  // 附近的夥伴偶爾也跑過去湊熱鬧
+  actors.filter((b) => b !== a && free(b) && Math.random() < .5).forEach((b) => {
+    const t = somewhere(at, b);
+    b.tx = t.x; b.ty = t.y; b.mode = 'walk';
+    b.next = () => { b.mode = 'rest'; b.until = performance.now() + rnd(1500, 2500); b.restPose = 'cheer'; };
+  });
+  let spot = at;
+  await flyBall(spot, 650, 90);
+  for (let k = 0; k < 3; k++) {
+    if (!still()) break;
+    const side = ball.x > a.x ? -1 : 1;
+    await runTo(a, { x: ball.x + side * .035, y: ball.y + .004 });
+    if (!still()) break;
+    a.face = -side;
+    setPose(a, k === 2 ? 'cheer' : 'play');
+    floatUp(a, k === 2 ? '♪' : pick(['嘿！', '咚！']));
+    await wait(a, 450);
+    if (k === 2 || !still()) break;
+    // 推一下，球滾到旁邊
+    let next = null;
+    for (let n = 0; n < 12 && !next; n++) {
+      const p = { x: ball.x - side * rnd(.06, .14), y: ball.y + rnd(-.06, .06) };
+      if (walkable(p.x, p.y)) next = p;
+    }
+    if (!next) break;
+    await flyBall(next, 500, 22);
+  }
+  if (ball) { const b = ball.el; b.classList.add('gone'); setTimeout(() => b.remove(), 500); ball = null; }
+  if (a.useId !== id) return;
+  wishDone(a, 'ball');
+  leave(a);
+}
+
+// ---------- 兩隻碰在一起玩：走過去、一起跳、再你追我跑 ----------
+function wantFriend(a) {
+  const b = actors.filter((x) => x !== a && free(x) && clearPath(a, x)).sort(() => Math.random() - .5)[0];
+  if (!b) return false;
+  playTogether(a, b);
+  return true;
+}
+async function playTogether(a, b) {
+  const ida = a.useId = (a.useId ?? 0) + 1, idb = b.useId = (b.useId ?? 0) + 1;
+  const ok = () => a.useId === ida && b.useId === idb && a.el.isConnected;
+  a.mode = 'use'; b.mode = 'use'; a.next = b.next = null;
+  a.partner = b; b.partner = a;
+  b.tw = null; b.face = a.x > b.x ? 1 : -1; setPose(b, 'look');
+  const side = a.x < b.x ? -1 : 1;
+  let meet = { x: b.x + side * .07, y: b.y };
+  if (!walkable(meet.x, meet.y)) meet = { x: b.x - side * .07, y: b.y };
+  if (!walkable(meet.x, meet.y)) { leave(a); return; }
+  await runTo(a, meet, 70);
+  if (!ok()) return;
+  a.face = b.x > a.x ? 1 : -1; b.face = -a.face;
+  loop(a, ['play', 'jump', 'cheer'], 420); loop(b, ['jump', 'play', 'cheer'], 420);
+  floatUp(a, '♥'); floatUp(b, '♪');
+  await wait(a, 2400);
+  if (!ok()) return;
+  loop(a, null); loop(b, null);
+  // 你追我跑：a 先跑，b 跟在後面
+  const far = somewhere(null, a);
+  b.timers.push(setTimeout(() => { if (ok()) runTo(b, { x: far.x - (far.x > b.x ? .05 : -.05), y: far.y }, 125); }, 350));
+  await runTo(a, far, 135);
+  if (!ok()) return;
+  setPose(a, 'cheer');
+  await wait(a, 700);
+  if (!ok()) return;
+  a.partner = b.partner = null;
+  leave(b); leave(a);
+}
+
 // 結束（或被打斷）：放開傢俱、回到地上；to＝要站的位置（不給就留在原地）
 function leave(a, to) {
   a.useId = (a.useId ?? 0) + 1;
   a.timers.forEach(clearTimeout);
   a.timers = [];
   a.tw = null; a.cycle = null; a.next = null; a.lift = 0; a.z = null;
+  const pal = a.partner;
+  a.partner = null;
+  if (pal?.partner === a) { pal.partner = null; leave(pal); }      // 一起玩的那隻也放開
   if (a.using) { a.using.user = null; a.using.el.classList.remove('rustle'); a.using = null; }
   a.el.classList.remove('up', 'sway', 'wade', 'inside');
   if (to === undefined && a.mode === 'use' && !walkable(a.x, a.y)) to = somewhere({ x: a.x, y: a.y });
@@ -750,6 +930,7 @@ function tick(now) {
   const dt = Math.min(.05, (now - last) / 1000);
   last = now;
   skyFx?.step(dt);
+  stepBall(now);
   for (const a of actors) {
     if (a.mode === 'use') {
       if (a.tw) {
@@ -785,9 +966,11 @@ function tick(now) {
     } else if (a.mode === 'rest') {
       setPose(a, a.restPose ?? POSE[m]);
       if (now > a.until && !busy) {
-        // 照顧中的那隻餓了就不去玩；其他時候偶爾去用傢俱、泡水
+        // 照顧中的那隻餓了就不去玩；其他時候偶爾去用傢俱、泡水、找夥伴玩
         const fun = m === 'hungry' ? 0 : a.p.active ? .3 : .4;
-        if (!(Math.random() < fun && wantUse(a))) {
+        // 先看有沒有空著的夥伴可以一起玩，再看要不要去用傢俱
+        const r = Math.random();
+        if (!(r < .35 && actors.length > 1 && wantFriend(a)) && !(r >= .35 && r < .35 + fun && wantUse(a))) {
           const t = somewhere(Math.random() < .6 ? a : null, a);
           a.tx = t.x; a.ty = t.y; a.mode = 'walk';
         }
@@ -880,10 +1063,12 @@ function tap(a) {
     actors.forEach(dress);
     paintCare();
     const m = moodOf(a.p);
-    say(pick(LINES[m === 'angry' && a.p.sulky ? 'sulky' : m] ?? LINES.normal), a.p.id);
+    if (a.wish) say(`${WISH_TEXT[a.wish]}${USE[a.wish] || a.wish === 'lake' ? '（把我拎過去）' : ''}`, a.p.id);
+    else say(pick(LINES[m === 'angry' && a.p.sulky ? 'sulky' : m] ?? LINES.normal), a.p.id);
     return;
   }
   if (a.p.active) pat();
+  else if (a.wish) say(`${WISH_TEXT[a.wish]}${USE[a.wish] || a.wish === 'lake' ? '（把我拎過去）' : ''}`, a.p.id);
   else say(pick(LINES.island), a.p.id);
 }
 

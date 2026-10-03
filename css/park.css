@@ -666,3 +666,19 @@ aside.care .roster h3{margin:0 0 8px}
 .pisle .furn-i.locked b{color:#a08a70}
 .pisle .furn-i i{position:absolute;right:4px;top:2px;font-style:normal;font-size:16px}
 .pisle .furn .note{margin:10px 0 8px;font:700 14px/1.5 var(--f-body);color:#8a6a4a}
+/* 小願望、丟球、新傢俱 */
+.actor .wish{position:absolute;left:78%;bottom:78%;width:50px;height:46px;display:grid;place-items:center;background:#fff;border:3px solid var(--wood);border-radius:50%;box-shadow:0 3px 0 var(--wood);pointer-events:none;z-index:2;animation:bob 1.8s ease-in-out infinite}
+.actor .wish::before,.actor .wish::after{content:"";position:absolute;background:#fff;border:2px solid var(--wood);border-radius:50%}
+.actor .wish::before{width:12px;height:12px;left:-8px;bottom:-4px}
+.actor .wish::after{width:7px;height:7px;left:-16px;bottom:-12px}
+.actor .wish img{width:36px;height:30px;object-fit:contain}
+.actor .wish span{font-size:24px;line-height:1}
+.actor.inside .wish,.actor.held .wish{display:none}
+.ball{position:absolute;width:calc(30px * var(--d));height:calc(30px * var(--d));border-radius:50%;transform:translate(-50%,-100%);pointer-events:none;
+  background:radial-gradient(circle at 35% 30%,#fff 0 12%,transparent 13%),linear-gradient(115deg,transparent 42%,#fff 43% 50%,transparent 51%),radial-gradient(circle at 40% 35%,#ff7a5c,#d93a2b 60%,#9e2418);box-shadow:0 3px 0 rgba(30,60,20,.25)}
+.ball.gone{opacity:0;transition:opacity .45s}
+.prop.new img{animation:newFurn 1s ease-in-out 3}
+.prop.new::after{content:"NEW";position:absolute;left:50%;top:-6px;transform:translateX(-50%);font:900 13px/1 var(--f-disp);color:#fff;background:#e2553f;border:2px solid #fff;border-radius:99px;padding:3px 8px;pointer-events:none}
+@keyframes newFurn{0%,100%{transform:none;filter:var(--tod) var(--wx) drop-shadow(0 4px 3px rgba(20,50,30,.3))}50%{transform:translateY(-10px) scale(1.06);filter:var(--tod) var(--wx) brightness(1.15) drop-shadow(0 0 10px #fff7b0)}}
+.pisle .furn-i small{font:800 11px/1 var(--f-body);color:#b0603a}
+@media (prefers-reduced-motion:reduce){.actor .wish,.prop.new img{animation:none}}
