@@ -334,7 +334,8 @@ function openScene({ select, say: first } = {}) {
       <p class="skychip">${SKY_NAME.wx[sky.wx]}・${SKY_NAME.season[sky.season]}・${SKY_NAME.tod[sky.tod]}</p>
       <p class="hint">點寵物看牠想做什麼，按住拎到傢俱上或湖裡；點空地丟球</p>
     </section></div>
-    <aside class="care"></aside></div>`);
+    <aside class="care"></aside></div>
+    <button class="x out" data-close aria-label="關閉，回到地圖"></button>`);
   const box = $('.actors', layer);
   const fresh = freshFurniture();
   addProps(box);
