@@ -10,6 +10,7 @@
 // 天空（js/petsky.js）：日夜跟著真的時間、季節跟著月份、天氣每天換，寵物會跟著反應（下雨躲帳篷、晚上想睡）。
 import * as auth from './auth.js';
 import { readSky, makeSky, SKY_NAME } from './petsky.js';
+import * as traveller from './traveller.js';
 
 const $ = (s, root = document) => root.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -339,12 +340,13 @@ function openScene({ select, say: first } = {}) {
   const box = $('.actors', layer);
   const fresh = freshFurniture();
   addProps(box);
+  addTraveller(box);
   fresh.forEach((id) => props.find((o) => o.id === id)?.el.classList.add('new'));
   state.pets.forEach((p) => addActor(box, p));
   actors.forEach((a) => { if (Math.random() < .7) laterWish(a, rnd(2500, 9000)); });
   // 點空地丟球
   $('.ground', layer).addEventListener('click', (e) => {
-    if (e.target.closest('.actor,.prop,.furn,.furn-btn')) return;
+    if (e.target.closest('.actor,.prop,.furn,.furn-btn,.trav')) return;
     const g = $('.ground', layer).getBoundingClientRect(), k = g.width / GW;
     const at = { x: (e.clientX - g.left) / k / GW, y: (e.clientY - g.top) / k / GH };
     if (walkable(at.x, at.y)) throwBall(at);
@@ -363,6 +365,21 @@ function openScene({ select, say: first } = {}) {
   news = [];
   last = performance.now();
   raf = requestAnimationFrame(tick);
+}
+
+// 自己的時空旅人站在島上陪夥伴（點一下去換裝間）
+const TRAV_AT = { x: .4, y: .76 };
+function addTraveller(box) {
+  const t = traveller.state();
+  if (!t?.created) return;
+  const el = document.createElement('button');
+  el.type = 'button';
+  el.className = 'trav';
+  el.setAttribute('aria-label', '我的時空旅人（點一下去換裝間）');
+  el.innerHTML = '<span class="shadow"></span>' + traveller.dollHtml(t.look);
+  el.style.cssText = `left:${TRAV_AT.x * GW}px;top:${TRAV_AT.y * GH}px;z-index:${Math.round(TRAV_AT.y * 1000)};--d:${depth(TRAV_AT.y).toFixed(3)}`;
+  el.onclick = () => { close(); traveller.open(); };
+  box.appendChild(el);
 }
 
 function addActor(box, p, at) {

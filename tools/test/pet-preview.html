@@ -6,7 +6,7 @@
 <title>桌寵預覽</title>
 <!-- 本機看桌寵畫面用：不連資料庫，用假的資料。python3 -m http.server 後開 /tools/test/pet-preview.html
      ?mood=hungry|angry|sulky|asleep|happy|quiet  ?new=1（還沒領養）  ?stage=2
-     ?stamps=0..6（護照章，3/6 解鎖）  ?pals=1（島上多一隻）  ?isle=1（直接開寵物島） -->
+     ?stamps=0..6（護照章，3/6 解鎖）  ?pals=1（島上多一隻）  ?isle=1（直接開寵物島）  ?trav=1（自己的時空旅人站在島上） -->
 <base href="../../">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Noto+Sans+TC:wght@500;700;900&display=swap">
 <link rel="stylesheet" href="css/park.css">
@@ -18,9 +18,11 @@
     <button class="isle pet-isle" id="pisle" style="left:130px;top:125px;width:240px"><div class="bob"><div class="lift"><img class="art" src="img/l-07.webp" alt=""></div></div><div class="plate"><b>寵物島</b><span>夥伴們住的地方</span></div></button>
   </div></div></section>
 </div></div>
-<div id="ui"><div id="petroom" hidden></div></div>
+<div id="ui"><div id="petroom" hidden></div><div id="wardrobe" hidden></div></div>
 <script type="module">
 import * as pet from './js/pet.js';
+import * as auth from './js/auth.js';
+import * as traveller from './js/traveller.js';
 const q = new URLSearchParams(location.search);
 const mood = q.get('mood') ?? 'normal';
 const now = Date.now();
@@ -77,6 +79,12 @@ pet.init({ api, me: () => ({ kind: 'student', nickname: '測試' }), host: () =>
 document.getElementById('pisle').onclick = () => pet.openIsland();
 await pet.load();
 if (q.get('open')) pet.open();
+if (q.get('trav')) {
+  auth.traveller.me = async () => ({ created: true, starter_set: 'street', owned: [],
+    look: { face: 'face-girl', hair: 'hair-pony', hat: 'hat-bucket', top: 'top-street', bottom: 'bottom-wide', hand: 'hand-camera', back: null } });
+  traveller.init({ me: () => ({ kind: 'student', id: 'preview', nickname: '測試' }) });
+  await traveller.load();
+}
 if (q.get('isle')) pet.open();
 </script>
 </body>

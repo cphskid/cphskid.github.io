@@ -264,3 +264,22 @@ export const pet = {
   classQuiet:    (code) => petcall('park_pet_class_quiet', { p_code: code }),
   setClassQuiet: (code, on) => petcall('park_pet_set_class_quiet', { p_code: code, p_quiet: on }),
 };
+
+// ---------- 時空旅人換裝（supabase/park_traveller.sql） ----------
+// 還沒裝這份 SQL 時丟出 missing，換裝間退回只存在這台裝置（js/traveller.js）。
+async function tcall(fn, args) {
+  if (!db) throw new Error('帳號功能載入失敗，重新整理再試一次');
+  const { data, error } = await db.rpc(fn, args);
+  if (error?.code === 'PGRST202') {
+    const e = new Error('換裝的資料庫還沒裝好（缺 ' + fn + '），請管理員套用 park_traveller.sql');
+    e.missing = true;
+    throw e;
+  }
+  check(error);
+  return data;
+}
+export const traveller = {
+  me:     () => tcall('park_traveller_me'),
+  create: (face, hair, set) => tcall('park_traveller_create', { p_face: face ?? '', p_hair: hair, p_set: set }),
+  save:   (look) => tcall('park_traveller_save', { p_look: look }),
+};

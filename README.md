@@ -117,6 +117,21 @@ Settings → Secrets and variables → Actions 加一個 `ASSETS_TOKEN`（能讀
   玩具頭飾 PT-11 二期商店再接；沒有圖的道具用資料庫裡的表情符號。
 - 本機看畫面不用連資料庫：`python3 -m http.server` 後開 `/tools/test/pet-preview.html`（網址參數見檔案開頭）。
 
+## 時空旅人換裝
+
+學生在樂園裡的樣子：同一個身體，七個位置（臉型、髮型、頭飾、上衣、褲子和鞋、手持、背後）各疊一張 448×600 的圖，
+全部跟身體對齊（`img/traveller/<code>.webp`，縮圖在 `img/traveller/thumb/`）。程式在 `js/traveller.js`，
+資料庫在 `supabase/park_traveller.sql`（順序：schema.sql → park_accounts.sql → park_teacher.sql → park_passport.sql → 這份，可重複執行）。
+
+- **建角色**：第一次進地圖（已經選好頭像）時跳出來：挑臉型（中性／女孩／男孩）、髮型，再選一套起始套裝，整套 4 件送他。
+- **換裝間**：村莊卡「我的時空旅人」、我的資料「換裝間」、點寵物島上的旅人都能進。臉型、髮型人人都有；
+  其他衣服可以試穿，但要擁有才存得起來（資料庫 `park_traveller_save` 會再檢查）。商店開張後用時光幣買（價錢先寫在 `park_wear_items.price`）。
+- **寵物島**：自己的旅人站在島上陪夥伴。
+- 疊的順序：背後 → 身體 → 臉 → 褲子和鞋 → 上衣 → 頭髮 → 頭飾 → 手持。手持的圖只能有「東西＋握住它的手指」，手臂不能移動
+  （不然會多一隻手；切圖時會檢查）。新衣服的產圖與切圖腳本在專案檔案 `art/doll-v3/`。
+- 還沒套 SQL 的資料庫：換裝先存在這台裝置（localStorage），畫面會註明。
+- 本機預覽：`tools/test/wear-preview.html`（`?new=1` 建角色），寵物島 `tools/test/pet-preview.html?isle=1&trav=1`。
+
 ## 圖片載入（不要掉圖）
 
 - 開門前等首屏的圖（海、標題、三座島）都到齊才淡出「樂園開門中」，最多等 4 秒；index.html 用 preload 讓首屏圖與程式一開始就抓。

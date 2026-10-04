@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>換裝預覽</title>
+<!-- 本機看換裝畫面用：不連資料庫，用假的資料。python3 -m http.server 後開 /tools/test/wear-preview.html
+     ?new=1（還沒建旅人，打開建角色）  ?set=street|tech|tw（起始套裝）  ?local=1（假裝資料庫還沒裝，存在這台裝置） -->
+<base href="../../">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Noto+Sans+TC:wght@500;700;900&display=swap">
+<link rel="stylesheet" href="css/park.css">
+</head>
+<body>
+<div id="world"><div id="sea"></div></div>
+<div id="ui"><div id="wardrobe" hidden></div></div>
+<script type="module">
+import * as auth from './js/auth.js';
+import * as traveller from './js/traveller.js';
+const q = new URLSearchParams(location.search);
+const set = q.get('set') ?? 'tw';
+const own = traveller.ITEMS.filter((x) => x.set === set).map((x) => x.code);
+const look = { face: 'face-girl', hair: 'hair-wavy', ...Object.fromEntries(traveller.ITEMS.filter((x) => x.set === set).map((x) => [x.slot, x.code])) };
+let S = q.get('new') ? { created: false, look: null, starter_set: null, owned: [] } : { created: true, look, starter_set: set, owned: own };
+const miss = () => { const e = new Error('missing'); e.missing = true; throw e; };
+auth.traveller.me = async () => (q.get('local') ? miss() : structuredClone(S));
+auth.traveller.create = async (face, hair, s) => {
+  const items = traveller.ITEMS.filter((x) => x.set === s);
+  S = { created: true, starter_set: s, owned: items.map((x) => x.code),
+        look: { face: face || null, hair, hat: null, top: null, bottom: null, hand: null, back: null, ...Object.fromEntries(items.map((x) => [x.slot, x.code])) } };
+  return structuredClone(S);
+};
+auth.traveller.save = async (l) => { S.look = { ...l }; return structuredClone(S); };
+traveller.init({ me: () => ({ kind: 'student', id: 'preview', nickname: '小旅人' }) });
+traveller.open();
+</script>
+</body>
+</html>

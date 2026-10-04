@@ -3,6 +3,7 @@
 // 小朋友是國小學生：填錯了要「講出哪裡不對」，不要讓按鈕變暗不說話（守護異世界踩過的坑）。
 import * as auth from './auth.js';
 import * as passport from './passport.js';
+import * as traveller from './traveller.js';
 import { sfx } from './audio.js';
 
 const $ = (s, root = document) => root.querySelector(s);
@@ -283,7 +284,8 @@ function openProfile(section = '') {
     <h2>${esc(w.nickname)}</h2>
     <p class="lead">${w.login_id ? `登入帳號 <b>${esc(w.login_id)}</b>・` : ''}暱稱在所有遊戲都一樣</p>
     <div class="row"><button type="button" class="btn small" data-passport>樂園護照${p?.stamps ? `（${p.stamps} 個章）` : ''}</button>
-      <button type="button" class="ghost small" data-avatar>換頭像</button></div></div></div>
+      <button type="button" class="ghost small" data-avatar>換頭像</button>
+      <button type="button" class="ghost small" data-wear>換裝間</button></div></div></div>
 
     <h3>我的班級</h3>
     ${classes.length ? `<ul class="classes">${classes.map(classRow).join('')}</ul>` : '<p class="tip">還沒有加入任何班級。</p>'}
@@ -314,6 +316,7 @@ function openProfile(section = '') {
   $('[data-logout]', layer).onclick = logout;
   $('[data-passport]', layer).onclick = () => { close(); passport.openPassport(); };
   $('[data-avatar]', layer).onclick = () => { close(); passport.openAvatar(); };
+  $('[data-wear]', layer).onclick = () => { close(); traveller.open(); };
   layer.querySelectorAll('[data-leave]').forEach((b) => {
     b.onclick = async () => {
       if (!confirm(`確定要退出 ${b.dataset.leave} 這個班嗎？`)) return;
