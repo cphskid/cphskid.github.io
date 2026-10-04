@@ -915,7 +915,7 @@ body[data-scene="map"] #hud{display:block}
 .ward .opt:hover,.ward .opt:focus-visible{transform:translateY(-2px);border-color:var(--wood-2);outline:none}
 .ward .opt.on{border-color:var(--gold);background:#fff4d0;box-shadow:0 0 0 3px rgba(255,194,61,.45)}
 .ward .opt.locked>img{opacity:.75}
-.ward .opt .tag{position:absolute;top:4px;right:4px;display:flex;gap:2px;align-items:center;font:900 12px/1 var(--f-body);font-style:normal;color:#fff;background:#9a6b3f;border-radius:999px;padding:3px 7px 3px 4px}
+.ward .opt .tag{position:absolute;white-space:nowrap;top:4px;right:4px;display:flex;gap:2px;align-items:center;font:900 12px/1 var(--f-body);font-style:normal;color:#fff;background:#9a6b3f;border-radius:999px;padding:3px 7px 3px 4px}
 .ward .opt .tag img{width:14px;height:14px}
 /* 建角色：三套起始套裝 */
 .ward .sets{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
@@ -941,7 +941,9 @@ body[data-scene="map"] #hud{display:block}
 @media (max-width:760px),(max-height:560px){
   #wardrobe{padding:8px}
   .ward{grid-template-columns:minmax(0,1fr);gap:12px;padding:16px;border-radius:22px;overflow-y:auto}
-  .ward .x,#wardrobe .x{right:4px;top:4px;width:48px;height:48px}
+  /* 叉叉固定在畫面角落（不跟著捲走），避開瀏海與 Safari 頂端 */
+  #wardrobe .ward>.x{position:fixed;right:calc(env(safe-area-inset-right) + 14px);top:calc(env(safe-area-inset-top) + 18px);width:52px;height:52px;z-index:30;touch-action:manipulation}
+  #wardrobe{padding:max(8px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left))}
   .ward .pane{overflow:visible;padding-right:0}
   .ward .stage{padding:8px 6px 26px}
   .ward .doll.big{--dw:min(190px,46vw)}
