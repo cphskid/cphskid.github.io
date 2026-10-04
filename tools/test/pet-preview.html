@@ -17,8 +17,8 @@
     <button class="isle" style="left:50px;top:330px;width:430px"><div class="bob"><div class="lift"><img class="art" src="img/l-01.webp" alt=""></div></div></button>
     <button class="isle pet-isle" id="pisle" style="left:130px;top:125px;width:240px"><div class="bob"><div class="lift"><img class="art" src="img/l-07.webp" alt=""></div></div><div class="plate"><b>寵物島</b><span>夥伴們住的地方</span></div></button>
   </div></div></section>
-  <div id="petroom" hidden></div>
 </div></div>
+<div id="ui"><div id="petroom" hidden></div></div>
 <script type="module">
 import * as pet from './js/pet.js';
 const q = new URLSearchParams(location.search);
@@ -69,7 +69,8 @@ const api = {
   rename: async (n) => { S.pets.find((x) => x.active).name = n; return clone(); },
 };
 const stage = document.getElementById('stage');
-const fit = () => stage.style.setProperty('--s', Math.min(innerWidth / 1600, innerHeight / 900));
+const ui = document.getElementById('ui');
+const fit = () => { stage.style.setProperty('--s', Math.min(innerWidth / 1600, innerHeight / 900)); ui.style.setProperty('--vw', innerWidth); ui.style.setProperty('--vh', innerHeight); };
 addEventListener('resize', fit); fit();
 pet.init({ api, me: () => ({ kind: 'student', nickname: '測試' }), host: () => document.getElementById('isles'),
   island: () => ({ left: 130, top: 125, width: 240 }) });

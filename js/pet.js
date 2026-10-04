@@ -325,7 +325,7 @@ function openScene({ select, say: first } = {}) {
   sky = readSky();
   show(`<div class="pisle" role="dialog" aria-modal="true" aria-label="寵物島" data-wx="${sky.wx}" data-tod="${sky.tod}" data-season="${sky.season}">
     <button class="x" data-close aria-label="關閉，回到地圖"></button>
-    <section class="ground" style="width:${GW}px;height:${GH}px">
+    <div class="ground-box"><section class="ground" style="width:${GW}px;height:${GH}px">
       <img class="land" src="img/pet/island.webp" alt="">
       <div class="actors"></div>
       <div class="haze" aria-hidden="true"></div>
@@ -333,7 +333,7 @@ function openScene({ select, say: first } = {}) {
       <div class="furn" hidden></div>
       <p class="skychip">${SKY_NAME.wx[sky.wx]}・${SKY_NAME.season[sky.season]}・${SKY_NAME.tod[sky.tod]}</p>
       <p class="hint">點寵物看牠想做什麼，按住拎到傢俱上或湖裡；點空地丟球</p>
-    </section>
+    </section></div>
     <aside class="care"></aside></div>`);
   const box = $('.actors', layer);
   const fresh = freshFurniture();

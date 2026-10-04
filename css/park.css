@@ -102,7 +102,7 @@ body{margin:0;background:var(--sea-deep);color:var(--ink);font-family:var(--f-bo
 .target{position:absolute;width:24px;height:34px;pointer-events:none;transform-origin:50% 100%}
 
 /* 介紹卡 */
-#veil{position:absolute;inset:-1200px;background:rgba(10,40,70,.45);display:grid;place-items:center;z-index:10}
+#veil{position:absolute;inset:0;background:rgba(10,40,70,.45);display:grid;place-items:center;z-index:10}
 .card{position:relative;width:760px;border-style:solid;border-width:60px;border-image:url(../img/ui/panel.webp) 150 fill / 60px stretch;padding:4px 14px 6px;filter:drop-shadow(0 24px 30px rgba(0,0,0,.35));display:grid;grid-template-columns:200px 1fr;gap:26px;align-items:start;animation:pop .45s cubic-bezier(.34,1.7,.5,1)}
 @keyframes pop{from{transform:scale(.7);opacity:0}to{transform:scale(1);opacity:1}}
 .card .art{position:relative}
@@ -141,8 +141,6 @@ body{margin:0;background:var(--sea-deep);color:var(--ink);font-family:var(--f-bo
 #flash{position:absolute;inset:0;background:radial-gradient(circle at 50% 55%,rgba(170,240,255,.95),rgba(255,255,255,.0) 70%);opacity:0;pointer-events:none;z-index:30}
 #flash.on{animation:flash .9s ease-out}
 @keyframes flash{0%{opacity:0}35%{opacity:1}100%{opacity:0}}
-#rotate{position:fixed;inset:auto 16px calc(16px + env(safe-area-inset-bottom,0px));font:700 15px/1.5 var(--f-body);color:var(--cream);background:rgba(15,55,90,.7);padding:10px 14px;border-radius:12px;text-align:center;display:none;z-index:40}
-@media (orientation:portrait) and (max-width:700px){#rotate{display:block}}
 #loading{position:fixed;inset:0;display:grid;place-content:center;justify-items:center;gap:10px;font:700 22px/1 var(--f-body);color:var(--cream);text-shadow:0 2px 4px rgba(0,0,0,.4);z-index:50;pointer-events:none}
 #loading img{width:180px;animation:rock 2.4s ease-in-out infinite}
 #loading.out{opacity:0;transition:opacity .35s}
@@ -188,7 +186,7 @@ body{margin:0;background:var(--sea-deep);color:var(--ink);font-family:var(--f-bo
 @keyframes puff{0%{transform:translate(-50%,-50%) scale(.4);opacity:0}30%{opacity:1}100%{transform:translate(-50%,-50%) scale(1.3);opacity:0}}
 .fx.burst{animation:burst .8s ease-out forwards}
 @keyframes burst{0%{transform:translate(-50%,-50%) scale(.3) rotate(0);opacity:1}100%{transform:translate(-50%,-50%) scale(1.5) rotate(40deg);opacity:0}}
-#portal{position:absolute;inset:-1200px;z-index:40;display:grid;place-items:center;background:radial-gradient(circle,rgba(10,40,80,0) 30%,rgba(10,40,80,.85) 75%);animation:fade .3s ease-out}
+#portal{position:absolute;inset:0;z-index:40;display:grid;place-items:center;background:radial-gradient(circle,rgba(10,40,80,0) 30%,rgba(10,40,80,.85) 75%);animation:fade .3s ease-out}
 #portal img{width:620px;animation:spin 1.2s cubic-bezier(.5,0,.3,1) forwards,spin-on 2.4s linear 1.2s infinite}
 #portal .bar{position:absolute;left:50%;top:calc(50% + 300px);width:360px;height:18px;margin-left:-180px;border-radius:12px;background:rgba(255,255,255,.2);box-shadow:inset 0 0 0 3px rgba(255,214,120,.85);overflow:hidden;animation:fade .4s .3s both}
 #portal .bar i{display:block;width:0;height:100%;background:linear-gradient(#ffd877,#f0a52a);border-radius:12px;transition:width .25s}
@@ -206,7 +204,7 @@ body{margin:0;background:var(--sea-deep);color:var(--ink);font-family:var(--f-bo
 #me-chip b{font:900 19px/1 var(--f-body);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #me-chip small{font:700 13px/1 var(--f-body);color:#8a6a4a}
 
-#acct{position:absolute;inset:-1200px;background:rgba(10,40,70,.5);display:grid;place-items:center;z-index:12}
+#acct{position:absolute;inset:0;background:rgba(10,40,70,.5);display:grid;place-items:center;z-index:12}
 .card.acct{width:640px;grid-template-columns:150px 1fr}
 .card.acct.wide{width:800px}
 .card.acct .art .tick{width:100%;filter:drop-shadow(0 8px 8px rgba(0,0,0,.2));animation:hover 3.2s ease-in-out infinite}
@@ -281,7 +279,7 @@ ul.classes small{font:700 14px/1 var(--f-body);color:#8a6a4a}
 .env-tag{left:170px}
 
 /* ---------- P4 樂園護照：一本攤開的護照，左頁是我、右頁是一個遊戲的章 ---------- */
-#pass{position:absolute;inset:-1200px;background:rgba(10,40,70,.55);display:grid;place-items:center;z-index:13}
+#pass{position:absolute;inset:0;background:rgba(10,40,70,.55);display:grid;place-items:center;z-index:13}
 #pass .x{position:absolute;right:-30px;top:-30px;width:72px;height:72px;border:0;padding:0;background:url(../img/ui/close.webp) center/contain no-repeat;cursor:pointer;filter:drop-shadow(0 4px 6px rgba(0,0,0,.3));transition:transform .2s;z-index:2}
 #pass .x:hover,#pass .x:focus-visible{transform:scale(1.1) rotate(8deg);outline:none}
 #pass h2{margin:0 0 4px;font:900 32px/1.2 var(--f-body);color:var(--wood)}
@@ -397,7 +395,7 @@ ul.classes small{font:700 14px/1 var(--f-body);color:#8a6a4a}
 
 /* 桌寵的窩 */
 #pass.again,#pass.again>*,#petroom.again,#petroom.again>*{animation:none}   /* 視窗開著時換內容不重播彈出 */
-#petroom{position:absolute;inset:-1200px;background:rgba(10,40,70,.55);display:grid;place-items:center;z-index:13}
+#petroom{position:absolute;inset:0;background:rgba(10,40,70,.55);display:grid;place-items:center;z-index:13}
 #petroom .x{position:absolute;right:-30px;top:-30px;width:72px;height:72px;border:0;padding:0;background:url(../img/ui/close.webp) center/contain no-repeat;cursor:pointer;filter:drop-shadow(0 4px 6px rgba(0,0,0,.3));transition:transform .2s;z-index:2}
 #petroom .x:hover,#petroom .x:focus-visible{transform:scale(1.1) rotate(8deg);outline:none}
 #petroom h2{margin:0;font:900 34px/1.2 var(--f-body);color:var(--wood)}
@@ -682,3 +680,181 @@ aside.care .roster h3{margin:0 0 8px}
 @keyframes newFurn{0%,100%{transform:none;filter:var(--tod) var(--wx) drop-shadow(0 4px 3px rgba(20,50,30,.3))}50%{transform:translateY(-10px) scale(1.06);filter:var(--tod) var(--wx) brightness(1.15) drop-shadow(0 0 10px #fff7b0)}}
 .pisle .furn-i small{font:800 11px/1 var(--f-body);color:#b0603a}
 @media (prefers-reduced-motion:reduce){.actor .wish,.prop.new img{animation:none}}
+
+/* ---------- 介面層 #ui：不跟著舞台縮放 ----------
+   舞台（海、島、船）照樣等比縮放；按鈕、介紹卡、帳號、護照、桌寵視窗都在 #ui，用真正的螢幕像素排版。
+   手機（窄或矮的畫面）在最下面另外排一套，字至少 16px、次要文字 13~14px。 */
+#ui{position:fixed;inset:0;z-index:20;pointer-events:none;--vw:1600;--vh:900}
+#ui>*{pointer-events:auto}
+#hud{position:absolute;inset:0;pointer-events:none;display:none}
+#hud>*{pointer-events:auto}
+#hud>#tick{pointer-events:none}
+body[data-scene="map"] #hud{display:block}
+#veil,#acct,#pass,#petroom{padding:12px}
+#toast{top:84px}
+/* 大視窗也不超出畫面：太高的就在裡面捲動 */
+.card>div:last-child{max-height:calc(100dvh - 150px);overflow-y:auto;overscroll-behavior:contain}
+.card.acct .body{max-height:min(690px,calc(100dvh - 150px))}
+.book{max-width:calc(100vw - 24px);max-height:calc(100dvh - 24px)}
+.sheet{max-width:calc(100vw - 24px);max-height:calc(100dvh - 24px)}
+.choose{max-height:calc(100dvh - 90px)}
+.den{max-width:calc(100vw - 24px);max-height:calc(100dvh - 24px)}
+.den.isle,.den.adopt,.den.small{overflow-y:auto}
+/* 寵物島場景是一整片遊戲畫面（傢俱、夥伴用座標擺），先照舊整片縮進畫面 */
+.pisle,.den:not(.isle):not(.adopt):not(.small):not(.hatch){position:absolute;left:50%;top:50%;translate:-50% -50%}
+.pisle{scale:min(1,calc((var(--vw) - 24) / 1570),calc((var(--vh) - 24) / 870))}
+.den:not(.isle):not(.adopt):not(.small):not(.hatch){scale:min(1,calc((var(--vw) - 24) / 1180),calc((var(--vh) - 24) / 700))}
+
+/* 島上的名牌、旗子在舞台裡，畫面縮小時字不能跟著縮：保底約 17px（名牌）、13px（副標） */
+.plate b{font-size:max(22px,calc(17px / var(--s,1)));padding:.4em .8em .45em}
+.plate span{font-size:max(14px,calc(13px / var(--s,1)));padding:.35em .7em}
+.isle.mist .plate b{font-size:max(18px,calc(15px / var(--s,1)))}
+.flag{font-size:max(16px,calc(14px / var(--s,1)));padding:.45em .6em}
+
+/* ---------- 手機：窄（直拿）或矮（橫放）的畫面 ---------- */
+@media (max-width:760px),(max-height:560px){
+  /* 地圖上的按鈕 */
+  .topbar{left:10px;top:10px;gap:8px}
+  .back{font-size:16px;padding:8px 12px;border-radius:12px;box-shadow:0 3px 0 var(--wood)}
+  .ribbon{display:none}
+  #me-chip{right:10px;top:10px;padding:4px 12px 4px 4px;gap:6px}
+  #me-chip .av{--av:38px}
+  #me-chip b{font-size:16px;max-width:140px}
+  #me-chip small{font-size:13px}
+  #pass-btn{left:8px;bottom:6px;width:84px}
+  #pass-btn img{width:64px}
+  #pass-btn b{font-size:14px;padding:5px 9px 6px;margin-top:-12px;border-width:2px}
+  #pass-btn .dot{min-width:26px;height:26px;font-size:15px;line-height:22px;border-width:2px;right:4px}
+  #snd-btn{left:98px;bottom:12px;padding:6px 8px}
+  #snd-btn svg{width:26px;height:26px}
+  #snd-btn b{display:none}
+  .env-tag{left:auto;right:10px;top:62px;bottom:auto;font-size:13px;padding:5px 8px}
+  .pan{width:52px;height:52px;margin-top:-26px}
+  #pan-l{left:6px} #pan-r{right:6px}
+  #tick{right:4px;bottom:2px;gap:2px}
+  #tick button{width:86px}
+  #tick .bubble{max-width:min(300px,calc(100vw - 190px));margin-bottom:56px;font-size:16px;padding:8px 12px;border-width:2px;border-radius:16px;box-shadow:0 3px 0 var(--wood)}
+  #toast{top:64px;font-size:17px;white-space:normal;max-width:calc(100vw - 32px);text-align:center;padding:10px 16px}
+  #portal img{width:320px}
+  #portal .bar{width:min(360px,70vw);margin-left:calc(min(360px,70vw) / -2);top:calc(50% + 150px)}
+  #portal b{top:calc(50% + 110px);font-size:20px}
+
+  /* 介紹卡、帳號卡 */
+  #veil,#acct,#pass,#petroom{padding:8px}
+  .card,.card.acct,.card.acct.wide,.card.acct.solo{width:min(640px,100%);border-width:26px;border-image-width:26px;padding:0 4px;grid-template-columns:96px minmax(0,1fr);gap:12px;filter:drop-shadow(0 10px 16px rgba(0,0,0,.35))}
+  .card.acct.solo{grid-template-columns:minmax(0,1fr)}
+  .card>div:last-child,.card.acct .body{max-height:calc(100dvh - 68px);padding-right:4px}
+  .card .x{right:-24px;top:-24px;width:52px;height:52px}
+  .card h2{font-size:24px}
+  .card .lead{font-size:16px;margin-bottom:10px}
+  .card .art>.badge{width:48px;bottom:-10px}
+  .fac{padding:10px 12px;border-radius:14px;margin-bottom:10px}
+  .fac h3,.card.acct h3{font-size:19px}
+  .fac p{font-size:16px;margin-bottom:10px}
+  .chip{font-size:14px}
+  .card .btn.go{font-size:20px;padding:15px 30px 18px}
+  .card .note{font-size:15px}
+  .card .ghost{font-size:17px;padding:10px 16px}
+  .card .btn.small{font-size:17px;padding:10px 18px 11px}
+  .card .say img{width:48px}
+  .card .say p{font-size:16px;padding:6px 10px}
+  .tabs button{font-size:17px;padding:10px 6px}
+  .form input:not([type=checkbox]){font-size:18px;padding:9px 12px}
+  .me-head{gap:12px}
+  .card .fac .row p{min-width:0;flex-basis:160px}
+
+  /* 護照：攤開的兩頁改成上下一頁，整本可以捲 */
+  .book{width:100%;height:auto;max-height:calc(100dvh - 16px);display:block;overflow-y:auto;overscroll-behavior:contain;padding:10px;border-radius:22px}
+  .book.loading{width:300px;height:220px;display:grid}
+  .leaf{padding:16px 16px;overflow:visible}
+  .leaf.left,.leaf.right{border-radius:14px;box-shadow:none}
+  .leaf.right{margin-top:8px}
+  #pass .x,#petroom .x{right:4px;top:4px;width:48px;height:48px}
+  #pass h2{font-size:24px;padding-right:48px}
+  #pass .lead{font-size:16px}
+  .owner b{font-size:24px}
+  .owner span{font-size:16px}
+  .ptab b{font-size:17px}
+  .ptab small{font-size:13px}
+  .ptab img{width:44px;height:44px}
+  .next p,.unlock p{font-size:15px}
+  .leaf.right .grid{grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:14px 8px}
+  .stamp .slot{width:96px;height:96px}
+  .stamp .slot img{width:80px;height:80px}
+  .stamp.got .slot img{width:96px;height:96px}
+  .stamp b{font-size:15px}
+  .full{right:58px;top:14px;font-size:15px;padding:6px 10px}
+
+  /* 換頭像 */
+  .sheet,.sheet.small{width:100%;max-height:calc(100dvh - 16px);grid-template-columns:minmax(0,1fr);gap:12px;padding:16px;overflow-y:auto;overscroll-behavior:contain;border-radius:22px}
+  .sheet.small{grid-template-columns:90px minmax(0,1fr)}
+  .pv{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;justify-items:start;text-align:left;padding:0 48px 0 0;gap:2px 12px}
+  .pv .av{--av:96px;grid-row:span 2}
+  .sheet .x{right:4px;top:4px;width:48px;height:48px}
+  .pv b{font-size:20px}
+  .pv p{font-size:15px}
+  .choose{max-height:none;overflow:visible;padding-right:0}
+  .avs{grid-template-columns:repeat(auto-fill,minmax(72px,1fr))}
+  .frs{grid-template-columns:repeat(auto-fill,minmax(80px,1fr))}
+  .pick .av{--av:58px}
+  .pick .nm{font-size:14px}
+
+  /* 桌寵：選夥伴、領養、孵蛋 */
+  .den,.den.isle,.den.adopt,.den.small{width:100%;height:auto;max-height:calc(100dvh - 16px);overflow-y:auto;overscroll-behavior:contain;padding:16px;gap:12px;border-radius:22px}
+  .den.small{grid-template-columns:90px minmax(0,1fr)}
+  .den.hatch{width:min(560px,100%);height:min(520px,calc(100dvh - 16px))}
+  .den.hatch p{font-size:24px}
+  #petroom h2{font-size:24px;padding-right:48px}
+  #petroom .lead{font-size:16px}
+  #petroom .btn.go{font-size:20px;padding:15px 30px 18px}
+  #petroom .btn.small{font-size:17px;padding:10px 20px 11px}
+  .den.isle .say img,.adopt .say img{width:64px}
+  .den.isle .say p,.adopt .say p{font-size:18px}
+  .buddies{gap:10px}
+  .buddy{width:150px;padding:10px 6px;border-width:3px}
+  .buddy img{width:96px;height:96px}
+  .buddy b{font-size:19px}
+  .buddy small{font-size:13px}
+  .buddy .tag{font-size:15px;padding:7px 12px}
+  .pals{grid-template-columns:repeat(auto-fill,minmax(130px,1fr))}
+  .pal{padding:10px 6px}
+  .pal img{width:100px;height:100px}
+  .pal b{font-size:20px}
+  .adopt .name{flex-wrap:wrap}
+  .adopt .name label{font-size:18px;flex-wrap:wrap}
+  .info .rn input,.adopt .name input{font-size:18px;width:160px}
+}
+/* 寵物島場景（手機）：島圖那塊用 --g 縮放（座標照舊），右邊／下面的照顧面板用真正的大小 */
+.ground-box{position:relative}
+@media (max-width:760px),(max-height:560px){
+  .pisle{position:relative;left:auto;top:auto;translate:none;scale:none;width:100%;height:auto;max-height:calc(100dvh - 16px);overflow-y:auto;overscroll-behavior:contain;
+    display:flex;flex-direction:column;gap:10px;padding:10px;border-radius:22px;--g:calc((var(--vw) - 56) / 1120)}
+  .ground-box{flex:none;width:calc(1120px * var(--g));height:calc(842px * var(--g));align-self:center}
+  .pisle .ground{transform-origin:0 0;scale:var(--g)}
+  .pisle .furn-btn,.pisle .furn,.pisle .skychip,.pisle .hint,.actor .bub.talk,.actor .tag,.actor .bub.mark{zoom:max(1,calc(.85 / var(--g)))}
+  .pisle .furn{width:min(430px,calc((var(--vw) - 56px) / .85));max-height:none}
+  .pisle .hint{white-space:normal;width:max-content;max-width:calc(1000px * var(--g) / .85);text-align:center;line-height:1.3}
+  aside.care{height:auto;flex:none}
+  aside.care .who{overflow:visible}
+  #petroom .pisle>.x{right:4px;top:4px;width:48px;height:48px;z-index:2400}
+}
+@media (max-height:560px) and (min-width:561px){
+  .pisle{flex-direction:row;align-items:flex-start;--g:min(calc((var(--vh) - 36) / 842),calc((var(--vw) * .56) / 1120))}
+  .ground-box{align-self:flex-start;position:sticky;top:0}
+  aside.care{flex:1;min-width:0}
+}
+/* 手機橫放：卡片可以比較寬，左邊圖小一點 */
+@media (max-height:560px) and (min-width:561px){
+  .card,.card.acct,.card.acct.wide{width:min(760px,100%);grid-template-columns:120px minmax(0,1fr)}
+}
+/* 手機直拿：卡片從下面滑上來，圖放在上面一小塊 */
+@media (max-width:560px) and (orientation:portrait){
+  #veil,#acct{place-items:end center;padding:8px 8px calc(8px + env(safe-area-inset-bottom,0px))}
+  .card,.card.acct,.card.acct.wide{grid-template-columns:minmax(0,1fr);gap:6px;animation:rise .35s cubic-bezier(.2,.9,.3,1.1)}
+  .card .art{width:120px;justify-self:center;margin-top:-6px}
+  .card.acct .art{width:84px}
+  .card>div:last-child,.card.acct .body{max-height:calc(100dvh - 210px)}
+  .card .row{justify-content:center}
+  .card .btn.go{flex:1;text-align:center}
+  .card .say{display:none}
+}

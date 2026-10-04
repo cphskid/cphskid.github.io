@@ -210,7 +210,7 @@ function tick(now) {
 requestAnimationFrame(tick);
 
 // ---------- 舞台縮放、視差、地圖左右移動 ----------
-const world = $('#world'), stage = $('#stage'), mapEl = $('#map');
+const world = $('#world'), stage = $('#stage'), mapEl = $('#map'), title = $('#title');
 let scale = 1, pan = 0;
 function panRange() {
   const visible = innerWidth / scale;               // 畫面看得到幾個舞台單位寬
@@ -228,12 +228,25 @@ function setPan(v) {
 // 正在打字而且寬度沒變（沒有轉向）就不重算，鍵盤收起來再算。
 let fitW = 0;
 const typing = () => document.activeElement?.matches?.('input:not([type=checkbox]),textarea,select');
+// 橫的畫面：整個 1600×900 舞台塞進畫面（跟以前一樣）。
+// 直拿的手機：開場只取中間那段構圖；地圖用高度決定大小，島比較大，左右滑看下一座。
+// 按鈕、對話框、護照不在舞台裡（#ui），不跟著縮，所以手機上字不會變小。
+const ui = $('#ui');
 function fit() {
   if (typing() && innerWidth === fitW) return;
   fitW = innerWidth;
-  scale = Math.min(innerWidth / 1600, innerHeight / 900);
+  // 換縮放前記住地圖滑到哪（比例），換完放回同一個位置
+  const [lo0, hi0] = panRange();
+  const at = hi0 > lo0 ? (pan - lo0) / (hi0 - lo0) : 0;
+  const portrait = innerHeight > innerWidth;
+  if (!portrait) scale = Math.min(innerWidth / 1600, innerHeight / 900);
+  else if (!title.hidden) scale = Math.min(innerWidth / 760, innerHeight / 900);
+  else scale = Math.min(innerWidth / 520, (innerHeight - 150) / 900);
   stage.style.setProperty('--s', scale);
-  setPan(pan);
+  ui.style.setProperty('--vw', innerWidth);
+  ui.style.setProperty('--vh', innerHeight);
+  const [lo, hi] = panRange();
+  setPan(lo + at * (hi - lo));
 }
 addEventListener('resize', fit);
 addEventListener('focusout', () => setTimeout(() => { if (!typing()) fit(); }, 300));
@@ -305,13 +318,19 @@ paintSnd();
 snd.preload(['SE-01', 'SE-02', 'SE-03', 'SE-10', 'SE-11', 'SE-12', 'SE-14', 'SE-15']);
 
 // ---------- 換場 ----------
-const title = $('#title'), flash = $('#flash');
+const flash = $('#flash');
+// 目前是哪一幕：介面層的按鈕（回到開場、護照、滴答）只在地圖出現；直拿時兩幕的縮放也不一樣
+function setScene(name) {
+  document.body.dataset.scene = name;
+  fit();
+}
 function showTitle() {
   closeCard();
   try { sessionStorage.removeItem('park:entered'); } catch {}
   snd.music('MU-01'); snd.ambience('SE-16');
   select.hidden = true;
   title.hidden = false;
+  setScene('title');
 }
 function greeting() {
   const w = account.current();
@@ -327,6 +346,7 @@ function greeting() {
 function showMap({ animate = true } = {}) {
   title.hidden = true;
   select.hidden = false;
+  setScene('map');
   paintPassBtn();
   snd.music('MU-01'); snd.ambience('SE-16');
   const stamped = account.current().profile?.unseen?.length;
@@ -439,7 +459,7 @@ async function enterFacility(e) {
   const bar = p.querySelector('.bar i');
   // 傳送門的圖還沒到就先等一下（最多 0.6 秒），不然轉場會是空的
   await settle([p.querySelector('img')], 600);
-  stage.appendChild(p);
+  ui.appendChild(p);
   const go = () => { location.href = href; };
   if (reduceMotion) return go();
   const minTime = new Promise((ok) => setTimeout(ok, 1100));
@@ -517,6 +537,7 @@ if (route && me.kind === 'guest') {
   // 從遊戲回來但已經登出（或換人用平板）：先回開場，按 Start 再登入
   history.replaceState(null, '', location.pathname);
   title.hidden = false;
+  setScene('title');
 } else if (route || enteredThisTab()) {
   // 這個分頁已經從開場進過樂園（例如從遊戲按「回樂園」回來），就直接回地圖，不再看一次開場
   if (!route) history.replaceState(null, '', '#map');
@@ -529,6 +550,7 @@ if (route && me.kind === 'guest') {
   }
 } else {
   title.hidden = false;
+  setScene('title');
   if (account.hasJoinLink && me.kind === 'guest') $('#start').click();   // 老師分享的「帶代碼連結」
   const staff = new URLSearchParams(location.search).get('staff');
   if (staff !== null && account.available) {                                // 老師後台的「建立開班帳號」
