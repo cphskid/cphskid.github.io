@@ -915,7 +915,7 @@ body[data-scene="map"] #hud{display:block}
 .ward .opt:hover,.ward .opt:focus-visible{transform:translateY(-2px);border-color:var(--wood-2);outline:none}
 .ward .opt.on{border-color:var(--gold);background:#fff4d0;box-shadow:0 0 0 3px rgba(255,194,61,.45)}
 .ward .opt.locked>img{opacity:.75}
-.ward .opt .tag{position:absolute;white-space:nowrap;top:4px;right:4px;display:flex;gap:2px;align-items:center;font:900 12px/1 var(--f-body);font-style:normal;color:#fff;background:#9a6b3f;border-radius:999px;padding:3px 7px 3px 4px}
+.ward .opt .tag{position:absolute;white-space:nowrap;top:4px;right:4px;display:flex;gap:2px;align-items:center;font:900 13px/1 var(--f-body);font-style:normal;color:#fff;background:#9a6b3f;border-radius:999px;padding:3px 7px 3px 4px}
 .ward .opt .tag img{width:14px;height:14px}
 /* 建角色：三套起始套裝 */
 .ward .sets{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
