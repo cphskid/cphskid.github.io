@@ -4,6 +4,7 @@
 // 管理員多一頁：設施狀態、老師帳號、所有班級、操作紀錄。
 // 權限一律由資料庫擋（supabase/park_teacher.sql），這裡只負責畫面不出錯、錯誤講白話。
 import * as auth from './auth.js';
+import { headHtml } from './traveller.js';
 
 const $ = (s, root = document) => root.querySelector(s);
 const $$ = (s, root = document) => [...root.querySelectorAll(s)];
@@ -430,12 +431,14 @@ async function paintOverview(c) {
   let ov;
   // 頭像與護照章數（P4）：沒裝 park_passport.sql 就不顯示，總覽照常
   const avatarsP = auth.passport.classAvatars(c.code).catch(() => null);
+  const looksP = auth.traveller.classLooks(c.code).catch(() => null);   // 頭像＝學生的時空旅人大頭
   try { ov = await auth.teacher.overview(c.code); }
   catch (e) {
     p.innerHTML = `<div class="head">${h2('chart', '全班總覽')}</div><div class="empty"><img src="img/admin/tick-error.webp" alt=""><p>${esc(e.message)}</p></div>`;
     return;
   }
-  const avs = new Map((await avatarsP ?? []).map((a) => [a.student_id, a]));
+  const looks = new Map((await looksP ?? []).map((a) => [a.student_id, a.look]));
+  const avs = new Map((await avatarsP ?? []).map((a) => [a.student_id, { ...a, look: looks.get(a.student_id) }]));
   lastOverview = { cls: c, ...ov };
   const games = ov.games;
   const students = ov.students;
@@ -488,10 +491,10 @@ async function paintOverview(c) {
   $$('[data-rm]', p).forEach((b) => { b.onclick = () => removeStudent(c, byId.get(b.dataset.rm)); });
 }
 
-// 學生的樂園頭像＋護照章數；沒選過頭像就只顯示章數
+// 學生的樂園頭像（時空旅人的大頭）＋護照章數；還沒建旅人就只顯示章數
 function avCell(a) {
   if (!a) return '';
-  const img = a.avatar ? `<span class="av fr-${esc(a.frame)}"><img src="img/avatar/${esc(a.avatar)}.webp" alt=""></span>` : '';
+  const img = a.look ? `<span class="av fr-${esc(a.frame)}">${headHtml(a.look)}</span>` : '';
   return `${img}<span class="stamps" title="樂園護照蓋了幾個章">${ico('passport')}${a.stamps}</span>`;
 }
 

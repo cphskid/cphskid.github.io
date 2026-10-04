@@ -54,14 +54,17 @@ export function state() { return st; }
 export function needsCreate() { return hooks.me().kind === 'student' && st && !st.created; }
 
 // ---------- 讀寫（資料庫或這台裝置） ----------
-const localKey = () => 'park-traveller:' + (hooks.me().id ?? '');
+const localKey = () => 'park-traveller:' + ((who ?? hooks.me()).id ?? '');
 function readLocal() {
   try { return JSON.parse(localStorage.getItem(localKey())) ?? null; } catch { return null; }
 }
 function writeLocal(v) { try { localStorage.setItem(localKey(), JSON.stringify(v)); } catch {} }
 
-export async function load() {
-  if (hooks.me().kind !== 'student') { st = null; return st; }
+// w：還沒登記成 hooks.me() 之前（account.js 讀「我是誰」的時候）就要讀，可以直接帶進來
+let who = null;
+export async function load(w = hooks.me()) {
+  who = w;
+  if (w.kind !== 'student') { st = null; return st; }
   try {
     st = await auth.traveller.me();
     local = false;
@@ -100,6 +103,10 @@ export function dollHtml(look, cls = '') {
     return `<img src="img/traveller/${esc(code)}.webp" alt="" draggable="false">`;
   }).join('');
   return `<span class="doll${cls ? ' ' + cls : ''}">${imgs}</span>`;
+}
+// 大頭（頭像）：同一組疊圖，只露出頭到肩膀那一塊（框在 css 的 .av .head）
+export function headHtml(look) {
+  return dollHtml(look, 'head');
 }
 const thumb = (code) => `<img src="img/traveller/thumb/${esc(code)}.webp" alt="" draggable="false">`;
 

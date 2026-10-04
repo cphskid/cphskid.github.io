@@ -213,13 +213,26 @@ begin
 end;
 $$;
 
+-- 老師名單上的大頭（頭像就是旅人，全班總覽用）：只有這個班的老師看得到
+create or replace function public.park_class_looks(p_code text)
+returns table (student_id uuid, look jsonb)
+language sql stable security definer set search_path = public, pg_temp as $$
+  select m.student_id, t.look
+    from public.park_class_members m
+    join public.park_travellers t on t.student_id = m.student_id
+   where m.class_code = upper(btrim(coalesce(p_code, '')))
+     and public.is_teacher_of(m.class_code);
+$$;
+
 -- -----------------------------------------------------------------------------
 -- 6. 權限
 -- -----------------------------------------------------------------------------
 revoke all on function
   public.park_wear_owns(uuid, text), public.park_wear_check(uuid, jsonb), public.park_traveller_state(uuid),
-  public.park_traveller_me(), public.park_traveller_create(text, text, text), public.park_traveller_save(jsonb)
+  public.park_traveller_me(), public.park_traveller_create(text, text, text), public.park_traveller_save(jsonb),
+  public.park_class_looks(text)
   from public, anon, authenticated;
 grant execute on function
-  public.park_traveller_me(), public.park_traveller_create(text, text, text), public.park_traveller_save(jsonb)
+  public.park_traveller_me(), public.park_traveller_create(text, text, text), public.park_traveller_save(jsonb),
+  public.park_class_looks(text)
   to authenticated;

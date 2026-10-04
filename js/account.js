@@ -33,6 +33,8 @@ async function loadWho() {
   if (w.kind === 'student') {
     try { w.profile = await auth.passport.myProfile(); } catch { w.profile = null; }
   }
+  await traveller.load(w).catch(() => {});   // 頭像就是旅人的大頭，畫右上角之前要先有
+
   return w;
 }
 
@@ -75,11 +77,13 @@ function paintChip() {
   if (who.kind === 'student') {
     const p = who.profile;
     const n = p?.unseen?.length ?? 0;
-    chip.innerHTML = `${passport.avatarHtml(p?.avatar, p?.frame, 'chip')}<span><b>${esc(who.nickname)}</b><small>${n ? `<i class="new">新章 ×${n}</i>` : '我的資料'}</small></span>`;
+    chip.innerHTML = `${passport.avatarHtml(undefined, p?.frame, 'chip')}<span><b>${esc(who.nickname)}</b><small>${n ? `<i class="new">新章 ×${n}</i>` : '我的資料'}</small></span>`;
   }
   else if (who.kind === 'staff') chip.innerHTML = `<img src="img/tick/point.webp" alt=""><span><b>${esc(who.display_name)}</b><small>${who.is_admin ? '管理員' : '老師／家長'}</small></span>`;
   else chip.innerHTML = `<img src="img/tick/wave.webp" alt=""><span><b>登入</b><small>還沒登入</small></span>`;
 }
+// 換好衣服：右上角的大頭跟著換
+addEventListener('park:traveller', paintChip);
 chip.addEventListener('click', () => {
   if (who.kind === 'student') openProfile();
   else if (who.kind === 'staff') openStaffHome();
@@ -154,8 +158,7 @@ async function loggedIn() {
   layer.innerHTML = '';
   p?.resolve(who);
   sfx('SE-18');
-  // 第一次登入、還沒選過頭像：請他挑一個（資料庫還沒裝護照時 profile 是 null，就不問）
-  if (who.kind === 'student' && who.profile && !who.profile.avatar) setTimeout(() => passport.openAvatar({ first: true }), 700);
+  // 第一次登入還沒有時空旅人：進地圖時 park.js 會請他建一個（頭像就是旅人的大頭）
 }
 
 // ---------- 學生：我有帳號／第一次來 ----------
@@ -280,12 +283,12 @@ function openProfile(section = '') {
   const classes = w.classes ?? [];
   const p = w.profile;
   show(`
-    <div class="me-head">${passport.avatarHtml(p?.avatar, p?.frame, 'big')}<div>
+    <div class="me-head">${passport.avatarHtml(undefined, p?.frame, 'big')}<div>
     <h2>${esc(w.nickname)}</h2>
     <p class="lead">${w.login_id ? `登入帳號 <b>${esc(w.login_id)}</b>・` : ''}暱稱在所有遊戲都一樣</p>
     <div class="row"><button type="button" class="btn small" data-passport>樂園護照${p?.stamps ? `（${p.stamps} 個章）` : ''}</button>
-      <button type="button" class="ghost small" data-avatar>換頭像</button>
-      <button type="button" class="ghost small" data-wear>換裝間</button></div></div></div>
+      <button type="button" class="ghost small" data-wear>換裝間</button>
+      <button type="button" class="ghost small" data-avatar>頭像框</button></div></div></div>
 
     <h3>我的班級</h3>
     ${classes.length ? `<ul class="classes">${classes.map(classRow).join('')}</ul>` : '<p class="tip">還沒有加入任何班級。</p>'}

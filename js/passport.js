@@ -2,10 +2,11 @@
 //
 // 護照：每個遊戲一頁，蓋過的章亮起來、沒蓋過的是淡淡的空格加上「怎麼拿到」。
 //       剛蓋的新章第一次打開時會「咚」一聲蓋下去，看過就不再播。
-// 頭像：一開始 12 個可以選，其他的靠蓋章、蓋滿一頁解鎖；頭像框也一樣。
+// 頭像：就是自己的時空旅人的大頭（js/traveller.js）；蓋章、蓋滿一頁可以解鎖頭像框。
 // 解鎖條件一律由資料庫判斷，這裡只負責畫出來。
 import * as auth from './auth.js';
 import { sfx } from './audio.js';
+import * as traveller from './traveller.js';
 
 const $ = (s, root = document) => root.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -18,11 +19,10 @@ let page = 0;
 
 export function init(h) { hooks = { ...hooks, ...h }; }
 
-// 頭像＋框。沒選過頭像的人先用滴答。
-export function avatarHtml(avatar, frame = 'plain', cls = '') {
-  const img = avatar
-    ? `<img src="img/avatar/${esc(avatar)}.webp" alt="">`
-    : '<img class="none" src="img/tick/happy.webp" alt="">';
+// 頭像＝時空旅人的大頭＋框（2026-10-04 起舊的 24 個頭像不用了）。還沒建旅人的先用滴答。
+// look 不給就用自己現在的穿搭。
+export function avatarHtml(look = traveller.state()?.look, frame = 'plain', cls = '') {
+  const img = look ? traveller.headHtml(look) : '<img class="none" src="img/tick/happy.webp" alt="">';
   return `<span class="av fr-${esc(frame || 'plain')}${cls ? ' ' + cls : ''}">${img}</span>`;
 }
 
@@ -95,10 +95,12 @@ function render() {
   const freshTotal = pages.reduce((n, x) => n + x.stamps.filter((s) => s.new).length, 0);
 
   // 下一個獎勵：還差最少章數的那一個
-  const locked = book.rewards.filter((r) => !r.unlocked && !r.need_page).sort((a, b) => a.need_stamps - b.need_stamps);
+  // 頭像改成時空旅人的大頭之後，能解鎖的只剩頭像框
+  const frameRewards = book.rewards.filter((r) => r.kind === 'frame');
+  const locked = frameRewards.filter((r) => !r.unlocked && !r.need_page).sort((a, b) => a.need_stamps - b.need_stamps);
   const next = locked[0];
   // 這次新蓋的章剛好解鎖的（看過護照之前的章數還不夠的那些）
-  const fresh = book.rewards.filter((r) => r.unlocked && !r.need_page && r.need_stamps > 0 && r.need_stamps > total - freshTotal);
+  const fresh = frameRewards.filter((r) => r.unlocked && !r.need_page && r.need_stamps > 0 && r.need_stamps > total - freshTotal);
 
   const tabs = pages.map((x, i) => {
     const got = x.stamps.filter((s) => s.at).length;
@@ -128,14 +130,14 @@ function render() {
   show(`<div class="book" role="dialog" aria-modal="true" aria-label="樂園護照">
     <button class="x" data-close aria-label="關閉護照"></button>
     <section class="leaf left">
-      <div class="owner">${avatarHtml(book.avatar, book.frame, 'big')}
+      <div class="owner">${avatarHtml(undefined, book.frame, 'big')}
         <div><small>時空冒險樂園・護照</small><b>${esc(w.nickname)}</b>
         <span>已經蓋了 <em>${total}</em> 個章</span></div></div>
-      <button type="button" class="btn small" data-avatar>換頭像</button>
+      <div class="row"><button type="button" class="btn small" data-wear>換裝間</button><button type="button" class="btn small" data-avatar>頭像框</button></div>
       <nav class="ptabs" aria-label="選一個遊戲的那一頁">${tabs || '<p class="tip">還沒有遊戲提供護照章。</p>'}</nav>
-      ${fresh.length ? `<div class="unlock"><img src="img/fx/sparkle.webp" alt=""><p><b>新解鎖！</b>${fresh.map((r) => esc(r.name)).join('、')}，按「換頭像」換上去吧。</p></div>`
-        : next ? `<div class="next">${next.kind === 'avatar' ? avatarHtml(next.code, 'plain', 'mini') : avatarHtml(book.avatar, next.code, 'mini')}
-          <p>再蓋 <b>${next.need_stamps - total}</b> 個章，就能解鎖${next.kind === 'avatar' ? '頭像' : '頭像框'}「${esc(next.name)}」</p></div>` : ''}
+      ${fresh.length ? `<div class="unlock"><img src="img/fx/sparkle.webp" alt=""><p><b>新解鎖！</b>${fresh.map((r) => esc(r.name)).join('、')}頭像框，按「頭像框」換上去吧。</p></div>`
+        : next ? `<div class="next">${avatarHtml(undefined, next.code, 'mini')}
+          <p>再蓋 <b>${next.need_stamps - total}</b> 個章，就能解鎖頭像框「${esc(next.name)}」</p></div>` : ''}
     </section>
     <section class="leaf right">
       ${p ? `<h2>${esc(p.name)}</h2>
@@ -146,6 +148,7 @@ function render() {
 
   layer.querySelectorAll('[data-page]').forEach((b) => { b.onclick = () => { page = +b.dataset.page; clearFresh(); render(); }; });
   $('[data-avatar]', layer).onclick = () => openAvatar({ back: true });
+  $('[data-wear]', layer).onclick = () => { close(); traveller.open(); };
   if (!reduceMotion) layer.querySelectorAll('.stamp.fresh').forEach((el, i) => sparkle(el, i));
 }
 
@@ -165,48 +168,37 @@ function sparkle(el, i) {
   }, 450 + i * 350);
 }
 
-// ---------- 換頭像 ----------
-// first：第一次登入時自動打開（歡迎詞不同）；back：從護照來的，存好回護照
-export async function openAvatar({ first = false, back = false } = {}) {
+// ---------- 頭像框 ----------
+// 頭像就是自己的時空旅人（大頭），在換裝間換樣子；這裡只挑框。back：從護照來的，存好回護照
+export async function openAvatar({ back = false } = {}) {
   const w = hooks.me();
   if (w.kind !== 'student') return;
   if (!book || !back) {
-    show('<div class="book loading" role="dialog" aria-modal="true"><img src="img/ui/passport.webp" alt=""><p>拿出頭像…</p></div>');
-    try { await load(); } catch (e) { if (!first) problem(e); else close(); return; }
+    show('<div class="book loading" role="dialog" aria-modal="true"><img src="img/ui/passport.webp" alt=""><p>拿出頭像框…</p></div>');
+    try { await load(); } catch (e) { problem(e); return; }
   }
-  let av = book.avatar ?? null;
   let fr = book.frame ?? 'plain';
-  const avatars = book.rewards.filter((r) => r.kind === 'avatar');
   const frames = book.rewards.filter((r) => r.kind === 'frame');
-  const nameOf = (code) => book.rewards.find((r) => r.code === code)?.name ?? '';
+  const nameOf = (code) => frames.find((r) => r.code === code)?.name ?? '';
 
   const paint = () => {
-    show(`<div class="sheet picker" role="dialog" aria-modal="true" aria-label="選頭像">
+    show(`<div class="sheet picker" role="dialog" aria-modal="true" aria-label="選頭像框">
       <button class="x" data-close aria-label="關閉"></button>
-      <div class="pv">${avatarHtml(av, fr, 'huge')}<b>${esc(av ? nameOf(av) : '還沒選')}</b>
-        <p>${first ? `歡迎你，${esc(w.nickname)}！挑一個代表你的頭像吧，之後隨時可以換。` : '蓋越多章，可以選的頭像和框越多。'}</p></div>
+      <div class="pv">${avatarHtml(undefined, fr, 'huge')}<b>${esc(nameOf(fr))}</b>
+        <p>頭像就是你的時空旅人，在換裝間換樣子。蓋越多章，可以選的頭像框越多。</p>
+        <button type="button" class="ghost" data-wear>去換裝間</button></div>
       <div class="choose">
-        <h3>頭像</h3>
-        <div class="avs">${avatars.map((r) => `<button type="button" class="pick${r.unlocked ? '' : ' locked'}${av === r.code ? ' on' : ''}" data-av="${esc(r.code)}" aria-label="${esc(r.name)}${r.unlocked ? '' : '（還沒解鎖）'}">
-          ${avatarHtml(r.code)}${r.unlocked ? '' : `<span class="need"><img src="img/ui/lock.webp" alt="">${esc(needText(r, true))}</span>`}</button>`).join('')}</div>
         <h3>頭像框</h3>
         <div class="frs">${frames.map((r) => `<button type="button" class="pick${r.unlocked ? '' : ' locked'}${fr === r.code ? ' on' : ''}" data-fr="${esc(r.code)}" aria-label="${esc(r.name)}${r.unlocked ? '' : '（還沒解鎖）'}">
-          ${avatarHtml(av, r.code)}<span class="nm">${esc(r.name)}</span>${r.unlocked ? '' : `<span class="need"><img src="img/ui/lock.webp" alt="">${esc(needText(r, true))}</span>`}</button>`).join('')}</div>
+          ${avatarHtml(undefined, r.code)}<span class="nm">${esc(r.name)}</span>${r.unlocked ? '' : `<span class="need"><img src="img/ui/lock.webp" alt="">${esc(needText(r, true))}</span>`}</button>`).join('')}</div>
         <p class="msg" hidden></p>
         <div class="row end">${back ? '<button type="button" class="ghost" data-back>回護照</button>' : ''}
-          <button type="button" class="btn go" data-save>${first ? '就決定是你了！' : '換上去'}</button></div>
+          <button type="button" class="btn go" data-save>換上去</button></div>
       </div></div>`);
 
     const msg = $('.msg', layer);
     const say = (t, ok = false) => { msg.textContent = t; msg.className = 'msg' + (ok ? ' ok' : ''); msg.hidden = !t; };
     const lockedSay = (r) => say(`「${r.name}」還沒解鎖，要${r.need_page ? '' : '總共蓋到 '}${needText(r)}才能用。`);
-    layer.querySelectorAll('[data-av]').forEach((b) => {
-      b.onclick = () => {
-        const r = avatars.find((x) => x.code === b.dataset.av);
-        if (!r.unlocked) return lockedSay(r);
-        av = r.code; paint();
-      };
-    });
     layer.querySelectorAll('[data-fr]').forEach((b) => {
       b.onclick = () => {
         const r = frames.find((x) => x.code === b.dataset.fr);
@@ -214,16 +206,16 @@ export async function openAvatar({ first = false, back = false } = {}) {
         fr = r.code; paint();
       };
     });
+    $('[data-wear]', layer).onclick = () => { close(); traveller.open(); };
     const backBtn = $('[data-back]', layer);
     if (backBtn) backBtn.onclick = () => render();
     $('[data-save]', layer).onclick = async (e) => {
-      if (!av) return say('先點一個頭像喔');
       const b = e.currentTarget;
       b.disabled = true;
       try {
-        const p = await auth.passport.setAvatar(av, fr);
-        book.avatar = p.avatar; book.frame = p.frame;
-        hooks.changed({ avatar: p.avatar, frame: p.frame });
+        const p = await auth.passport.setAvatar(null, fr);
+        book.frame = p.frame;
+        hooks.changed({ frame: p.frame });
         sfx('SE-20');
         if (back) render(); else close();
       } catch (err) {

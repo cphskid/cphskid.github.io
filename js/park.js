@@ -127,14 +127,14 @@ pet.init({ me: () => account.current(), host: () => islesLayer, dragged: () => d
   island: () => park.map.slots.find((s) => s.slot === park.map.pet_slot && !bySlot.has(s.slot)) });
 
 // ---------- 時空旅人換裝（js/traveller.js） ----------
-// 第一次進地圖（已經選好頭像）還沒有旅人：請他建一個。一頁只問一次，按叉叉之後下次再問。
+// 第一次進地圖還沒有旅人：請他建一個（頭像就是旅人的大頭）。一頁只問一次，按叉叉之後下次再問。
 traveller.init({ me: () => account.current(), changed: () => dispatchEvent(new Event('park:traveller')) });
 let travReady = Promise.resolve();
 let travAsked = false;
 function askTraveller() {
   travReady.then(() => {
     const w = account.current();
-    if (travAsked || select.hidden || !traveller.needsCreate() || !w.profile?.avatar) return;
+    if (travAsked || select.hidden || !traveller.needsCreate() || w.kind !== 'student') return;
     if (!$('#pass').hidden || !$('#acct').hidden || !veil.hidden || !$('#petroom').hidden) return;
     travAsked = true;
     traveller.openCreator();
@@ -433,16 +433,17 @@ function tickLine(facs) {
 function villageHtml() {
   const w = account.current();
   if (w.kind !== 'student') {
-    return `<div class="fac"><h3>樂園護照</h3><p>小朋友在各遊戲完成任務，就會在護照上蓋章；蓋越多章，可以選的頭像越多。${w.kind === 'staff' ? '老師可以在後台的全班總覽看到每個學生蓋了幾個章。' : ''}</p></div>`;
+    return `<div class="fac"><h3>樂園護照</h3><p>小朋友在各遊戲完成任務，就會在護照上蓋章；蓋越多章，可以選的頭像框越多。${w.kind === 'staff' ? '老師可以在後台的全班總覽看到每個學生蓋了幾個章。' : ''}</p></div>`;
   }
   const p = w.profile;
-  return `<div class="fac"><h3>我的護照與頭像</h3>
-    <div class="row">${account.avatarHtml(p?.avatar, p?.frame, 'mid')}<p>${p ? `你已經蓋了 <b>${p.stamps}</b> 個章。` : ''}在遊戲裡完成任務就會蓋章，蓋越多章，可以選的頭像和頭像框越多。</p></div>
-    <div class="row"><button type="button" class="btn go" data-open-pass>打開護照</button><button type="button" class="ghost" data-open-av>換頭像</button></div></div>
-    <div class="fac wear"><h3>我的時空旅人</h3>
-    <div class="row">${traveller.state()?.created ? traveller.dollHtml(traveller.state().look, 'mid') : '<img class="tick-mini" src="img/tick/thinking.webp" alt="">'}
-    <p>${traveller.state()?.created ? '這是你在樂園裡的樣子。臉型、髮型隨時可以換；更多衣服等樂園商店開張，用時光幣買。' : '你還沒有時空旅人！挑臉型、髮型，再選一套起始套裝，整套送你。'}</p></div>
-    <div class="row"><button type="button" class="btn go" data-open-wear>${traveller.state()?.created ? '去換裝間' : '建立時空旅人'}</button></div></div>
+  const t = traveller.state();
+  return `<div class="fac wear"><h3>我的時空旅人</h3>
+    <div class="row">${t?.created ? traveller.dollHtml(t.look, 'mid') : '<img class="tick-mini" src="img/tick/thinking.webp" alt="">'}
+    <p>${t?.created ? '這是你在樂園裡的樣子，頭像也是他。臉型、髮型隨時可以換；更多衣服等樂園商店開張，用時光幣買。' : '你還沒有時空旅人！挑臉型、髮型，再選一套起始套裝，整套送你。他也會是你的頭像。'}</p></div>
+    <div class="row"><button type="button" class="btn go" data-open-wear>${t?.created ? '去換裝間' : '建立時空旅人'}</button>${t?.created ? '<button type="button" class="ghost" data-open-av>頭像框</button>' : ''}</div></div>
+    <div class="fac"><h3>我的護照</h3>
+    <p>${p ? `你已經蓋了 <b>${p.stamps}</b> 個章。` : ''}在遊戲裡完成任務就會蓋章，蓋越多章，可以選的頭像框越多。</p>
+    <div class="row"><button type="button" class="btn go" data-open-pass>打開護照</button></div></div>
     <div class="fac"><h3>我的桌寵</h3><p>你的桌寵住在村莊旁邊的寵物島。照顧中的那隻會肚子餓，記得常回來餵牠、陪牠玩；在各島完成任務還會拿到牠最愛的點心。</p>
     <div class="row"><button type="button" class="btn go" data-open-pet>去看桌寵</button></div></div>`;
 }
@@ -551,12 +552,11 @@ function onAccountChange(w) {
   syncFacilities();
   paintPassBtn();
   pet.load().then(() => { if (w.kind === 'student') warmStudent(); });
-  travReady = traveller.load().catch(() => {});
-  if (w.kind !== 'student') traveller.close();
+  if (w.kind !== 'student') traveller.close();   // 旅人在 account 讀「我是誰」時一起讀好了
   if (w.kind === 'guest' && !select.hidden) { history.replaceState(null, '', location.pathname); showTitle(); }
 }
 const me = await meReady;
-travReady = traveller.load().catch(() => {});
+travReady = meReady;
 await Promise.all([syncFacilities(), pet.load()]);
 if (route && me.kind === 'guest') {
   // 從遊戲回來但已經登出（或換人用平板）：先回開場，按 Start 再登入
@@ -596,7 +596,7 @@ setTimeout(() => loading.remove(), 400);
 function warmStudent() {
   const pets = [...document.querySelectorAll('#isle-pets img')]
     .map((i) => i.getAttribute('src')?.match(/^img\/pet\/[\w-]+\/\d+-/)?.[0]).filter(Boolean);
-  warm('img/avatar/', 'img/stamp/', 'img/pet/island', 'img/pet/egg/', 'img/pet/food/', ...pets, 'img/pet/furniture/', 'img/traveller/');
+  warm('img/stamp/', 'img/pet/island', 'img/pet/egg/', 'img/pet/food/', ...pets, 'img/pet/furniture/', 'img/traveller/');
 }
 setTimeout(() => {
   warm('img/ui/', 'img/badge/', 'img/fx/portal', 'img/tick/');

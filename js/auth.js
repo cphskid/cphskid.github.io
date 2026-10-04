@@ -282,4 +282,5 @@ export const traveller = {
   me:     () => tcall('park_traveller_me'),
   create: (face, hair, set) => tcall('park_traveller_create', { p_face: face ?? '', p_hair: hair, p_set: set }),
   save:   (look) => tcall('park_traveller_save', { p_look: look }),
+  classLooks: (code) => tcall('park_class_looks', { p_code: code }),
 };

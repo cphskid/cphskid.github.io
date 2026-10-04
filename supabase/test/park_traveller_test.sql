@@ -8,6 +8,7 @@
 reset role;
 select test_one($$select id from public.students where login_id = 't2_amy'$$) as amy \gset
 select test_one($$select id from public.students where login_id = 't2_bob'$$) as bob \gset
+select test_one($$select code from public.classes where name = '英文 5-2'$$) as c2 \gset
 
 \echo '── 初始資料'
 select test_ok((select count(*) from public.park_wear_sets where starter) = 3, '三套起始套裝可以挑');
@@ -57,7 +58,10 @@ select test_ok((select count(*) from public.park_student_wear) = 0, '也看不�
 select test_denied(format($$insert into public.park_student_wear (student_id, item) values (%L, 'top-tech')$$, :'amy'), '學生直接塞衣服');
 select test_denied(format($$update public.park_travellers set look = '{}' where student_id = %L$$, :'bob'), '學生直接改別人的穿搭');
 select test_denied(format('select public.park_wear_check(%L, %L)', :'amy', '{"hair":"hair-crop"}'), '內部檢查函式叫不動');
+select test_ok((select count(*) from public.park_class_looks(:'c2')) = 0, '學生看不到全班的大頭');
 select test_as('d0000000-0000-0000-0000-000000000002', false, 't2b@parktest.local');
 select test_ok(public.park_traveller_me() is null, '老師叫旅人回空的');
+select test_ok((select look ->> 'hair' from public.park_class_looks(:'c2') where student_id = :'bob') = 'hair-pony', '班上老師看得到阿寶的大頭');
+select test_ok((select count(*) from public.park_class_looks(:'c2')) = 1, '還沒建旅人的不列');
 select test_denied($$select public.park_traveller_create('', 'hair-crop', 'tw')$$, '老師不能建旅人');
 reset role;

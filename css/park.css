@@ -251,8 +251,11 @@ ul.classes small{font:700 14px/1 var(--f-body);color:#8a6a4a}
 .av.fr-sky{background:linear-gradient(145deg,#8fe0ff,#2c8fd8)}
 .av.fr-silver{background:linear-gradient(145deg,#ffffff,#b9c4d0 45%,#7d8b9b)}
 .av.fr-gold{background:linear-gradient(145deg,#fff1a8,#ffc23d 45%,#c07a10);box-shadow:0 0 calc(var(--av)*.12) rgba(255,205,80,.85),0 3px 6px rgba(0,0,0,.2)}
-.av.fr-rainbow{background:conic-gradient(#ff6b6b,#ffb84d,#ffe66b,#6bdc7a,#5ac8ff,#9b7bff,#ff6bd5,#ff6b6b);animation:rainbow 6s linear infinite}
-@keyframes rainbow{to{filter:hue-rotate(360deg)}}
+/* 彩虹框：只轉外圈（以前整個頭像一起變色，大頭會被染綠） */
+.av.fr-rainbow{background:none}
+.av.fr-rainbow::before{content:"";position:absolute;inset:0;border-radius:50%;background:conic-gradient(#ff6b6b,#ffb84d,#ffe66b,#6bdc7a,#5ac8ff,#9b7bff,#ff6bd5,#ff6b6b);animation:rainbow 6s linear infinite}
+.av>*{position:relative;z-index:1}
+@keyframes rainbow{to{transform:rotate(360deg)}}
 .av.mini{--av:58px}
 .av.mid{--av:84px}
 .av.big{--av:120px}
@@ -972,3 +975,6 @@ body[data-scene="map"] #hud{display:block}
 .trav .shadow{position:absolute;left:28%;right:28%;bottom:0;height:7%;border-radius:50%;background:radial-gradient(ellipse at center,rgba(20,50,30,.35),rgba(20,50,30,0) 70%)}
 .trav:hover .doll,.trav:focus-visible .doll{transform:translateY(-3px)}
 .trav:focus-visible{outline:none}
+/* 頭像＝旅人的大頭：同一組 448×600 疊圖，只露出 x 112～336、y 28～252（頭到肩膀） */
+.av .doll.head{display:block;width:100%;height:100%;border-radius:50%;overflow:hidden;background:radial-gradient(circle at 50% 35%,#fffaf0,#ffe7bd)}
+.av .doll.head img{position:absolute;inset:auto;left:-50%;top:-12.5%;width:200%;height:auto;aspect-ratio:448/600;border-radius:0;background:none;object-fit:fill}
