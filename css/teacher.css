@@ -247,6 +247,13 @@ td.stu .av.fr-sky{background:linear-gradient(145deg,#8fe0ff,#2c8fd8)}
 td.stu .av.fr-silver{background:linear-gradient(145deg,#fff,#b9c4d0 45%,#7d8b9b)}
 td.stu .av.fr-gold{background:linear-gradient(145deg,#fff1a8,#ffc23d 45%,#c07a10)}
 td.stu .av.fr-rainbow{background:conic-gradient(#ff6b6b,#ffb84d,#ffe66b,#6bdc7a,#5ac8ff,#9b7bff,#ff6bd5,#ff6b6b)}
+td.stu .av.fr-bamboo{background:repeating-linear-gradient(45deg,#c99a4a 0 6px,#a8772e 6px 12px)}
+td.stu .av.fr-star{background:linear-gradient(145deg,#2b3f8f,#5b4bc4 55%,#1d2a66)}
+td.stu .av.fr-branch{background:conic-gradient(from 45deg,#3aa86b 0 25%,#f2b13c 0 50%,#3aa86b 0 75%,#f2b13c 0)}
+td.stu .av.fr-riddle{background:linear-gradient(145deg,#b48cff,#6b3fd1 50%,#3b1f8a)}
+td.stu .av.fr-oldmap{background:radial-gradient(circle at 70% 30%,#e9d3a2,#c9a565 60%,#8a6a3a)}
+td.stu .av.fr-keeper{background:linear-gradient(145deg,#fff1a8,#ffc23d 40%,#c07a10);box-shadow:0 0 0 2px #7ad8ff}
+td.stu .av.fr-egghunter{background:conic-gradient(#7af0ff,#b48cff,#ff8ad8,#ffe66b,#7af0ff)}
 td.stu .stamps{float:right;display:inline-flex;align-items:center;gap:3px;font:900 14px/1 var(--f-body);color:var(--wood);margin-left:6px}
 td.stu .stamps .ico{width:20px;height:20px}
 /* 頭像＝旅人的大頭（跟 park.css 的 .av .doll.head 一樣的取景） */

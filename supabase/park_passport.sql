@@ -16,6 +16,10 @@
 --   2. 設施登記一支 <前綴>_earned_stamps(學生) 回傳「他該拿到哪些章」，樂園打開時自己補蓋。
 --      守護異世界走這條：過關是伺服器判定的（level_progress），不用改英文遊戲一行程式。
 -- 有登記第 2 條的設施，第 1 條也要對得上第 2 條才蓋得下去，小朋友沒辦法自己亂叫函式蓋章。
+--
+-- 2026-10-08 成就勳章：章（勳章）多了分篇、類別、稀有度；可以挑一枚「代表勳章」和 3 格展示櫃，
+-- 別人點自己的角色看得到名片（park_student_card），排行榜用 park_class_featured。
+-- 順序：… → park_passport.sql → park_traveller.sql（名片要用旅人的樣子）→ 各遊戲 SQL。
 -- =============================================================================
 
 -- -----------------------------------------------------------------------------
@@ -43,6 +47,24 @@ create table if not exists public.park_stamps (
   primary key (facility, code)
 );
 
+-- 勳章的分類（2026-10-08）：
+--   era    過去篇 past／現在篇 now（島嶼開拓者用；其他遊戲留空＝不分篇）
+--   grp    同一章的勳章一列，填那一章「通關章」的 code（例如 ch2 的勳章都是 grp='ch2'）
+--   kind   clear 通關、collect 收集、master 精通、story 劇情、egg 彩蛋（名稱藏起來，只給 hint 謎語）、era 篇章
+--   rarity bronze 銅、silver 銀、gold 金、rainbow 彩虹（名片上看得出難不難拿）
+alter table public.park_stamps add column if not exists era    text;
+alter table public.park_stamps add column if not exists grp    text;
+alter table public.park_stamps add column if not exists kind   text not null default 'clear';
+alter table public.park_stamps add column if not exists rarity text not null default 'bronze';
+do $$ begin
+  if not exists (select 1 from pg_constraint where conname = 'park_stamps_medal_check') then
+    alter table public.park_stamps add constraint park_stamps_medal_check check (
+      (era is null or era in ('past', 'now'))
+      and kind in ('clear', 'collect', 'master', 'story', 'egg', 'era')
+      and rarity in ('bronze', 'silver', 'gold', 'rainbow'));
+  end if;
+end $$;
+
 -- 學生拿到的章。seen＝打開護照看過了（沒看過的會有「新」的動畫）。
 create table if not exists public.park_student_stamps (
   student_id uuid not null references public.students(id) on delete cascade,
@@ -63,6 +85,11 @@ create table if not exists public.park_rewards (
   need_page   text,                     -- 要蓋滿哪個設施的那一頁；'*'＝蓋滿任何一頁
   sort        int  not null default 0
 );
+-- 2026-10-08 勳章解鎖的框：need_kind＝某一類勳章要幾枚（'egg'、'collect'…，或 'era:past'＝過去篇的勳章），
+-- need_stamp＝要拿到某一枚（'island_pioneer/past'）。條件全部都要達成才解鎖。
+alter table public.park_rewards add column if not exists need_kind  text;
+alter table public.park_rewards add column if not exists need_n     int not null default 0;
+alter table public.park_rewards add column if not exists need_stamp text;
 
 -- 學生的樂園外觀
 create table if not exists public.park_profiles (
@@ -71,31 +98,35 @@ create table if not exists public.park_profiles (
   frame      text references public.park_rewards(code) on update cascade on delete set null,
   updated_at timestamptz not null default now()
 );
+-- 2026-10-08 代表勳章（掛在頭像上）與名片的 3 格展示櫃，格式 '設施/章'，例如 'island_pioneer/ch2-egg'
+alter table public.park_profiles add column if not exists featured text;
+alter table public.park_profiles add column if not exists showcase text[] not null default '{}';
 
 -- -----------------------------------------------------------------------------
 -- 2. 初始資料
 --    章與獎勵的名稱、圖、條件是設計資料，重跑會更新；
 --    章的 active（開放了沒）只在第一次寫入，之後交給遊戲自己的 SQL 或管理員。
 -- -----------------------------------------------------------------------------
-insert into public.park_stamps as s (facility, code, name, hint, art, sort, active) values
-  ('guardian', 'first',   '第一次過關',     '打贏任何一關',             'img/stamp/guardian-first.webp',   1, true),
-  ('guardian', 'clear5',  '過了 5 關',      '總共過 5 關',               'img/stamp/guardian-clear5.webp',  2, true),
-  ('guardian', 'ch1',     '草地城堡全破',   '第一章每一關都過',         'img/stamp/guardian-ch1.webp',     3, true),
-  ('guardian', 'clear30', '過了 30 關',     '總共過 30 關',              'img/stamp/guardian-clear30.webp', 4, true),
-  ('guardian', 'ch2',     '雪地神殿全破',   '第二章每一關都過',         'img/stamp/guardian-ch2.webp',     5, true),
-  ('guardian', 'clear60', '過了 60 關',     '總共過 60 關',              'img/stamp/guardian-clear60.webp', 6, true),
-  ('guardian', 'ch3',     '草原木堡全破',   '第三章每一關都過',         'img/stamp/guardian-ch3.webp',     7, true),
-  ('guardian', 'stars20', '20 關三顆星',    '拿到三顆星的關卡有 20 關', 'img/stamp/guardian-stars20.webp', 8, true),
-  ('island_pioneer', 'ch1', '島嶼的第一道火光', '完成第一章（史前）',     'img/stamp/island-ch1.webp', 1, false),
-  ('island_pioneer', 'ch2', '山林與部落',       '完成第二章（原住民族）', 'img/stamp/island-ch2.webp', 2, false),
-  ('island_pioneer', 'ch3', '大航海時代',       '完成第三章（荷西）',     'img/stamp/island-ch3.webp', 3, false),
-  ('island_pioneer', 'ch4', '東寧屯田',         '完成第四章（鄭氏）',     'img/stamp/island-ch4.webp', 4, false),
-  ('island_pioneer', 'ch5', '八堡圳',           '完成第五章（清領）',     'img/stamp/island-ch5.webp', 5, true),
-  ('island_pioneer', 'ch6', '開港與鐵路',       '完成第六章（清末）',     'img/stamp/island-ch6.webp', 6, false),
-  ('island_pioneer', 'ch7', '縱貫與大圳',       '完成第七章（日治）',     'img/stamp/island-ch7.webp', 7, false),
-  ('island_pioneer', 'end', '今天的島嶼',       '完成終章（戰後）',       'img/stamp/island-end.webp', 8, false)
+insert into public.park_stamps as s (facility, code, name, hint, art, sort, active, kind, rarity, era, grp) values
+  ('guardian', 'first',   '第一次過關',     '打贏任何一關',             'img/stamp/guardian-first.webp',   1, true, 'clear', 'bronze', null, null),
+  ('guardian', 'clear5',  '過了 5 關',      '總共過 5 關',               'img/stamp/guardian-clear5.webp',  2, true, 'clear', 'bronze', null, null),
+  ('guardian', 'ch1',     '草地城堡全破',   '第一章每一關都過',         'img/stamp/guardian-ch1.webp',     3, true, 'clear', 'silver', null, null),
+  ('guardian', 'clear30', '過了 30 關',     '總共過 30 關',              'img/stamp/guardian-clear30.webp', 4, true, 'clear', 'silver', null, null),
+  ('guardian', 'ch2',     '雪地神殿全破',   '第二章每一關都過',         'img/stamp/guardian-ch2.webp',     5, true, 'clear', 'gold', null, null),
+  ('guardian', 'clear60', '過了 60 關',     '總共過 60 關',              'img/stamp/guardian-clear60.webp', 6, true, 'clear', 'gold', null, null),
+  ('guardian', 'ch3',     '草原木堡全破',   '第三章每一關都過',         'img/stamp/guardian-ch3.webp',     7, true, 'clear', 'gold', null, null),
+  ('guardian', 'stars20', '20 關三顆星',    '拿到三顆星的關卡有 20 關', 'img/stamp/guardian-stars20.webp', 8, true, 'master', 'rainbow', null, null),
+  ('island_pioneer', 'ch1', '島嶼的第一道火光', '完成第一章（史前）',     'img/stamp/island-ch1.webp', 1, false, 'clear', 'bronze', 'past', 'ch1'),
+  ('island_pioneer', 'ch2', '山林與部落',       '完成第二章（原住民族）', 'img/stamp/island-ch2.webp', 2, false, 'clear', 'bronze', 'past', 'ch2'),
+  ('island_pioneer', 'ch3', '大航海時代',       '完成第三章（荷西）',     'img/stamp/island-ch3.webp', 3, false, 'clear', 'bronze', 'past', 'ch3'),
+  ('island_pioneer', 'ch4', '東寧屯田',         '完成第四章（鄭氏）',     'img/stamp/island-ch4.webp', 4, false, 'clear', 'bronze', 'past', 'ch4'),
+  ('island_pioneer', 'ch5', '八堡圳',           '完成第五章（清領）',     'img/stamp/island-ch5.webp', 5, true, 'clear', 'bronze', 'past', 'ch5'),
+  ('island_pioneer', 'ch6', '開港與鐵路',       '完成第六章（清末）',     'img/stamp/island-ch6.webp', 6, false, 'clear', 'bronze', 'past', 'ch6'),
+  ('island_pioneer', 'ch7', '縱貫與大圳',       '完成第七章（日治）',     'img/stamp/island-ch7.webp', 7, false, 'clear', 'bronze', 'past', 'ch7'),
+  ('island_pioneer', 'end', '今天的島嶼',       '完成終章（戰後）',       'img/stamp/island-end.webp', 8, false, 'clear', 'bronze', 'past', 'end')
 on conflict (facility, code) do update
-  set name = excluded.name, hint = excluded.hint, art = excluded.art, sort = excluded.sort;
+  set name = excluded.name, hint = excluded.hint, art = excluded.art, sort = excluded.sort,
+      kind = excluded.kind, rarity = excluded.rarity, era = excluded.era, grp = excluded.grp;
 
 insert into public.park_rewards (code, kind, name, need_stamps, need_page, sort) values
   -- 一開始就能選的 12 個
@@ -134,6 +165,19 @@ insert into public.park_rewards (code, kind, name, need_stamps, need_page, sort)
 on conflict (code) do update
   set kind = excluded.kind, name = excluded.name, need_stamps = excluded.need_stamps,
       need_page = excluded.need_page, sort = excluded.sort;
+
+-- 2026-10-08 勳章解鎖的新頭像框（Chuck：框太少、勳章拿來解鎖框，不發時光幣）
+insert into public.park_rewards (code, kind, name, need_stamps, need_page, sort, need_kind, need_n, need_stamp) values
+  ('bamboo',    'frame', '竹編框',       0, null,  6, 'collect',  3, null),
+  ('star',      'frame', '星光框',       0, null,  7, 'master',   3, null),
+  ('branch',    'frame', '岔路框',       0, null,  8, 'story',    3, null),
+  ('riddle',    'frame', '謎語框',       0, null,  9, 'egg',      3, null),
+  ('oldmap',    'frame', '古地圖框',     0, null, 10, 'era:past', 20, null),
+  ('keeper',    'frame', '時光守護者框', 0, null, 11, null,       0, 'island_pioneer/past'),
+  ('egghunter', 'frame', '彩蛋獵人框',   0, null, 12, 'egg',      9, null)
+on conflict (code) do update
+  set kind = excluded.kind, name = excluded.name, need_stamps = excluded.need_stamps, need_page = excluded.need_page,
+      sort = excluded.sort, need_kind = excluded.need_kind, need_n = excluded.need_n, need_stamp = excluded.need_stamp;
 
 -- 「該拿到哪些章」的函式：只補空的，不蓋掉管理員改過的
 update public.park_facilities set stamps_fn = 'guardian_earned_stamps'
@@ -237,13 +281,53 @@ returns setof text language sql stable security definer set search_path = public
   with n as (select count(*) as stamps from public.park_student_stamps x where x.student_id = p_student),
   full_pages as (
     select f.code from public.park_facilities f where public.park_page_full(p_student, f.code)
+  ),
+  mine as (
+    select s.facility, s.code, s.kind, s.era
+      from public.park_student_stamps x
+      join public.park_stamps s on s.facility = x.facility and s.code = x.stamp
+     where x.student_id = p_student
   )
   select r.code
     from public.park_rewards r, n
    where r.need_stamps <= n.stamps
      and (r.need_page is null
           or (r.need_page = '*' and exists (select 1 from full_pages))
-          or r.need_page in (select code from full_pages));
+          or r.need_page in (select code from full_pages))
+     and (r.need_kind is null
+          or (select count(*) from mine
+               where mine.kind = r.need_kind or 'era:' || mine.era = r.need_kind) >= r.need_n)
+     and (r.need_stamp is null
+          or exists (select 1 from mine where mine.facility || '/' || mine.code = r.need_stamp));
+$$;
+
+-- 跟這個學生同一班的人（含他自己；在好幾班就全部算）。名片上「全班只有幾個人拿到」用。
+create or replace function public.park_classmates(p_student uuid)
+returns setof uuid language sql stable security definer set search_path = public, pg_temp as $$
+  select distinct m2.student_id
+    from public.park_class_members m1
+    join public.park_class_members m2 on m2.class_code = m1.class_code
+   where m1.student_id = p_student
+  union
+  select p_student;
+$$;
+
+-- 勳章的樣子（名片、排行榜用）：'設施/章' → {facility, code, name, art, kind, rarity, era, grp, at,
+-- owners＝同班有幾個人拿到、classmates＝同班幾個人}。沒拿到或沒這個章回 null。
+create or replace function public.park_medal_json(p_student uuid, p_key text)
+returns jsonb language sql stable security definer set search_path = public, pg_temp as $$
+  select jsonb_build_object(
+           'key', s.facility || '/' || s.code, 'facility', s.facility, 'code', s.code, 'name', s.name, 'hint', s.hint,
+           'art', s.art, 'kind', s.kind, 'rarity', s.rarity, 'era', s.era, 'grp', s.grp, 'at', x.awarded_at,
+           'grp_name', (select g.name from public.park_stamps g where g.facility = s.facility and g.code = s.grp),
+           'facility_name', (select f.name from public.park_facilities f where f.code = s.facility),
+           'owners', (select count(*) from public.park_student_stamps o
+                       where o.facility = s.facility and o.stamp = s.code
+                         and o.student_id in (select public.park_classmates(p_student))),
+           'classmates', (select count(*) from public.park_classmates(p_student)))
+    from public.park_stamps s
+    join public.park_student_stamps x on x.facility = s.facility and x.stamp = s.code and x.student_id = p_student
+   where s.facility || '/' || s.code = p_key;
 $$;
 
 -- -----------------------------------------------------------------------------
@@ -304,6 +388,7 @@ begin
     'avatar', v_p.avatar,
     'frame', coalesce(v_p.frame, 'plain'),
     'stamps', (select count(*) from public.park_student_stamps x where x.student_id = v_me),
+    'featured', public.park_medal_json(v_me, v_p.featured),
     'unseen', coalesce((select jsonb_agg(jsonb_build_object('facility', s.facility, 'code', s.code, 'name', s.name, 'art', s.art)
                                          order by x.awarded_at)
                           from public.park_student_stamps x
@@ -331,12 +416,20 @@ begin
     'stamps', v_total,
     'avatar', v_p.avatar,
     'frame', coalesce(v_p.frame, 'plain'),
+    'featured', v_p.featured,
+    'showcase', to_jsonb(coalesce(v_p.showcase, '{}')),
+    'classmates', (select count(*) from public.park_classmates(v_me)),
     'pages', coalesce((
       select jsonb_agg(jsonb_build_object(
                'facility', f.code, 'name', f.name, 'subject', f.subject, 'zone', f.zone, 'status', f.status,
                'full', public.park_page_full(v_me, f.code),
                'stamps', (select jsonb_agg(jsonb_build_object(
                                    'code', s.code, 'name', s.name, 'hint', s.hint, 'art', s.art, 'active', s.active,
+                                   'kind', s.kind, 'rarity', s.rarity, 'era', s.era, 'grp', s.grp,
+                                   'owners', case when x.stamp is not null then
+                                       (select count(*) from public.park_student_stamps o
+                                         where o.facility = s.facility and o.stamp = s.code
+                                           and o.student_id in (select public.park_classmates(v_me))) end,
                                    'at', x.awarded_at, 'new', x.stamp is not null and not x.seen)
                                  order by s.sort, s.code)
                             from public.park_stamps s
@@ -353,6 +446,8 @@ begin
                'code', r.code, 'kind', r.kind, 'name', r.name,
                'need_stamps', r.need_stamps, 'need_page', r.need_page,
                'need_page_name', (select f.name from public.park_facilities f where f.code = r.need_page),
+               'need_kind', r.need_kind, 'need_n', r.need_n, 'need_stamp', r.need_stamp,
+               'need_stamp_name', (select s.name from public.park_stamps s where s.facility || '/' || s.code = r.need_stamp),
                'unlocked', r.code = any(v_unlocked))
              order by r.kind, r.sort)
         from public.park_rewards r
@@ -406,6 +501,73 @@ language sql stable security definer set search_path = public, pg_temp as $$
      and public.is_teacher_of(m.class_code);
 $$;
 
+-- 掛代表勳章、排展示櫃（最多 3 格）。只能放自己拿到的；傳 null 表示那一樣不變，空字串／空陣列＝拿下來。
+create or replace function public.park_set_medals(p_featured text, p_showcase text[])
+returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
+declare v_me uuid := public.current_student_id(); v_k text;
+begin
+  if v_me is null then raise exception '請先登入學生帳號'; end if;
+  if p_showcase is not null and cardinality(p_showcase) > 3 then raise exception '展示櫃只有 3 格'; end if;
+  foreach v_k in array (coalesce(p_showcase, '{}') || array[nullif(p_featured, '')]) loop
+    continue when v_k is null;
+    if not exists (select 1 from public.park_student_stamps x where x.student_id = v_me and x.facility || '/' || x.stamp = v_k) then
+      raise exception '還沒拿到這個勳章';
+    end if;
+  end loop;
+  insert into public.park_profiles as p (student_id, featured, showcase)
+  values (v_me, nullif(p_featured, ''), coalesce(p_showcase, '{}'))
+  on conflict (student_id) do update
+    set featured = case when p_featured is null then p.featured else nullif(p_featured, '') end,
+        showcase = coalesce(p_showcase, p.showcase),
+        updated_at = now();
+  return (select jsonb_build_object('featured', p.featured, 'showcase', to_jsonb(p.showcase))
+            from public.park_profiles p where p.student_id = v_me);
+end;
+$$;
+
+-- 名片：別人點我的角色看到的。看得到的人：自己、同班同學、他的老師。
+-- {nickname, look, frame, stamps, featured:{勳章}, showcase:[勳章…]}
+create or replace function public.park_student_card(p_student uuid)
+returns jsonb language plpgsql stable security definer set search_path = public, pg_temp as $$
+declare v_me uuid := public.current_student_id(); v_p public.park_profiles%rowtype; v_look jsonb;
+begin
+  if p_student is null then return null; end if;
+  if not (p_student = v_me
+          or public.park_teaches_student(p_student)
+          or (v_me is not null and p_student in (select public.park_classmates(v_me)))) then
+    raise exception '只能看同班同學的名片';
+  end if;
+  select * into v_p from public.park_profiles p where p.student_id = p_student;
+  begin
+    execute 'select look from public.park_travellers where student_id = $1' into v_look using p_student;
+  exception when undefined_table then v_look := null;
+  end;
+  return jsonb_build_object(
+    'student_id', p_student,
+    'nickname', (select st.nickname from public.students st where st.id = p_student),
+    'look', v_look,
+    'frame', coalesce(v_p.frame, 'plain'),
+    'stamps', (select count(*) from public.park_student_stamps x where x.student_id = p_student),
+    'featured', public.park_medal_json(p_student, v_p.featured),
+    'showcase', coalesce((select jsonb_agg(public.park_medal_json(p_student, k) order by i)
+                            from unnest(coalesce(v_p.showcase, '{}')) with ordinality as t(k, i)
+                           where public.park_medal_json(p_student, k) is not null), '[]'::jsonb));
+end;
+$$;
+
+-- 一班每個人的代表勳章（排行榜、朋友清單用）。老師和這班的學生看得到。
+create or replace function public.park_class_featured(p_code text)
+returns table (student_id uuid, frame text, featured jsonb)
+language sql stable security definer set search_path = public, pg_temp as $$
+  select m.student_id, coalesce(p.frame, 'plain'), public.park_medal_json(m.student_id, p.featured)
+    from public.park_class_members m
+    left join public.park_profiles p on p.student_id = m.student_id
+   where m.class_code = upper(btrim(coalesce(p_code, '')))
+     and (public.is_teacher_of(m.class_code)
+          or exists (select 1 from public.park_class_members me
+                      where me.class_code = m.class_code and me.student_id = public.current_student_id()));
+$$;
+
 -- -----------------------------------------------------------------------------
 -- 7. 守護異世界的「該拿到哪些章」（暫放這裡，之後搬回英文 repo 的 park_guardian.sql，
 --    跟 P2 的 guardian_class_summary 一樣）。全部看伺服器判定的 level_progress。
@@ -434,9 +596,12 @@ revoke all on function
   public.park_earned(uuid, text), public.park_stamp_sync(uuid), public.park_page_full(uuid, text),
   public.park_unlocked(uuid), public.park_award_stamp(text, text), public.park_my_profile(),
   public.park_passport(), public.park_passport_seen(), public.park_set_avatar(text, text),
-  public.park_class_avatars(text), public.guardian_earned_stamps(uuid)
+  public.park_class_avatars(text), public.guardian_earned_stamps(uuid),
+  public.park_classmates(uuid), public.park_medal_json(uuid, text), public.park_set_medals(text, text[]),
+  public.park_student_card(uuid), public.park_class_featured(text)
   from public, anon, authenticated;
 grant execute on function
   public.park_award_stamp(text, text), public.park_my_profile(), public.park_passport(),
-  public.park_passport_seen(), public.park_set_avatar(text, text), public.park_class_avatars(text)
+  public.park_passport_seen(), public.park_set_avatar(text, text), public.park_class_avatars(text),
+  public.park_set_medals(text, text[]), public.park_student_card(uuid), public.park_class_featured(text)
   to authenticated;

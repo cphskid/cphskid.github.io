@@ -238,6 +238,10 @@ export const passport = {
   seen:         () => pcall('park_passport_seen'),
   setAvatar:    (avatar, frame) => pcall('park_set_avatar', { p_avatar: avatar, p_frame: frame }),
   classAvatars: (code) => pcall('park_class_avatars', { p_code: code }),
+  // 成就勳章（2026-10-08）：代表勳章與展示櫃（'設施/章'）、名片、一班的代表勳章（排行榜用）
+  setMedals:     (featured, showcase) => pcall('park_set_medals', { p_featured: featured, p_showcase: showcase }),
+  card:          (student) => pcall('park_student_card', { p_student: student }),
+  classFeatured: (code) => pcall('park_class_featured', { p_code: code }),
 };
 
 // ---------- 主島桌寵（一期，supabase/park_pet.sql） ----------

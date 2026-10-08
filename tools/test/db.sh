@@ -83,4 +83,6 @@ if [ -n "${ISLAND_REPO:-}" ]; then
   echo "── 島嶼開拓者 island_pioneer.sql"
   run -f "$ISLAND_REPO/supabase/island_pioneer.sql" 2>&1 | grep -v NOTICE || true
   run -At -c "select case when public.park_earned(s.id, 'island_pioneer') is not null then '  ✓ 護照接得到島嶼開拓者的「該拿到哪些章」' else '  ✗ 護照接不到島嶼開拓者' end from public.students s limit 1"
+  echo "── 成就勳章測試"
+  run -f supabase/test/park_medals_test.sql 2>&1 | grep -E "✓|✗|ERROR|──" | sed 's/^psql:[^ ]* NOTICE:  //'
 fi
