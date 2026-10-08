@@ -310,6 +310,8 @@ let raf = 0, last = 0;
 let busy = false;           // 餵食／摸摸的動畫還在跑
 let talkTimer = 0;
 let sceneTimers = [];
+let cardOpen = false;       // 左上的狀態卡展開了沒
+let bagOpen = false;        // 餵食的點心列開著沒
 
 function stopScene() {
   cancelAnimationFrame(raf);
@@ -329,19 +331,21 @@ function openScene({ select, say: first } = {}) {
   selected = select ?? selected ?? home?.id ?? state.pets[0]?.id;
   if (!petById(selected)) selected = home?.id ?? state.pets[0]?.id;
   sky = readSky();
+  cardOpen = news.length > 0;
+  bagOpen = false;
   show(`<div class="pisle" role="dialog" aria-modal="true" aria-label="寵物島" data-wx="${sky.wx}" data-tod="${sky.tod}" data-season="${sky.season}">
-    <button class="x" data-close aria-label="關閉，回到地圖"></button>
-    <div class="ground-box"><section class="ground" style="width:${GW}px;height:${GH}px">
+    <div class="view"><div class="ground-box"><section class="ground" style="width:${GW}px;height:${GH}px">
       <img class="land" src="img/pet/island.webp" alt="">
       <div class="actors"></div>
       <div class="haze" aria-hidden="true"></div>
-      <button type="button" class="furn-btn" data-furn>🛋️ 我的傢俱</button>
-      <div class="furn" hidden></div>
-      <p class="skychip">${SKY_NAME.wx[sky.wx]}・${SKY_NAME.season[sky.season]}・${SKY_NAME.tod[sky.tod]}</p>
-      <p class="hint">點寵物看牠想做什麼，按住拎到傢俱上或湖裡；點空地丟球</p>
-    </section></div>
-    <aside class="care"></aside></div>
-    <button class="x out" data-close aria-label="關閉，回到地圖"></button>`);
+    </section></div></div>
+    <aside class="care"></aside>
+    <p class="skychip">${SKY_NAME.wx[sky.wx]}・${SKY_NAME.season[sky.season]}・${SKY_NAME.tod[sky.tod]}</p>
+    <p class="hint">點寵物看牠想做什麼，按住可以拎到傢俱上或湖裡</p>
+    <div class="dock"><div class="pals-s"></div><nav class="bar" aria-label="照顧"></nav></div>
+    <div class="bagpop" hidden></div>
+    <div class="furn" hidden></div>
+    <button class="x" data-close aria-label="關閉，回到地圖"></button></div>`);
   const box = $('.actors', layer);
   const fresh = freshFurniture();
   addProps(box);
@@ -350,14 +354,15 @@ function openScene({ select, say: first } = {}) {
   actors.forEach((a) => { if (Math.random() < .7) laterWish(a, rnd(2500, 9000)); });
   // 點空地丟球
   $('.ground', layer).addEventListener('click', (e) => {
-    if (e.target.closest('.actor,.prop,.furn,.furn-btn')) return;
+    if (e.target.closest('.actor,.prop')) return;
+    if (bagOpen || !$('.furn', layer).hidden) { closeBag(); $('.furn', layer).hidden = true; paintBar(); return; }   // 先把打開的清單收起來
     const g = $('.ground', layer).getBoundingClientRect(), k = g.width / GW;
     const at = { x: (e.clientX - g.left) / k / GW, y: (e.clientY - g.top) / k / GH };
     if (walkable(at.x, at.y)) throwBall(at);
   });
   if (canAdopt()) addEgg(box);
   skyFx = makeSky($('.ground', layer), sky, { w: GW, h: GH, lake: LAKE });
-  $('[data-furn]', layer).onclick = toggleFurn;
+  fitScene(true);
   paintCare();
   if (first) say(first, selected);
   else if (fresh.length && home) say(`哇！新的傢俱：${fresh.map((id) => FURN_NAME[id]).join('、')}！謝謝你去過關～`, home.id);
@@ -370,6 +375,25 @@ function openScene({ select, say: first } = {}) {
   last = performance.now();
   raf = requestAnimationFrame(tick);
 }
+
+// 島佔滿整個視窗：照畫面大小算縮放 --g；手機直拿時島撐滿高度、可以左右滑
+const isTall = (w, h) => w < h * .9;
+function fitScene(first) {
+  const pis = $('.pisle', layer), view = $('.view', layer);
+  if (!pis || !view) return;
+  const W = view.clientWidth, H = view.clientHeight;
+  const contain = Math.min(W / GW, H / GH);
+  const g = isTall(W, H) ? Math.min(1.1, H * .95 / GH)
+    : Math.max(contain, Math.min(1.15, W / (.86 * GW), H / (.66 * GH)));
+  pis.style.setProperty('--g', g.toFixed(4));
+  if (!first) return;
+  // 一開始對準照顧中那隻（直拿）或島中間
+  const a = actors.find((x) => x.p.id === selected);
+  const cx = isTall(W, H) && a ? a.x : .55, cy = .56;
+  view.scrollLeft = cx * GW * g - W / 2;
+  view.scrollTop = cy * GH * g - H / 2;
+}
+addEventListener('resize', () => { if (!layer.hidden) fitScene(false); });
 
 function addActor(box, p, at) {
   const el = document.createElement('button');
@@ -538,12 +562,11 @@ function addProp(box, d) {
 // 傢俱清單：有的可以擺出來或收起來（島上才不會越來越擠）；沒有的上鎖，等蓋章或用時光幣換
 function toggleFurn() {
   const box = $('.furn', layer);
-  if (!box.hidden) { box.hidden = true; return; }
-  // 手機：清單放到島外面（真正的大小、整個畫面可以上下滑）；電腦：留在島上右上角
-  const phone = matchMedia('(max-width:760px),(max-height:560px)').matches;
-  (phone ? layer : $('.ground', layer)).appendChild(box);
+  if (!box.hidden) { box.hidden = true; paintBar(); return; }
+  closeBag();
   paintFurn();
   box.hidden = false;
+  paintBar();
 }
 function paintFurn() {
   const box = $('.furn', layer);
@@ -557,7 +580,7 @@ function paintFurn() {
       : `<span class="furn-i locked"><img src="img/pet/furniture/${d.id}.webp" alt=""><b>${FURN_NAME[d.id]}</b><i>🔒</i><small>${SHOP_FURN[d.id] ? `商店 ${SHOP_FURN[d.id]}` : `${FURN_STAMP[d.id]} 個章`}</small></span>`).join('')}</div>
     <p class="note">點自己的傢俱就能收起來或擺出來；擺在島上的按住就能搬。去各個島嶼過關、蓋護照章會解鎖新傢俱，標「商店」的用時光幣買。現在有 ${state?.stamps ?? 0} 個章。</p>
     <button type="button" class="ghost small" data-furn-close>關起來</button>`;
-  $('[data-furn-close]', box).onclick = () => { box.hidden = true; };
+  $('[data-furn-close]', box).onclick = () => { box.hidden = true; paintBar(); };
   box.querySelectorAll('button.furn-i').forEach((b) => { b.onclick = () => { putAway(b.dataset.id); paintFurn(); }; });
 }
 // 收起來／擺出來：收的時候正在用的寵物先下來
@@ -1155,59 +1178,113 @@ function floatUp(a, t) {
   f.addEventListener('animationend', () => f.remove());
 }
 
-// ---------- 右邊的照顧面板 ----------
+// ---------- 照顧：左上狀態卡（可以收起來）、左下夥伴、底下一排按鈕 ----------
 function paintCare() {
   const box = $('aside.care', layer);
   if (!box) return;
   const p = petById(selected);
-  const others = state.pets;
   const stamps = state.stamps ?? 0;
   const left = freeStarters();
   const locked = (state.unlock_at ?? []).filter((n) => stamps < n).slice(0, Math.max(0, left.length - (canAdopt() ? 1 : 0)));
-  const roster = others.map((x) => `<button type="button" class="pal-s${x.id === selected ? ' on' : ''}${x.active ? ' care' : ''}" data-sel="${x.id}" aria-label="${esc(x.name)}">
+  $('.pals-s', layer).innerHTML = state.pets.map((x) => `<button type="button" class="pal-s${x.id === selected ? ' on' : ''}${x.active ? ' care' : ''}" data-sel="${x.id}" aria-label="${esc(x.name)}${x.active ? '（照顧中）' : ''}">
       <img src="${art(x.species, x.stage)}" alt="">${x.active ? '<i>照顧中</i>' : ''}</button>`).join('')
     + (canAdopt() ? '<button type="button" class="pal-s new" data-adopt aria-label="新的時光蛋：領養一隻新夥伴"><span class="egg"></span><i>新的蛋！</i></button>' : '')
     + locked.map((n) => `<span class="pal-s locked" title="護照蓋到 ${n} 個章就能領養"><img src="${art(left[0]?.code ?? 'puppy')}" alt=""><i>${n} 個章</i></span>`).join('');
-  let body = '';
+  let top = '', body = '';
   if (p?.active) {
     const m = moodOf(p);
-    const inv = state.inventory ?? {};
-    const bag = state.items.filter((i) => i.kind === 'food' || i.facility || inv[i.code]).map((i) => {
-      const n = inv[i.code] ?? 0;
-      return `<button type="button" class="food${n ? '' : ' none'}" data-feed="${esc(i.code)}" ${n && m !== 'quiet' ? '' : 'disabled'}
-        aria-label="餵${esc(i.name)}（還有 ${n} 個）"><span class="ic">${icon(i)}</span><b>${esc(i.name)}</b><small>× ${n}</small></button>`;
-    }).join('');
     const pct = p.next_xp ? Math.min(100, Math.round(p.xp / p.next_xp * 100)) : 100;
+    top = `<b>${esc(p.name)}</b><span class="mini-g" aria-hidden="true"><span>${pips(p.full, 'meat')}</span><span>${pips(p.joy, 'heart')}</span></span>`;
     body = `${newsHtml()}
-      <div class="nm"><h2>${esc(p.name)}</h2><button type="button" class="ghost small" data-rename>改名</button></div>
       <p class="kind">${esc(speciesName(p.species))}・${STAGE[p.stage]}・<span class="mood m-${m}">${m === 'quiet' ? '上課時間在休息' : MOOD[m]}</span></p>
       ${gauges(p, m)}
       <div class="xp" aria-label="長大進度"><i style="width:${pct}%"></i></div>
       <small class="xpt">${p.next_xp ? `再 ${p.next_xp - p.xp} 點長成${STAGE[p.stage + 1]}（吃點心長得最快）` : '已經是完全體了！'}</small>
-      <h3>背包 <small>點一下拿去餵</small></h3>
-      <div class="bag">${bag}</div>
-      <div class="row"><button type="button" class="btn small" data-pat ${m === 'quiet' ? 'disabled' : ''}>${m === 'asleep' ? '叫醒牠' : '摸摸'}</button></div>
-      ${wish()}`;
+      ${wish()}
+      <div class="nm"><button type="button" class="ghost small" data-rename>改名</button></div>`;
   } else if (p) {
     const home = myPet();
-    body = `<div class="nm"><h2>${esc(p.name)}</h2></div>
-      <p class="kind">${esc(speciesName(p.species))}・${STAGE[p.stage]}・<span class="mood">在島上玩</span></p>
+    top = `<b>${esc(p.name)}</b><small>在島上玩</small>`;
+    body = `<p class="kind">${esc(speciesName(p.species))}・${STAGE[p.stage]}</p>
       <p class="lead">${esc(p.name)}在島上自己找東西吃，不用餵。可是只有「照顧中」的那一隻會長大喔。</p>
       <div class="row"><button type="button" class="btn small" data-swap="${p.id}">換牠照顧</button></div>
       ${home ? `<p class="note">換了以後，${esc(home.name)}會回到島上自己玩。</p>` : ''}`;
   }
-  box.innerHTML = `<div class="who">${body}<p class="msg" hidden></p></div>
-    <div class="roster"><h3>島上的夥伴</h3><div class="pals-s">${roster}</div></div>`;
-  box.querySelectorAll('[data-sel]').forEach((b) => { b.onclick = () => { const a = actors.find((x) => x.p.id === +b.dataset.sel); if (a) tap(a); }; });
-  $('[data-adopt]', box)?.addEventListener('click', () => openAdopt({ more: true }));
-  $('[data-pat]', box)?.addEventListener('click', () => pat());
-  box.querySelectorAll('[data-feed]').forEach((b) => { b.onclick = () => feed(b.dataset.feed); });
+  box.classList.toggle('open', cardOpen);
+  box.innerHTML = p ? `<button type="button" class="card-top" data-card aria-expanded="${cardOpen}" aria-label="${cardOpen ? '收起' : '打開'}${esc(p.name)}的狀態">
+      <img src="${art(p.species, p.stage)}" alt=""><span class="t">${top}</span><i>${cardOpen ? '▴' : '▾'}</i></button>
+    <div class="who"${cardOpen ? '' : ' hidden'}>${body}<p class="msg" hidden></p></div>` : '';
+  $('[data-card]', box)?.addEventListener('click', () => { cardOpen = !cardOpen; paintCare(); });
+  layer.querySelectorAll('[data-sel]').forEach((b) => { b.onclick = () => { const a = actors.find((x) => x.p.id === +b.dataset.sel); if (a) tap(a); }; });
+  $('[data-adopt]', layer)?.addEventListener('click', () => openAdopt({ more: true }));
   $('[data-rename]', box)?.addEventListener('click', rename);
   $('[data-swap]', box)?.addEventListener('click', (e) => swap(+e.currentTarget.dataset.swap, e.currentTarget));
+  paintBar();
+  if (bagOpen) paintBag();
+}
+// 底下的按鈕：餵食（打開點心列）、摸摸、丟球、傢俱。都是對「照顧中」那隻
+function paintBar() {
+  const bar = $('.bar', layer);
+  if (!bar) return;
+  const home = myPet();
+  const m = home ? moodOf(home) : 'quiet';
+  const furnOpen = !$('.furn', layer)?.hidden;
+  bar.innerHTML = (home ? `<button type="button" class="act${bagOpen ? ' on' : ''}" data-bag ${m === 'quiet' ? 'disabled' : ''} aria-expanded="${bagOpen}"><span>🍖</span><b>餵食</b></button>
+    <button type="button" class="act" data-pat ${m === 'quiet' ? 'disabled' : ''}><span>${m === 'asleep' ? '⏰' : '✋'}</span><b>${m === 'asleep' ? '叫醒牠' : '摸摸'}</b></button>
+    <button type="button" class="act" data-ball><span>🎾</span><b>丟球</b></button>` : '')
+    + `<button type="button" class="act${furnOpen ? ' on' : ''}" data-furn><span>🛋️</span><b>傢俱</b></button>`;
+  $('[data-bag]', bar)?.addEventListener('click', () => { if (bagOpen) closeBag(); else { bagOpen = true; $('.furn', layer).hidden = true; paintBag(); paintBar(); } });
+  $('[data-pat]', bar)?.addEventListener('click', () => { closeBag(); focusHome(); pat(); });
+  $('[data-ball]', bar)?.addEventListener('click', () => { closeBag(); focusHome(); ballNear(); });
+  $('[data-furn]', bar).onclick = toggleFurn;
+}
+function paintBag() {
+  const pop = $('.bagpop', layer);
+  const home = myPet();
+  if (!pop || !home) return;
+  const m = moodOf(home);
+  const inv = state.inventory ?? {};
+  const bag = state.items.filter((i) => i.kind === 'food' || i.facility || inv[i.code]).map((i) => {
+    const n = inv[i.code] ?? 0;
+    return `<button type="button" class="food${n ? '' : ' none'}" data-feed="${esc(i.code)}" ${n && m !== 'quiet' && !busy ? '' : 'disabled'}
+      aria-label="餵${esc(i.name)}（還有 ${n} 個）"><span class="ic">${icon(i)}</span><b>${esc(i.name)}</b><small>× ${n}</small></button>`;
+  }).join('');
+  pop.innerHTML = `<p>點一下拿去餵${esc(home.name)}</p><div class="bag">${bag}</div>`;
+  pop.hidden = false;
+  pop.querySelectorAll('[data-feed]').forEach((b) => { b.onclick = () => { closeBag(); focusHome(); feed(b.dataset.feed); }; });
+}
+function closeBag() {
+  if (!bagOpen) return;
+  bagOpen = false;
+  const pop = $('.bagpop', layer);
+  if (pop) pop.hidden = true;
+  paintBar();
+}
+// 按底下按鈕時，狀態卡換回照顧中那隻
+function focusHome() {
+  const home = myPet();
+  if (!home || selected === home.id) return;
+  selected = home.id;
+  actors.forEach(dress);
+  paintCare();
+}
+// 丟球按鈕：丟到照顧中那隻附近的空地
+function ballNear() {
+  const a = actors.find((x) => x.p.active);
+  if (!a) return;
+  if (!free(a) && a.mode !== 'use') { say(['asleep', 'quiet'].includes(moodOf(a.p)) ? 'Zzz…' : pick(['現在不想玩…', '等一下再玩嘛']), a.p.id); return; }
+  for (let k = 0; k < 40; k++) {
+    const ang = Math.random() * Math.PI * 2, d = rnd(.12, .22);
+    const at = { x: a.x + Math.cos(ang) * d, y: a.y + Math.sin(ang) * d * .6 };
+    if (walkable(at.x, at.y)) { throwBall(at); return; }
+  }
+  throwBall(somewhere(a));
 }
 function oops(msg) {
   const m = $('aside.care .msg', layer);
-  if (m) { m.textContent = msg; m.hidden = false; }
+  if (m && cardOpen) { m.textContent = msg; m.hidden = false; return; }
+  const home = myPet();
+  if (home) say(msg, home.id);
 }
 // 資料庫回來的新狀態套到島上的每一隻
 function refresh(s) {
