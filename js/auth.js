@@ -309,4 +309,5 @@ export const coins = {
   shop:      () => ccall('park_shop'),
   buy:       (cat, code) => ccall('park_shop_buy', { p_cat: cat, p_code: code }),
   furniture: () => ccall('park_my_furniture'),
+  board:     (code) => ccall('park_class_board', { p_code: code }),
 };

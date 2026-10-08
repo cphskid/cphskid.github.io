@@ -138,6 +138,26 @@ select public.island_save('post', '{"v":1,"sent":[{"spot":"taroko"},{"spot":"sun
 select test_ok((public.park_coins_me() ->> 'balance')::int = 305 + 40 + 30, '六個景點都寄過：再 4 張 40＋全寄 30');
 select test_denied($$select * from public.island_class_postcards('ZZZZZZ')$$, '學生看不到全班的明信片');
 
+\echo '── 班級排行：本週冒險值＋代表勳章'
+reset role;
+select test_one($$select code from public.classes where name = '英文 5-2'$$) as c2 \gset
+insert into public.park_class_members (class_code, student_id) values (:'c2', :'cat') on conflict do nothing;
+select public.park_coin_grant(:'amy', 'test:board', 7, null, '測試');
+select public.park_coin_week(:'cat') as catweek \gset
+set role authenticated;
+select test_as('d0000000-0000-0000-0000-000000000013', true);
+select public.park_class_board(:'c2') as b \gset
+select test_ok((:'b'::jsonb ->> 'total')::int = 3, '全班 3 人');
+select test_ok((:'b'::jsonb -> 'me' ->> 'rank')::int = 1 and (:'b'::jsonb -> 'me' ->> 'week')::int = :catweek, '小貓這週賺最多，第 1 名');
+select test_ok((select bool_and((r ->> 'week')::int > 0) from jsonb_array_elements(:'b'::jsonb -> 'rows') r), '0 分的不列出來');
+select test_ok((select r -> 'medal' ->> 'art' from jsonb_array_elements(:'b'::jsonb -> 'rows') r where r ->> 'id' = :'amy') is not null, '艾咪那列掛著她的代表勳章');
+select test_ok((select count(*) from jsonb_array_elements(:'b'::jsonb -> 'rows') r where (r ->> 'me')::boolean) = 1, '自己那列有標出來');
+select test_denied($$select public.park_class_board('ZZZZZZ')$$, '不是自己的班看不到排行');
+reset role;
+delete from public.park_class_members where class_code = :'c2' and student_id = :'cat';
+set role authenticated;
+select test_as('d0000000-0000-0000-0000-000000000013', true);
+
 \echo '── 不能自己加錢、不能看別人的'
 select test_denied(format($$insert into public.park_coin_ledger (student_id, source, amount) values (%L, 'hack', 9999)$$, :'cat'), '學生直接寫帳本');
 select test_denied(format($$update public.park_coin_ledger set amount = 9999 where student_id = %L$$, :'cat'), '學生直接改帳本');

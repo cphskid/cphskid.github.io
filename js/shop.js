@@ -6,6 +6,7 @@
 // 錢都是伺服器算的，這裡只負責顯示和按按鈕；資料庫還沒裝這份 SQL 時整個藏起來。
 import * as auth from './auth.js';
 import * as traveller from './traveller.js';
+import * as passport from './passport.js';
 import { sfx } from './audio.js';
 
 const $ = (s, root = document) => root.querySelector(s);
@@ -81,7 +82,8 @@ export function openWallet(msg = null) {
     <h2>我的時光幣</h2>
     <div class="bal">${COIN}<b>${st.balance}</b></div>
     <h3>本週冒險值 <small>這週新賺到的時光幣，週一重新算</small></h3>
-    <div class="wk"><div class="bar"><i style="width:${pct}%"></i></div><b>${st.week} / ${st.goal}</b></div>
+    <div class="wk"><div class="bar"><i style="width:${pct}%"></i></div><b>${st.week} / ${st.goal}</b>
+      ${myClasses().length ? '<button type="button" class="ghost small" data-board>🏆 班級排行</button>' : ''}</div>
     <h3>今天的任務 <small>每個 ${d.each}，全部完成再加 ${d.bonus}</small></h3>
     <ul class="daily">${rows}</ul>
     ${d.all ? '<p class="note ok">今天的任務都完成了，明天再來！</p>' : ''}
@@ -91,6 +93,8 @@ export function openWallet(msg = null) {
       <button type="button" class="btn go" data-shop><img src="img/ui/shop.webp" alt="">去商店</button></div>
   </div>`);
   $('[data-shop]', layer).onclick = () => openShop();
+  const bb = $('[data-board]', layer);
+  if (bb) bb.onclick = () => openBoard();
   layer.querySelectorAll('[data-claim]').forEach((b) => {
     b.onclick = async () => {
       b.disabled = true;
@@ -105,6 +109,43 @@ export function openWallet(msg = null) {
       }
     };
   });
+}
+
+// ---------- 班級排行：本週冒險值 ----------
+// 只列前 10 名（0 分的不列），自己不在前 10 就在最下面說「你是第幾名」。點一個人看他的名片。
+const myClasses = () => hooks.me()?.classes ?? [];
+let boardCode = null;
+const PODIUM = ['🥇', '🥈', '🥉'];
+export async function openBoard(code = boardCode ?? myClasses().find((c) => c.primary)?.code ?? myClasses()[0]?.code) {
+  if (!code) return;
+  boardCode = code;
+  const tabs = myClasses().length > 1 ? `<nav class="tabs" aria-label="班級">${myClasses().map((c) => `<button type="button" class="tab${c.code === code ? ' on' : ''}" data-cls="${esc(c.code)}">${esc(c.name || c.code)}</button>`).join('')}</nav>` : '';
+  show(`<div class="wallet board" role="dialog" aria-modal="true" aria-label="班級排行"><button class="x" data-close aria-label="關閉"></button><h2>🏆 本週冒險榜</h2>${tabs}<p class="tip">排行載入中…</p></div>`);
+  let b;
+  try { b = await auth.coins.board(code); } catch (err) { show(`<div class="wallet board"><button class="x" data-close aria-label="關閉"></button><h2>🏆 本週冒險榜</h2>${tabs}<p class="note bad">${esc(err.message)}</p></div>`); bindBoard(); return; }
+  const rows = b.rows.map((r) => `<li class="${r.me ? 'me' : ''}" data-card="${esc(r.id)}">
+      <span class="rk">${PODIUM[r.rank - 1] ?? r.rank}</span>
+      ${passport.avatarHtml(r.look, r.frame, '', r.medal)}
+      <b>${esc(r.nickname)}${r.me ? '<small>（你）</small>' : ''}</b>
+      ${r.medal ? `<small class="md">${esc(r.medal.name)}</small>` : '<small class="md"></small>'}
+      <span class="pt">${COIN}${r.week}</span></li>`).join('');
+  const mine = b.me && !b.rows.some((r) => r.me)
+    ? `<p class="note">${b.me.rank ? `你這週 ${b.me.week} 冒險值，全班第 ${b.me.rank} 名，加油！` : '你這週還沒有冒險值，去島上玩一關就上榜了！'}</p>` : '';
+  show(`<div class="wallet board" role="dialog" aria-modal="true" aria-label="班級排行">
+    <button class="x" data-close aria-label="關閉"></button>
+    <h2>🏆 本週冒險榜</h2>${tabs}
+    <p class="tip">${esc(b.name || b.code)}・這週新賺到的時光幣，每週一重新比。頭像旁邊是每個人的代表勳章，點一下看名片。</p>
+    ${rows ? `<ol class="rank">${rows}</ol>` : '<p class="tip">這週還沒有人上榜，第一個就是你！</p>'}
+    ${mine}
+    <div class="row end"><button type="button" class="ghost" data-back>← 我的時光幣</button></div>
+  </div>`);
+  bindBoard();
+}
+function bindBoard() {
+  layer.querySelectorAll('[data-cls]').forEach((t) => { t.onclick = () => openBoard(t.dataset.cls); });
+  layer.querySelectorAll('[data-card]').forEach((li) => { li.onclick = () => { close(); passport.openCard(li.dataset.card); }; });
+  const back = $('[data-back]', layer);
+  if (back) back.onclick = () => openWallet();
 }
 
 // ---------- 商店 ----------

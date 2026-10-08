@@ -453,6 +453,53 @@ begin
 end;
 $$;
 
+-- 班級排行：本週冒險值（這週新賺的時光幣，花掉不扣），每人旁邊掛代表勳章。
+-- 同班同學或這班的老師才看得到。只列前 10 名（0 分的不列），另外回傳自己的名次，避免墊底的人被看見。
+-- 算之前先幫全班補帳（別人在島上賺的還沒進樂園也算得到；通知照樣留給本人看）。
+-- 回傳 {code, name, rows:[{rank, id, nickname, look, frame, medal:{name, art, rarity}, week, me}], me:{rank, week}|null, total}
+create or replace function public.park_class_board(p_code text)
+returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
+declare
+  v_code text := upper(btrim(coalesce(p_code, '')));
+  v_me uuid := public.current_student_id();
+  v_m uuid;
+  v_out jsonb;
+begin
+  if not (public.is_teacher_of(v_code)
+          or exists (select 1 from public.park_class_members where class_code = v_code and student_id = v_me)) then
+    raise exception '你不在這個班';
+  end if;
+  for v_m in select student_id from public.park_class_members where class_code = v_code loop
+    perform public.park_coin_sync(v_m);
+  end loop;
+  with w as (
+    select m.student_id, st.nickname, public.park_coin_week(m.student_id) as week
+      from public.park_class_members m join public.students st on st.id = m.student_id
+     where m.class_code = v_code
+  ), r as (
+    select w.*, case when w.week > 0 then rank() over (order by w.week desc) end as rank from w
+  )
+  select jsonb_build_object(
+    'code', v_code,
+    'name', (select c.name from public.classes c where c.code = v_code),
+    'total', (select count(*) from w),
+    'rows', coalesce((select jsonb_agg(jsonb_build_object(
+                'rank', r.rank, 'id', r.student_id, 'nickname', r.nickname, 'week', r.week, 'me', r.student_id = v_me,
+                'look', t.look, 'frame', coalesce(p.frame, 'plain'),
+                'medal', (select jsonb_build_object('name', s.name, 'art', s.art, 'rarity', s.rarity)
+                            from public.park_stamps s
+                            join public.park_student_stamps x on x.facility = s.facility and x.stamp = s.code and x.student_id = r.student_id
+                           where s.facility || '/' || s.code = p.featured))
+              order by r.rank, r.nickname)
+              from r left join public.park_profiles p on p.student_id = r.student_id
+                     left join public.park_travellers t on t.student_id = r.student_id
+             where r.rank is not null and r.rank <= 10), '[]'::jsonb),
+    'me', (select jsonb_build_object('rank', r.rank, 'week', r.week) from r where r.student_id = v_me))
+  into v_out;
+  return v_out;
+end;
+$$;
+
 -- 寵物島要知道買了哪些傢俱
 create or replace function public.park_my_furniture()
 returns jsonb language sql stable security definer set search_path = public, pg_temp as $$
@@ -469,10 +516,10 @@ revoke all on function
   public.park_coin_sync(uuid), public.park_daily_name(text), public.park_daily_done(uuid, text, date),
   public.park_daily_row(uuid), public.park_daily_json(uuid), public.park_coins_state(uuid),
   public.park_coins_me(), public.park_coins_seen(), public.park_daily_claim(text), public.park_shop(),
-  public.park_shop_buy(text, text), public.park_my_furniture()
+  public.park_shop_buy(text, text), public.park_my_furniture(), public.park_class_board(text)
   from public, anon, authenticated;
 grant execute on function
   public.park_coins_me(), public.park_coins_seen(), public.park_daily_claim(text), public.park_shop(),
-  public.park_shop_buy(text, text), public.park_my_furniture()
+  public.park_shop_buy(text, text), public.park_my_furniture(), public.park_class_board(text)
   to authenticated;
 grant execute on function public.park_shop() to anon;
