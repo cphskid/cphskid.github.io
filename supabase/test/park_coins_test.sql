@@ -126,6 +126,8 @@ select public.island_save('town', '{"v":1,"solved":{"karaoke":2,"seat":1,"moon":
 select test_ok((public.park_coins_me() ->> 'balance')::int = 45 + 30 + 10 + 30, '小鎮破三案 30＋一次判對 10＋大街過關 30（亂寫的不算）');
 select public.island_save('town', '{"v":1,"solved":{"karaoke":2,"seat":1,"moon":1}}');
 select test_ok((public.park_coins_me() ->> 'balance')::int = 115, '重送不會多算');
+select public.island_save('sky', '{"v":1,"best":{"1":2,"2":1e30,"9":3,"3":"x"}}');
+select test_ok((public.park_coins_me() ->> 'balance')::int = 115 + 30 + 40, '天空港：第一關過關＋兩顆星 30、第二關亂寫的星星最多算 3 顆 40');
 
 \echo '── 不能自己加錢、不能看別人的'
 select test_denied(format($$insert into public.park_coin_ledger (student_id, source, amount) values (%L, 'hack', 9999)$$, :'cat'), '學生直接寫帳本');
