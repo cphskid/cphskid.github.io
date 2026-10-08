@@ -10,7 +10,6 @@
 // 天空（js/petsky.js）：日夜跟著真的時間、季節跟著月份、天氣每天換，寵物會跟著反應（下雨躲帳篷、晚上想睡）。
 import * as auth from './auth.js';
 import { readSky, makeSky, SKY_NAME } from './petsky.js';
-import * as traveller from './traveller.js';
 
 const $ = (s, root = document) => root.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -346,13 +345,12 @@ function openScene({ select, say: first } = {}) {
   const box = $('.actors', layer);
   const fresh = freshFurniture();
   addProps(box);
-  addTraveller(box);
   fresh.forEach((id) => props.find((o) => o.id === id)?.el.classList.add('new'));
   state.pets.forEach((p) => addActor(box, p));
   actors.forEach((a) => { if (Math.random() < .7) laterWish(a, rnd(2500, 9000)); });
   // 點空地丟球
   $('.ground', layer).addEventListener('click', (e) => {
-    if (e.target.closest('.actor,.prop,.furn,.furn-btn,.trav')) return;
+    if (e.target.closest('.actor,.prop,.furn,.furn-btn')) return;
     const g = $('.ground', layer).getBoundingClientRect(), k = g.width / GW;
     const at = { x: (e.clientX - g.left) / k / GW, y: (e.clientY - g.top) / k / GH };
     if (walkable(at.x, at.y)) throwBall(at);
@@ -371,21 +369,6 @@ function openScene({ select, say: first } = {}) {
   news = [];
   last = performance.now();
   raf = requestAnimationFrame(tick);
-}
-
-// 自己的時空旅人站在島上陪夥伴（點一下去換裝間）
-const TRAV_AT = { x: .4, y: .76 };
-function addTraveller(box) {
-  const t = traveller.state();
-  if (!t?.created) return;
-  const el = document.createElement('button');
-  el.type = 'button';
-  el.className = 'trav';
-  el.setAttribute('aria-label', '我的時空旅人（點一下去換裝間）');
-  el.innerHTML = '<span class="shadow"></span>' + traveller.dollHtml(t.look);
-  el.style.cssText = `left:${TRAV_AT.x * GW}px;top:${TRAV_AT.y * GH}px;z-index:${Math.round(TRAV_AT.y * 1000)};--d:${depth(TRAV_AT.y).toFixed(3)}`;
-  el.onclick = () => { close(); traveller.open(); };
-  box.appendChild(el);
 }
 
 function addActor(box, p, at) {
@@ -462,6 +445,16 @@ function freshFurniture() {
   try { localStorage.setItem(OWN_KEY, JSON.stringify(own)); } catch { /* 存不了就算了 */ }
   return own.filter((id) => !(seen ?? STARTER).includes(id));
 }
+// 收起來的傢俱（記在這台電腦）：不擺在島上，打開「我的傢俱」再拿出來
+const STORE_KEY = 'park-pet-stored';
+function storedFurniture() {
+  try { return JSON.parse(localStorage.getItem(STORE_KEY) ?? '[]'); } catch { return []; }
+}
+function setStored(id, on) {
+  const all = storedFurniture().filter((x) => x !== id);
+  if (on) all.push(id);
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(all)); } catch { /* 存不了就只這次有效 */ }
+}
 function propSpots() {
   try { return JSON.parse(localStorage.getItem(PROP_KEY) ?? '{}'); } catch { return {}; }
 }
@@ -484,9 +477,12 @@ function propAt(x, y) {
   return hit;
 }
 function addProps(box) {
+  const own = ownedFurniture(), stored = storedFurniture();
+  for (const d of PROPS.filter((x) => own.includes(x.id) && !stored.includes(x.id))) addProp(box, d);
+}
+function addProp(box, d) {
   const saved = propSpots();
-  const own = ownedFurniture();
-  for (const d of PROPS.filter((x) => own.includes(x.id))) {
+  {
     const at = saved[d.id] && walkable(saved[d.id].x, saved[d.id].y) ? saved[d.id] : d;
     const el = document.createElement('button');
     el.type = 'button';
@@ -539,20 +535,43 @@ function addProps(box) {
   }
 }
 
-// 傢俱清單：有的擺在島上；沒有的上鎖，等樂園商店開張用時光幣換
+// 傢俱清單：有的可以擺出來或收起來（島上才不會越來越擠）；沒有的上鎖，等蓋章或用時光幣換
 function toggleFurn() {
   const box = $('.furn', layer);
   if (!box.hidden) { box.hidden = true; return; }
+  paintFurn();
+  box.hidden = false;
+}
+function paintFurn() {
+  const box = $('.furn', layer);
   const own = ownedFurniture();
+  const out = (id) => props.some((o) => o.id === id);
   const list = PROPS.filter((d) => own.includes(d.id) || !LIMITED.has(d.id));
-  box.innerHTML = `<h3>我的傢俱 <small>${own.length} / ${list.length}</small></h3>
-    <div class="furn-list">${list.map((d) => `<span class="furn-i${own.includes(d.id) ? '' : ' locked'}">
-      <img src="img/pet/furniture/${d.id}.webp" alt=""><b>${FURN_NAME[d.id]}</b>${own.includes(d.id) ? ''
-        : `<i>🔒</i><small>${SHOP_FURN[d.id] ? `商店 ${SHOP_FURN[d.id]}` : `${FURN_STAMP[d.id]} 個章`}</small>`}</span>`).join('')}</div>
-    <p class="note">去各個島嶼過關、蓋護照章，蓋到幾個章就解鎖那件傢俱；標「商店」的用時光幣買。現在有 ${state?.stamps ?? 0} 個章。擺在島上的傢俱按住就能搬。</p>
+  box.innerHTML = `<h3>我的傢俱 <small>擺出來 ${own.filter(out).length}・全部 ${own.length} / ${list.length}</small></h3>
+    <div class="furn-list">${list.map((d) => own.includes(d.id)
+      ? `<button type="button" class="furn-i${out(d.id) ? ' out' : ' kept'}" data-id="${d.id}" aria-label="${FURN_NAME[d.id]}：${out(d.id) ? '在島上，點一下收起來' : '收著，點一下擺到島上'}">
+          <img src="img/pet/furniture/${d.id}.webp" alt=""><b>${FURN_NAME[d.id]}</b><small>${out(d.id) ? '📦 收起來' : '🏝️ 擺出來'}</small></button>`
+      : `<span class="furn-i locked"><img src="img/pet/furniture/${d.id}.webp" alt=""><b>${FURN_NAME[d.id]}</b><i>🔒</i><small>${SHOP_FURN[d.id] ? `商店 ${SHOP_FURN[d.id]}` : `${FURN_STAMP[d.id]} 個章`}</small></span>`).join('')}</div>
+    <p class="note">點自己的傢俱就能收起來或擺出來；擺在島上的按住就能搬。去各個島嶼過關、蓋護照章會解鎖新傢俱，標「商店」的用時光幣買。現在有 ${state?.stamps ?? 0} 個章。</p>
     <button type="button" class="ghost small" data-furn-close>關起來</button>`;
   $('[data-furn-close]', box).onclick = () => { box.hidden = true; };
-  box.hidden = false;
+  box.querySelectorAll('button.furn-i').forEach((b) => { b.onclick = () => { putAway(b.dataset.id); paintFurn(); }; });
+}
+// 收起來／擺出來：收的時候正在用的寵物先下來
+function putAway(id) {
+  const o = props.find((x) => x.id === id);
+  if (o) {
+    if (o.user) leave(o.user);
+    o.el.remove();
+    props = props.filter((x) => x !== o);
+    setStored(id, true);
+  } else {
+    setStored(id, false);
+    addProp($('.actors', layer), PROPS.find((d) => d.id === id));
+    const n = props.find((x) => x.id === id);
+    n?.el.classList.add('drop');
+    setTimeout(() => n?.el.classList.remove('drop'), 450);
+  }
 }
 
 // ---------- 用傢俱、泡湖水 ----------

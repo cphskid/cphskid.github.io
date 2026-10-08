@@ -700,6 +700,12 @@ aside.care .roster h3{margin:0 0 8px}
 .prop.new::after{content:"NEW";position:absolute;left:50%;top:-6px;transform:translateX(-50%);font:900 13px/1 var(--f-disp);color:#fff;background:#e2553f;border:2px solid #fff;border-radius:99px;padding:3px 8px;pointer-events:none}
 @keyframes newFurn{0%,100%{transform:none;filter:var(--tod) var(--wx) drop-shadow(0 4px 3px rgba(20,50,30,.3))}50%{transform:translateY(-10px) scale(1.06);filter:var(--tod) var(--wx) brightness(1.15) drop-shadow(0 0 10px #fff7b0)}}
 .pisle .furn-i small{font:800 11px/1 var(--f-body);color:#b0603a}
+.pisle button.furn-i{cursor:pointer;font:inherit}
+.pisle button.furn-i:hover,.pisle button.furn-i:focus-visible{border-color:var(--wood);outline:none;transform:translateY(-1px)}
+.pisle .furn-i.out{background:#f1fbe8;border-color:#9cc97a}
+.pisle .furn-i.out small{color:#5a7a3a}
+.pisle .furn-i.kept img{opacity:.6}
+.pisle .furn-i.kept small{color:#2f7fa8}
 @media (prefers-reduced-motion:reduce){.actor .wish,.prop.new img{animation:none}}
 
 /* ---------- 介面層 #ui：不跟著舞台縮放 ----------
