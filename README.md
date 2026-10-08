@@ -140,3 +140,16 @@ Settings → Secrets and variables → Actions 加一個 `ASSETS_TOKEN`（能讀
 - 開門後 js/warm.js 在背景、一次幾張地預熱下一步會用到的圖（介紹卡、滴答、徽章；學生再加頭像、護照章、寵物島、自己的夥伴；最後是傳送門）。
 - 清單在 `data/warm.json`：**新增或刪掉 img/ 底下的圖後跑 `node tools/warm-list.mjs` 再 commit**（忘了也不會壞，只是新圖不會先抓）。
 - **飽足、心情慢慢累積**（2026-10-03）：一份飼料撐 6 小時（約一格多，要隔 15 分鐘再餵）、點心 10 小時；心情是 0～20 點、每小時少 1，每 4 點一格、13 點以上開心。摸摸 +2（3 分鐘內一直摸不加）、完成願望 +4（一天前 3 次各長 1 經驗）、丟球 +2、吃東西 +1。資料庫 `park_pet_play(kind)`。
+
+## 問題回報（共用）
+
+`js/feedback.js` 是樂園和各遊戲共用的「💬 問題回報」視窗，寫進守護異世界原本那張 `feedback` 表，
+所以所有回報都在老師後台 `teacher.html#feedback` 同一個收件匣（可以用「全部遊戲」篩選）。
+不用另外套 SQL。
+
+- 樂園：喇叭旁的按鈕（`#fb-btn`）。
+- 遊戲：載入 `<樂園網址>js/feedback.js`，再呼叫
+  `ParkFeedback.mount({ game: '設施代碼', fab: false, getToken, context: () => ({ screen }) })`，
+  自己的按鈕按下去呼叫 `ParkFeedback.open()`。不想自己做按鈕就 `fab: true`，會放一顆浮動按鈕在左下角。
+  島嶼開拓者的做法見它 repo 的 `src/ui/Report.tsx`。
+- 自動附上：哪個遊戲（`context.game`）、畫面、網址、螢幕大小、裝置、最近按過的 5 個按鈕、最近 5 個錯誤。
