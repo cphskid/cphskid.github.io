@@ -539,6 +539,9 @@ function addProp(box, d) {
 function toggleFurn() {
   const box = $('.furn', layer);
   if (!box.hidden) { box.hidden = true; return; }
+  // 手機：清單放到島外面（真正的大小、整個畫面可以上下滑）；電腦：留在島上右上角
+  const phone = matchMedia('(max-width:760px),(max-height:560px)').matches;
+  (phone ? layer : $('.ground', layer)).appendChild(box);
   paintFurn();
   box.hidden = false;
 }

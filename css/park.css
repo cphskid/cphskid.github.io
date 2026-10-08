@@ -674,17 +674,18 @@ aside.care .roster h3{margin:0 0 8px}
 /* 我的傢俱 */
 .pisle .furn-btn{position:absolute;right:18px;top:8px;z-index:2200;border:3px solid var(--wood);border-radius:99px;background:#fff8e6;padding:7px 16px;font:900 17px/1 var(--f-body);color:var(--wood);cursor:pointer;box-shadow:0 3px 0 var(--wood)}
 .pisle .furn-btn:hover,.pisle .furn-btn:focus-visible{background:#fff;outline:none;transform:translateY(-1px)}
-.pisle .furn{position:absolute;right:18px;top:58px;width:430px;z-index:2300;background:#fff8e6;border:4px solid var(--wood);border-radius:22px;padding:14px 16px;box-shadow:0 8px 0 var(--wood-2),0 16px 30px rgba(0,0,0,.3);animation:pop .25s ease-out}
-.pisle .furn h3{margin:0 0 10px}
-.pisle .furn h3 small{font:700 15px/1 var(--f-body);color:#8a6a4a;margin-left:6px}
-.pisle .furn-list{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
-.pisle .furn-i{position:relative;display:grid;justify-items:center;gap:4px;padding:6px 4px;border-radius:14px;background:#fff;border:2px solid #ecd9b8}
-.pisle .furn-i img{width:62px;height:52px;object-fit:contain}
-.pisle .furn-i b{font:800 13px/1.2 var(--f-body);color:var(--ink);text-align:center}
-.pisle .furn-i.locked img{filter:grayscale(1) brightness(.75) opacity(.55)}
-.pisle .furn-i.locked b{color:#a08a70}
-.pisle .furn-i i{position:absolute;right:4px;top:2px;font-style:normal;font-size:16px}
-.pisle .furn .note{margin:10px 0 8px;font:700 14px/1.5 var(--f-body);color:#8a6a4a}
+#petroom .furn{position:absolute;right:18px;top:58px;width:430px;z-index:2300;background:#fff8e6;border:4px solid var(--wood);border-radius:22px;padding:14px 16px;box-shadow:0 8px 0 var(--wood-2),0 16px 30px rgba(0,0,0,.3);animation:pop .25s ease-out;
+  max-height:calc(842px - 80px);overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y;-webkit-overflow-scrolling:touch}
+#petroom .furn h3{margin:0 0 10px}
+#petroom .furn h3 small{font:700 15px/1 var(--f-body);color:#8a6a4a;margin-left:6px}
+#petroom .furn-list{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+#petroom .furn-i{position:relative;display:grid;justify-items:center;gap:4px;padding:6px 4px;border-radius:14px;background:#fff;border:2px solid #ecd9b8}
+#petroom .furn-i img{width:62px;height:52px;object-fit:contain}
+#petroom .furn-i b{font:800 13px/1.2 var(--f-body);color:var(--ink);text-align:center}
+#petroom .furn-i.locked img{filter:grayscale(1) brightness(.75) opacity(.55)}
+#petroom .furn-i.locked b{color:#a08a70}
+#petroom .furn-i i{position:absolute;right:4px;top:2px;font-style:normal;font-size:16px}
+#petroom .furn .note{margin:10px 0 8px;font:700 14px/1.5 var(--f-body);color:#8a6a4a}
 /* 小願望、丟球、新傢俱 */
 .actor .wish{position:absolute;left:78%;bottom:78%;width:50px;height:46px;display:grid;place-items:center;background:#fff;border:3px solid var(--wood);border-radius:50%;box-shadow:0 3px 0 var(--wood);pointer-events:none;z-index:2;animation:bob 1.8s ease-in-out infinite}
 .actor .wish::before,.actor .wish::after{content:"";position:absolute;background:#fff;border:2px solid var(--wood);border-radius:50%}
@@ -699,13 +700,13 @@ aside.care .roster h3{margin:0 0 8px}
 .prop.new img{animation:newFurn 1s ease-in-out 3}
 .prop.new::after{content:"NEW";position:absolute;left:50%;top:-6px;transform:translateX(-50%);font:900 13px/1 var(--f-disp);color:#fff;background:#e2553f;border:2px solid #fff;border-radius:99px;padding:3px 8px;pointer-events:none}
 @keyframes newFurn{0%,100%{transform:none;filter:var(--tod) var(--wx) drop-shadow(0 4px 3px rgba(20,50,30,.3))}50%{transform:translateY(-10px) scale(1.06);filter:var(--tod) var(--wx) brightness(1.15) drop-shadow(0 0 10px #fff7b0)}}
-.pisle .furn-i small{font:800 11px/1 var(--f-body);color:#b0603a}
-.pisle button.furn-i{cursor:pointer;font:inherit}
-.pisle button.furn-i:hover,.pisle button.furn-i:focus-visible{border-color:var(--wood);outline:none;transform:translateY(-1px)}
-.pisle .furn-i.out{background:#f1fbe8;border-color:#9cc97a}
-.pisle .furn-i.out small{color:#5a7a3a}
-.pisle .furn-i.kept img{opacity:.6}
-.pisle .furn-i.kept small{color:#2f7fa8}
+#petroom .furn-i small{font:800 11px/1 var(--f-body);color:#b0603a}
+#petroom button.furn-i{cursor:pointer;font:inherit}
+#petroom button.furn-i:hover,#petroom button.furn-i:focus-visible{border-color:var(--wood);outline:none;transform:translateY(-1px)}
+#petroom .furn-i.out{background:#f1fbe8;border-color:#9cc97a}
+#petroom .furn-i.out small{color:#5a7a3a}
+#petroom .furn-i.kept img{opacity:.6}
+#petroom .furn-i.kept small{color:#2f7fa8}
 @media (prefers-reduced-motion:reduce){.actor .wish,.prop.new img{animation:none}}
 
 /* ---------- 介面層 #ui：不跟著舞台縮放 ----------
@@ -860,8 +861,10 @@ body[data-scene="map"] #hud{display:block}
     display:flex;flex-direction:column;gap:10px;padding:10px;border-radius:22px;--g:calc((var(--vw) - 56) / 1120)}
   .ground-box{flex:none;width:calc(1120px * var(--g));height:calc(842px * var(--g));align-self:center}
   .pisle .ground{transform-origin:0 0;scale:var(--g)}
-  .pisle .furn-btn,.pisle .furn,.pisle .skychip,.pisle .hint,.actor .bub.talk,.actor .tag,.actor .bub.mark{zoom:max(1,calc(.85 / var(--g)))}
-  .pisle .furn{width:min(430px,calc((var(--vw) - 56px) / .85));max-height:none}
+  .pisle .furn-btn,.pisle .skychip,.pisle .hint,.actor .bub.talk,.actor .tag,.actor .bub.mark{zoom:max(1,calc(.85 / var(--g)))}
+  /* 手機：傢俱清單搬到 #petroom 底下（不跟島縮放），固定在畫面中間、可以上下滑 */
+  #petroom>.furn{position:fixed;left:0;right:0;top:calc(env(safe-area-inset-top) + 10px);bottom:calc(env(safe-area-inset-bottom) + 10px);margin:auto;
+    width:min(560px,calc(100% - 24px - env(safe-area-inset-left) - env(safe-area-inset-right)));height:fit-content;max-height:calc(100dvh - 20px - env(safe-area-inset-top) - env(safe-area-inset-bottom));z-index:40}
   .pisle .hint{white-space:normal;width:max-content;max-width:calc(1000px * var(--g) / .85);text-align:center;line-height:1.3}
   aside.care{height:auto;flex:none}
   aside.care .who{overflow:visible}
