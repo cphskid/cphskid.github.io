@@ -4,7 +4,7 @@ import { addUnits } from './units.js';
 import * as account from './account.js';
 import * as pet from './pet.js';
 import * as traveller from './traveller.js';
-import { facilityStatus } from './auth.js';
+import { facilityStatus, db } from './auth.js';
 import * as snd from './audio.js';
 import { settle, warm } from './warm.js';
 
@@ -331,6 +331,18 @@ sndBtn.addEventListener('click', () => {
   snd.sfx('SE-01');
 });
 paintSnd();
+// 喇叭旁邊的「💬 問題回報」（js/feedback.js，各遊戲共用同一支；回報進老師後台的收件匣）
+const fbBtn = $('#fb-btn');
+window.ParkFeedback?.mount({
+  game: 'park',
+  fab: false,
+  getToken: async () => (await db?.auth.getSession())?.data.session?.access_token,
+  // 在哪一幕、開著哪個視窗
+  context: () => ({ screen: [document.body.dataset.scene, ...['acct', 'pass', 'petroom', 'wardrobe', 'veil'].filter((id) => !$('#' + id).hidden)].join('/') }),
+  onDot: (n) => { fbBtn.querySelector('.dot').hidden = n === 0; },
+});
+fbBtn.addEventListener('click', () => window.ParkFeedback?.open());
+if (!window.ParkFeedback) fbBtn.hidden = true;
 snd.preload(['SE-01', 'SE-02', 'SE-03', 'SE-10', 'SE-11', 'SE-12', 'SE-14', 'SE-15']);
 
 // ---------- 換場 ----------
@@ -550,6 +562,7 @@ function enteredThisTab() {
 // 登出了就回到開場
 function onAccountChange(w) {
   syncFacilities();
+  window.ParkFeedback?.refresh();
   paintPassBtn();
   pet.load().then(() => { if (w.kind === 'student') warmStudent(); });
   if (w.kind !== 'student') traveller.close();   // 旅人在 account 讀「我是誰」時一起讀好了

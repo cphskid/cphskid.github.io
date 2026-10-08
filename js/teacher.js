@@ -572,7 +572,11 @@ const FB_STATUS = {
 };
 const FB_KIND = { bug: '🐞 壞掉了', confusing: '❓ 看不懂', idea: '💡 想法' };
 const isPending = (r) => r.status === 'new' || r.status === 'unclear';
+// 哪個遊戲送的：樂園共用的回報（js/feedback.js）會帶 context.game；舊的守護異世界回報沒有這欄
+const FB_GAME = { park: '樂園', guardian: '守護異世界', island_pioneer: '島嶼開拓者' };
+const fbGame = (r) => (typeof r.context?.game === 'string' ? r.context.game : 'guardian');
 let fbFilter = '';
+let fbGameFilter = '';
 
 // 分頁上的紅點：管理員有還沒處理的回報
 async function paintFeedbackDot(rows) {
@@ -588,20 +592,24 @@ async function renderFeedback() {
   const hidden = fbFilter === 'hidden';
   const status = fbFilter && fbFilter !== 'pending' && !hidden ? fbFilter : null;
   const all = await auth.feedback.list(status, hidden);
-  const rows = fbFilter === 'pending' ? all.filter(isPending) : all;
+  const rows = (fbFilter === 'pending' ? all.filter(isPending) : all)
+    .filter((r) => !fbGameFilter || fbGame(r) === fbGameFilter);
   if (!fbFilter) paintFeedbackDot(all);
   const pending = hidden ? 0 : rows.filter(isPending).length;
 
   view.innerHTML = `<section class="panel">
     <div class="head">${h2('mail', `${manage ? '問題回報' : '班上的回報'}${pending ? `（${pending} 則待處理）` : ''}`)}
-      <select id="fbf" class="auto">
+      <span class="fb-filters"><select id="fbf" class="auto">
         <option value="">全部</option><option value="pending">待處理</option>
         ${Object.entries(FB_STATUS).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}
         ${manage ? '<option value="hidden">🗑 已刪除</option>' : ''}
-      </select></div>
+      </select>
+      <select id="fbg" class="auto"><option value="">全部遊戲</option>
+        ${Object.entries(FB_GAME).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}
+      </select></span></div>
     <p class="lead">${manage
-      ? '學生和老師在遊戲裡按「💬 問題回報」送來的。回覆會出現在他的「我的回報」，按鈕會亮紅點。'
-      : '你班上學生在遊戲裡按「💬 問題回報」送來的。處理進度由管理員更新。'}</p>
+      ? '學生和老師在樂園或遊戲裡按「💬 問題回報」送來的。回覆會出現在他的「我的回報」，按鈕會亮紅點。'
+      : '你班上學生在樂園或遊戲裡按「💬 問題回報」送來的。處理進度由管理員更新。'}</p>
     ${rows.length ? `<div class="fb-list">${rows.slice(0, 100).map((r) => `<article class="fb" data-id="${r.id}">
       <div class="row"><b>${FB_KIND[r.kind] ?? esc(r.kind)}</b><span>${esc(r.who)}${r.class_code ? `<small class="mono">${esc(r.class_code)}</small>` : ''}</span>
         <span class="spacer"></span>
@@ -613,7 +621,7 @@ async function renderFeedback() {
       ${manage && !hidden ? `<form class="row fb-reply" data-reply><input name="reply" maxlength="300" value="${esc(r.reply ?? '')}" placeholder="回覆給本人（他看得到）">
         <button class="btn small" type="submit">${r.reply ? '改回覆' : '回覆'}</button></form>`
         : r.reply ? `<p class="fb-answer">💌 ${esc(r.reply)}</p>` : ''}
-      <div class="row tip"><span>${esc(when(r.created_at))}・守護異世界${r.screen ? '・' + esc(r.screen) : ''}${typeof r.context?.level === 'string' ? '・' + esc(r.context.level) : ''}${typeof r.context?.ver === 'string' ? '・v' + esc(r.context.ver) : ''}</span>
+      <div class="row tip"><span>${esc(when(r.created_at))}・${esc(FB_GAME[fbGame(r)] ?? fbGame(r))}${r.screen ? '・' + esc(r.screen) : ''}${typeof r.context?.level === 'string' ? '・' + esc(r.context.level) : ''}${typeof r.context?.ver === 'string' ? '・v' + esc(r.context.ver) : ''}${typeof r.context?.view === 'string' ? '・' + esc(r.context.view) : ''}</span>
         <span class="spacer"></span>
         ${manage ? (hidden ? '<button class="ghost small" data-restore>救回</button>' : `<button class="ghost small danger" data-hide>${ico('delete')}刪除</button>`) : ''}</div>
     </article>`).join('')}</div>`
@@ -623,6 +631,9 @@ async function renderFeedback() {
   const sel = $('#fbf');
   sel.value = fbFilter;
   sel.onchange = () => { fbFilter = sel.value; show(); };
+  const gsel = $('#fbg');
+  gsel.value = fbGameFilter;
+  gsel.onchange = () => { fbGameFilter = gsel.value; show(); };
   const reload = () => renderFeedback().catch((e) => toast(e.message, true));
   $$('article.fb').forEach((el) => {
     const id = Number(el.dataset.id);

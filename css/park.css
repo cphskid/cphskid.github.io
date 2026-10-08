@@ -532,6 +532,11 @@ ul.classes small{font:700 14px/1 var(--f-body);color:#8a6a4a}
 #snd-btn svg path:first-child{fill:var(--wood)}
 #snd-btn b{font:900 15px/1 var(--f-body);white-space:nowrap}
 #snd-btn .mute{display:none}
+#fb-btn{position:absolute;left:312px;bottom:26px;z-index:6;display:flex;align-items:center;gap:6px;padding:8px 14px 8px 10px;background:var(--cream);border:3px solid var(--wood);border-radius:999px;box-shadow:0 4px 0 var(--wood),0 8px 14px rgba(0,0,0,.2);cursor:pointer;font:900 15px/1 var(--f-body);color:var(--ink);transition:transform .2s cubic-bezier(.34,1.7,.5,1)}
+#fb-btn:hover,#fb-btn:focus-visible{transform:translateY(-2px) scale(1.04);outline:none}
+#fb-btn b{white-space:nowrap}
+#fb-btn .dot{position:absolute;right:-4px;top:-4px;width:14px;height:14px;border-radius:50%;background:#e2553f;border:2px solid #fff}
+#fb-btn[hidden],#fb-btn .dot[hidden]{display:none}
 #snd-btn[data-mode="sfx"] .w2{display:none}
 #snd-btn[data-mode="off"] .w1,#snd-btn[data-mode="off"] .w2{display:none}
 #snd-btn[data-mode="off"] .mute{display:inline}
@@ -732,6 +737,8 @@ body[data-scene="map"] #hud{display:block}
   #snd-btn{left:98px;bottom:12px;padding:6px 8px}
   #snd-btn svg{width:26px;height:26px}
   #snd-btn b{display:none}
+  #fb-btn{left:154px;bottom:12px;padding:8px 10px;font-size:20px}
+  #fb-btn b{display:none}
   .env-tag{left:auto;right:10px;top:62px;bottom:auto;font-size:13px;padding:5px 8px}
   .pan{width:52px;height:52px;margin-top:-26px}
   #pan-l{left:6px} #pan-r{right:6px}

@@ -252,3 +252,5 @@ td.stu .stamps .ico{width:20px;height:20px}
 /* 頭像＝旅人的大頭（跟 park.css 的 .av .doll.head 一樣的取景） */
 td.stu .av .doll.head{position:relative;display:block;width:100%;height:100%;border-radius:50%;overflow:hidden;background:#fff4dc}
 td.stu .av .doll.head img{position:absolute;left:-50%;top:-12.5%;width:200%;height:auto;aspect-ratio:448/600;border-radius:0;background:none;object-fit:fill}
+
+.fb-filters{display:flex;gap:8px;flex-wrap:wrap}
