@@ -132,6 +132,11 @@ select public.island_save('isles', '{"v":1,"stamps":["penghu","lanyu","penghu","
 select test_ok((public.park_coins_me() ->> 'balance')::int = 185 + 20, '離島兩個郵戳 20（重複、亂寫的不算）');
 select public.island_save('isles', '{"v":1,"stamps":["guishan","liuqiu","penghu","lanyu","ludao","kinmen","matsu"]}');
 select test_ok((public.park_coins_me() ->> 'balance')::int = 205 + 50 + 30, '七座蓋滿：再 5 個郵戳 50＋蓋滿 30');
+select public.island_save('post', '{"v":1,"sent":[{"spot":"taroko","msg":"a"},{"spot":"taroko","msg":"b"},{"spot":"mars","msg":"c"},{"spot":"market","msg":"d"}]}');
+select test_ok((public.park_coins_me() ->> 'balance')::int = 285 + 20, '明信片兩個景點 20（同景點、亂寫的不算）');
+select public.island_save('post', '{"v":1,"sent":[{"spot":"taroko"},{"spot":"sunmoon"},{"spot":"qingshui"},{"spot":"market"},{"spot":"persimmon"},{"spot":"tower"}]}');
+select test_ok((public.park_coins_me() ->> 'balance')::int = 305 + 40 + 30, '六個景點都寄過：再 4 張 40＋全寄 30');
+select test_denied($$select * from public.island_class_postcards('ZZZZZZ')$$, '學生看不到全班的明信片');
 
 \echo '── 不能自己加錢、不能看別人的'
 select test_denied(format($$insert into public.park_coin_ledger (student_id, source, amount) values (%L, 'hack', 9999)$$, :'cat'), '學生直接寫帳本');
