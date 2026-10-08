@@ -78,6 +78,9 @@ run -f supabase/park_traveller.sql 2>&1 | grep -v NOTICE || true
 echo "── 時空旅人換裝測試"
 run -f supabase/test/park_traveller_test.sql 2>&1 | grep -E "✓|✗|ERROR|──" | sed 's/^psql:[^ ]* NOTICE:  //'
 
+echo "── park_coins.sql"
+run -f supabase/park_coins.sql 2>&1 | grep -v NOTICE || true
+
 # 島嶼開拓者的 SQL（有給 ISLAND_REPO 才跑）：確定它疊在樂園上面套得進去、護照接得到
 if [ -n "${ISLAND_REPO:-}" ]; then
   echo "── 島嶼開拓者 island_pioneer.sql"
@@ -85,4 +88,6 @@ if [ -n "${ISLAND_REPO:-}" ]; then
   run -At -c "select case when public.park_earned(s.id, 'island_pioneer') is not null then '  ✓ 護照接得到島嶼開拓者的「該拿到哪些章」' else '  ✗ 護照接不到島嶼開拓者' end from public.students s limit 1"
   echo "── 成就勳章測試"
   run -f supabase/test/park_medals_test.sql 2>&1 | grep -E "✓|✗|ERROR|──" | sed 's/^psql:[^ ]* NOTICE:  //'
+  echo "── 時光幣、每日任務、商店測試"
+  run -f supabase/test/park_coins_test.sql 2>&1 | grep -E "✓|✗|ERROR|──" | sed 's/^psql:[^ ]* NOTICE:  //'
 fi

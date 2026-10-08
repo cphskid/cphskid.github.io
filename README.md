@@ -125,7 +125,7 @@ Settings → Secrets and variables → Actions 加一個 `ASSETS_TOKEN`（能讀
 
 - **建角色**：第一次進地圖（已經選好頭像）時跳出來：挑臉型（中性／女孩／男孩）、髮型，再選一套起始套裝，整套 4 件送他。
 - **換裝間**：村莊卡「我的時空旅人」、我的資料「換裝間」、點寵物島上的旅人都能進。臉型、髮型人人都有；
-  其他衣服可以試穿，但要擁有才存得起來（資料庫 `park_traveller_save` 會再檢查）。商店開張後用時光幣買（價錢先寫在 `park_wear_items.price`）。
+  其他衣服可以試穿，但要擁有才存得起來（資料庫 `park_traveller_save` 會再檢查）。可以在商店或換裝間直接用時光幣買（價錢在 `park_wear_items.price`）。
 - **寵物島**：自己的旅人站在島上陪夥伴。
 - **頭像＝旅人的大頭**（2026-10-04 Chuck）：右上角、護照、我的資料、老師的全班總覽都用同一組疊圖、只露出頭到肩膀（css `.av .doll.head`）。
   舊的 24 個頭像（`img/avatar/`、`park_rewards` 的 avatar）不再顯示；護照章解鎖的只剩頭像框。老師總覽用 `park_class_looks`。
@@ -133,6 +133,22 @@ Settings → Secrets and variables → Actions 加一個 `ASSETS_TOKEN`（能讀
   （不然會多一隻手；切圖時會檢查）。新衣服的產圖與切圖腳本在專案檔案 `art/doll-v3/`。
 - 還沒套 SQL 的資料庫：換裝先存在這台裝置（localStorage），畫面會註明。
 - 本機預覽：`tools/test/wear-preview.html`（`?new=1` 建角色），寵物島 `tools/test/pet-preview.html?isle=1&trav=1`。
+
+## 時光幣、每日任務、商店
+
+規則照「樂園商店、時光幣與社交規劃」（2026-10-04 Chuck 定案）。程式在 `js/shop.js`，資料庫在 `supabase/park_coins.sql`
+（順序：… → park_pet.sql → park_traveller.sql → 這份 → 各遊戲 SQL，可重複執行）。
+
+- **錢只有一個出口**：時光幣只由樂園發。遊戲只把進度存好，各設施登記一支 `<前綴>_coin_sources(學生)` 說「他該拿到哪些幣」，
+  樂園打開時 `park_coins_me()` 補進帳本 `park_coin_ledger`（來源編號不重複，重送不會多算）。島嶼開拓者的在它自己的 island_pioneer.sql。
+- **費率** `park_coin_rates`（改表就能校正，重跑 SQL 不會蓋回去）：輕 5／中 10／重 20、整章 30、每顆星 10、新結局 30、再挑戰 10、
+  守護異世界每個護照章 20、每日任務 5、全做完 10。島嶼開拓者每一步是輕中重看 `island_step_tiers`。
+  重玩整章：二刷整章獎勵（各步＋通關，不含星星）的一半、三刷四分之一、四刷起不給。
+- **每日任務**：每天 3 個（照顧寵物、去任何一座島玩一下，第三個輪流：陪寵物玩／換裝），伺服器自己看紀錄判斷做了沒，做到了按「領」。
+- **本週冒險值**＝這週新賺的時光幣（花掉不扣），週一（臺灣時間）重算；週目標 150。之後排行榜用這個數字。
+- **商店**四類：主角（`park_wear_items` 有價錢的）、寵物點心、傢俱（買了擺在寵物島，`park_student_furniture`）、本月限定（`park_shop_items.months`）。
+  寵物不賣（之後去認養島）；頭像框、勳章不賣；活動套裝之後用活動糖果換。新傢俱要在 `js/pet.js` 的 PROPS／ASPECT／USE／FURN_NAME 補上。
+- 右上角名牌下面的時光幣＝錢包和每日任務；左下角護照上面是商店。換裝間試穿沒有的衣服時可以直接「買下來」。
 
 ## 圖片載入（不要掉圖）
 

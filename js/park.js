@@ -4,6 +4,7 @@ import { addUnits } from './units.js';
 import * as account from './account.js';
 import * as pet from './pet.js';
 import * as traveller from './traveller.js';
+import * as shop from './shop.js';
 import { facilityStatus, db } from './auth.js';
 import * as snd from './audio.js';
 import { settle, warm } from './warm.js';
@@ -129,6 +130,7 @@ pet.init({ me: () => account.current(), host: () => islesLayer, dragged: () => d
 // ---------- 時空旅人換裝（js/traveller.js） ----------
 // 第一次進地圖還沒有旅人：請他建一個（頭像就是旅人的大頭）。一頁只問一次，按叉叉之後下次再問。
 traveller.init({ me: () => account.current(), changed: () => dispatchEvent(new Event('park:traveller')) });
+shop.init({ me: () => account.current(), toast: (t) => showToast(t, 4200) });
 let travReady = Promise.resolve();
 let travAsked = false;
 function askTraveller() {
@@ -530,11 +532,11 @@ function closeCard() {
 veil.addEventListener('click', (e) => { if (e.target === veil) closeCard(); });
 addEventListener('keydown', (e) => { if (e.key === 'Escape') closeCard(); });
 let tt;
-function showToast(t) {
+function showToast(t, ms = 2600) {
   toast.textContent = t;
   toast.hidden = false;
   clearTimeout(tt);
-  tt = setTimeout(() => { toast.hidden = true; }, 2600);
+  tt = setTimeout(() => { toast.hidden = true; }, ms);
 }
 
 // ---------- 左下角的護照（學生才有） ----------
@@ -565,12 +567,14 @@ function onAccountChange(w) {
   window.ParkFeedback?.refresh();
   paintPassBtn();
   pet.load().then(() => { if (w.kind === 'student') warmStudent(); });
-  if (w.kind !== 'student') traveller.close();   // 旅人在 account 讀「我是誰」時一起讀好了
+  if (w.kind !== 'student') { traveller.close(); shop.close(); }   // 旅人在 account 讀「我是誰」時一起讀好了
+  shop.load(w);
   if (w.kind === 'guest' && !select.hidden) { history.replaceState(null, '', location.pathname); showTitle(); }
 }
 const me = await meReady;
 travReady = meReady;
 await Promise.all([syncFacilities(), pet.load()]);
+shop.load(me);
 if (route && me.kind === 'guest') {
   // 從遊戲回來但已經登出（或換人用平板）：先回開場，按 Start 再登入
   history.replaceState(null, '', location.pathname);

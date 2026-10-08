@@ -288,3 +288,25 @@ export const traveller = {
   save:   (look) => tcall('park_traveller_save', { p_look: look }),
   classLooks: (code) => tcall('park_class_looks', { p_code: code }),
 };
+
+// ---------- 時光幣、每日任務、商店（supabase/park_coins.sql） ----------
+// 還沒裝這份 SQL 時丟出 missing，畫面就不顯示時光幣。
+async function ccall(fn, args) {
+  if (!db) throw new Error('帳號功能載入失敗，重新整理再試一次');
+  const { data, error } = await db.rpc(fn, args);
+  if (error?.code === 'PGRST202') {
+    const e = new Error('時光幣的資料庫還沒裝好（缺 ' + fn + '），請管理員套用 park_coins.sql');
+    e.missing = true;
+    throw e;
+  }
+  check(error);
+  return data;
+}
+export const coins = {
+  me:        () => ccall('park_coins_me'),
+  seen:      () => ccall('park_coins_seen'),
+  claim:     (task) => ccall('park_daily_claim', { p_task: task }),
+  shop:      () => ccall('park_shop'),
+  buy:       (cat, code) => ccall('park_shop_buy', { p_cat: cat, p_code: code }),
+  furniture: () => ccall('park_my_furniture'),
+};

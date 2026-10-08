@@ -40,6 +40,7 @@ let api = auth.pet;
 let hooks = { me: () => ({ kind: 'guest' }), host: () => null, island: () => null, dragged: () => false, onChange: () => {} };
 let state = null;            // park_pet_me() 的結果；null＝不是學生或資料庫還沒裝
 let news = [];               // 剛拿到的道具（顯示一次）
+let bought = [];             // 商店買的傢俱 id
 
 const layer = $('#petroom');
 
@@ -62,7 +63,7 @@ const EXTRA_STAGES = [1, 2, 3];
 const art = (species, stage = 1, pose = 'idle') =>
   `img/pet/${esc(species)}/${stage}-${EXTRA[pose] && !EXTRA_STAGES.includes(stage) ? EXTRA[pose] : pose}.webp`;
 const POSE = { normal: 'idle', happy: 'cheer', hungry: 'hungry', angry: 'angry', asleep: 'sleep', quiet: 'sleep', island: 'idle' };
-const FOOD_IMG = new Set(['kibble', 'rice-ball', 'magic-fruit']);           // 有 PT-10 圖的道具，其他先用表情符號
+const FOOD_IMG = new Set(['kibble', 'rice-ball', 'magic-fruit', 'apple', 'carrot', 'seeds', 'biscuit', 'fish', 'mooncake']);           // 有 PT-10 圖的道具，其他先用表情符號
 const icon = (i) => FOOD_IMG.has(i.code) ? `<img src="img/pet/food/${esc(i.code)}.webp" alt="">` : esc(i.icon);
 const owned = (code) => state?.pets?.some((p) => p.species === code);
 const freeStarters = () => (state?.species ?? []).filter((s) => s.starter && !owned(s.code));
@@ -83,10 +84,15 @@ export async function load() {
   } catch {
     state = null;               // 資料庫還沒裝或連不上：地圖上就不出現桌寵
   }
+  // 商店買的傢俱（park_coins.sql 沒裝就沒有）
+  bought = state ? await (api.furniture ?? auth.coins.furniture)().catch(() => []) : [];
   if (state?.granted?.length) news = state.granted;
   paintMap();
   return state;
 }
+
+// 商店買了點心、傢俱：重讀一次
+addEventListener('park:shop', () => { load(); });
 
 // 地圖上要提醒的事：餓了、生氣、拿到新東西（滴答打招呼時會用）
 export function notice() {
@@ -406,10 +412,15 @@ const PROPS = [
   { id: 'bench', x: .68, y: .62, w: 105 }, { id: 'tunnel', x: .5, y: .8, w: 95 },
   { id: 'toybox', x: .57, y: .6, w: 62 }, { id: 'flowers', x: .24, y: .38, w: 54 },
   { id: 'lantern', x: .67, y: .45, w: 40 },
+  // 下面是商店賣的（js/shop.js、park_coins.sql 的 park_shop_items）
+  { id: 'scratcher', x: .36, y: .56, w: 58 }, { id: 'sandbox', x: .76, y: .86, w: 112 },
+  { id: 'trampoline', x: .42, y: .86, w: 108 }, { id: 'hammock', x: .9, y: .82, w: 100 },
+  { id: 'rabbit-lamp', x: .3, y: .8, w: 56 },
 ];
 // 圖的高／寬
 const ASPECT = { bed: .77, tent: .985, slide: .835, tunnel: .815, scratcher: 1.408, swing: 1.081, pool: .68, fountain: 1.136,
-                 bench: .705, lantern: 1.626, flowers: 1.081, toybox: .885 };
+                 bench: .705, lantern: 1.626, flowers: 1.081, toybox: .885,
+                 sandbox: .73, trampoline: .749, hammock: .966, 'rabbit-lamp': 1.176 };
 // 怎麼用：at＝在傢俱圖上的哪一點（左上 0,0；右下 1,1），door＝從地上哪裡過去（預設 at 正下方的地面）
 const USE = {
   bed:      { kind: 'lie', at: [.5, .58] },
@@ -422,18 +433,26 @@ const USE = {
   fountain: { kind: 'play', at: [.2, 1.02], poses: ['eat', 'chew'], every: 420, line: '咕嚕咕嚕，好涼！' },
   toybox:   { kind: 'play', at: [.5, 1.08], poses: ['play', 'roll', 'jump', 'cheer'], every: 900 },
   flowers:  { kind: 'play', at: [.5, 1.08], poses: ['sniff', 'look', 'sniff', 'cheer'], every: 1000, line: '花好香喔～' },
+  scratcher:  { kind: 'play', at: [.5, 1.06], poses: ['play', 'shake', 'play', 'cheer'], every: 800, line: '抓抓抓！' },
+  sandbox:    { kind: 'play', at: [.5, .62], poses: ['dig', 'sniff', 'dig', 'roll'], every: 900, line: '挖到寶了嗎？' },
+  trampoline: { kind: 'play', at: [.5, .45], poses: ['jump', 'cheer', 'jump', 'jump'], every: 600, line: '跳得好高！' },
+  hammock:    { kind: 'lie', at: [.52, .5] },
+  'rabbit-lamp': { kind: 'play', at: [.5, 1.08], poses: ['look', 'cheer', 'look'], every: 1100, line: '兔子燈好漂亮！' },
 };
 const PROP_KEY = 'park-pet-props';
 // 一開始送三件；其他的蓋護照章解鎖（FURN_STAMP：蓋到第幾個章）。之後樂園商店再加只能用時光幣換的。網址加 ?furn=all 可以全部看
 const STARTER = ['bed', 'slide', 'pool'];
 const FURN_STAMP = { tent: 1, swing: 2, fountain: 4, toybox: 5, bench: 7, tunnel: 8, flowers: 10, lantern: 12 };
 const FURN_NAME = { bed: '軟軟小床', tent: '露營帳篷', slide: '溜滑梯', fountain: '噴水池', pool: '小泳池', swing: '盪鞦韆',
-                    bench: '野餐桌椅', tunnel: '鑽鑽隧道', toybox: '玩具箱', flowers: '花盆', lantern: '小燈籠' };
+                    bench: '野餐桌椅', tunnel: '鑽鑽隧道', toybox: '玩具箱', flowers: '花盆', lantern: '小燈籠',
+                    scratcher: '貓抓板', sandbox: '小沙坑', trampoline: '彈跳床', hammock: '吊床', 'rabbit-lamp': '兔子燈' };
+const SHOP_FURN = { scratcher: 120, sandbox: 150, trampoline: 180, hammock: 200, 'rabbit-lamp': 250 };   // 商店價（只給清單顯示，真的價錢看資料庫）
+const LIMITED = new Set(['rabbit-lamp']);   // 本月限定：沒買到就不放進清單
 const OWN_KEY = 'park-pet-furniture-seen';
 function ownedFurniture() {
   if (new URLSearchParams(location.search).get('furn') === 'all') return PROPS.map((d) => d.id);
   const stamps = state?.stamps ?? 0;
-  return PROPS.map((d) => d.id).filter((id) => STARTER.includes(id) || stamps >= (FURN_STAMP[id] ?? 99));
+  return PROPS.map((d) => d.id).filter((id) => STARTER.includes(id) || stamps >= (FURN_STAMP[id] ?? 99) || bought.includes(id));
 }
 // 這次打開才解鎖的傢俱（記在這台電腦，只慶祝一次）
 function freshFurniture() {
@@ -525,11 +544,12 @@ function toggleFurn() {
   const box = $('.furn', layer);
   if (!box.hidden) { box.hidden = true; return; }
   const own = ownedFurniture();
-  box.innerHTML = `<h3>我的傢俱 <small>${own.length} / ${PROPS.length}</small></h3>
-    <div class="furn-list">${PROPS.map((d) => `<span class="furn-i${own.includes(d.id) ? '' : ' locked'}">
+  const list = PROPS.filter((d) => own.includes(d.id) || !LIMITED.has(d.id));
+  box.innerHTML = `<h3>我的傢俱 <small>${own.length} / ${list.length}</small></h3>
+    <div class="furn-list">${list.map((d) => `<span class="furn-i${own.includes(d.id) ? '' : ' locked'}">
       <img src="img/pet/furniture/${d.id}.webp" alt=""><b>${FURN_NAME[d.id]}</b>${own.includes(d.id) ? ''
-        : `<i>🔒</i><small>${FURN_STAMP[d.id]} 個章</small>`}</span>`).join('')}</div>
-    <p class="note">去各個島嶼過關、蓋護照章，蓋到幾個章就解鎖那件傢俱。現在有 ${state?.stamps ?? 0} 個章。擺在島上的傢俱按住就能搬。</p>
+        : `<i>🔒</i><small>${SHOP_FURN[d.id] ? `商店 ${SHOP_FURN[d.id]}` : `${FURN_STAMP[d.id]} 個章`}</small>`}</span>`).join('')}</div>
+    <p class="note">去各個島嶼過關、蓋護照章，蓋到幾個章就解鎖那件傢俱；標「商店」的用時光幣買。現在有 ${state?.stamps ?? 0} 個章。擺在島上的傢俱按住就能搬。</p>
     <button type="button" class="ghost small" data-furn-close>關起來</button>`;
   $('[data-furn-close]', box).onclick = () => { box.hidden = true; };
   box.hidden = false;
@@ -1130,7 +1150,7 @@ function paintCare() {
   if (p?.active) {
     const m = moodOf(p);
     const inv = state.inventory ?? {};
-    const bag = state.items.map((i) => {
+    const bag = state.items.filter((i) => i.kind === 'food' || i.facility || inv[i.code]).map((i) => {
       const n = inv[i.code] ?? 0;
       return `<button type="button" class="food${n ? '' : ' none'}" data-feed="${esc(i.code)}" ${n && m !== 'quiet' ? '' : 'disabled'}
         aria-label="餵${esc(i.name)}（還有 ${n} 個）"><span class="ic">${icon(i)}</span><b>${esc(i.name)}</b><small>× ${n}</small></button>`;

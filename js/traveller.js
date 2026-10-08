@@ -2,8 +2,8 @@
 //
 // 每個學生有一個時空旅人：同一個身體，七個位置各疊一張圖（img/traveller/<code>.webp，448×600，全部對齊）。
 //   疊的順序：背後 → 身體 → 臉 → 褲子和鞋 → 上衣 → 頭髮 → 頭飾 → 手持。
-//   臉型、髮型人人都有；衣服配件是起始套裝送的那 4 件，其他的等樂園商店開張用時光幣買。
-//   沒有的衣服可以「試穿」看看，但存不起來（存的時候資料庫會再檢查一次）。
+//   臉型、髮型人人都有；衣服配件是起始套裝送的那 4 件，其他的在樂園商店（或換裝間試穿後）用時光幣買。
+//   沒有的衣服可以「試穿」看看，買了才存得起來（存的時候資料庫會再檢查一次）。
 // 建角色：第一次進地圖時挑臉型、髮型和一套起始套裝。
 // 資料庫還沒裝這份 SQL 時，先存在這台裝置（localStorage），讓測試站照樣能玩。
 import * as auth from './auth.js';
@@ -76,6 +76,8 @@ export async function load(w = hooks.me()) {
   return st;
 }
 const owns = (code) => !code || item(code)?.free || (st?.owned ?? []).includes(code);
+// 商店買到衣服：衣櫃加一件（js/shop.js 叫）
+export function gotItem(code) { if (st && !st.owned.includes(code)) st = { ...st, owned: [...st.owned, code] }; }
 
 async function create(face, hair, set) {
   if (!local) return auth.traveller.create(face, hair, set);
@@ -87,7 +89,7 @@ async function create(face, hair, set) {
 async function save(look) {
   if (!local) return auth.traveller.save(look);
   const bad = Object.values(look).find((c) => !owns(c));
-  if (bad) throw new Error(`「${item(bad).name}」還不是你的，商店開張後就能買`);
+  if (bad) throw new Error(`「${item(bad).name}」還不是你的，先用時光幣買下來`);
   const v = { ...st, look: { ...EMPTY, ...look } };
   writeLocal(v);
   return v;
@@ -217,8 +219,9 @@ export function openWardrobe({ welcome = false } = {}) {
       ...list.map((x) => optHtml(x.code, x.name, x.code)),
     ].join('');
     const tri = trying();
+    const cost = tri.reduce((n, x) => n + (x.price ?? 0), 0);
     const msg = tri.length
-      ? ['try', `試穿中：${tri.map((x) => `「${x.name}」`).join('')}還不是你的，樂園商店開張後可以用時光幣買。`]
+      ? ['try', `試穿中：${tri.map((x) => `「${x.name}」`).join('')}還不是你的，${local ? '樂園商店開張後可以用時光幣買。' : `買下來要 ${cost} 時光幣。`}`]
       : note;
     show(`<div class="ward" role="dialog" aria-modal="true" aria-label="換裝間">
       <button class="x" data-close aria-label="關閉換裝間"></button>
@@ -232,6 +235,7 @@ export function openWardrobe({ welcome = false } = {}) {
         ${local ? '<p class="tip">（測試中：換好的樣子先存在這台裝置）</p>' : ''}
         <div class="row end">
           ${tri.length ? '<button type="button" class="ghost" data-untry>脫掉試穿的</button>' : ''}
+          ${tri.length && !local ? `<button type="button" class="btn coin" data-buy><img src="img/ui/coin.webp" alt="">${cost} 買下來</button>` : ''}
           <button type="button" class="ghost" data-close>${dirty() ? '不換了' : '關閉'}</button>
           <button type="button" class="btn go" data-save ${dirty() && !tri.length ? '' : 'disabled'}>換好了</button>
         </div>
@@ -246,6 +250,21 @@ export function openWardrobe({ welcome = false } = {}) {
     });
     const un = $('[data-untry]', layer);
     if (un) un.onclick = () => { for (const s of SLOTS) if (!owns(d[s.id])) d[s.id] = st.look?.[s.id] ?? null; paint(); };
+    const buy = $('[data-buy]', layer);
+    if (buy) buy.onclick = async () => {
+      if (!buy.dataset.sure) { buy.dataset.sure = '1'; buy.lastChild.textContent = `${cost} 確定買？`; return; }
+      buy.disabled = true;
+      let left = null;
+      try {
+        for (const x of tri) { left = await auth.coins.buy('wear', x.code); gotItem(x.code); }
+        sfx('SE-20');
+        note = ['ok', `買好了！${tri.map((x) => `「${x.name}」`).join('')}是你的了，按「換好了」穿上。`];
+      } catch (err) {
+        note = ['bad', err.message];
+      }
+      if (left) dispatchEvent(new CustomEvent('park:coins', { detail: { balance: left.balance } }));
+      paint();
+    };
     $('[data-save]', layer).onclick = async (e) => {
       const b = e.currentTarget;
       b.disabled = true;
