@@ -138,11 +138,24 @@ select public.island_save('post', '{"v":1,"sent":[{"spot":"taroko"},{"spot":"sun
 select test_ok((public.park_coins_me() ->> 'balance')::int = 305 + 40 + 30, '六個景點都寄過：再 4 張 40＋全寄 30');
 select test_denied($$select * from public.island_class_postcards('ZZZZZZ')$$, '學生看不到全班的明信片');
 
+\echo '── 現在篇勳章'
+reset role;
+select test_ok((select array_agg(x order by x) from public.island_earned_stamps(:'cat') x where x like 'v-%' or x = 'now')
+               = array['v-isles', 'v-isles-all', 'v-post', 'v-post-all', 'v-sky', 'v-town'], '小貓拿到的現在篇勳章（漁村沒兩星、天空港沒三星、小鎮沒全判對）');
+set role authenticated;
+select test_as('d0000000-0000-0000-0000-000000000013', true);
+select public.island_save('village', '{"v":1,"quests":["house","pier","star2","star5"]}');
+reset role;
+select test_ok((select count(*) from public.island_earned_stamps(:'cat') x where x in ('v-village', 'v-village-star', 'now')) = 3, '漁村兩星、五星，五個地方都有第一枚：今日臺灣探險家');
+set role authenticated;
+select test_as('d0000000-0000-0000-0000-000000000013', true);
+
 \echo '── 班級排行：本週冒險值＋代表勳章'
 reset role;
 select test_one($$select code from public.classes where name = '英文 5-2'$$) as c2 \gset
 insert into public.park_class_members (class_code, student_id) values (:'c2', :'cat') on conflict do nothing;
 select public.park_coin_grant(:'amy', 'test:board', 7, null, '測試');
+select public.park_coin_sync(:'cat');
 select public.park_coin_week(:'cat') as catweek \gset
 set role authenticated;
 select test_as('d0000000-0000-0000-0000-000000000013', true);

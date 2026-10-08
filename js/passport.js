@@ -24,6 +24,8 @@ export const KIND = { clear: '通關', collect: '收集', master: '精通', stor
 export const RARE = { bronze: '銅', silver: '銀', gold: '金', rainbow: '彩虹' };
 const EMBLEM = { collect: '📖', master: '⭐', story: '🔀', egg: '🥚', era: '⏳' };
 const ERAS = [['past', '過去篇'], ['now', '現在篇']];
+// 現在篇一列＝一個地方，列名用地方的名字（過去篇用那一章的通關章名）
+const NOW_ROWS = { 'v-village': '風與海的漁村', 'v-town': '規則小鎮', 'v-sky': '天空港', 'v-isles': '離島巡航', 'v-post': '景點明信片' };
 const keyOf = (facility, code) => `${facility}/${code}`;
 
 // 一枚勳章的圖：稀有度的光圈＋類別的小徽章。m 要有 art、rarity、kind
@@ -177,7 +179,7 @@ function render() {
     const soon = list.length && list.every((s) => !s.active) ? '<p class="tip build">🚧 現在篇還在施工中，先把過去篇的勳章蒐集起來吧！</p>' : '';
     let n = 0;
     return tabs + soon + groups.map(({ g, items }) => {
-      const head = g === '_' ? '篇章大獎' : (p.stamps.find((s) => s.code === g)?.name ?? g);
+      const head = g === '_' ? '篇章大獎' : NOW_ROWS[g] ?? (p.stamps.find((s) => s.code === g)?.name ?? g);
       const got = items.filter((s) => s.at).length;
       return `<section class="mrow"><h4>${esc(head)}<small>${got} / ${items.length}</small></h4>
         <div class="mgrid">${items.map((s) => cell(s, n++)).join('')}</div></section>`;

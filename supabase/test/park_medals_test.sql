@@ -19,7 +19,8 @@ delete from public.park_class_members where student_id = :'cat';
 
 \echo '── 勳章目錄'
 select test_ok((select count(*) from public.park_stamps where facility = 'island_pioneer' and era = 'past') = 2 + 8 * 5 + 1, '過去篇：序章 2 格＋八章各 5 格＋時光守護者');
-select test_ok((select count(*) from public.park_stamps where facility = 'island_pioneer' and era = 'now' and not active) = 2, '現在篇先佔位，即將開放');
+select test_ok((select count(*) from public.park_stamps where facility = 'island_pioneer' and era = 'now' and not active) = 1, '現在篇只剩漁村的時光碎片還沒開');
+select test_ok((select count(*) from public.park_stamps where facility = 'island_pioneer' and era = 'now' and active) = 11, '現在篇五個地方各 2 枚＋今日臺灣探險家');
 select test_ok((select count(distinct kind) from public.park_stamps where facility = 'island_pioneer' and grp = 'ch2') = 5, '第二章有通關、收集、精通、劇情、彩蛋');
 select test_ok((select kind from public.park_stamps where facility = 'guardian' and code = 'stars20') = 'master', '守護異世界的章也分好類');
 select test_ok((select count(*) from public.park_rewards where kind = 'frame') = 12, '頭像框 12 種');
