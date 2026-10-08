@@ -119,6 +119,14 @@ set role authenticated;
 select test_as('d0000000-0000-0000-0000-000000000013', true);
 select test_ok((public.park_coins_me() ->> 'balance')::int = 35, '蓋到守護異世界的章：20');
 
+\echo '── 現在篇：漁村任務、規則小鎮'
+select public.island_save('village', '{"v":1,"quests":["house","pier","hack"]}');
+select test_ok((public.park_coins_me() ->> 'balance')::int = 35 + 10, '漁村兩個輕任務 10（亂寫的任務不算）');
+select public.island_save('town', '{"v":1,"solved":{"karaoke":2,"seat":1,"moon":1,"hack":2,"beer":3}}');
+select test_ok((public.park_coins_me() ->> 'balance')::int = 45 + 30 + 10 + 30, '小鎮破三案 30＋一次判對 10＋大街過關 30（亂寫的不算）');
+select public.island_save('town', '{"v":1,"solved":{"karaoke":2,"seat":1,"moon":1}}');
+select test_ok((public.park_coins_me() ->> 'balance')::int = 115, '重送不會多算');
+
 \echo '── 不能自己加錢、不能看別人的'
 select test_denied(format($$insert into public.park_coin_ledger (student_id, source, amount) values (%L, 'hack', 9999)$$, :'cat'), '學生直接寫帳本');
 select test_denied(format($$update public.park_coin_ledger set amount = 9999 where student_id = %L$$, :'cat'), '學生直接改帳本');
