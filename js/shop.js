@@ -1,6 +1,6 @@
 // 時光幣、每日任務、商店（資料庫在 supabase/park_coins.sql）。
 //
-// 地圖右上角、名牌下面一顆「時光幣」：點了看餘額、本週冒險值、今天的 3 個每日任務（做到了按「領」）。
+// 地圖右上角「時光幣」、底部功能列「每日任務」：點了看餘額、本週冒險值、今天的 3 個每日任務（做到了按「領」）。
 // 左下角護照上面一個「商店」：主角（換裝間的衣服）、寵物（點心）、傢俱（寵物島）、本月限定。
 // 進樂園時，各遊戲新賺到的時光幣跳一次通知（「在島嶼開拓者賺了 130 時光幣！」）。
 // 錢都是伺服器算的，這裡只負責顯示和按按鈕；資料庫還沒裝這份 SQL 時整個藏起來。
@@ -16,6 +16,7 @@ const COIN = '<img class="c" src="img/ui/coin.webp" alt="時光幣">';
 const layer = $('#shop');
 const chip = $('#coin-chip');
 const btn = $('#shop-btn');
+const taskBtn = $('#task-btn');
 let hooks = { me: () => ({ kind: 'guest' }), toast: () => {} };
 let st = null;       // park_coins_me 的結果；不是學生、沒裝 SQL 是 null
 
@@ -37,11 +38,27 @@ function paintHud() {
   const on = !!st;
   chip.hidden = !on;
   btn.hidden = !on;
-  if (!on) return;
+  if (!on) { taskBtn.hidden = true; return; }
   const n = canClaim();
-  chip.innerHTML = `${COIN}<b>${st.balance}</b>${n ? `<i class="dot">${n}</i>` : ''}`;
-  chip.setAttribute('aria-label', `時光幣 ${st.balance}${n ? `，有 ${n} 個每日任務可以領` : ''}`);
+  chip.innerHTML = `${COIN}<b>${st.balance}</b>`;
+  chip.setAttribute('aria-label', `時光幣 ${st.balance}`);
+  paintTasks(n);
 }
+
+// 底部功能列的「每日任務」：可以領＝紅色「領」跳動；還沒做完＝橘色剩幾個；全部領完＝綠色勾
+function paintTasks(n = canClaim()) {
+  const tasks = st?.daily?.tasks ?? [];
+  taskBtn.hidden = !tasks.length;
+  if (!tasks.length) return;
+  const left = tasks.filter((t) => !t.done).length;
+  const badge = $('.badge', taskBtn);
+  const state = n ? 'claim' : left ? 'left' : 'all';
+  taskBtn.dataset.state = state;
+  badge.hidden = false;
+  badge.textContent = n ? `${n}領` : left ? `剩${left}` : '✓';
+  taskBtn.setAttribute('aria-label', n ? `每日任務：有 ${n} 個可以領時光幣` : left ? `每日任務：還有 ${left} 個沒完成` : '每日任務：今天都完成了');
+}
+taskBtn?.addEventListener('click', () => openWallet());
 
 // 進樂園時跳一次「在哪裡賺了多少」
 function announce(list) {

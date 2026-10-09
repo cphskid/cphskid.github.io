@@ -1338,3 +1338,20 @@ body[data-scene="map"] #tick .bubble{margin-bottom:120px}
 .board .pt .up{font-style:normal;color:#2f8a2a}
 .board .pt .md-n{font-style:normal}
 @media (max-width:760px){.board .tabs.kinds .tab{font-size:14px;padding:8px 6px}}
+
+/* 2026-10-09 每日任務放功能列：徽章看得出還有沒有沒做完 */
+#dock .badge{position:absolute;top:-10px;right:-8px;min-width:30px;height:26px;padding:0 7px;border-radius:99px;border:2px solid #fff;font:900 14px/22px var(--f-body);font-style:normal;color:#fff;text-align:center;white-space:nowrap;box-shadow:0 2px 4px rgba(0,0,0,.3)}
+#dock .badge[hidden]{display:none}
+#task-btn[data-state=claim] .badge{background:#e2553f}
+#task-btn[data-state=left] .badge{background:#f08a24}
+#task-btn[data-state=all] .badge{background:#3fae5a}
+#task-btn[data-state=claim]{animation:taskhop 1.6s ease-in-out infinite;box-shadow:inset 0 -3px 0 #d9b77a,0 0 0 3px #ffd34d,0 0 14px #ffd34d}
+#task-btn[data-state=all] img{opacity:.75}
+@keyframes taskhop{0%,60%,100%{transform:none}70%{transform:translateY(-6px) rotate(-3deg)}80%{transform:translateY(0)}90%{transform:translateY(-3px) rotate(2deg)}}
+@media (prefers-reduced-motion:reduce){#task-btn[data-state=claim]{animation:none}}
+@media (max-width:760px),(max-height:560px){
+  #dock{gap:3px;padding:6px 6px}
+  #dock>button{width:56px!important}
+  #dock>button b{font-size:12px!important}
+  #dock .badge{top:-9px;right:-5px;min-width:24px;height:22px;padding:0 5px;font-size:12px;line-height:18px}
+}
