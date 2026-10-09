@@ -1355,3 +1355,7 @@ body[data-scene="map"] #tick .bubble{margin-bottom:120px}
   #dock>button b{font-size:12px!important}
   #dock .badge{top:-9px;right:-5px;min-width:24px;height:22px;padding:0 5px;font-size:12px;line-height:18px}
 }
+
+/* 版號與更新說明（js/changelog.js）：齒輪選單最下面一行小字、測試站標籤點了也打開 */
+#gear-menu>#ver-btn{font:700 13px/1 var(--f-body)!important;color:#8a6a4a;border-style:dashed!important}
+#env-tag{cursor:pointer}

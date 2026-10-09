@@ -88,6 +88,7 @@
   <button id="snd-btn" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/><path class="w1" d="M16 9.5a3.5 3.5 0 0 1 0 5"/><path class="w2" d="M18.5 7a7 7 0 0 1 0 10"/><path class="mute" d="M16 9l6 6M22 9l-6 6"/></svg><b>聲音全開</b></button>
   <button id="fb-btn" type="button" data-pfb aria-label="問題回報">💬<b>問題回報</b><i class="dot" hidden></i></button>
   <button id="out-btn" type="button" hidden>🚪<b>登出</b></button>
+  <button id="ver-btn" type="button" data-park-changelog aria-label="版號與更新說明">ℹ️<b data-park-version data-prefix="版本 ">版本</b></button>
   </div>
   </div>
   <!-- 右上角：名牌＋時光幣 -->
@@ -102,11 +103,12 @@
   <div id="petroom" hidden></div>
   <div id="wardrobe" hidden></div>
   <div id="toast" role="status" hidden></div>
-  <div class="env-tag" id="env-tag" hidden>測試站</div>
+  <div class="env-tag" id="env-tag" data-park-changelog hidden><span data-park-version data-prefix="測試站 ">測試站</span></div>
 </div>
 <div id="loading"><img src="img/tick/boat.webp" alt="">樂園開門中…</div>
 <script src="js/vendor/supabase.js"></script>
 <script src="js/feedback.js"></script>
+<script src="js/changelog.js"></script>
 <script type="module" src="js/park.js"></script>
 </body>
 </html>

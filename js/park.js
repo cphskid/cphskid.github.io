@@ -574,7 +574,7 @@ petBtn.addEventListener('click', () => pet.open());
 outBtn.addEventListener('click', async () => { closeGear(); await account.logout(); });
 addEventListener('park:profile', paintDock);
 
-// ---------- 左上角的齒輪：點開聲音、問題回報、登出 ----------
+// ---------- 左上角的齒輪：點開聲音、問題回報、登出、版號 ----------
 const gearBtn = $('#gear-btn'), gearMenu = $('#gear-menu');
 function closeGear() { gearMenu.hidden = true; gearBtn.setAttribute('aria-expanded', 'false'); }
 gearBtn.addEventListener('click', (e) => {
@@ -584,6 +584,7 @@ gearBtn.addEventListener('click', (e) => {
   paintDock();
 });
 fbBtn.addEventListener('click', closeGear);
+$('#ver-btn').addEventListener('click', closeGear); // 打開更新說明交給 js/changelog.js
 addEventListener('click', (e) => { if (!gearMenu.hidden && !e.target.closest('#gear')) closeGear(); });
 addEventListener('keydown', (e) => { if (e.key === 'Escape') closeGear(); });
 

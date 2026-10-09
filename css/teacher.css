@@ -24,6 +24,9 @@ img{max-width:100%}
 .bar .title{font:900 24px/1 var(--f-body);color:var(--cream);text-shadow:0 2px 0 #3b200c;letter-spacing:.04em}
 .bar .env{font:700 13px/1 var(--f-body);color:#fff;background:var(--red);padding:6px 9px;border-radius:8px}
 .bar .spacer{flex:1}
+/* 版號，點了看更新說明（js/changelog.js） */
+.bar .ver{font:700 13px/1 var(--f-body);color:var(--cream);background:none;border:1px dashed rgba(255,244,220,.55);padding:5px 8px;border-radius:8px;cursor:pointer}
+.bar .ver:hover{border-color:var(--gold);color:#fff}
 .bar .ghost{display:inline-flex;align-items:center;gap:6px;color:var(--cream);border-color:rgba(255,244,220,.55);text-decoration:none;padding:5px 14px 5px 6px}
 .bar .ghost img{width:28px;height:28px;object-fit:contain}
 .bar .ghost:hover,.bar .ghost:focus-visible{border-color:var(--gold);color:#fff}
