@@ -8,6 +8,10 @@ import * as shop from './shop.js';
 import { facilityStatus, db } from './auth.js';
 import * as snd from './audio.js';
 import { settle, warm } from './warm.js';
+import { mark } from './perf.js';
+import './sw-register.js';
+
+mark('程式下載好');
 
 // 測試站在 /dev/ 底下：顯示「測試站」標籤，設施連到各遊戲的測試站
 const IS_DEV = /^\/dev(\/|$)/.test(location.pathname);
@@ -606,6 +610,7 @@ await settle([...(title.hidden ? select : title).querySelectorAll('img')]);
 snd.music('MU-01'); snd.ambience('SE-16');
 const loading = $('#loading');
 loading.classList.add('out');
+mark('樂園開門（圖都到了）');
 setTimeout(() => loading.remove(), 400);
 
 // ---------- 背景預熱：下一步會用到的圖先抓好，點開介紹卡、護照、寵物島時不用等 ----------

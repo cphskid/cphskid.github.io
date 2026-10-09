@@ -1,0 +1,33 @@
+# 推到 dev 時，如果圖或聲音有變，自動重產 data/warm.json 和 data/sw-manifest.json 並 commit，
+# 再請 main 重發一次網站（sw.js 靠 sw-manifest.json 的指紋知道哪張圖換了；忘了手動跑 tools/warm-list.mjs 也沒關係）。
+name: manifest
+
+on:
+  push:
+    branches: [dev]
+    paths: ['img/**', 'audio/**']
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  manifest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node tools/warm-list.mjs
+      - name: commit
+        run: |
+          if git diff --quiet -- data/; then echo "清單沒變"; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898333+github-actions[bot]@users.noreply.github.com"
+          git add data/warm.json data/sw-manifest.json
+          git commit -m "自動更新圖片清單（warm.json、sw-manifest.json）"
+          git push
+          gh workflow run pages.yml --repo "$GITHUB_REPOSITORY" --ref main
+        env:
+          GH_TOKEN: ${{ github.token }}

@@ -151,6 +151,12 @@ Settings → Secrets and variables → Actions 加一個 `ASSETS_TOKEN`（能讀
   寵物不賣（之後去認養島）；頭像框、勳章不賣；活動套裝之後用活動糖果換。新傢俱要在 `js/pet.js` 的 PROPS／ASPECT／USE／FURN_NAME 補上。
 - 右上角名牌下面的時光幣＝錢包和每日任務；左下角護照上面是商店。換裝間試穿沒有的衣服時可以直接「買下來」。
 
+## 存進裝置（Service Worker）
+
+- `sw.js`：圖和聲音第一次抓到就存在裝置裡，之後直接拿，不用等網路；網頁、js、css 照舊問網路。網址加 `?nosw=1` 可以拆掉它。
+- 靠 `data/sw-manifest.json`（每個檔案的指紋）知道圖換了沒：換了的圖當次就重新下載。這份清單和 `data/warm.json` 由 `node tools/warm-list.mjs` 產生，推到 dev 時 GitHub 也會自動重產（`.github/workflows/manifest.yml`）。
+- 讀取計時：網址加 `?perf=1` 右下角顯示各階段秒數與圖從哪來（`js/perf.js`，記在裝置上，`?perf=0` 關；島嶼開拓者共用這個開關）。
+
 ## 圖片載入（不要掉圖）
 
 - 開門前等首屏的圖（海、標題、三座島）都到齊才淡出「樂園開門中」，最多等 4 秒；index.html 用 preload 讓首屏圖與程式一開始就抓。

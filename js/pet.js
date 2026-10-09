@@ -11,6 +11,7 @@
 import * as auth from './auth.js';
 import { readSky, makeSky, SKY_NAME } from './petsky.js';
 import { warm } from './warm.js';
+import { span } from './perf.js';
 
 const $ = (s, root = document) => root.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -400,12 +401,14 @@ addEventListener('resize', () => { if (!layer.hidden) fitScene(false); });
 // 先把島、擺出來的傢俱、每隻夥伴站著和走路的圖抓好再掀開（最多等 2.5 秒）；掀開後再在背景抓其他動作
 const FIRST_POSES = ['idle', 'walk1', 'walk2', 'sit', 'front1', 'front2', 'back1', 'back2'];
 async function revealScene() {
+  const t0 = performance.now();
   const pis = $('.pisle', layer);
   const srcs = ['img/pet/island.webp', ...props.map((o) => `img/pet/furniture/${o.id}.webp`),
     ...actors.flatMap((a) => FIRST_POSES.map((pose) => art(a.p.species, a.p.stage, pose)))];
   await Promise.race([Promise.all(srcs.map(loadImg)), new Promise((ok) => setTimeout(ok, 2500))]);
   if (pis !== $('.pisle', layer)) return;
   pis.classList.remove('loading');
+  span('寵物島掀開', t0);
   warm(...new Set(actors.map((a) => `img/pet/${a.p.species}/${a.p.stage}-`)), 'img/pet/food/', 'img/pet/furniture/');
 }
 
