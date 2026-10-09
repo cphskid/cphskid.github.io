@@ -66,17 +66,21 @@ async function media(e, req) {
   return fresh;
 }
 
-// 網頁、程式、資料：照舊問網路（瀏覽器自己的暫存規則），順便存一份給斷線用
+// 網頁、程式、資料：每次都跟網路確認是不是最新（no-cache：沒換只回 304，很快），順便存一份給斷線用。
+// 不用瀏覽器暫存規則：那樣最多會拿到 10 分鐘前的檔，剛推新版時新舊 js 混在一起會開不起來。
+// 網路一時失敗（換 Wi-Fi、Safari 偶發的 Load failed）先再試一次，再不行用存的；
+// 都沒有就再交給網路一次，不讓 Service Worker 變成「無法打開網頁」的原因。
 async function code(req, nav) {
   if (nav) void fetchManifest();
   const c = await caches.open(CACHE);
   const key = new URL(req.url).pathname;
+  const get = () => fetch(req, { cache: 'no-cache' });
   try {
-    const res = await fetch(req);
+    const res = await get().catch(() => new Promise((r) => setTimeout(r, 300)).then(get));
     if (ok(res)) c.put(key, res.clone()).catch(() => {});
     return res;
-  } catch (err) {
-    return (await c.match(key)) ?? (nav ? await c.match(BASE) : undefined) ?? Promise.reject(err);
+  } catch {
+    return (await c.match(key)) ?? (nav ? await c.match(BASE) : undefined) ?? fetch(req);
   }
 }
 
