@@ -1,14 +1,12 @@
-// 讀取計時：網址加 ?perf=1 打開（記在這台裝置上，進島嶼開拓者也會顯示；?perf=0 關掉）。
+// 讀取計時：網址加 ?perf=1 才顯示（只有那一頁，不記在裝置上）。
 // 畫面右下角列出「從開網頁到每個階段」幾秒，和圖片從哪裡來（網路／存在裝置裡）。
 // 島嶼開拓者那邊是 src/perf.ts，用同一個開關。
 const KEY = 'timepark-perf';
 
 export const PERF = (() => {
   try {
-    const q = new URLSearchParams(location.search).get('perf');
-    if (q === '0') localStorage.removeItem(KEY);
-    else if (q !== null) localStorage.setItem(KEY, '1');
-    return localStorage.getItem(KEY) === '1';
+    localStorage.removeItem(KEY); // 以前會記在裝置上，現在不記了：清掉舊的
+    return new URLSearchParams(location.search).get('perf') === '1';
   } catch { return false; }
 })();
 

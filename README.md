@@ -155,7 +155,7 @@ Settings → Secrets and variables → Actions 加一個 `ASSETS_TOKEN`（能讀
 
 - `sw.js`：圖和聲音第一次抓到就存在裝置裡，之後直接拿，不用等網路；網頁、js、css 照舊問網路。網址加 `?nosw=1` 可以拆掉它。
 - 靠 `data/sw-manifest.json`（每個檔案的指紋）知道圖換了沒：換了的圖當次就重新下載。這份清單和 `data/warm.json` 由 `node tools/warm-list.mjs` 產生，推到 dev 時 GitHub 也會自動重產（`.github/workflows/manifest.yml`）。
-- 讀取計時：網址加 `?perf=1` 右下角顯示各階段秒數與圖從哪來（`js/perf.js`，記在裝置上，`?perf=0` 關；島嶼開拓者共用這個開關）。
+- 讀取計時：網址加 `?perf=1` 右下角顯示各階段秒數與圖從哪來（`js/perf.js`，只有那一頁、不記在裝置上；島嶼開拓者同一招）。
 
 ## 圖片載入（不要掉圖）
 
