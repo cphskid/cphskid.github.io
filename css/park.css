@@ -1268,3 +1268,73 @@ button.stamp:hover,button.stamp:focus-visible{transform:translateY(-3px);outline
 .board .rank .md{grid-column:3;font:700 13px/1.2 var(--f-body);color:#a88a6a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .board .pt{grid-column:4;grid-row:1/3;display:flex;align-items:center;gap:4px;font:900 20px/1 var(--f-disp);color:var(--wood)}
 .board .pt .c{width:24px;height:24px}
+
+/* ---------- 2026-10-09 入口改版：頂部木牌、左上齒輪、右上名牌＋時光幣、底部功能列 ---------- */
+.sign{position:fixed;left:50%;top:0;translate:-50% 0;width:420px;pointer-events:none;z-index:4}
+.sign>img{width:100%;display:block;filter:drop-shadow(0 6px 8px rgba(0,0,0,.3))}
+.sign>div{position:absolute;left:14%;right:14%;top:36%;bottom:14%;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#5a3418}
+.sign b{font:900 40px/1 var(--f-body);letter-spacing:.12em;text-shadow:0 2px 0 rgba(255,255,255,.4)}
+.sign small{font:700 15px/1.4 var(--f-body);color:#8a5a2a;letter-spacing:.2em}
+
+#gear{position:absolute;left:24px;top:20px;z-index:12}
+body[data-scene="map"] #gear{left:186px}
+#gear-btn{width:54px;height:54px;border:0;padding:0;background:none;cursor:pointer;position:relative;filter:drop-shadow(0 3px 4px rgba(0,0,0,.3));transition:transform .3s}
+#gear-btn img{width:100%;height:100%;object-fit:contain}
+#gear-btn:hover,#gear-btn:focus-visible,#gear-btn[aria-expanded="true"]{transform:rotate(40deg);outline:none}
+#gear-btn .dot{position:absolute;right:0;top:0;width:14px;height:14px;border-radius:50%;background:#e2553f;border:2px solid #fff}
+#gear-btn .dot[hidden]{display:none}
+#gear-menu{position:absolute;left:0;top:60px;display:grid;gap:8px;padding:10px;min-width:180px;background:var(--cream);border:3px solid var(--wood);border-radius:18px;box-shadow:0 5px 0 var(--wood),0 12px 20px rgba(0,0,0,.25);animation:pop .3s cubic-bezier(.34,1.7,.5,1)}
+#gear-menu[hidden]{display:none}
+#gear-menu>button{position:static!important;display:flex!important;align-items:center;gap:8px;width:100%;padding:8px 12px!important;border:2px solid var(--cream-2)!important;border-radius:12px!important;background:#fff!important;box-shadow:none!important;font:900 16px/1 var(--f-body)!important;color:var(--ink);cursor:pointer;text-align:left}
+#gear-menu>button b{display:inline!important}
+#gear-menu>button:hover{background:#fff4d0!important;transform:none}
+#gear-menu>button[hidden]{display:none!important}
+#gear-menu #snd-btn svg{width:24px;height:24px}
+#gear-menu #fb-btn .dot{position:static;margin-left:auto}
+
+#top-right{position:absolute;right:22px;top:18px;z-index:9;display:flex;align-items:center;gap:0}
+#top-right>#me-chip{position:relative;right:auto;top:auto}
+#top-right>#coin-chip{position:relative;right:auto;top:auto;margin-left:-14px;padding-left:18px;border-radius:0 999px 999px 0;z-index:-1}
+#top-right>#me-chip[hidden]+#coin-chip{margin-left:0;border-radius:999px;padding-left:6px}
+
+#dock{position:absolute;left:50%;bottom:14px;translate:-50% 0;z-index:7;display:flex;gap:10px;padding:8px 14px;border-radius:26px;background:linear-gradient(#8a5a2a,#5e3a18);box-shadow:inset 0 0 0 3px #c99a4a,0 8px 18px rgba(0,0,0,.35)}
+#dock:not(:has(>button:not([hidden]))){display:none}
+#dock>button{position:relative!important;left:auto!important;bottom:auto!important;width:92px!important;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:2px;height:86px;border:0;border-radius:18px;background:linear-gradient(#fff8e6,#f3dcb0)!important;padding:6px 0;cursor:pointer;box-shadow:inset 0 -3px 0 #d9b77a;transition:transform .2s cubic-bezier(.34,1.7,.5,1)}
+#dock>button[hidden]{display:none}
+#dock>button img{width:52px!important;height:52px;object-fit:contain;filter:drop-shadow(0 3px 3px rgba(0,0,0,.2))!important}
+#dock>button b{font:900 16px/1.1 var(--f-body)!important;color:#5a3418!important;background:none!important;border:0!important;box-shadow:none!important;padding:0!important;margin:0!important;white-space:nowrap}
+#dock>button:hover,#dock>button:focus-visible{transform:translateY(-4px);outline:none}
+#dock .dot{position:absolute!important;top:-8px!important;right:-6px!important;min-width:24px!important;height:24px!important;font:900 14px/20px var(--f-body)!important;border-width:2px!important}
+body[data-scene="map"] #tick .bubble{margin-bottom:120px}
+
+@media (max-width:760px),(max-height:560px){
+  .sign{width:230px;top:66px}
+  .sign b{font-size:24px}
+  .sign small{font-size:10px}
+  #back{font-size:0!important;width:44px;height:44px;padding:0!important;border-radius:50%!important;display:grid;place-items:center}
+  #back::before{content:'🏠';font-size:22px}
+  #gear{left:10px;top:10px}
+  body[data-scene="map"] #gear{left:62px}
+  #gear-btn{width:44px;height:44px}
+  #gear-menu{top:50px}
+  #top-right{right:10px;top:10px}
+  #top-right>#me-chip{right:auto;top:auto}
+  #top-right>#coin-chip{right:auto;top:auto;margin-left:-12px;padding-left:14px}
+  #dock{bottom:6px;gap:4px;padding:6px 8px;border-radius:20px}
+  #dock>button{width:62px!important;height:62px;border-radius:14px;padding:4px 0}
+  #dock>button img{width:34px!important;height:34px}
+  #dock>button b{font-size:13px!important}
+  #tick{bottom:76px}
+  #tick button{width:70px}
+  body[data-scene="map"] #tick .bubble{margin-bottom:40px}
+  .env-tag{top:auto;bottom:80px;right:auto;left:10px}
+}
+@media (max-height:560px){
+  .sign{top:2px;width:190px}
+  .sign b{font-size:20px}
+  #tick{bottom:6px}
+}
+.board .tabs.kinds .tab{flex:1;text-align:center}
+.board .pt .up{font-style:normal;color:#2f8a2a}
+.board .pt .md-n{font-style:normal}
+@media (max-width:760px){.board .tabs.kinds .tab{font-size:14px;padding:8px 6px}}

@@ -157,12 +157,19 @@ insert into public.park_class_members (class_code, student_id) values (:'c2', :'
 select public.park_coin_grant(:'amy', 'test:board', 7, null, '測試');
 select public.park_coin_sync(:'cat');
 select public.park_coin_week(:'cat') as catweek \gset
+select coalesce(sum(amount), 0) as catlast from public.park_coin_ledger where student_id = :'cat' and amount > 0 and created_at >= public.park_week_start() - interval '7 days' and created_at < public.park_week_start() \gset
 set role authenticated;
 select test_as('d0000000-0000-0000-0000-000000000013', true);
 select public.park_class_board(:'c2') as b \gset
 select test_ok((:'b'::jsonb ->> 'total')::int = 3, '全班 3 人');
-select test_ok((:'b'::jsonb -> 'me' ->> 'rank')::int = 1 and (:'b'::jsonb -> 'me' ->> 'week')::int = :catweek, '小貓這週賺最多，第 1 名');
-select test_ok((select bool_and((r ->> 'week')::int > 0) from jsonb_array_elements(:'b'::jsonb -> 'rows') r), '0 分的不列出來');
+select test_ok((:'b'::jsonb -> 'me' ->> 'rank')::int = 1 and (:'b'::jsonb -> 'me' ->> 'score')::int = :catweek, '小貓這週賺最多，第 1 名');
+select test_ok((select bool_and((r ->> 'score')::int > 0) from jsonb_array_elements(:'b'::jsonb -> 'rows') r), '0 分的不列出來');
+select public.park_class_board(:'c2', 'up') as bu \gset
+select test_ok(:'bu'::jsonb ->> 'kind' = 'up' and (:'bu'::jsonb -> 'me' ->> 'score')::int = :catweek - :catlast, '進步之星：這週減上週');
+select public.park_class_board(:'c2', 'medals') as bm \gset
+select test_ok((select (r ->> 'score')::int from jsonb_array_elements(:'bm'::jsonb -> 'rows') r where r ->> 'id' = :'amy') >= 1, '勳章牆：艾咪有勳章，上榜');
+select test_ok((:'bm'::jsonb -> 'me' ->> 'rank') is null or (:'bm'::jsonb -> 'me' ->> 'score')::int > 0, '勳章牆：沒有勳章的不給名次');
+select test_ok(public.park_class_board(:'c2', 'hack') ->> 'kind' = 'week', '亂給種類就當本週冒險值');
 select test_ok((select r -> 'medal' ->> 'art' from jsonb_array_elements(:'b'::jsonb -> 'rows') r where r ->> 'id' = :'amy') is not null, '艾咪那列掛著她的代表勳章');
 select test_ok((select count(*) from jsonb_array_elements(:'b'::jsonb -> 'rows') r where (r ->> 'me')::boolean) = 1, '自己那列有標出來');
 select test_denied($$select public.park_class_board('ZZZZZZ')$$, '不是自己的班看不到排行');

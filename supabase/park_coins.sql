@@ -453,38 +453,55 @@ begin
 end;
 $$;
 
--- 班級排行：本週冒險值（這週新賺的時光幣，花掉不扣），每人旁邊掛代表勳章。
--- 同班同學或這班的老師才看得到。只列前 10 名（0 分的不列），另外回傳自己的名次，避免墊底的人被看見。
--- 算之前先幫全班補帳（別人在島上賺的還沒進樂園也算得到；通知照樣留給本人看）。
--- 回傳 {code, name, rows:[{rank, id, nickname, look, frame, medal:{name, art, rarity}, week, me}], me:{rank, week}|null, total}
-create or replace function public.park_class_board(p_code text)
+-- 班級排行（2026-10-09 改三種）：
+--   week   本週冒險值＝這週新賺的時光幣（花掉不扣）
+--   up     進步之星＝這週比上週多賺多少（只列有進步的）
+--   medals 勳章牆＝總共拿到幾枚勳章（樂園護照上的章）
+-- 每人旁邊掛代表勳章。同班同學或這班的老師才看得到。只列前 10 名（0 分的不列），
+-- 另外回傳自己的名次，避免墊底的人被看見。算之前先幫全班補帳（通知照樣留給本人看）。
+-- 回傳 {kind, code, name, rows:[{rank, id, nickname, look, frame, medal:{name, art, rarity}, score, me}], me:{rank, score}|null, total}
+drop function if exists public.park_class_board(text);
+create or replace function public.park_class_board(p_code text, p_kind text default 'week')
 returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
 declare
   v_code text := upper(btrim(coalesce(p_code, '')));
+  v_kind text := case when p_kind in ('week', 'up', 'medals') then p_kind else 'week' end;
   v_me uuid := public.current_student_id();
   v_m uuid;
+  v_ws timestamptz := public.park_week_start();
   v_out jsonb;
 begin
   if not (public.is_teacher_of(v_code)
           or exists (select 1 from public.park_class_members where class_code = v_code and student_id = v_me)) then
     raise exception '你不在這個班';
   end if;
-  for v_m in select student_id from public.park_class_members where class_code = v_code loop
-    perform public.park_coin_sync(v_m);
-  end loop;
+  if v_kind <> 'medals' then
+    for v_m in select student_id from public.park_class_members where class_code = v_code loop
+      perform public.park_coin_sync(v_m);
+    end loop;
+  end if;
   with w as (
-    select m.student_id, st.nickname, public.park_coin_week(m.student_id) as week
+    select m.student_id, st.nickname,
+           case v_kind
+             when 'week' then public.park_coin_week(m.student_id)
+             when 'up' then public.park_coin_week(m.student_id)
+                            - coalesce((select sum(l.amount) from public.park_coin_ledger l
+                                         where l.student_id = m.student_id and l.amount > 0
+                                           and l.created_at >= v_ws - interval '7 days' and l.created_at < v_ws), 0)::int
+             else (select count(*) from public.park_student_stamps x where x.student_id = m.student_id)::int
+           end as score
       from public.park_class_members m join public.students st on st.id = m.student_id
      where m.class_code = v_code
   ), r as (
-    select w.*, case when w.week > 0 then rank() over (order by w.week desc) end as rank from w
+    select w.*, case when w.score > 0 then rank() over (order by w.score desc) end as rank from w
   )
   select jsonb_build_object(
+    'kind', v_kind,
     'code', v_code,
     'name', (select c.name from public.classes c where c.code = v_code),
     'total', (select count(*) from w),
     'rows', coalesce((select jsonb_agg(jsonb_build_object(
-                'rank', r.rank, 'id', r.student_id, 'nickname', r.nickname, 'week', r.week, 'me', r.student_id = v_me,
+                'rank', r.rank, 'id', r.student_id, 'nickname', r.nickname, 'score', r.score, 'me', r.student_id = v_me,
                 'look', t.look, 'frame', coalesce(p.frame, 'plain'),
                 'medal', (select jsonb_build_object('name', s.name, 'art', s.art, 'rarity', s.rarity)
                             from public.park_stamps s
@@ -494,7 +511,7 @@ begin
               from r left join public.park_profiles p on p.student_id = r.student_id
                      left join public.park_travellers t on t.student_id = r.student_id
              where r.rank is not null and r.rank <= 10), '[]'::jsonb),
-    'me', (select jsonb_build_object('rank', r.rank, 'week', r.week) from r where r.student_id = v_me))
+    'me', (select jsonb_build_object('rank', r.rank, 'score', r.score) from r where r.student_id = v_me))
   into v_out;
   return v_out;
 end;
@@ -516,10 +533,10 @@ revoke all on function
   public.park_coin_sync(uuid), public.park_daily_name(text), public.park_daily_done(uuid, text, date),
   public.park_daily_row(uuid), public.park_daily_json(uuid), public.park_coins_state(uuid),
   public.park_coins_me(), public.park_coins_seen(), public.park_daily_claim(text), public.park_shop(),
-  public.park_shop_buy(text, text), public.park_my_furniture(), public.park_class_board(text)
+  public.park_shop_buy(text, text), public.park_my_furniture(), public.park_class_board(text, text)
   from public, anon, authenticated;
 grant execute on function
   public.park_coins_me(), public.park_coins_seen(), public.park_daily_claim(text), public.park_shop(),
-  public.park_shop_buy(text, text), public.park_my_furniture(), public.park_class_board(text)
+  public.park_shop_buy(text, text), public.park_my_furniture(), public.park_class_board(text, text)
   to authenticated;
 grant execute on function public.park_shop() to anon;

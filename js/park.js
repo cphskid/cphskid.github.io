@@ -345,7 +345,7 @@ window.ParkFeedback?.mount({
   getToken: async () => (await db?.auth.getSession())?.data.session?.access_token,
   // 在哪一幕、開著哪個視窗
   context: () => ({ screen: [document.body.dataset.scene, ...['acct', 'pass', 'petroom', 'wardrobe', 'veil'].filter((id) => !$('#' + id).hidden)].join('/') }),
-  onDot: (n) => { fbBtn.querySelector('.dot').hidden = n === 0; },
+  onDot: (n) => { fbBtn.querySelector('.dot').hidden = n === 0; $('#gear-btn .dot').hidden = n === 0; },
 });
 fbBtn.addEventListener('click', () => window.ParkFeedback?.open());
 if (!window.ParkFeedback) fbBtn.hidden = true;
@@ -381,7 +381,7 @@ function showMap({ animate = true } = {}) {
   title.hidden = true;
   select.hidden = false;
   setScene('map');
-  paintPassBtn();
+  paintPassBtn(); paintDock();
   snd.music('MU-01'); snd.ambience('SE-16');
   const stamped = account.current().profile?.unseen?.length;
   snd.sfx('SE-15');
@@ -557,6 +557,36 @@ function paintPassBtn() {
 passBtn.addEventListener('click', () => account.openPassport());
 addEventListener('park:profile', paintPassBtn);
 
+// ---------- 底部功能列的其他格：排行、我的旅人、桌寵（學生才有）＋齒輪裡的登出 ----------
+const rankBtn = $('#rank-btn'), wearBtn = $('#wear-btn'), petBtn = $('#pet-btn'), outBtn = $('#out-btn');
+function paintDock() {
+  const w = account.current();
+  const kid = w.kind === 'student';
+  rankBtn.hidden = wearBtn.hidden = petBtn.hidden = !kid;
+  outBtn.hidden = w.kind !== 'student' && w.kind !== 'staff';
+}
+rankBtn.addEventListener('click', () => {
+  if (!(account.current().classes ?? []).length) { showToast('加入班級之後，就能看到全班的排行喔！'); return; }
+  shop.openBoard();
+});
+wearBtn.addEventListener('click', () => traveller.open());
+petBtn.addEventListener('click', () => pet.open());
+outBtn.addEventListener('click', async () => { closeGear(); await account.logout(); });
+addEventListener('park:profile', paintDock);
+
+// ---------- 左上角的齒輪：點開聲音、問題回報、登出 ----------
+const gearBtn = $('#gear-btn'), gearMenu = $('#gear-menu');
+function closeGear() { gearMenu.hidden = true; gearBtn.setAttribute('aria-expanded', 'false'); }
+gearBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  gearMenu.hidden = !gearMenu.hidden;
+  gearBtn.setAttribute('aria-expanded', String(!gearMenu.hidden));
+  paintDock();
+});
+fbBtn.addEventListener('click', closeGear);
+addEventListener('click', (e) => { if (!gearMenu.hidden && !e.target.closest('#gear')) closeGear(); });
+addEventListener('keydown', (e) => { if (e.key === 'Escape') closeGear(); });
+
 // ---------- 從網址決定一開始的畫面 ----------
 // 遊戲裡的「回樂園」按鈕連到 /#map，直接回到島嶼地圖、不用再看一次開場；
 // 就算連結沒帶 #map，這個分頁從開場進過樂園也會直接回地圖（按「回到開場」或登出就重來）
@@ -569,7 +599,7 @@ function enteredThisTab() {
 function onAccountChange(w) {
   syncFacilities();
   window.ParkFeedback?.refresh();
-  paintPassBtn();
+  paintPassBtn(); paintDock();
   pet.load().then(() => { if (w.kind === 'student') warmStudent(); });
   if (w.kind !== 'student') { traveller.close(); shop.close(); }   // 旅人在 account 讀「我是誰」時一起讀好了
   shop.load(w);

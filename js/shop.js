@@ -111,41 +111,51 @@ export function openWallet(msg = null) {
   });
 }
 
-// ---------- 班級排行：本週冒險值 ----------
+// ---------- 班級排行：本週冒險值、進步之星、勳章牆 ----------
 // 只列前 10 名（0 分的不列），自己不在前 10 就在最下面說「你是第幾名」。點一個人看他的名片。
 const myClasses = () => hooks.me()?.classes ?? [];
 let boardCode = null;
+let boardKind = 'week';
 const PODIUM = ['🥇', '🥈', '🥉'];
-export async function openBoard(code = boardCode ?? myClasses().find((c) => c.primary)?.code ?? myClasses()[0]?.code) {
+const KINDS = [
+  { id: 'week', name: '本週冒險值', tip: '這週新賺到的時光幣，每週一重新比。', unit: (n) => `${COIN}${n}`,
+    mine: (r) => `你這週 ${r.score} 冒險值，全班第 ${r.rank} 名，加油！`, none: '你這週還沒有冒險值，去島上玩一關就上榜了！' },
+  { id: 'up', name: '進步之星', tip: '這週比上週多賺了多少，跟自己比。', unit: (n) => `<em class="up">+${n}</em>`,
+    mine: (r) => `你這週比上週多了 ${r.score}，全班第 ${r.rank} 名！`, none: '這週再多玩一點，比上週多就上榜了！' },
+  { id: 'medals', name: '勳章牆', tip: '樂園護照上總共拿到幾枚勳章。', unit: (n) => `<em class="md-n">🏅${n}</em>`,
+    mine: (r) => `你有 ${r.score} 枚勳章，全班第 ${r.rank} 名！`, none: '還沒有勳章，去島上過一關就能拿到第一枚！' },
+];
+export async function openBoard(code = boardCode ?? myClasses().find((c) => c.primary)?.code ?? myClasses()[0]?.code, kind = boardKind) {
   if (!code) return;
   boardCode = code;
-  const tabs = myClasses().length > 1 ? `<nav class="tabs" aria-label="班級">${myClasses().map((c) => `<button type="button" class="tab${c.code === code ? ' on' : ''}" data-cls="${esc(c.code)}">${esc(c.name || c.code)}</button>`).join('')}</nav>` : '';
-  show(`<div class="wallet board" role="dialog" aria-modal="true" aria-label="班級排行"><button class="x" data-close aria-label="關閉"></button><h2>🏆 本週冒險榜</h2>${tabs}<p class="tip">排行載入中…</p></div>`);
+  boardKind = kind;
+  const k = KINDS.find((x) => x.id === kind) ?? KINDS[0];
+  const cls = myClasses().length > 1 ? `<nav class="tabs cls" aria-label="班級">${myClasses().map((c) => `<button type="button" class="tab${c.code === code ? ' on' : ''}" data-cls="${esc(c.code)}">${esc(c.name || c.code)}</button>`).join('')}</nav>` : '';
+  const kinds = `<nav class="tabs kinds" role="tablist" aria-label="比什麼">${KINDS.map((x) => `<button type="button" role="tab" class="tab${x.id === k.id ? ' on' : ''}" aria-selected="${x.id === k.id}" data-kind="${x.id}">${x.name}</button>`).join('')}</nav>`;
+  const head = `<button class="x" data-close aria-label="關閉"></button><h2>🏆 班級排行</h2>${cls}${kinds}`;
+  show(`<div class="wallet board" role="dialog" aria-modal="true" aria-label="班級排行">${head}<p class="tip">排行載入中…</p></div>`);
+  bindBoard();
   let b;
-  try { b = await auth.coins.board(code); } catch (err) { show(`<div class="wallet board"><button class="x" data-close aria-label="關閉"></button><h2>🏆 本週冒險榜</h2>${tabs}<p class="note bad">${esc(err.message)}</p></div>`); bindBoard(); return; }
+  try { b = await auth.coins.board(code, k.id); } catch (err) { show(`<div class="wallet board">${head}<p class="note bad">${esc(err.message)}</p></div>`); bindBoard(); return; }
+  if (boardCode !== code || boardKind !== kind) return;   // 等的時候又切到別的分頁
   const rows = b.rows.map((r) => `<li class="${r.me ? 'me' : ''}" data-card="${esc(r.id)}">
       <span class="rk">${PODIUM[r.rank - 1] ?? r.rank}</span>
       ${passport.avatarHtml(r.look, r.frame, '', r.medal)}
       <b>${esc(r.nickname)}${r.me ? '<small>（你）</small>' : ''}</b>
-      ${r.medal ? `<small class="md">${esc(r.medal.name)}</small>` : '<small class="md"></small>'}
-      <span class="pt">${COIN}${r.week}</span></li>`).join('');
-  const mine = b.me && !b.rows.some((r) => r.me)
-    ? `<p class="note">${b.me.rank ? `你這週 ${b.me.week} 冒險值，全班第 ${b.me.rank} 名，加油！` : '你這週還沒有冒險值，去島上玩一關就上榜了！'}</p>` : '';
-  show(`<div class="wallet board" role="dialog" aria-modal="true" aria-label="班級排行">
-    <button class="x" data-close aria-label="關閉"></button>
-    <h2>🏆 本週冒險榜</h2>${tabs}
-    <p class="tip">${esc(b.name || b.code)}・這週新賺到的時光幣，每週一重新比。頭像旁邊是每個人的代表勳章，點一下看名片。</p>
-    ${rows ? `<ol class="rank">${rows}</ol>` : '<p class="tip">這週還沒有人上榜，第一個就是你！</p>'}
+      <small class="md">${r.medal ? esc(r.medal.name) : ''}</small>
+      <span class="pt">${k.unit(r.score)}</span></li>`).join('');
+  const mine = b.me && !b.rows.some((r) => r.me) ? `<p class="note">${b.me.rank ? k.mine(b.me) : k.none}</p>` : '';
+  show(`<div class="wallet board" role="dialog" aria-modal="true" aria-label="班級排行">${head}
+    <p class="tip">${esc(b.name || b.code)}・${k.tip}頭像旁邊是每個人的代表勳章，點一下看名片。</p>
+    ${rows ? `<ol class="rank">${rows}</ol>` : '<p class="tip">還沒有人上榜，第一個就是你！</p>'}
     ${mine}
-    <div class="row end"><button type="button" class="ghost" data-back>← 我的時光幣</button></div>
   </div>`);
   bindBoard();
 }
 function bindBoard() {
-  layer.querySelectorAll('[data-cls]').forEach((t) => { t.onclick = () => openBoard(t.dataset.cls); });
+  layer.querySelectorAll('[data-cls]').forEach((t) => { t.onclick = () => openBoard(t.dataset.cls, boardKind); });
+  layer.querySelectorAll('[data-kind]').forEach((t) => { t.onclick = () => openBoard(boardCode, t.dataset.kind); });
   layer.querySelectorAll('[data-card]').forEach((li) => { li.onclick = () => { close(); passport.openCard(li.dataset.card); }; });
-  const back = $('[data-back]', layer);
-  if (back) back.onclick = () => openWallet();
 }
 
 // ---------- 商店 ----------

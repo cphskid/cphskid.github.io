@@ -363,7 +363,7 @@ function openProfile(section = '') {
   });
 }
 
-async function logout() {
+export async function logout() {
   await auth.logout();
   close();
   passport.close();
