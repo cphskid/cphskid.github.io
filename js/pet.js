@@ -10,6 +10,7 @@
 // 天空（js/petsky.js）：日夜跟著真的時間、季節跟著月份、天氣每天換，寵物會跟著反應（下雨躲帳篷、晚上想睡）。
 import * as auth from './auth.js';
 import { readSky, makeSky, SKY_NAME } from './petsky.js';
+import { warm } from './warm.js';
 
 const $ = (s, root = document) => root.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -333,7 +334,7 @@ function openScene({ select, say: first } = {}) {
   sky = readSky();
   cardOpen = news.length > 0;
   bagOpen = false;
-  show(`<div class="pisle" role="dialog" aria-modal="true" aria-label="寵物島" data-wx="${sky.wx}" data-tod="${sky.tod}" data-season="${sky.season}">
+  show(`<div class="pisle loading" role="dialog" aria-modal="true" aria-label="寵物島" data-wx="${sky.wx}" data-tod="${sky.tod}" data-season="${sky.season}">
     <div class="view"><div class="ground-box"><section class="ground" style="width:${GW}px;height:${GH}px">
       <img class="land" src="img/pet/island.webp" alt="">
       <div class="actors"></div>
@@ -345,6 +346,7 @@ function openScene({ select, say: first } = {}) {
     <div class="dock"><div class="pals-s"></div><nav class="bar" aria-label="照顧"></nav></div>
     <div class="bagpop" hidden></div>
     <div class="furn" hidden></div>
+    <div class="veil-load" aria-live="polite"><span class="egg"></span><p>寵物島準備中…</p></div>
     <button class="x" data-close aria-label="關閉，回到地圖"></button></div>`);
   const box = $('.actors', layer);
   const fresh = freshFurniture();
@@ -364,6 +366,7 @@ function openScene({ select, say: first } = {}) {
   skyFx = makeSky($('.ground', layer), sky, { w: GW, h: GH, lake: LAKE });
   fitScene(true);
   paintCare();
+  revealScene();
   if (first) say(first, selected);
   else if (fresh.length && home) say(`哇！新的傢俱：${fresh.map((id) => FURN_NAME[id]).join('、')}！謝謝你去過關～`, home.id);
   else if (home) {
@@ -394,6 +397,17 @@ function fitScene(first) {
   view.scrollTop = cy * GH * g - H / 2;
 }
 addEventListener('resize', () => { if (!layer.hidden) fitScene(false); });
+// 先把島、擺出來的傢俱、每隻夥伴站著和走路的圖抓好再掀開（最多等 2.5 秒）；掀開後再在背景抓其他動作
+const FIRST_POSES = ['idle', 'walk1', 'walk2', 'sit', 'front1', 'front2', 'back1', 'back2'];
+async function revealScene() {
+  const pis = $('.pisle', layer);
+  const srcs = ['img/pet/island.webp', ...props.map((o) => `img/pet/furniture/${o.id}.webp`),
+    ...actors.flatMap((a) => FIRST_POSES.map((pose) => art(a.p.species, a.p.stage, pose)))];
+  await Promise.race([Promise.all(srcs.map(loadImg)), new Promise((ok) => setTimeout(ok, 2500))]);
+  if (pis !== $('.pisle', layer)) return;
+  pis.classList.remove('loading');
+  warm(...new Set(actors.map((a) => `img/pet/${a.p.species}/${a.p.stage}-`)), 'img/pet/food/', 'img/pet/furniture/');
+}
 
 function addActor(box, p, at) {
   const el = document.createElement('button');
@@ -997,10 +1011,28 @@ function dress(a) {
     a.mode = 'still'; setPose(a, POSE[m]);
   } else if (a.mode === 'still') { a.mode = 'rest'; a.until = 0; }
 }
+// 動作圖先在背景抓好、解碼好才換上去；還沒好就先留著上一格（不會閃一下空白）
+const poseCache = new Map();
+function loadImg(src) {
+  let p = poseCache.get(src);
+  if (!p) {
+    const im = new Image();
+    im.decoding = 'async';
+    im.src = src;
+    p = (im.decode ? im.decode() : new Promise((ok) => { im.onload = ok; im.onerror = ok; })).then(() => true, () => true);
+    p.done = false;
+    p.then(() => { p.done = true; });
+    poseCache.set(src, p);
+  }
+  return p;
+}
 function setPose(a, pose) {
   if (a.pose === pose) return;
   a.pose = pose;
-  a.img.src = art(a.p.species, a.p.stage, pose);
+  const src = art(a.p.species, a.p.stage, pose);
+  const p = loadImg(src);
+  if (p.done || !a.img.getAttribute('src')) { a.img.src = src; return; }
+  p.then(() => { if (a.pose === pose && a.el.isConnected) a.img.src = src; });
 }
 function place(a) {
   a.el.style.left = (a.x * GW) + 'px';
@@ -1212,7 +1244,7 @@ function paintCare() {
   }
   box.classList.toggle('open', cardOpen);
   box.innerHTML = p ? `<button type="button" class="card-top" data-card aria-expanded="${cardOpen}" aria-label="${cardOpen ? '收起' : '打開'}${esc(p.name)}的狀態">
-      <img src="${art(p.species, p.stage)}" alt=""><span class="t">${top}</span><i>${cardOpen ? '▴' : '▾'}</i></button>
+      <img src="${art(p.species, p.stage)}" alt=""><span class="t">${top}</span><i class="tog">${cardOpen ? '收起 ▲' : '看全部 ▼'}</i></button>
     <div class="who"${cardOpen ? '' : ' hidden'}>${body}<p class="msg" hidden></p></div>` : '';
   $('[data-card]', box)?.addEventListener('click', () => { cardOpen = !cardOpen; paintCare(); });
   layer.querySelectorAll('[data-sel]').forEach((b) => { b.onclick = () => { const a = actors.find((x) => x.p.id === +b.dataset.sel); if (a) tap(a); }; });

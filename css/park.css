@@ -604,7 +604,14 @@ aside.care .card-top img{width:52px;height:52px;flex:none;object-fit:contain;bor
 aside.care .card-top .t{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}
 aside.care .card-top b{font:900 20px/1.1 var(--f-body);color:var(--wood);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 aside.care .card-top small{font:700 14px/1 var(--f-body);color:#8a6a4a}
-aside.care .card-top>i{font-style:normal;font-size:16px;color:var(--wood);flex:none}
+aside.care .card-top>i.tog{flex:none;font:900 15px/1 var(--f-body);font-style:normal;color:#fff;background:linear-gradient(#ffb547,#e8862a);border:3px solid var(--wood);border-radius:99px;padding:8px 12px;box-shadow:0 3px 0 var(--wood);white-space:nowrap}
+aside.care .card-top:hover>i.tog,aside.care .card-top:focus-visible>i.tog{filter:brightness(1.08);transform:translateY(-1px)}
+aside.care.open .card-top>i.tog{background:linear-gradient(#fff,#f3e3c3);color:var(--wood)}
+/* 讀圖中：先蓋一層，圖好了再掀開 */
+.pisle .veil-load{position:absolute;inset:0;z-index:40;display:grid;place-content:center;justify-items:center;gap:12px;background:radial-gradient(ellipse at 50% 45%,#7fd6f2,#38a9dc 60%,#1f7fb8);transition:opacity .35s,visibility .35s}
+.pisle .veil-load .egg{width:70px;height:86px;animation:bob 1.2s ease-in-out infinite}
+.pisle .veil-load p{margin:0;font:900 20px/1 var(--f-body);color:#fff;text-shadow:0 2px 0 rgba(0,60,100,.4)}
+.pisle:not(.loading) .veil-load{opacity:0;visibility:hidden;pointer-events:none}
 aside.care .mini-g{display:flex;gap:8px;flex-wrap:wrap}
 aside.care .mini-g>span{display:flex;gap:1px}
 aside.care .mini-g i{font-style:normal;font-size:14px;line-height:1}
