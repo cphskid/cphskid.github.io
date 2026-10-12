@@ -1,5 +1,7 @@
 /* 老師後台。跟樂園同一套顏色與木框面板，但版面是一般可以捲動的網頁：
    後台以好讀為主，表格、文字、底色由網頁畫，只有面板外框、按鈕、滴答、徽章用 3D 圖。 */
+/* 快速點兩下不要放大畫面（iPhone Safari / Chrome 的雙擊縮放）；兩指縮放照常。:where 不加權重，各元件自己寫的 touch-action 照樣有效 */
+:where(html,body,body *){touch-action:manipulation}
 :root{
   --sea:#2f9fd8; --sea-deep:#1d7fbf; --cream:#fff4dc; --cream-2:#f6dfb4; --paper:#fffaf0;
   --wood:#6b3f1f; --wood-2:#8a5429; --gold:#ffc23d; --ink:#3a2412; --muted:#8a6a4a;
