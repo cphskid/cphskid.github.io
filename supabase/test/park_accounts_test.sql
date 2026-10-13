@@ -110,10 +110,23 @@ select public.park_leave_class('PK3');
 select test_ok(test_members('pk_ming') = 'PK1,PK2', '退出家庭班之後剩兩班');
 select test_denied($$select public.park_leave_class('PK3')$$, '退出不在的班');
 
+\echo '── 自己換主要班級（不是搬家，舊的班留著）'
+select test_ok(public.park_set_primary_class('pk2') ->> 'old' = 'PK1', '把英文科任設成主要班級');
+select test_ok(public.park_me() ->> 'primary_class' = 'PK2', '主要班級變成 PK2');
+select test_ok(test_members('pk_ming') = 'PK1,PK2', '舊的主要班級 PK1 還在');
+select test_ok(public.park_me() -> 'classes' -> 0 ->> 'code' = 'PK2', '清單第一個換成 PK2');
+select test_denied($$select public.park_set_primary_class('PK2')$$, '已經是主要班級');
+select test_denied($$select public.park_set_primary_class('PK3')$$, '不在的班不能設成主要班級');
+select test_ok(public.park_set_primary_class('PK1') ->> 'old' = 'PK2', '換回 PK1');
+select test_ok(test_members('pk_ming') = 'PK1,PK2' and public.park_me() ->> 'primary_class' = 'PK1', '換回來兩班都在');
+
 \echo '── 暱稱只在主要班級檢查'
 select test_as('b0000000-0000-0000-0000-000000000012', true);
 select student_id is not null from public.register_student('pk_hua', 'zx90cv', '小明', 'PK2');
 select test_ok(test_members('pk_hua') = 'PK2', '英文科任班也可以有另一個「小明」當主要班級');
+select test_as('b0000000-0000-0000-0000-000000000011', true);
+select test_denied($$select public.park_set_primary_class('PK2')$$, '新的主要班級已經有人叫小明，不能換過去');
+select test_as('b0000000-0000-0000-0000-000000000012', true);
 select test_denied($$select * from public.register_student('pk_dup', 'zx90cv', '小明', 'PK1')$$,
                    '主要班級裡暱稱重複照樣擋');
 

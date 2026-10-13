@@ -239,6 +239,7 @@ ul.classes li{display:flex;align-items:center;justify-content:space-between;gap:
 ul.classes li div{display:flex;flex-direction:column;gap:4px}
 ul.classes b{font:900 19px/1.2 var(--f-body)}
 ul.classes small{font:700 14px/1 var(--f-body);color:#8a6a4a}
+ul.classes li .row{gap:8px;justify-content:flex-end}
 .card.acct details{margin-top:14px;background:#fff;border:2px solid var(--cream-2);border-radius:14px;padding:10px 14px}
 .card.acct summary{font:900 18px/1.2 var(--f-body);color:var(--wood);cursor:pointer}
 .card.acct details .form{margin-top:10px}

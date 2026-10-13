@@ -276,7 +276,7 @@ function openStaffHome() {
 function classRow(c) {
   const right = c.primary
     ? '<span class="chip open" title="守護異世界的排行榜用這個班">主要班級</span>'
-    : `<button type="button" class="ghost small" data-leave="${esc(c.code)}">退出</button>`;
+    : `<span class="row"><button type="button" class="ghost small" data-primary="${esc(c.code)}" title="守護異世界的排行榜會改用這個班">設成主要班級</button><button type="button" class="ghost small" data-leave="${esc(c.code)}">退出</button></span>`;
   return `<li><div><b>${esc(c.name || '（沒有班名）')}</b><small>${esc(c.code)}${c.owner_name ? '・' + esc(c.owner_name) : ''}</small></div>${right}</li>`;
 }
 function openProfile(section = '') {
@@ -323,6 +323,15 @@ function openProfile(section = '') {
   $('[data-avatar]', layer).onclick = () => { close(); passport.openAvatar(); };
   $('[data-card]', layer).onclick = () => { close(); passport.openCard(who.id); };
   $('[data-wear]', layer).onclick = () => { close(); traveller.open(); };
+  layer.querySelectorAll('[data-primary]').forEach((b) => {
+    b.onclick = async () => {
+      const c = classes.find((x) => x.code === b.dataset.primary);
+      if (!confirm(`要把「${c?.name || b.dataset.primary}」設成主要班級嗎？\n守護異世界的排行榜會改成這個班，原本的主要班級還會留著。`)) return;
+      b.disabled = true;
+      try { await auth.setPrimaryClass(b.dataset.primary); await refresh(); openProfile(); }
+      catch (err) { alert(err.message); b.disabled = false; }
+    };
+  });
   layer.querySelectorAll('[data-leave]').forEach((b) => {
     b.onclick = async () => {
       if (!confirm(`確定要退出 ${b.dataset.leave} 這個班嗎？`)) return;

@@ -107,6 +107,12 @@ export async function leaveClass(code) {
   const { error } = await db.rpc('park_leave_class', { p_class_code: code });
   check(error);
 }
+export async function setPrimaryClass(code) {
+  const { data, error } = await db.rpc('park_set_primary_class', { p_class_code: code });
+  if (error?.code === 'PGRST202') throw new Error('換主要班級的功能還沒裝到資料庫，請告訴管理員');
+  check(error);
+  return data;
+}
 export async function setNickname(nick) {
   const { data, error } = await db.rpc('student_set_nickname', { p_nickname: nick.trim() });
   check(error);

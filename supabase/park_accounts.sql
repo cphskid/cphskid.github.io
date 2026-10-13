@@ -212,7 +212,7 @@ begin
 end;
 $$;
 
--- 退出一個班。主要班級不能自己退（守護異世界的排行榜靠它），要換主要班級請老師處理。
+-- 退出一個班。主要班級不能自己退（守護異世界的排行榜靠它），要先把別班設成主要班級。
 create or replace function public.park_leave_class(p_class_code text)
 returns void language plpgsql security definer set search_path = public, pg_temp as $$
 declare
@@ -221,10 +221,46 @@ declare
 begin
   if v_id is null then raise exception '請先登入'; end if;
   if exists (select 1 from public.students s where s.id = v_id and s.class_code = v_code) then
-    raise exception '這是你的主要班級，不能自己退出';
+    raise exception '這是你的主要班級，不能直接退出，要先把別的班設成主要班級';
   end if;
   delete from public.park_class_members where class_code = v_code and student_id = v_id;
   if not found then raise exception '你不在這一班'; end if;
+end;
+$$;
+
+-- 把另外加入的一個班改成主要班級（學生自己在「我的資料」按）。
+-- 跟守護異世界換班不同，這裡不是搬家：舊的主要班級還留著，只是變成另外加入的班。
+-- 新的主要班級裡暱稱不能跟別人重複。
+create or replace function public.park_set_primary_class(p_class_code text)
+returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
+declare
+  v_id     uuid := public.current_student_id();
+  v_code   text := upper(btrim(coalesce(p_class_code, '')));
+  v_old    text; v_nick text; v_name text; v_joined timestamptz;
+begin
+  if v_id is null then raise exception '請先登入'; end if;
+  if not exists (select 1 from public.park_class_members m
+                  where m.class_code = v_code and m.student_id = v_id) then
+    raise exception '你不在這一班';
+  end if;
+  select s.class_code, s.nickname into v_old, v_nick from public.students s where s.id = v_id;
+  if v_old = v_code then raise exception '這已經是你的主要班級了'; end if;
+  if exists (select 1 from public.students s
+              where s.class_code = v_code and s.nickname = v_nick and s.id <> v_id) then
+    raise exception '這一班已經有人叫「%」了，請先改一個別的暱稱', v_nick;
+  end if;
+
+  select m.joined_at into v_joined from public.park_class_members m
+   where m.class_code = v_old and m.student_id = v_id;
+  update public.students set class_code = v_code where id = v_id;   -- 觸發器會把舊的主要班級移掉
+  if v_old is not null then                                          -- 再把它加回來，當另外加入的班
+    insert into public.park_class_members (class_code, student_id, joined_at)
+    values (v_old, v_id, coalesce(v_joined, now()))
+    on conflict do nothing;
+  end if;
+
+  select c.name into v_name from public.classes c where c.code = v_code;
+  return jsonb_build_object('code', v_code, 'name', v_name, 'old', v_old);
 end;
 $$;
 
@@ -232,7 +268,9 @@ $$;
 -- 5. 權限：只給登入的人（含學生裝置的匿名身分）叫得動
 -- -----------------------------------------------------------------------------
 revoke all on function public.park_me(), public.park_class_full_problem(text),
-                       public.park_join_class(text), public.park_leave_class(text)
+                       public.park_join_class(text), public.park_leave_class(text),
+                       public.park_set_primary_class(text)
   from public, anon, authenticated;
-grant execute on function public.park_me(), public.park_join_class(text), public.park_leave_class(text)
+grant execute on function public.park_me(), public.park_join_class(text), public.park_leave_class(text),
+                          public.park_set_primary_class(text)
   to authenticated;
