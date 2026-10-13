@@ -197,6 +197,7 @@ export const teacher = {
   resetPassword:  (id, pw) => call('park_reset_password', { p_student: id, p_password: pw }),
   setNickname:    (id, nick) => call('park_set_student_nickname', { p_student: id, p_nickname: nick }),
   removeStudent:  (code, id) => call('park_remove_from_class', { p_code: code, p_student: id }),
+  setPrimary:     (code, id) => call('park_teacher_set_primary', { p_code: code, p_student: id }),
   facilities:     () => call('park_facility_list'),
 };
 export const admin = {

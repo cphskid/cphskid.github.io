@@ -478,6 +478,7 @@ async function paintOverview(c) {
         ${games.map((g) => cell(g, s)).join('')}
         <td class="ops"><button class="ghost small" data-pw="${s.id}">${ico('reset-password')}重設密碼</button>
           <button class="ghost small" data-nick="${s.id}">${ico('edit')}改暱稱</button>
+          ${s.primary ? '' : `<button class="ghost small" data-primary="${s.id}">${ico('class')}設成主要班級</button>`}
           <button class="ghost small danger" data-rm="${s.id}">${ico('delete')}移出</button></td></tr>`).join('')}
       </tbody></table></div>
     ${shown.length ? '' : `<div class="empty small"><img src="img/admin/tick-done.webp" alt=""><p>目前沒有需要注意的學生。</p></div>`}`;
@@ -489,6 +490,7 @@ async function paintOverview(c) {
   $$('[data-pw]', p).forEach((b) => { b.onclick = () => resetPassword(byId.get(b.dataset.pw)); });
   $$('[data-nick]', p).forEach((b) => { b.onclick = () => renameStudent(c, byId.get(b.dataset.nick)); });
   $$('[data-rm]', p).forEach((b) => { b.onclick = () => removeStudent(c, byId.get(b.dataset.rm)); });
+  $$('[data-primary]', p).forEach((b) => { b.onclick = () => setPrimary(c, byId.get(b.dataset.primary)); });
 }
 
 // 學生的樂園頭像（時空旅人的大頭）＋護照章數；還沒建旅人就只顯示章數
@@ -521,6 +523,19 @@ function renameStudent(c, s) {
       if (!nick || nick === s.nickname) return;
       const next = await auth.teacher.setNickname(s.id, nick);
       toast(`${s.nickname} 改名叫 ${next} 了`);
+      paintOverview(c);
+    },
+  });
+}
+function setPrimary(c, s) {
+  ask({
+    title: `把 ${c.name || c.code} 設成「${s.nickname}」的主要班級？`,
+    body: `<p class="lead">守護異世界的排行榜會改用這個班。他原本的主要班級${s.primary_class ? `（${esc(s.primary_class)}）` : ''}不會被移出，會變成另外加入的班。</p>`
+      + '<p class="tip">這個班裡已經有人用同一個暱稱的話，要先幫他改暱稱。</p>',
+    ok: '設成主要班級',
+    onOk: async () => {
+      await auth.teacher.setPrimary(c.code, s.id);
+      toast(`${c.name || c.code} 現在是 ${s.nickname} 的主要班級`);
       paintOverview(c);
     },
   });

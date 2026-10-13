@@ -485,6 +485,23 @@ begin
 end;
 $$;
 
+-- 把這一班設成學生的主要班級（守護異世界的排行榜跟著換）。只能設成自己的班，管理員每班都可以。
+-- 規則跟學生自己換一樣（park_accounts.sql 的 park_move_primary）：舊的主要班級留著，新班暱稱不能撞名。
+create or replace function public.park_teacher_set_primary(p_code text, p_student uuid)
+returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
+declare
+  v_code text := upper(btrim(coalesce(p_code, '')));
+  v_r jsonb; v_login text;
+begin
+  if not public.is_teacher_of(v_code) then raise exception '這不是你的班'; end if;
+  v_r := public.park_move_primary(p_student, v_code);
+  select s.login_id into v_login from public.students s where s.id = p_student;
+  perform public.park_log('set_primary', v_code, (v_r ->> 'nickname') || '（' || v_login || '）',
+                          jsonb_build_object('old_primary', v_r ->> 'old'));
+  return v_r;
+end;
+$$;
+
 -- -----------------------------------------------------------------------------
 -- 6. 管理員
 -- -----------------------------------------------------------------------------
@@ -584,6 +601,7 @@ revoke all on function
   public.park_save_class(text, text, int, text), public.park_set_class_facilities(text, text[]),
   public.park_class_overview(text), public.park_reset_password(uuid, text),
   public.park_set_student_nickname(uuid, text), public.park_remove_from_class(text, uuid),
+  public.park_teacher_set_primary(text, uuid),
   public.park_admin_facilities(), public.park_admin_set_facility(text, text, int, int, text[]),
   public.park_admin_classes(), public.park_admin_audit(int)
   from public, anon, authenticated;
@@ -596,6 +614,7 @@ grant execute on function
   public.park_save_class(text, text, int, text), public.park_set_class_facilities(text, text[]),
   public.park_class_overview(text), public.park_reset_password(uuid, text),
   public.park_set_student_nickname(uuid, text), public.park_remove_from_class(text, uuid),
+  public.park_teacher_set_primary(text, uuid),
   public.park_admin_facilities(), public.park_admin_set_facility(text, text, int, int, text[]),
   public.park_admin_classes(), public.park_admin_audit(int)
   to authenticated;

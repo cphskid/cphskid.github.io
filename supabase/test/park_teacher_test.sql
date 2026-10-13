@@ -182,6 +182,20 @@ select test_as('d0000000-0000-0000-0000-000000000001', false, 't2a@parktest.loca
 select test_denied(format('select public.park_set_student_nickname(%L, %L)', :'cat', '艾咪咪'),
                    '小貓的主要班級裡已經有艾咪咪');
 
+\echo '── 老師幫學生換主要班級'
+select test_as('d0000000-0000-0000-0000-000000000002', false, 't2b@parktest.local');
+select test_ok(public.park_teacher_set_primary(:'c2', :'amy') ->> 'old' = :'c1', '英文老師把英文班設成艾咪的主要班級');
+select test_ok(test_one(format('select class_code from public.students where id = %L', :'amy')) = :'c2', '主要班級變成英文班');
+select test_ok(test_one(format('select count(*) from public.park_class_members where student_id = %L', :'amy')) = '2', '導師班還在');
+select test_denied(format('select public.park_teacher_set_primary(%L, %L)', :'c1', :'amy'), '不能設成別人的班');
+select test_denied(format('select public.park_teacher_set_primary(%L, %L)', :'c2', :'cat'), '學生不在這班就不能設');
+select test_denied(format('select public.park_teacher_set_primary(%L, %L)', :'c2', :'amy'), '已經是主要班級');
+select test_as('d0000000-0000-0000-0000-000000000011', true);
+select test_denied(format('select public.park_teacher_set_primary(%L, %L)', :'c2', :'amy'), '學生叫不動老師版');
+select test_as('d0000000-0000-0000-0000-000000000001', false, 't2a@parktest.local');
+select public.park_teacher_set_primary(:'c1', :'amy');
+select test_ok(test_one(format('select class_code from public.students where id = %L', :'amy')) = :'c1', '導師換回導師班');
+
 \echo '── 移出班級（只移出，不刪帳號）'
 select test_as('d0000000-0000-0000-0000-000000000002', false, 't2b@parktest.local');
 select public.park_remove_from_class(:'c2', :'amy');

@@ -184,6 +184,7 @@ select test_denied($$insert into public.park_class_members values ('PK1', 'c0000
 select test_denied($$delete from public.park_class_members$$, '學生直接刪成員表');
 select test_denied($$insert into public.park_class_settings (class_code) values ('PK1')$$, '學生直接寫班級設定');
 select test_denied($$select public.park_class_full_problem('PK1')$$, '內部小幫手叫不動');
+select test_denied($$select public.park_move_primary('c0000000-0000-0000-0000-000000000001', 'PK1')$$, '換主要班級的內部小幫手叫不動');
 
 reset role;
 set role anon;
