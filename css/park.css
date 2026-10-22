@@ -979,6 +979,8 @@ body[data-scene="map"] #hud{display:block}
 #wardrobe .lead{margin:0 0 6px;font:700 18px/1.5 var(--f-body);color:#8a6a4a}
 #wardrobe .row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
 #wardrobe .row.end{justify-content:flex-end;margin-top:16px}
+/* 衣服一多（萬聖套裝）右邊會捲：下面的按鈕黏在底部，不會被擠出畫面 */
+#wardrobe .pane>.row.end{position:sticky;bottom:0;z-index:2;padding:10px 0 2px;background:linear-gradient(rgba(255,244,220,0),#fff4dc 14px)}
 #wardrobe .btn.small{font:900 19px/1 var(--f-body);padding:12px 24px 13px;border-width:3px;box-shadow:inset 0 2px 0 rgba(255,255,255,.9),0 4px 0 var(--wood)}
 #wardrobe .btn.go{font:900 24px/1 var(--f-body);color:#fff;text-shadow:0 2px 0 #2f7a1c;background:url(../img/ui/button-green.webp) center/100% 100% no-repeat;border:0;border-radius:0;box-shadow:none;padding:20px 40px 24px;filter:drop-shadow(0 6px 6px rgba(0,0,0,.25))}
 #wardrobe .btn.go:disabled{opacity:.5;cursor:not-allowed;transform:none}
@@ -987,7 +989,7 @@ body[data-scene="map"] #hud{display:block}
 #wardrobe .msg{margin:10px 0 0;font:700 17px/1.4 var(--f-body);color:#c0392b}
 #wardrobe .tip{margin:8px 0 0;font:500 14px/1.4 var(--f-body);color:#8a6a4a}
 
-.ward{position:relative;width:1180px;max-width:calc(100vw - 24px);max-height:calc(100dvh - 24px);display:grid;grid-template-columns:400px minmax(0,1fr);gap:28px;padding:28px 32px;border-radius:30px;
+.ward{position:relative;width:1180px;max-width:calc(100vw - 24px);max-height:calc(100dvh - 24px);display:grid;grid-template-columns:400px minmax(0,1fr);grid-template-rows:minmax(0,1fr);gap:28px;padding:28px 32px;border-radius:30px;
   background:radial-gradient(circle at 30% 20%,#fffdf6,#fff4dc 60%,#f8e6c2);box-shadow:inset 0 0 0 5px var(--wood-2),inset 0 0 0 9px rgba(255,214,110,.55),0 30px 50px rgba(0,0,0,.45);animation:pop .45s cubic-bezier(.34,1.7,.5,1)}
 .ward.loading,.ward.small{width:auto;grid-template-columns:none;display:grid;place-content:center;justify-items:center;gap:8px;padding:34px 48px}
 .ward.loading img{width:130px;animation:rock 1.6s ease-in-out infinite}
@@ -1036,7 +1038,7 @@ body[data-scene="map"] #hud{display:block}
 
 @media (max-width:760px),(max-height:560px){
   #wardrobe{padding:8px}
-  .ward{grid-template-columns:minmax(0,1fr);gap:12px;padding:16px;border-radius:22px;overflow-y:auto}
+  .ward{grid-template-columns:minmax(0,1fr);grid-template-rows:none;gap:12px;padding:16px;border-radius:22px;overflow-y:auto}
   /* 叉叉固定在畫面角落（不跟著捲走），避開瀏海與 Safari 頂端 */
   #wardrobe .ward>.x{position:fixed;right:calc(env(safe-area-inset-right) + 14px);top:calc(env(safe-area-inset-top) + 18px);width:52px;height:52px;z-index:30;touch-action:manipulation}
   #wardrobe{padding:max(8px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left))}
