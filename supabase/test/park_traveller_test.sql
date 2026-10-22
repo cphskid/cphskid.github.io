@@ -14,7 +14,7 @@ select test_one($$select code from public.classes where name = '英文 5-2'$$) a
 select test_ok((select count(*) from public.park_wear_sets where starter) = 3, '三套起始套裝可以挑');
 select test_ok((select count(*) from public.park_wear_items where free) = 6, '臉型 2 種＋髮型 4 種人人都有');
 \i supabase/park_traveller.sql
-select test_ok((select count(*) from public.park_wear_items) = 18, '重跑不會多出東西');
+select test_ok((select count(*) from public.park_wear_items) = 27, '重跑不會多出東西（18 件＋萬聖 9 件）');
 
 set role authenticated;
 

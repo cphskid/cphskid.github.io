@@ -179,6 +179,21 @@ on conflict (code) do update
   set kind = excluded.kind, name = excluded.name, need_stamps = excluded.need_stamps, need_page = excluded.need_page,
       sort = excluded.sort, need_kind = excluded.need_kind, need_n = excluded.need_n, need_stamp = excluded.need_stamp;
 
+-- 商店買的頭像框（need_kind 'shop'）：買了才解鎖，記在 park_student_rewards（買的函式在 park_coins.sql）
+insert into public.park_rewards (code, kind, name, need_stamps, need_page, sort, need_kind, need_n, need_stamp) values
+  ('pumpkin',  'frame', '南瓜框',     0, null, 21, 'shop', 0, null),
+  ('batnight', 'frame', '月夜蝙蝠框', 0, null, 22, 'shop', 0, null)
+on conflict (code) do update set name = excluded.name, sort = excluded.sort, need_kind = excluded.need_kind, need_n = excluded.need_n;
+
+create table if not exists public.park_student_rewards (
+  student_id uuid not null references public.students(id) on delete cascade,
+  reward     text not null references public.park_rewards(code) on update cascade on delete cascade,
+  got_at     timestamptz not null default now(),
+  primary key (student_id, reward)
+);
+alter table public.park_student_rewards enable row level security;
+revoke all on public.park_student_rewards from anon, authenticated;
+
 -- 「該拿到哪些章」的函式：只補空的，不蓋掉管理員改過的
 update public.park_facilities set stamps_fn = 'guardian_earned_stamps'
  where code = 'guardian' and stamps_fn is null;
@@ -294,7 +309,9 @@ returns setof text language sql stable security definer set search_path = public
      and (r.need_page is null
           or (r.need_page = '*' and exists (select 1 from full_pages))
           or r.need_page in (select code from full_pages))
-     and (r.need_kind is null
+     and (r.need_kind is distinct from 'shop'
+          or exists (select 1 from public.park_student_rewards b where b.student_id = p_student and b.reward = r.code))
+     and (r.need_kind is null or r.need_kind = 'shop'
           or (select count(*) from mine
                where mine.kind = r.need_kind or 'era:' || mine.era = r.need_kind) >= r.need_n)
      and (r.need_stamp is null

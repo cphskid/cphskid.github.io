@@ -180,7 +180,7 @@ const TABS = [
   { id: 'wear', name: '主角', tip: '時空旅人的衣服配件，買了在換裝間穿上' },
   { id: 'pet', name: '寵物', tip: '點心放進寵物的背包，餵了長得快' },
   { id: 'furn', name: '傢俱', tip: '買了擺在寵物島上，寵物會去玩' },
-  { id: 'month', name: '本月限定', tip: '這個月才買得到，下個月就下架' },
+  { id: 'month', name: '本月限定', tip: '這個月才買得到，下個月就下架；買到的會一直留著' },
 ];
 let tab = 'wear';
 let shop = null;
@@ -198,12 +198,14 @@ function paintShop(msg = null) {
   const t = TABS.find((x) => x.id === tab);
   const look = traveller.state()?.look ?? null;
   const it = pick && items.find((x) => x.code === pick);
-  const doll = tab === 'wear' && look ? `<div class="try">${traveller.dollHtml({ ...look, ...(it ? { [it.slot]: it.code } : {}) }, 'big')}
+  const doll = items.some((x) => x.kind === 'wear') && look ? `<div class="try">${traveller.dollHtml({ ...look, ...(it ? { [it.slot]: it.code } : {}) }, 'big')}
       <small>${it ? `穿上「${esc(it.name)}」的樣子` : '點一件看看穿起來的樣子'}</small></div>` : '';
   const card = (x) => {
     const own = x.owned && x.kind !== 'pet';
-    return `<div class="sitem${own ? ' own' : ''}${x.code === pick ? ' on' : ''}" ${x.cat === 'wear' ? `data-look="${esc(x.code)}"` : ''}>
-      <img class="art" src="${esc(x.art)}" alt="" loading="lazy">
+    const art = x.kind === 'frame' ? passport.avatarHtml(look ?? undefined, x.ref, 'art')
+      : `<img class="art" src="${esc(x.art)}" alt="" loading="lazy">`;
+    return `<div class="sitem${own ? ' own' : ''}${x.code === pick ? ' on' : ''}" ${x.kind === 'wear' ? `data-look="${esc(x.code)}"` : ''}>
+      ${art}
       <b>${esc(x.name)}</b><small>${esc(x.blurb)}${x.qty ? `・背包裡有 ${x.qty} 個` : ''}</small>
       ${own ? '<span class="have">已經有了</span>'
         : `<button type="button" class="btn small coin" data-buy="${esc(x.code)}" ${st.balance < x.price ? 'disabled' : ''}>${COIN}${x.price}</button>`}
@@ -218,7 +220,7 @@ function paintShop(msg = null) {
     <p class="lead">${esc(t.tip)}</p>
     ${msg ? `<p class="note ${msg[0]}">${esc(msg[1])}</p>` : ''}
     <div class="body${doll ? ' with-doll' : ''}">${doll}<div class="grid">${items.length ? items.map(card).join('') : `<p class="tip">${empty}</p>`}</div></div>
-    ${tab === 'wear' ? '<div class="row end"><button type="button" class="ghost" data-ward>去換裝間</button></div>' : ''}
+    ${doll ? '<div class="row end"><button type="button" class="ghost" data-ward>去換裝間</button></div>' : ''}
   </div>`);
   layer.querySelectorAll('[data-tab]').forEach((b) => { b.onclick = () => { tab = b.dataset.tab; pick = null; paintShop(); }; });
   layer.querySelectorAll('[data-look]').forEach((c) => { c.onclick = (e) => { if (e.target.closest('[data-buy]')) return; pick = c.dataset.look; paintShop(); }; });
@@ -228,7 +230,7 @@ function paintShop(msg = null) {
   layer.querySelectorAll('[data-buy]').forEach((b) => {
     b.onclick = async () => {
       const x = shop.items.find((i) => i.code === b.dataset.buy);
-      if (x.cat === 'wear') pick = x.code;
+      if (x.kind === 'wear') pick = x.code;
       if (!b.dataset.sure) {
         layer.querySelectorAll('[data-sure]').forEach((o) => { delete o.dataset.sure; o.lastChild.textContent = shop.items.find((i) => i.code === o.dataset.buy).price; });
         b.dataset.sure = '1';
@@ -237,14 +239,16 @@ function paintShop(msg = null) {
       }
       b.disabled = true;
       try {
-        shop = await auth.coins.buy(x.cat === 'wear' ? 'wear' : 'shop', x.code);
+        shop = await auth.coins.buy(x.kind === 'wear' ? 'wear' : 'shop', x.code);
         st = { ...st, balance: shop.balance };
-        if (x.cat === 'wear') traveller.gotItem(x.code);
+        if (x.kind === 'wear') traveller.gotItem(x.code);
         sfx('SE-20');
         paintHud();
         dispatchEvent(new CustomEvent('park:shop', { detail: { kind: x.kind ?? x.cat, code: x.code } }));
-        paintShop(['ok', x.cat === 'wear' ? `買好了！去換裝間把「${x.name}」穿上吧。`
-          : x.kind === 'furn' ? `買好了！「${x.name}」已經擺到寵物島上。` : `買好了！「${x.name}」放進寵物的背包了。`]);
+        if (x.kind === 'frame') passport.gotFrame?.(x.ref);
+        paintShop(['ok', x.kind === 'wear' ? `買好了！去換裝間把「${x.name}」穿上吧。`
+          : x.kind === 'furn' ? `買好了！「${x.name}」已經擺到寵物島上。`
+          : x.kind === 'frame' ? `買好了！打開護照點頭像，就能換上「${x.name}」。` : `買好了！「${x.name}」放進寵物的背包了。`]);
       } catch (err) {
         paintShop(['bad', err.message]);
       }

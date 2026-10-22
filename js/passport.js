@@ -43,6 +43,8 @@ function ownersText(owners, classmates) {
 }
 
 export function init(h) { hooks = { ...hooks, ...h }; }
+// 商店買了頭像框：下次打開重新讀
+export function gotFrame() { book = null; }
 
 // 頭像＝時空旅人的大頭＋框（2026-10-04 起舊的 24 個頭像不用了）。還沒建旅人的先用滴答。
 // look 不給就用自己現在的穿搭。medal：代表勳章（{art, rarity}），掛在右下角。
@@ -334,7 +336,8 @@ export async function openAvatar({ back = false } = {}) {
     try { await load(); } catch (e) { problem(e); return; }
   }
   let fr = book.frame ?? 'plain';
-  const frames = book.rewards.filter((r) => r.kind === 'frame');
+  // 商店賣的框（本月限定）買了才列出來
+  const frames = book.rewards.filter((r) => r.kind === 'frame' && (r.need_kind !== 'shop' || r.unlocked));
   const nameOf = (code) => frames.find((r) => r.code === code)?.name ?? '';
 
   const paint = () => {

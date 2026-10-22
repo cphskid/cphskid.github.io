@@ -39,6 +39,8 @@ create table if not exists public.park_wear_items (
   active     boolean not null default true,
   sort       int not null default 0
 );
+-- months：本月限定，只在那幾個月上架（1～12，null＝常駐）。下架後買過的照樣能穿。
+alter table public.park_wear_items add column if not exists months smallint[];
 
 -- 學生的旅人：look＝現在穿什麼 {"face":null,"hair":"hair-crop","hat":null,...}
 create table if not exists public.park_travellers (
@@ -64,7 +66,10 @@ create table if not exists public.park_student_wear (
 insert into public.park_wear_sets (code, name, blurb, starter, sort) values
   ('street', '韓系街頭', '漁夫帽、牛仔外套配帽T、工裝寬褲老爹鞋，再拿一台底片相機。', true, 1),
   ('tech',   '科技機能', 'AR 眼鏡、會發光的機能外套和鞋子，還有一台跟著你飛的小無人機。', true, 2),
-  ('tw',     '台灣潮',   '黑熊棒球帽、客家花布襯衫、寬短褲配拖鞋，手上一杯黑糖珍奶。', true, 3)
+  ('tw',     '台灣潮',   '黑熊棒球帽、客家花布襯衫、寬短褲配拖鞋，手上一杯黑糖珍奶。', true, 3),
+  ('witch',   '小巫師',     '萬聖節限定：星星尖帽、星月巫師袍，再騎一支掃帚。', false, 11),
+  ('pumpkin', '南瓜騎士',   '萬聖節限定：南瓜帽、南瓜騎士服，提一盞南瓜燈去要糖。', false, 12),
+  ('vampire', '小吸血鬼',   '萬聖節限定：紅領披風小禮服、黑皮鞋，背上一對蝙蝠翅膀。', false, 13)
 on conflict (code) do update set name = excluded.name, blurb = excluded.blurb, starter = excluded.starter, sort = excluded.sort;
 
 insert into public.park_wear_items (code, slot, name, set_code, free, price, sort) values
@@ -88,6 +93,20 @@ insert into public.park_wear_items (code, slot, name, set_code, free, price, sor
   ('back-drone',    'back',   '小無人機',       'tech',   false, 120, 1)
 on conflict (code) do update set slot = excluded.slot, name = excluded.name, set_code = excluded.set_code,
   free = excluded.free, price = excluded.price, sort = excluded.sort;
+
+-- 萬聖節（10 月限定）
+insert into public.park_wear_items (code, slot, name, set_code, free, price, months, sort) values
+  ('hat-witch',      'hat',    '星星巫師帽',   'witch',   false, 80,  '{10}', 11),
+  ('top-witch',      'top',    '星月巫師袍',   'witch',   false, 120, '{10}', 11),
+  ('hand-broom',     'hand',   '小掃帚',       'witch',   false, 70,  '{10}', 11),
+  ('hat-pumpkin',    'hat',    '南瓜帽',       'pumpkin', false, 80,  '{10}', 12),
+  ('top-pumpkin',    'top',    '南瓜騎士服',   'pumpkin', false, 120, '{10}', 12),
+  ('hand-lantern',   'hand',   '南瓜燈糖果桶', 'pumpkin', false, 70,  '{10}', 12),
+  ('top-vampire',    'top',    '紅領披風禮服', 'vampire', false, 120, '{10}', 13),
+  ('bottom-vampire', 'bottom', '黑長褲皮鞋',   'vampire', false, 90,  '{10}', 13),
+  ('back-bat',       'back',   '蝙蝠翅膀',     'vampire', false, 100, '{10}', 13)
+on conflict (code) do update set slot = excluded.slot, name = excluded.name, set_code = excluded.set_code,
+  free = excluded.free, price = excluded.price, months = excluded.months, sort = excluded.sort;
 
 -- -----------------------------------------------------------------------------
 -- 3. 讀取規則：目錄大家都看得到；自己的旅人和衣櫃只有本人看得到。寫入一律走函式。

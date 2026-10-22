@@ -29,7 +29,14 @@ export const SETS = [
   { code: 'tech',   name: '科技機能', blurb: 'AR 眼鏡、會發光的機能外套和鞋子，還有一台跟著你飛的小無人機。' },
   { code: 'tw',     name: '台灣潮',   blurb: '黑熊棒球帽、客家花布襯衫、寬短褲配拖鞋，手上一杯黑糖珍奶。' },
 ];
-const I = (code, slot, name, set = null, price = null) => ({ code, slot, name, set, free: !set, price });
+// 本月限定的套裝（不能當起始套裝）：months＝哪幾個月在商店賣；沒買的過了月份就不出現在換裝間
+export const EVENT_SETS = [
+  { code: 'witch',   name: '小巫師',   months: [10] },
+  { code: 'pumpkin', name: '南瓜騎士', months: [10] },
+  { code: 'vampire', name: '小吸血鬼', months: [10] },
+];
+const I = (code, slot, name, set = null, price = null) => ({ code, slot, name, set, free: !set, price,
+  months: EVENT_SETS.find((s) => s.code === set)?.months ?? null });
 export const ITEMS = [
   I('face-girl', 'face', '女孩'), I('face-boy', 'face', '男孩'),
   I('hair-crop', 'hair', '紋理短髮'), I('hair-wolf', 'hair', '狼尾'), I('hair-wavy', 'hair', '長捲髮'), I('hair-pony', 'hair', '高馬尾'),
@@ -38,7 +45,11 @@ export const ITEMS = [
   I('bottom-wide', 'bottom', '工裝寬褲老爹鞋', 'street', 80), I('bottom-tech', 'bottom', '機能褲發光鞋', 'tech', 80), I('bottom-shorts', 'bottom', '寬短褲配拖鞋', 'tw', 80),
   I('hand-camera', 'hand', '底片相機', 'street', 50), I('hand-tea', 'hand', '黑糖珍奶', 'tw', 50),
   I('back-drone', 'back', '小無人機', 'tech', 120),
+  I('hat-witch', 'hat', '星星巫師帽', 'witch', 80), I('top-witch', 'top', '星月巫師袍', 'witch', 120), I('hand-broom', 'hand', '小掃帚', 'witch', 70),
+  I('hat-pumpkin', 'hat', '南瓜帽', 'pumpkin', 80), I('top-pumpkin', 'top', '南瓜騎士服', 'pumpkin', 120), I('hand-lantern', 'hand', '南瓜燈糖果桶', 'pumpkin', 70),
+  I('top-vampire', 'top', '紅領披風禮服', 'vampire', 120), I('bottom-vampire', 'bottom', '黑長褲皮鞋', 'vampire', 90), I('back-bat', 'back', '蝙蝠翅膀', 'vampire', 100),
 ];
+const inSeason = (x) => !x.months || x.months.includes(new Date().getMonth() + 1);
 const item = (code) => ITEMS.find((x) => x.code === code);
 const HIDES_HAIR = new Set();   // 戴上會把頭髮整個蓋住的頭飾（之後的太空頭盔之類）
 const EMPTY = Object.fromEntries(SLOTS.map((s) => [s.id, null]));
@@ -213,7 +224,7 @@ export function openWardrobe({ welcome = false } = {}) {
 
   const paint = () => {
     const slot = SLOTS.find((s) => s.id === tab);
-    const list = ITEMS.filter((x) => x.slot === tab);
+    const list = ITEMS.filter((x) => x.slot === tab && (inSeason(x) || owns(x.code)));
     const opts = [
       ...(slot.none ? [optHtml(null, slot.none, tab === 'face' ? 'base' : null)] : []),
       ...list.map((x) => optHtml(x.code, x.name, x.code)),
@@ -228,7 +239,7 @@ export function openWardrobe({ welcome = false } = {}) {
       <div class="stage">${dollHtml(d, 'big')}<b class="who">${esc(w.nickname ?? '')}</b></div>
       <div class="pane">
         <h2>換裝間</h2>
-        <div class="sets row">${SETS.map((s) => `<button type="button" class="chipbtn" data-set="${s.code}">穿整套「${esc(s.name)}」</button>`).join('')}</div>
+        <div class="sets row">${[...SETS, ...EVENT_SETS.filter((s) => s.months.includes(new Date().getMonth() + 1) || ITEMS.some((x) => x.set === s.code && owns(x.code)))].map((s) => `<button type="button" class="chipbtn" data-set="${s.code}">穿整套「${esc(s.name)}」</button>`).join('')}</div>
         <nav class="tabs" role="tablist" aria-label="換哪個位置">${SLOTS.map((s) => `<button type="button" role="tab" class="tab${s.id === tab ? ' on' : ''}" aria-selected="${s.id === tab}" data-tab="${s.id}">${esc(s.name)}</button>`).join('')}</nav>
         <div class="opts">${opts}</div>
         ${msg ? `<p class="note ${msg[0]}">${esc(msg[1])}</p>` : ''}

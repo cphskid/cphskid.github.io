@@ -70,7 +70,8 @@ create table if not exists public.park_daily (
 
 -- 商店（主角的衣飾直接用 park_wear_items 的價錢，不在這張表）
 --   cat：pet 寵物點心（ref＝park_pet_items 的 code，可以一直買）／furn 寵物島傢俱（ref＝傢俱 id，買一次）
---   month：本月限定，只在那幾個月上架（1～12，null＝常駐）
+--        frame 頭像框（ref＝park_rewards 的 code，買一次，記在 park_student_rewards）
+--   months：本月限定，只在那幾個月上架（1～12，null＝常駐）
 create table if not exists public.park_shop_items (
   code   text primary key check (code ~ '^[a-z][a-z0-9-]{1,30}$'),
   cat    text not null check (cat in ('pet', 'furn')),
@@ -83,6 +84,8 @@ create table if not exists public.park_shop_items (
   active boolean not null default true,
   sort   int  not null default 0
 );
+alter table public.park_shop_items drop constraint if exists park_shop_items_cat_check;
+alter table public.park_shop_items add constraint park_shop_items_cat_check check (cat in ('pet', 'furn', 'frame'));
 
 -- 買到的傢俱（點心直接放進桌寵背包）
 create table if not exists public.park_student_furniture (
@@ -114,7 +117,10 @@ insert into public.park_pet_items (code, kind, name, icon, xp, facility, sort) v
   ('seeds',   'special', '葵花子',   '🌻', 2, null, 12),
   ('biscuit', 'special', '骨頭餅乾', '🦴', 3, null, 13),
   ('fish',    'special', '小魚乾',   '🐟', 3, null, 14),
-  ('mooncake','special', '迷你月餅', '🥮', 4, null, 15)
+  ('mooncake','special', '迷你月餅', '🥮', 4, null, 15),
+  ('pumpkin-pie','special', '南瓜派',   '🥧', 4, null, 16),
+  ('candy',      'special', '彩色糖果', '🍬', 3, null, 17),
+  ('bat-cookie', 'special', '蝙蝠餅乾', '🦇', 4, null, 18)
 on conflict (code) do update
   set kind = excluded.kind, name = excluded.name, icon = excluded.icon, xp = excluded.xp, sort = excluded.sort;
 
@@ -128,8 +134,18 @@ insert into public.park_shop_items (code, cat, ref, name, art, blurb, price, mon
   ('furn-sandbox', 'furn', 'sandbox',   '小沙坑',   'img/pet/furniture/sandbox.webp',   '挖挖挖，看能挖到什麼', 150, null, 11),
   ('furn-trampoline','furn','trampoline','彈跳床',  'img/pet/furniture/trampoline.webp','跳得比雲還高', 180, null, 12),
   ('furn-hammock', 'furn', 'hammock',   '吊床',     'img/pet/furniture/hammock.webp',   '在樹下搖啊搖，睡個午覺', 200, null, 13),
-  ('pet-mooncake', 'pet',  'mooncake',  '迷你月餅', 'img/pet/food/mooncake.webp', '中秋限定，咬一口有蛋黃', 60, '{9,10}', 20),
-  ('furn-rabbit-lamp','furn','rabbit-lamp','兔子燈', 'img/pet/furniture/rabbit-lamp.webp', '中秋限定，晚上會亮', 250, '{9,10}', 21)
+  ('pet-mooncake', 'pet',  'mooncake',  '迷你月餅', 'img/pet/food/mooncake.webp', '中秋限定，咬一口有蛋黃', 60, '{9}', 20),
+  ('furn-rabbit-lamp','furn','rabbit-lamp','兔子燈', 'img/pet/furniture/rabbit-lamp.webp', '中秋限定，晚上會亮', 250, '{9}', 21),
+  -- 萬聖節（10 月）：點心吃了心情多 +2（park_pet.sql 的 park_pet_feed）
+  ('pet-pumpkin-pie', 'pet', 'pumpkin-pie', '南瓜派',   'img/pet/food/pumpkin-pie.webp', '萬聖限定，吃了心情特別好', 50, '{10}', 1430),
+  ('pet-candy',       'pet', 'candy',       '彩色糖果', 'img/pet/food/candy.webp',       '不給糖就搗蛋！吃了心情特別好', 40, '{10}', 1431),
+  ('pet-bat-cookie',  'pet', 'bat-cookie',  '蝙蝠餅乾', 'img/pet/food/bat-cookie.webp',  '萬聖限定，吃了心情特別好', 50, '{10}', 1432),
+  ('furn-pumpkin-lamp','furn','pumpkin-lamp','南瓜燈',   'img/pet/furniture/pumpkin-lamp.webp', '笑咪咪的南瓜，晚上會亮', 150, '{10}', 1433),
+  ('furn-ghost-house', 'furn','ghost-house', '小鬼屋',   'img/pet/furniture/ghost-house.webp',  '寵物最愛躲進去嚇你一跳', 250, '{10}', 1434),
+  ('furn-candy-bucket','furn','candy-bucket','糖果桶',   'img/pet/furniture/candy-bucket.webp', '滿滿的糖，寵物會去翻', 180, '{10}', 1435),
+  ('furn-web-swing',   'furn','web-swing',   '蜘蛛網鞦韆','img/pet/furniture/web-swing.webp',  '小蜘蛛陪你一起盪', 220, '{10}', 1436),
+  ('frame-pumpkin',  'frame', 'pumpkin',  '南瓜框',     '',  '頭像框，買了在護照換上', 100, '{10}', 1437),
+  ('frame-batnight', 'frame', 'batnight', '月夜蝙蝠框', '', '頭像框，買了在護照換上', 100, '{10}', 1438)
 on conflict (code) do update
   set cat = excluded.cat, ref = excluded.ref, name = excluded.name, art = excluded.art, blurb = excluded.blurb,
       price = excluded.price, months = excluded.months, sort = excluded.sort;
@@ -379,8 +395,8 @@ begin
 end;
 $$;
 
--- 商店：{balance, month, items:[{cat, code, name, art, blurb, price, owned, qty, slot, set}]}
---   cat：wear 主角（換裝間的衣飾）／pet 寵物點心／furn 傢俱／month 本月限定（點心或傢俱）
+-- 商店：{balance, month, items:[{cat, kind, code, name, art, blurb, price, owned, qty, slot, set}]}
+--   cat：wear 主角（換裝間的衣飾）／pet 寵物點心／furn 傢俱／month 本月限定（kind＝wear、pet、furn 或 frame）
 create or replace function public.park_shop()
 returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
 declare v_me uuid := public.current_student_id(); v_month int := extract(month from public.park_today())::int;
@@ -389,16 +405,19 @@ begin
     'balance', case when v_me is null then 0 else public.park_coin_balance(v_me) end,
     'month', v_month,
     'items', coalesce((select jsonb_agg(x order by x ->> 'cat', (x ->> 'sort')::int) from (
-      select jsonb_build_object('cat', 'wear', 'code', i.code, 'name', i.name, 'art', 'img/traveller/thumb/' || i.code || '.webp',
+      select jsonb_build_object('cat', case when i.months is not null then 'month' else 'wear' end, 'kind', 'wear', 'code', i.code, 'name', i.name, 'art', 'img/traveller/thumb/' || i.code || '.webp',
                'blurb', coalesce(s.name, ''), 'price', i.price, 'slot', i.slot, 'set', i.set_code, 'sort', coalesce(s.sort, 0) * 100 + i.sort,
                'owned', v_me is not null and public.park_wear_owns(v_me, i.code)) as x
         from public.park_wear_items i left join public.park_wear_sets s on s.code = i.set_code
        where i.active and not i.free and i.price is not null
+         and (i.months is null or v_month = any(i.months))
       union all
       select jsonb_build_object('cat', case when si.months is not null then 'month' else si.cat end, 'kind', si.cat,
-               'code', si.code, 'name', si.name, 'art', si.art, 'blurb', si.blurb, 'price', si.price, 'sort', si.sort,
-               'owned', si.cat = 'furn' and exists (select 1 from public.park_student_furniture f
-                                                     where f.student_id = v_me and f.item = si.ref),
+               'code', si.code, 'ref', si.ref, 'name', si.name, 'art', si.art, 'blurb', si.blurb, 'price', si.price, 'sort', si.sort,
+               'owned', (si.cat = 'furn' and exists (select 1 from public.park_student_furniture f
+                                                      where f.student_id = v_me and f.item = si.ref))
+                     or (si.cat = 'frame' and exists (select 1 from public.park_student_rewards b
+                                                       where b.student_id = v_me and b.reward = si.ref)),
                'qty', case when si.cat = 'pet' then coalesce((select qty from public.park_pet_inventory v
                                                                where v.student_id = v_me and v.item = si.ref), 0) end)
         from public.park_shop_items si
@@ -418,8 +437,9 @@ begin
   perform pg_advisory_xact_lock(hashtext('park_coin:' || v_me::text));
   if p_cat = 'wear' then
     select i.price, i.name into v_price, v_name from public.park_wear_items i
-     where i.code = p_code and i.active and not i.free and i.price is not null;
-    if v_price is null then raise exception '商店沒有賣這件'; end if;
+     where i.code = p_code and i.active and not i.free and i.price is not null
+       and (i.months is null or v_month = any(i.months));
+    if v_price is null then raise exception '商店沒有賣這件（可能下架了）'; end if;
     if public.park_wear_owns(v_me, p_code) then raise exception '你已經有「%」了', v_name; end if;
     if public.park_coin_balance(v_me) < v_price then raise exception '時光幣不夠，再去冒險賺一點吧'; end if;
     insert into public.park_coin_ledger (student_id, source, amount, note)
@@ -433,6 +453,9 @@ begin
     if v_si.cat = 'furn' and exists (select 1 from public.park_student_furniture f where f.student_id = v_me and f.item = v_si.ref) then
       raise exception '你已經有「%」了', v_name;
     end if;
+    if v_si.cat = 'frame' and exists (select 1 from public.park_student_rewards b where b.student_id = v_me and b.reward = v_si.ref) then
+      raise exception '你已經有「%」了', v_name;
+    end if;
     if v_si.cat = 'pet' and coalesce((select qty from public.park_pet_inventory v where v.student_id = v_me and v.item = v_si.ref), 0) >= 9 then
       raise exception '背包裡的「%」已經很多了，先餵完再買', v_name;
     end if;
@@ -442,6 +465,8 @@ begin
     values (v_me, 'buy:' || p_code || ':' || v_n, -v_si.price, '買了「' || v_name || '」');
     if v_si.cat = 'furn' then
       insert into public.park_student_furniture (student_id, item) values (v_me, v_si.ref);
+    elsif v_si.cat = 'frame' then
+      insert into public.park_student_rewards (student_id, reward) values (v_me, v_si.ref);
     else
       insert into public.park_pet_inventory as v (student_id, item, qty) values (v_me, v_si.ref, 1)
       on conflict (student_id, item) do update set qty = v.qty + 1;

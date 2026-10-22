@@ -64,7 +64,7 @@ const EXTRA_STAGES = [1, 2, 3];
 const art = (species, stage = 1, pose = 'idle') =>
   `img/pet/${esc(species)}/${stage}-${EXTRA[pose] && !EXTRA_STAGES.includes(stage) ? EXTRA[pose] : pose}.webp`;
 const POSE = { normal: 'idle', happy: 'cheer', hungry: 'hungry', angry: 'angry', asleep: 'sleep', quiet: 'sleep', island: 'idle' };
-const FOOD_IMG = new Set(['kibble', 'rice-ball', 'magic-fruit', 'apple', 'carrot', 'seeds', 'biscuit', 'fish', 'mooncake']);           // 有 PT-10 圖的道具，其他先用表情符號
+const FOOD_IMG = new Set(['kibble', 'rice-ball', 'magic-fruit', 'apple', 'carrot', 'seeds', 'biscuit', 'fish', 'mooncake', 'pumpkin-pie', 'candy', 'bat-cookie']);           // 有 PT-10 圖的道具，其他先用表情符號
 const icon = (i) => FOOD_IMG.has(i.code) ? `<img src="img/pet/food/${esc(i.code)}.webp" alt="">` : esc(i.icon);
 const owned = (code) => state?.pets?.some((p) => p.species === code);
 const freeStarters = () => (state?.species ?? []).filter((s) => s.starter && !owned(s.code));
@@ -352,6 +352,7 @@ function openScene({ select, say: first } = {}) {
   const box = $('.actors', layer);
   const fresh = freshFurniture();
   addProps(box);
+  addDecor(box);
   fresh.forEach((id) => props.find((o) => o.id === id)?.el.classList.add('new'));
   state.pets.forEach((p) => addActor(box, p));
   actors.forEach((a) => { if (Math.random() < .7) laterWish(a, rnd(2500, 9000)); });
@@ -440,11 +441,14 @@ const PROPS = [
   { id: 'scratcher', x: .36, y: .56, w: 58 }, { id: 'sandbox', x: .76, y: .86, w: 112 },
   { id: 'trampoline', x: .42, y: .86, w: 108 }, { id: 'hammock', x: .9, y: .82, w: 100 },
   { id: 'rabbit-lamp', x: .3, y: .8, w: 56 },
+  { id: 'pumpkin-lamp', x: .62, y: .33, w: 58 }, { id: 'ghost-house', x: .24, y: .5, w: 100 },
+  { id: 'candy-bucket', x: .7, y: .7, w: 64 }, { id: 'web-swing', x: .84, y: .63, w: 100 },
 ];
 // 圖的高／寬
 const ASPECT = { bed: .77, tent: .985, slide: .835, tunnel: .815, scratcher: 1.408, swing: 1.081, pool: .68, fountain: 1.136,
                  bench: .705, lantern: 1.626, flowers: 1.081, toybox: .885,
-                 sandbox: .73, trampoline: .749, hammock: .966, 'rabbit-lamp': 1.176 };
+                 sandbox: .73, trampoline: .749, hammock: .966, 'rabbit-lamp': 1.176,
+                 'pumpkin-lamp': 1.081, 'ghost-house': 1.227, 'candy-bucket': 1.111, 'web-swing': 1.099 };
 // 怎麼用：at＝在傢俱圖上的哪一點（左上 0,0；右下 1,1），door＝從地上哪裡過去（預設 at 正下方的地面）
 const USE = {
   bed:      { kind: 'lie', at: [.5, .58] },
@@ -462,6 +466,10 @@ const USE = {
   trampoline: { kind: 'play', at: [.5, .45], poses: ['jump', 'cheer', 'jump', 'jump'], every: 600, line: '跳得好高！' },
   hammock:    { kind: 'lie', at: [.52, .5] },
   'rabbit-lamp': { kind: 'play', at: [.5, 1.08], poses: ['look', 'cheer', 'look'], every: 1100, line: '兔子燈好漂亮！' },
+  'pumpkin-lamp': { kind: 'play', at: [.5, 1.08], poses: ['look', 'cheer', 'sniff', 'look'], every: 1000, line: '南瓜在對我笑！' },
+  'ghost-house':  { kind: 'hide', at: [.5, .9], door: [.5, 1.03] },
+  'candy-bucket': { kind: 'play', at: [.5, 1.08], poses: ['sniff', 'dig', 'chew', 'cheer'], every: 900, line: '不給糖就搗蛋！' },
+  'web-swing':    { kind: 'sit', at: [.5, .7], sway: true },
 };
 const PROP_KEY = 'park-pet-props';
 // 一開始送三件；其他的蓋護照章解鎖（FURN_STAMP：蓋到第幾個章）。之後樂園商店再加只能用時光幣換的。網址加 ?furn=all 可以全部看
@@ -469,9 +477,23 @@ const STARTER = ['bed', 'slide', 'pool'];
 const FURN_STAMP = { tent: 1, swing: 2, fountain: 4, toybox: 5, bench: 7, tunnel: 8, flowers: 10, lantern: 12 };
 const FURN_NAME = { bed: '軟軟小床', tent: '露營帳篷', slide: '溜滑梯', fountain: '噴水池', pool: '小泳池', swing: '盪鞦韆',
                     bench: '野餐桌椅', tunnel: '鑽鑽隧道', toybox: '玩具箱', flowers: '花盆', lantern: '小燈籠',
-                    scratcher: '貓抓板', sandbox: '小沙坑', trampoline: '彈跳床', hammock: '吊床', 'rabbit-lamp': '兔子燈' };
-const SHOP_FURN = { scratcher: 120, sandbox: 150, trampoline: 180, hammock: 200, 'rabbit-lamp': 250 };   // 商店價（只給清單顯示，真的價錢看資料庫）
-const LIMITED = new Set(['rabbit-lamp']);   // 本月限定：沒買到就不放進清單
+                    scratcher: '貓抓板', sandbox: '小沙坑', trampoline: '彈跳床', hammock: '吊床', 'rabbit-lamp': '兔子燈',
+                    'pumpkin-lamp': '南瓜燈', 'ghost-house': '小鬼屋', 'candy-bucket': '糖果桶', 'web-swing': '蜘蛛網鞦韆' };
+const SHOP_FURN = { scratcher: 120, sandbox: 150, trampoline: 180, hammock: 200, 'rabbit-lamp': 250,
+                    'pumpkin-lamp': 150, 'ghost-house': 250, 'candy-bucket': 180, 'web-swing': 220 };   // 商店價（只給清單顯示，真的價錢看資料庫）
+const LIMITED = new Set(['rabbit-lamp', 'pumpkin-lamp', 'ghost-house', 'candy-bucket', 'web-swing']);   // 本月限定：沒買到就不放進清單
+// 萬聖節（petsky.js 的 fest）島上自己會有的小南瓜燈：只是裝飾，不能拎、寵物不會用
+const FEST_DECOR = { halloween: [{ x: .35, y: .68 }, { x: .6, y: .78 }, { x: .22, y: .4 }, { x: .88, y: .6 }, { x: .45, y: .3 }] };
+function addDecor(box) {
+  for (const d of FEST_DECOR[sky.fest] ?? []) {
+    const el = document.createElement('span');
+    el.className = 'decor d-pumpkin';
+    el.innerHTML = '<img src="img/pet/furniture/pumpkin-lamp.webp" alt="">';
+    const w = 30 * depth(d.y);
+    el.style.cssText = `left:${d.x * GW}px;top:${d.y * GH}px;width:${w}px;z-index:${Math.round(d.y * 1000) - 3}`;
+    box.appendChild(el);
+  }
+}
 const OWN_KEY = 'park-pet-furniture-seen';
 function ownedFurniture() {
   if (new URLSearchParams(location.search).get('furn') === 'all') return PROPS.map((d) => d.id);

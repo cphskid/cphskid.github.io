@@ -267,6 +267,12 @@ ul.classes li .row{gap:8px;justify-content:flex-end}
 .av.fr-keeper{background:linear-gradient(145deg,#fff1a8,#ffc23d 40%,#c07a10);box-shadow:0 0 0 calc(var(--av)*.03) #7ad8ff,0 0 calc(var(--av)*.18) rgba(122,216,255,.9),0 3px 6px rgba(0,0,0,.2)}
 .av.fr-egghunter{background:none}
 .av.fr-egghunter::before{content:"";position:absolute;inset:0;border-radius:50%;background:conic-gradient(#7af0ff,#b48cff,#ff8ad8,#ffe66b,#7af0ff);animation:rainbow 4s linear infinite;box-shadow:0 0 calc(var(--av)*.18) rgba(180,140,255,.8)}
+/* 2026-10 商店本月限定的框（萬聖節） */
+.av.fr-pumpkin{background:repeating-conic-gradient(from 0deg,#ff9a2e 0 13deg,#e86f12 13deg 15deg,#ff9a2e 15deg 30deg),#ff8a1e;box-shadow:inset 0 0 0 calc(var(--av)*.015) #b4510a,0 3px 6px rgba(0,0,0,.2)}
+.av.fr-pumpkin::after{content:"";position:absolute;z-index:2;left:44%;top:-9%;width:12%;height:16%;border-radius:40% 40% 20% 20%;background:linear-gradient(#4f9a2a,#2f6a1c);transform:rotate(12deg)}
+.av.fr-batnight{background:radial-gradient(circle at 78% 20%,#fff3a0 0 9%,#ffd75a 10%,transparent 12%),radial-gradient(circle at 20% 80%,#fff 0 1.5%,transparent 2.5%),radial-gradient(circle at 30% 14%,#fff 0 1.5%,transparent 2.5%),linear-gradient(145deg,#4a2f7a,#241446 60%,#120a26);box-shadow:0 0 calc(var(--av)*.14) rgba(150,100,230,.7),0 3px 6px rgba(0,0,0,.2)}
+.av.fr-batnight::after{content:"🦇";position:absolute;z-index:2;left:-6%;top:-8%;font-size:calc(var(--av)*.3);line-height:1}
+.shop .sitem .av.art{--av:96px;width:var(--av);height:var(--av)}
 /* 代表勳章：掛在頭像右下角 */
 .av>.av-medal{position:absolute;z-index:2;right:-12%;bottom:-10%;width:46%;height:46%;padding:0;background:none;border:0;border-radius:50%;object-fit:contain;filter:drop-shadow(0 2px 3px rgba(0,0,0,.35))}
 #me-chip .av>.av-medal{width:46%;height:46%;border:0;background:none}
@@ -726,6 +732,11 @@ aside.care .wish span img{width:40px;height:40px}
 .pisle[data-season=winter][data-wx=snow] .haze{background:rgba(255,255,255,.14)}
 .pisle:is([data-tod=night],[data-tod=dusk]) .p-lantern::after{content:"";position:absolute;left:50%;top:30%;width:420%;aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle,rgba(255,214,110,.6),rgba(255,214,110,.15) 40%,transparent 68%);pointer-events:none;mix-blend-mode:screen;animation:twinkle 3s ease-in-out infinite}
 .pisle[data-tod=night] .p-lantern img{filter:brightness(1.05) drop-shadow(0 0 10px rgba(255,214,110,.9))}
+/* 萬聖節：南瓜燈（商店傢俱＋島上的小裝飾）傍晚、晚上會亮（光暈用 ::before，::after 是 NEW 標籤） */
+.pisle .decor{position:absolute;transform:translate(-50%,-88%);pointer-events:none}
+.pisle .decor img{width:100%;display:block;filter:var(--tod) var(--wx)}
+.pisle:is([data-tod=night],[data-tod=dusk]) :is(.p-pumpkin-lamp,.d-pumpkin)::before{content:"";position:absolute;left:50%;top:55%;width:300%;aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle,rgba(255,170,60,.55),rgba(255,150,40,.12) 40%,transparent 68%);pointer-events:none;mix-blend-mode:screen;animation:twinkle 3s ease-in-out infinite}
+.pisle:is([data-tod=night],[data-tod=dusk]) :is(.p-pumpkin-lamp,.d-pumpkin) img{filter:brightness(1.1) drop-shadow(0 0 8px rgba(255,160,50,.9))}
 @keyframes clouds{from{background-position:0 0}to{background-position:100% 0}}
 .pisle .skychip{position:absolute;right:calc(env(safe-area-inset-right) + 80px);top:calc(env(safe-area-inset-top) + 22px);margin:0;padding:7px 14px;border-radius:99px;background:rgba(255,255,255,.85);font:800 16px/1 var(--f-body);color:var(--wood);pointer-events:none;z-index:15}
 .pisle .hint{z-index:15}
@@ -1118,6 +1129,7 @@ button.stamp:hover,button.stamp:focus-visible{transform:translateY(-3px);outline
 .namecard .who.fr-gold,.namecard .who.fr-keeper{background:linear-gradient(145deg,#fff1a8,#ffc23d 45%,#c07a10)}
 .namecard .who.fr-rainbow,.namecard .who.fr-egghunter{background:linear-gradient(135deg,#ff6b6b,#ffb84d,#ffe66b,#6bdc7a,#5ac8ff,#9b7bff,#ff6bd5)}
 .namecard .who.fr-bamboo{background:repeating-linear-gradient(45deg,#c99a4a 0 10px,#a8772e 10px 20px)}.namecard .who.fr-star{background:linear-gradient(145deg,#2b3f8f,#5b4bc4 55%,#1d2a66)}
+.namecard .who.fr-pumpkin{background:linear-gradient(145deg,#ffb050,#e86f12)}.namecard .who.fr-batnight{background:linear-gradient(145deg,#4a2f7a,#241446 60%,#120a26)}
 .namecard .who.fr-branch{background:linear-gradient(135deg,#3aa86b,#f2b13c)}.namecard .who.fr-riddle{background:linear-gradient(145deg,#b48cff,#6b3fd1 50%,#3b1f8a)}.namecard .who.fr-oldmap{background:linear-gradient(145deg,#e9d3a2,#c9a565 60%,#8a6a3a)}
 .namecard .info>small{font:700 14px/1 var(--f-body);color:#a0825f;letter-spacing:.06em}
 .namecard .feature{position:relative;display:flex;align-items:center;gap:18px;padding:16px 18px 16px 30px;border-radius:20px;background:#fff;border:3px solid var(--cream-2)}
@@ -1244,7 +1256,7 @@ button.stamp:hover,button.stamp:focus-visible{transform:translateY(-3px);outline
   .shop .try{position:static;grid-template-columns:auto minmax(0,1fr);align-items:center;justify-items:start}
   .shop .try .doll.big{--dw:110px}
   .shop .grid{grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px}
-  .shop .sitem .art{width:76px;height:76px}
+  .shop .sitem .art{width:76px;height:76px}.shop .sitem .av.art{--av:76px}
   .wallet .bal{font-size:38px}
   .wallet .bal .c{width:50px;height:50px}
   #shop .row.end{justify-content:center}

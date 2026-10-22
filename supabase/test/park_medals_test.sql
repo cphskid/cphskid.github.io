@@ -23,7 +23,7 @@ select test_ok((select count(*) from public.park_stamps where facility = 'island
 select test_ok((select count(*) from public.park_stamps where facility = 'island_pioneer' and era = 'now' and active) = 11, '現在篇五個地方各 2 枚＋今日臺灣探險家');
 select test_ok((select count(distinct kind) from public.park_stamps where facility = 'island_pioneer' and grp = 'ch2') = 5, '第二章有通關、收集、精通、劇情、彩蛋');
 select test_ok((select kind from public.park_stamps where facility = 'guardian' and code = 'stars20') = 'master', '守護異世界的章也分好類');
-select test_ok((select count(*) from public.park_rewards where kind = 'frame') = 12, '頭像框 12 種');
+select test_ok((select count(*) from public.park_rewards where kind = 'frame') = 14, '頭像框 14 種（含商店賣的 2 種）');
 
 set role authenticated;
 select test_as('d0000000-0000-0000-0000-000000000004', false, 't2admin@parktest.local');

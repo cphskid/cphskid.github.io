@@ -362,7 +362,7 @@ end;
 $$;
 
 -- 餵食：一份飼料撐 6 小時（約一格多），點心撐 10 小時；肚子是滿的就不吃。
--- 飼料要隔 15 分鐘才能再餵（慢慢吃）；點心隨時都吃。吃東西心情也 +1。
+-- 飼料要隔 15 分鐘才能再餵（慢慢吃）；點心隨時都吃。吃東西心情也 +1（節日點心 +3）。
 create or replace function public.park_pet_feed(p_item text)
 returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
 declare
@@ -391,7 +391,7 @@ begin
          ate_at = case when v_i.kind = 'food' then now() else ate_at end, xp = xp + v_i.xp,
          sulky = (v_mood = 'angry')        -- 餓到生氣：吃飽了還在鬧脾氣
    where id = v.id;
-  perform public.park_pet_add_joy(v.id, 1);
+  perform public.park_pet_add_joy(v.id, case when p_item in ('pumpkin-pie', 'candy', 'bat-cookie') then 3 else 1 end);
   return public.park_pet_state(v_me) || jsonb_build_object('did', 'feed', 'was', v_mood, 'xp', v_i.xp);
 end;
 $$;

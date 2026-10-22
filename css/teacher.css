@@ -258,6 +258,8 @@ td.stu .av.fr-branch{background:conic-gradient(from 45deg,#3aa86b 0 25%,#f2b13c 
 td.stu .av.fr-riddle{background:linear-gradient(145deg,#b48cff,#6b3fd1 50%,#3b1f8a)}
 td.stu .av.fr-oldmap{background:radial-gradient(circle at 70% 30%,#e9d3a2,#c9a565 60%,#8a6a3a)}
 td.stu .av.fr-keeper{background:linear-gradient(145deg,#fff1a8,#ffc23d 40%,#c07a10);box-shadow:0 0 0 2px #7ad8ff}
+td.stu .av.fr-pumpkin{background:linear-gradient(145deg,#ffb050,#e86f12)}
+td.stu .av.fr-batnight{background:linear-gradient(145deg,#4a2f7a,#241446 60%,#120a26)}
 td.stu .av.fr-egghunter{background:conic-gradient(#7af0ff,#b48cff,#ff8ad8,#ffe66b,#7af0ff)}
 td.stu .stamps{float:right;display:inline-flex;align-items:center;gap:3px;font:900 14px/1 var(--f-body);color:var(--wood);margin-left:6px}
 td.stu .stamps .ico{width:20px;height:20px}

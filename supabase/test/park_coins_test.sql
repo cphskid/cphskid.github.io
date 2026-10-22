@@ -16,7 +16,7 @@ select test_ok((select coins_fn from public.park_facilities where code = 'guardi
 select test_ok((select count(*) from public.island_step_tiers) = 56, '八章各 7 步都標了輕中重');
 select test_ok((select count(*) from public.island_step_tiers where tier = 'heavy') = 8, '每章一個重關');
 \i supabase/park_coins.sql
-select test_ok((select count(*) from public.park_shop_items) = 11, '重跑不會多出東西');
+select test_ok((select count(*) from public.park_shop_items) = 20, '重跑不會多出東西');
 update public.park_coin_rates set amount = 12 where code = 'medium';
 \i supabase/park_coins.sql
 select test_ok(public.park_coin_rate('medium') = 12, '校正過的金額重跑不會蓋回去');
@@ -88,7 +88,8 @@ select test_ok((select count(*) from jsonb_array_elements(:'s'::jsonb -> 'items'
 select test_ok((select bool_and((x ->> 'owned')::boolean) from jsonb_array_elements(:'s'::jsonb -> 'items') x where x ->> 'set' = 'tw'), '自己的起始套裝標成已經有');
 select test_ok((select count(*) from jsonb_array_elements(:'s'::jsonb -> 'items') x where x ->> 'cat' = 'furn') = 4, '傢俱 4 件常駐');
 select test_ok((select count(*) from jsonb_array_elements(:'s'::jsonb -> 'items') x where x ->> 'cat' = 'month')
-               = case when extract(month from now() at time zone 'Asia/Taipei') in (9, 10) then 2 else 0 end, '本月限定只在那個月上架');
+               = case extract(month from now() at time zone 'Asia/Taipei') when 9 then 2 when 10 then 18 else 0 end, '本月限定只在那個月上架（10 月：萬聖 9 件衣服＋9 件點心傢俱框）');
+select test_ok((select count(*) from jsonb_array_elements(:'s'::jsonb -> 'items') x where x ->> 'code' = 'hat-witch' and x ->> 'cat' <> 'month') = 0, '萬聖衣服不會出現在一般主角分頁');
 select test_denied($$select public.park_shop_buy('wear', 'top-floral')$$, '已經有的不能再買');
 select test_denied($$select public.park_shop_buy('wear', 'hair-crop')$$, '髮型不賣');
 select test_denied($$select public.park_shop_buy('shop', 'nothing')$$, '沒有的東西');
@@ -111,6 +112,37 @@ update public.park_coin_ledger set created_at = now() - interval '8 days' where 
 set role authenticated;
 select test_as('d0000000-0000-0000-0000-000000000013', true);
 select test_ok((public.park_coins_me() ->> 'week')::int = 0 and (public.park_coins_me() ->> 'balance')::int = 15, '下週冒險值歸零，餘額還在');
+
+\echo '── 萬聖節本月限定（10 月才測得到上架；其他月份測下架）'
+reset role;
+insert into public.park_coin_ledger (student_id, source, amount, note, created_at) values (:'cat', 'test:gift', 600, '測試', now() - interval '8 days');
+set role authenticated;
+select test_as('d0000000-0000-0000-0000-000000000013', true);
+select extract(month from now() at time zone 'Asia/Taipei')::int = 10 as oct \gset
+\if :oct
+select public.park_shop_buy('wear', 'hat-witch') as s \gset
+select test_ok((:'s'::jsonb ->> 'balance')::int = 615 - 80, '巫師帽 80');
+select test_ok((public.park_traveller_save('{"hair":"hair-crop","hat":"hat-witch"}') -> 'look' ->> 'hat') = 'hat-witch', '萬聖帽子買了就能戴');
+select test_denied($$select public.park_set_avatar(null, 'pumpkin')$$, '南瓜框沒買不能用');
+select public.park_shop_buy('shop', 'frame-pumpkin') as s \gset
+select test_ok((select bool_or((x ->> 'owned')::boolean) from jsonb_array_elements(:'s'::jsonb -> 'items') x where x ->> 'code' = 'frame-pumpkin'), '南瓜框標成已經有');
+select test_ok((public.park_set_avatar(null, 'pumpkin') ->> 'frame') = 'pumpkin', '可以換上南瓜框');
+select test_denied($$select public.park_shop_buy('shop', 'frame-pumpkin')$$, '頭像框買一次就好');
+select test_denied($$select public.park_set_avatar(null, 'batnight')$$, '沒買的月夜蝙蝠框換不上去');
+select public.park_shop_buy('shop', 'pet-candy');
+select public.park_pet_feed('candy') as s \gset
+select test_ok((:'s'::jsonb ->> 'did') = 'feed', '萬聖糖果餵得了');
+select public.park_shop_buy('shop', 'furn-ghost-house');
+select test_ok(public.park_my_furniture() ? 'ghost-house', '小鬼屋擺上寵物島');
+select test_denied($$select public.park_shop_buy('shop', 'pet-mooncake')$$, '月餅 10 月下架了');
+\else
+select test_denied($$select public.park_shop_buy('wear', 'hat-witch')$$, '萬聖衣服過了 10 月買不到');
+\endif
+reset role;   -- 收回這段的錢，後面的測試照原本的餘額算
+delete from public.park_coin_ledger where student_id = :'cat'
+   and (source = 'test:gift' or source in ('buy:wear:hat-witch') or source ~ '^buy:(frame-pumpkin|pet-candy|furn-ghost-house):');
+set role authenticated;
+select test_as('d0000000-0000-0000-0000-000000000013', true);
 
 \echo '── 守護異世界的章'
 reset role;

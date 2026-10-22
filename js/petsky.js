@@ -1,5 +1,6 @@
 // 寵物島的天空：日夜跟著真的時間、季節跟著真的月份、天氣每 4 小時換一次（同一時段每個人看到的一樣）。
-// 網址可以指定來看效果：?wx=sunny|cloudy|rain|snow|fog  &tod=day|dusk|night  &season=spring|summer|autumn|winter
+// 網址可以指定來看效果：?wx=sunny|cloudy|rain|snow|fog  &tod=day|dusk|night  &season=spring|summer|autumn|winter  &fest=halloween|none
+// 節日（fest）：萬聖節＝10/20～10/31，島上擺小南瓜燈（pet.js），傍晚和晚上飛小蝙蝠。
 const SEASONS = ['winter', 'winter', 'spring', 'spring', 'spring', 'summer', 'summer', 'summer', 'autumn', 'autumn', 'autumn', 'winter'];
 export const SKY_NAME = {
   wx: { sunny: '☀️ 晴天', cloudy: '⛅ 多雲', rain: '🌧️ 下雨', snow: '❄️ 下雪', fog: '🌫️ 起霧' },
@@ -20,7 +21,9 @@ export function readSky(now = new Date()) {
   if (season === 'summer' && wx === 'fog') wx = 'sunny';
   const q = new URLSearchParams(location.search);
   const want = (k, list) => (list.includes(q.get(k)) ? q.get(k) : null);
+  const fest = now.getMonth() === 9 && now.getDate() >= 20 ? 'halloween' : 'none';
   return {
+    fest: want('fest', ['halloween', 'none']) ?? fest,
     wx: want('wx', Object.keys(SKY_NAME.wx)) ?? wx,
     tod: want('tod', Object.keys(SKY_NAME.tod)) ?? tod,
     season: want('season', Object.keys(SKY_NAME.season)) ?? season,
@@ -44,6 +47,12 @@ export function makeSky(ground, sky, { w, h, lake }) {
   const leaf = (first) => ({ ...petal(first), k: 'leaf', c: ['#e8892b', '#d4592a', '#f0b43a', '#b8752d'][Math.floor(R() * 4)] });
   const fly = () => ({ k: 'fly', x: w * (.2 + R() * .7), y: h * (.3 + R() * .5), p: R() * 6, s: .5 + R() });
   const ring = () => ({ k: 'ring', t: R(), x: 0, y: 0 });
+  const bat = () => ({ k: 'bat', x: w * (.1 + R() * .8), y: h * (.08 + R() * .35), p: R() * 6, s: .6 + R() * .6, r: 30 + R() * 14 });
+  let batImg = null;     // 萬聖節才抓這張圖
+  if (sky.fest === 'halloween' && sky.tod !== 'day' && sky.wx !== 'rain') {
+    batImg = new Image(); batImg.src = 'img/pet/bat.webp';
+    add(5, bat);
+  }
   if (sky.wx === 'rain') { add(150, rain); add(12, ring); }
   if (sky.wx === 'snow') add(110, snow);
   if (sky.wx !== 'rain' && sky.wx !== 'snow') {
@@ -83,6 +92,13 @@ export function makeSky(ground, sky, { w, h, lake }) {
         ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.a);
         ctx.fillStyle = p.k === 'petal' ? 'rgba(255,190,210,.95)' : p.c;
         ctx.beginPath(); ctx.ellipse(0, 0, p.r, p.r * .55, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+      } else if (p.k === 'bat') {
+        if (!batImg.complete || !batImg.naturalWidth) continue;
+        const x = p.x + Math.sin(t * .35 * p.s + p.p) * w * .12, y = p.y + Math.sin(t * .9 * p.s + p.p * 2) * 18;
+        const flap = .65 + .35 * Math.abs(Math.sin(t * 9 * p.s + p.p));
+        const bw = p.r * 1.75, bh = p.r;
+        ctx.save(); ctx.translate(x, y); ctx.scale(Math.cos(t * .35 * p.s + p.p) < 0 ? -1 : 1, flap);
+        ctx.globalAlpha = .9; ctx.drawImage(batImg, -bw / 2, -bh / 2, bw, bh); ctx.restore();
       } else if (p.k === 'fly') {
         const x = p.x + Math.sin(t * .6 * p.s + p.p) * 40, y = p.y + Math.cos(t * .8 * p.s + p.p) * 24;
         const a = .35 + .65 * Math.max(0, Math.sin(t * 2 * p.s + p.p));
