@@ -134,7 +134,19 @@ pet.init({ me: () => account.current(), host: () => islesLayer, dragged: () => d
 // ---------- 時空旅人換裝（js/traveller.js） ----------
 // 第一次進地圖還沒有旅人：請他建一個（頭像就是旅人的大頭）。一頁只問一次，按叉叉之後下次再問。
 traveller.init({ me: () => account.current(), changed: () => dispatchEvent(new Event('park:traveller')) });
-shop.init({ me: () => account.current(), toast: (t) => showToast(t, 4200) });
+shop.init({
+  me: () => account.current(), toast: (t) => showToast(t, 4200),
+  // 每日任務「今天的指定島」按「去」：打開那座島的卡片（再按開始冒險）
+  go: (code) => {
+    if (code === 'pet') return pet.open();
+    if (code === 'wear') return traveller.open();
+    const z = zones.get(park.facilities.find((f) => f.code === code)?.zone);
+    if (!z) return;
+    const s = park.map.slots.find((x) => x.slot === z.slot);
+    if (s) setPan(s.left + s.width / 2 - 800);
+    openCard(z);
+  },
+});
 let travReady = Promise.resolve();
 let travAsked = false;
 function askTraveller() {

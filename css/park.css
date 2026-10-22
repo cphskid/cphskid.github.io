@@ -1214,6 +1214,13 @@ button.stamp:hover,button.stamp:focus-visible{transform:translateY(-3px);outline
 .wallet .daily small{font:700 14px/1 var(--f-body);color:#a88a6a;white-space:nowrap}
 .wallet .tk{width:30px;height:30px;border-radius:50%;border:3px solid var(--cream-2);display:grid;place-items:center;font:900 18px/1 var(--f-body);color:#fff}
 .wallet .got .tk{background:#5aa44c;border-color:#5aa44c}
+.wallet .daily .ghost.small{font-size:15px;padding:6px 14px;white-space:nowrap}
+.wallet .wkdays{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin:10px 0 0;font:700 16px/1.3 var(--f-body);color:var(--wood)}
+.wallet .wkdays span{display:flex;gap:6px}
+.wallet .wkdays i{width:18px;height:18px;border-radius:50%;border:3px solid var(--cream-2);background:#fff}
+.wallet .wkdays i.on{background:#ffc23d;border-color:#ff9b2f}
+.wallet .wkdays small{font:700 14px/1.3 var(--f-body);color:#a88a6a}
+.wallet .wkdays b{color:#5aa44c}
 .shop .head{display:flex;justify-content:space-between;align-items:center;gap:12px;padding-right:20px}
 .shop .head .bal{display:flex;align-items:center;gap:6px;font:900 26px/1 var(--f-disp);color:var(--wood);background:#fff;border:3px solid var(--cream-2);border-radius:999px;padding:5px 16px 5px 6px;cursor:pointer}
 .shop .head .bal .c{width:36px;height:36px}

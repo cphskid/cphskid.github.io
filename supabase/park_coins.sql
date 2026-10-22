@@ -108,7 +108,8 @@ insert into public.park_coin_rates (code, amount, note) values
   ('challenge',      10, '⭐⭐⭐再挑戰第一次過關'),
   ('guardian_stamp', 20, '守護異世界每蓋到一個樂園護照章'),
   ('daily',          5,  '每日任務一個'),
-  ('daily_all',      10, '每日任務 3 個全做完')
+  ('daily_all',      10, '每日任務當天全做完'),
+  ('daily_week',     30, '一週有 5 天每日任務全做完')
 on conflict (code) do update set note = excluded.note;   -- 金額校正過就不蓋回去
 
 insert into public.park_pet_items (code, kind, name, icon, xp, facility, sort) values
@@ -259,15 +260,64 @@ begin
 end;
 $$;
 
--- 每日任務的題庫：每天固定「照顧寵物」「去玩一下」，第三個輪流
+-- 每日任務（2026-10-22 中改）：
+--   1. 照顧寵物（固定）
+--   2. 今天的指定島：從他能進去的島輪流（守護異世界／開拓者過去篇／開拓者現在篇的一個地點），帶小朋友玩遍
+--   3. 題庫輪流：陪寵物玩、換個造型、在島上賺 20 幣、蓋到新勳章（全班同一天同一題，沒得做的跳下一題）
+--   4. 週六、週日多一格加碼（題庫的另一題）
+--   一週（週一到週日）有 5 天全部完成，再發週獎勵。舊的 play、wish、dress 還認得（之前排好的任務照算）。
+-- 現在篇的地點：存檔 slot → 名字
+create or replace function public.park_daily_places()
+returns text[][] language sql immutable set search_path = public, pg_temp as $$
+  select array[['village', '漁村'], ['town', '規則小鎮'], ['sky', '天空港'], ['isles', '離島巡航'], ['post', '景點明信片']];
+$$;
+
 create or replace function public.park_daily_name(p_task text)
-returns text language sql immutable set search_path = public, pg_temp as $$
-  select case p_task
+returns text language plpgsql immutable set search_path = public, pg_temp as $$
+declare p text[][] := public.park_daily_places();
+begin
+  if p_task like 'go:%' then
+    if p_task = 'go:guardian' then return '今天的指定島：去守護異世界玩一下'; end if;
+    if p_task = 'go:past' then return '今天的指定島：去島嶼開拓者的過去篇玩一下'; end if;
+    for i in 1 .. array_length(p, 1) loop
+      if p_task = 'go:' || p[i][1] then return '今天的指定島：去現在的臺灣「' || p[i][2] || '」逛逛'; end if;
+    end loop;
+  end if;
+  return case p_task
     when 'pet'   then '照顧寵物：餵牠或摸摸牠'
     when 'play'  then '去任何一座島玩一下'
     when 'wish'  then '陪寵物玩：完成牠的願望或丟球'
     when 'dress' then '換個造型：去換裝間換一件衣服或配件'
+    when 'earn'  then '在島上賺到 20 時光幣'
+    when 'stamp' then '在護照蓋到一個新的勳章'
     else p_task end;
+end;
+$$;
+
+-- 這個學生進得去這座島嗎（跟 park_can_enter 同一套規則，給伺服器排任務用）
+create or replace function public.park_daily_can(p_student uuid, p_facility text)
+returns boolean language sql stable security definer set search_path = public, pg_temp as $$
+  select exists (
+    select 1 from public.park_facilities f
+      join public.park_class_members m on m.student_id = p_student
+      left join public.park_class_facilities cf on cf.class_code = m.class_code and cf.facility = f.code
+      left join public.park_trial_classes tc on tc.class_code = m.class_code and tc.facility = f.code
+     where f.code = p_facility
+       and ((f.status = 'open' and cf.facility is not null) or (f.status = 'trial' and tc.facility is not null)));
+$$;
+
+-- 島嶼開拓者有沒有存檔（slot 為 null＝過去篇任一章或大地圖），可選只看某段時間
+create or replace function public.park_daily_island(p_student uuid, p_slot text, p_from timestamptz, p_to timestamptz)
+returns boolean language plpgsql stable security definer set search_path = public, pg_temp as $$
+declare v boolean;
+begin
+  if to_regclass('public.island_saves') is null then return false; end if;
+  execute 'select exists (select 1 from public.island_saves s where s.student_id = $1
+             and (case when $2 is null then s.slot ~ ''^(ch[0-9]+|end|world)$'' else s.slot = $2 end)
+             and ($3 is null or s.updated_at >= $3 and s.updated_at < $4))'
+    into v using p_student, p_slot, p_from, p_to;
+  return coalesce(v, false);
+end;
 $$;
 
 -- 今天這個任務做了沒（從各處的紀錄看，不用小朋友回報）
@@ -285,20 +335,63 @@ begin
   elsif p_task = 'dress' then
     select exists (select 1 from public.park_travellers t where t.student_id = p_student
                       and t.updated_at >= v_from and t.updated_at < v_to) into v;
-  elsif p_task = 'play' then
+  elsif p_task = 'earn' then
+    -- 各島給的（不算每日任務、商店）
+    select coalesce(sum(l.amount), 0) >= 20 from public.park_coin_ledger l
+     where l.student_id = p_student and l.amount > 0 and l.facility is not null
+       and l.created_at >= v_from and l.created_at < v_to into v;
+  elsif p_task = 'stamp' then
+    select exists (select 1 from public.park_student_stamps s where s.student_id = p_student
+                      and s.awarded_at >= v_from and s.awarded_at < v_to) into v;
+  elsif p_task in ('play', 'go:guardian') then
     -- 守護異世界：今天過了一關，或角色今天存過檔
     select exists (select 1 from public.level_progress lp where lp.student_id = p_student
                       and lp.cleared_at >= v_from and lp.cleared_at < v_to)
         or exists (select 1 from public.characters c where c.student_id = p_student
                       and c.updated_at >= v_from and c.updated_at < v_to) into v;
-    -- 島嶼開拓者：今天存過檔（套了 island_pioneer.sql 才有這張表）
-    if not v and to_regclass('public.island_saves') is not null then
-      execute 'select exists (select 1 from public.island_saves s where s.student_id = $1 and s.slot <> ''medals''
-                                 and s.updated_at >= $2 and s.updated_at < $3)'
-        into v using p_student, v_from, v_to;
+    -- 島嶼開拓者：今天存過檔
+    if not v and p_task = 'play' then
+      v := public.park_daily_island(p_student, null, v_from, v_to)
+        or exists (select 1 from unnest((public.park_daily_places())[:][1:1]) x
+                    where public.park_daily_island(p_student, x, v_from, v_to));
     end if;
+  elsif p_task = 'go:past' then
+    v := public.park_daily_island(p_student, null, v_from, v_to);
+  elsif p_task like 'go:%' then
+    v := public.park_daily_island(p_student, substr(p_task, 4), v_from, v_to);
   end if;
   return coalesce(v, false);
+end;
+$$;
+
+-- 排某一天的任務（第幾天決定輪到誰；全班同一天排到的一樣，進不去的島、沒得做的題目才換下一個）
+create or replace function public.park_daily_pick(p_student uuid, p_day date)
+returns text[] language plpgsql stable security definer set search_path = public, pg_temp as $$
+declare n int := p_day - date '2026-01-05';   -- 那天是星期一
+        places text[][] := public.park_daily_places();
+        go text[] := '{}'; pool text[] := array['wish', 'dress', 'earn', 'stamp'];
+        v text[] := array['pet']; k int;
+begin
+  if public.park_daily_can(p_student, 'guardian') then go := go || 'go:guardian'::text; end if;
+  if public.park_daily_can(p_student, 'island_pioneer') then
+    go := go || 'go:past'::text;
+    -- 過去篇全破、打開過現在篇的人，才排得到現在篇的地點（一次輪一個）
+    if exists (select 1 from unnest(places[:][1:1]) x where public.park_daily_island(p_student, x, null, null)) then
+      go := go || ('go:' || places[n % array_length(places, 1) + 1][1]);
+    end if;
+  end if;
+  v := v || case when cardinality(go) = 0 then 'play' else go[n % cardinality(go) + 1] end;
+  -- 護照上能拿的勳章都拿光了，就不出「蓋新勳章」
+  if not exists (select 1 from public.park_stamps s where s.active
+                    and public.park_daily_can(p_student, s.facility)
+                    and not exists (select 1 from public.park_student_stamps x
+                                     where x.student_id = p_student and x.facility = s.facility and x.stamp = s.code)) then
+    pool := array_remove(pool, 'stamp');
+  end if;
+  k := n % cardinality(pool);
+  v := v || pool[k + 1];
+  if extract(isodow from p_day) >= 6 then v := v || pool[(k + 2) % cardinality(pool) + 1]; end if;   -- 週末加碼
+  return v;
 end;
 $$;
 
@@ -308,27 +401,44 @@ returns public.park_daily language plpgsql security definer set search_path = pu
 declare v public.park_daily; v_day date := public.park_today();
 begin
   insert into public.park_daily (student_id, day, tasks)
-  values (p_student, v_day,
-          array['pet', 'play', case when extract(doy from v_day)::int % 2 = 0 then 'wish' else 'dress' end])
+  values (p_student, v_day, public.park_daily_pick(p_student, v_day))
   on conflict do nothing;
   select * into v from public.park_daily d where d.student_id = p_student and d.day = v_day;
   return v;
 end;
 $$;
 
+-- 這週（週一到今天）有幾天每日任務全部完成
+create or replace function public.park_daily_week_days(p_student uuid)
+returns int language sql stable security definer set search_path = public, pg_temp as $$
+  select count(*)::int from public.park_daily d
+   where d.student_id = p_student and d.day >= (public.park_week_start() at time zone 'Asia/Taipei')::date
+     and cardinality(d.claimed) >= cardinality(d.tasks);
+$$;
+
 create or replace function public.park_daily_json(p_student uuid)
 returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
 declare v public.park_daily := public.park_daily_row(p_student);
+        v_mon date := (public.park_week_start() at time zone 'Asia/Taipei')::date;
 begin
   return jsonb_build_object(
     'day', v.day,
     'each', public.park_coin_rate('daily'),
     'bonus', public.park_coin_rate('daily_all'),
+    'weekend', extract(isodow from v.day) >= 6,
     'tasks', (select jsonb_agg(jsonb_build_object('code', t, 'name', public.park_daily_name(t),
+                                                  'go', case when t = 'go:guardian' then 'guardian'
+                                                             when t like 'go:%' then 'island_pioneer'
+                                                             when t in ('pet', 'wish') then 'pet'
+                                                             when t = 'dress' then 'wear' end,
                                                   'done', public.park_daily_done(p_student, t, v.day),
                                                   'claimed', t = any(v.claimed)) order by i)
                 from unnest(v.tasks) with ordinality u(t, i)),
-    'all', cardinality(v.claimed) >= cardinality(v.tasks));
+    'all', cardinality(v.claimed) >= cardinality(v.tasks),
+    'week', jsonb_build_object('days', public.park_daily_week_days(p_student), 'need', 5,
+                               'reward', public.park_coin_rate('daily_week'),
+                               'got', exists (select 1 from public.park_coin_ledger l where l.student_id = p_student
+                                                 and l.source = 'daily-week:' || v_mon)));
 end;
 $$;
 
@@ -382,6 +492,7 @@ begin
   select * into v from public.park_daily d where d.student_id = v_me and d.day = v.day for update;
   if not p_task = any(v.tasks) then raise exception '今天沒有這個任務'; end if;
   if p_task = any(v.claimed) then raise exception '這個已經領過了'; end if;
+  if p_task in ('earn', 'stamp') then perform public.park_coin_sync(v_me); end if;   -- 剛在島上賺的先補進來
   if not public.park_daily_done(v_me, p_task, v.day) then raise exception '還沒做到喔，做完再來領'; end if;
   v_got := public.park_coin_grant(v_me, 'daily:' || v.day || ':' || p_task, public.park_coin_rate('daily'),
                                   null, '每日任務：' || public.park_daily_name(p_task));
@@ -390,6 +501,10 @@ begin
   if cardinality(v.claimed) >= cardinality(v.tasks) then
     v_got := v_got + public.park_coin_grant(v_me, 'daily:' || v.day || ':all', public.park_coin_rate('daily_all'),
                                             null, '每日任務全部完成');
+    if public.park_daily_week_days(v_me) >= 5 then
+      v_got := v_got + public.park_coin_grant(v_me, 'daily-week:' || (public.park_week_start() at time zone 'Asia/Taipei')::date,
+                                              public.park_coin_rate('daily_week'), null, '這週有 5 天每日任務全部完成');
+    end if;
   end if;
   return public.park_coins_state(v_me) || jsonb_build_object('got', v_got);
 end;
@@ -557,6 +672,8 @@ revoke all on function
   public.park_coin_week(uuid), public.park_coin_grant(uuid, text, int, text, text), public.guardian_coin_sources(uuid),
   public.park_coin_sync(uuid), public.park_daily_name(text), public.park_daily_done(uuid, text, date),
   public.park_daily_row(uuid), public.park_daily_json(uuid), public.park_coins_state(uuid),
+  public.park_daily_places(), public.park_daily_can(uuid, text), public.park_daily_island(uuid, text, timestamptz, timestamptz),
+  public.park_daily_pick(uuid, date), public.park_daily_week_days(uuid),
   public.park_coins_me(), public.park_coins_seen(), public.park_daily_claim(text), public.park_shop(),
   public.park_shop_buy(text, text), public.park_my_furniture(), public.park_class_board(text, text)
   from public, anon, authenticated;

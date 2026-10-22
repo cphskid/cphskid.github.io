@@ -1,6 +1,6 @@
 // 時光幣、每日任務、商店（資料庫在 supabase/park_coins.sql）。
 //
-// 地圖右上角「時光幣」、底部功能列「每日任務」：點了看餘額、本週冒險值、今天的 3 個每日任務（做到了按「領」）。
+// 地圖右上角「時光幣」、底部功能列「每日任務」：點了看餘額、本週冒險值、今天的每日任務（做到了按「領」；週末多一個，一週 5 天全做完有週獎勵）。
 // 左下角護照上面一個「商店」：主角（換裝間的衣服）、寵物（點心）、傢俱（寵物島）、本月限定。
 // 進樂園時，各遊戲新賺到的時光幣跳一次通知（「在島嶼開拓者賺了 130 時光幣！」）。
 // 錢都是伺服器算的，這裡只負責顯示和按按鈕；資料庫還沒裝這份 SQL 時整個藏起來。
@@ -17,7 +17,7 @@ const layer = $('#shop');
 const chip = $('#coin-chip');
 const btn = $('#shop-btn');
 const taskBtn = $('#task-btn');
-let hooks = { me: () => ({ kind: 'guest' }), toast: () => {} };
+let hooks = { me: () => ({ kind: 'guest' }), toast: () => {}, go: () => {} };
 let st = null;       // park_coins_me 的結果；不是學生、沒裝 SQL 是 null
 
 export function init(h) { hooks = { ...hooks, ...h }; }
@@ -110,7 +110,11 @@ function paintWallet(msg = null) {
       <span class="tk">${t.claimed ? '✓' : ''}</span><b>${esc(t.name)}</b>
       ${t.claimed ? `<small>領過了</small>`
         : t.done ? `<button type="button" class="btn small coin" data-claim="${esc(t.code)}">${COIN}領 ${d.each}</button>`
+        : t.go ? `<button type="button" class="ghost small" data-go="${esc(t.go)}">去</button>`
         : `<small>還沒做到</small>`}</li>`).join('');
+  const w = d.week;
+  const wk = w ? `<p class="wkdays">本週全勤 <span>${Array.from({ length: w.need }, (_, i) => `<i class="${i < w.days ? 'on' : ''}"></i>`).join('')}</span>
+      ${w.got ? `<b>週獎勵 ${w.reward} 領到了！</b>` : `<small>${Math.min(w.days, w.need)} / ${w.need} 天，滿 ${w.need} 天再拿 ${w.reward}</small>`}</p>` : '';
   show(`<div class="wallet" role="dialog" aria-modal="true" aria-label="我的時光幣">
     <button class="x" data-close aria-label="關閉"></button>
     <h2>我的時光幣</h2>
@@ -118,8 +122,9 @@ function paintWallet(msg = null) {
     <h3>本週冒險值 <small>這週新賺到的時光幣，週一重新算</small></h3>
     <div class="wk"><div class="bar"><i style="width:${pct}%"></i></div><b>${st.week} / ${st.goal}</b>
       ${myClasses().length ? '<button type="button" class="ghost small" data-board>🏆 班級排行</button>' : ''}</div>
-    <h3>今天的任務 <small>每個 ${d.each}，全部完成再加 ${d.bonus}</small></h3>
+    <h3>今天的任務 <small>每個 ${d.each}，全部完成再加 ${d.bonus}${d.weekend ? '；週末多一個加碼' : ''}</small></h3>
     <ul class="daily">${rows}</ul>
+    ${wk}
     ${d.all ? '<p class="note ok">今天的任務都完成了，明天再來！</p>' : ''}
     ${msg ? `<p class="note ${msg[0]}">${esc(msg[1])}</p>` : ''}
     <p class="tip">去各座島過關、拿星星就會賺時光幣；重玩一整章也有，但一次比一次少。</p>
@@ -127,6 +132,7 @@ function paintWallet(msg = null) {
       <button type="button" class="btn go" data-shop><img src="img/ui/shop.webp" alt="">去商店</button></div>
   </div>`);
   $('[data-shop]', layer).onclick = () => openShop();
+  layer.querySelectorAll('[data-go]').forEach((b) => { b.onclick = () => { close(); hooks.go(b.dataset.go); }; });
   const bb = $('[data-board]', layer);
   if (bb) bb.onclick = () => openBoard();
   layer.querySelectorAll('[data-claim]').forEach((b) => {
@@ -137,7 +143,8 @@ function paintWallet(msg = null) {
         st = { ...st, ...r };
         sfx('SE-20');
         paintHud();
-        paintWallet(['ok', r.got > d.each ? `領到 ${r.got} 時光幣，今天全部完成！` : `領到 ${r.got} 時光幣！`]);
+        const week = r.daily?.week?.got && !d.week?.got;
+        paintWallet(['ok', week ? `領到 ${r.got} 時光幣，這週全勤拿到週獎勵！` : r.got > d.each ? `領到 ${r.got} 時光幣，今天全部完成！` : `領到 ${r.got} 時光幣！`]);
       } catch (err) {
         paintWallet(['bad', err.message]);
       }
