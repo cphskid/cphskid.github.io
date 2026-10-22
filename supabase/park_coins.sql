@@ -266,7 +266,7 @@ returns text language sql immutable set search_path = public, pg_temp as $$
     when 'pet'   then '照顧寵物：餵牠或摸摸牠'
     when 'play'  then '去任何一座島玩一下'
     when 'wish'  then '陪寵物玩：完成牠的願望或丟球'
-    when 'dress' then '去換裝間換一套衣服'
+    when 'dress' then '換個造型：去換裝間換一件衣服或配件'
     else p_task end;
 $$;
 
