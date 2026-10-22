@@ -590,6 +590,8 @@ const isPending = (r) => r.status === 'new' || r.status === 'unclear';
 // 哪個遊戲送的：樂園共用的回報（js/feedback.js）會帶 context.game；舊的守護異世界回報沒有這欄
 const FB_GAME = { park: '樂園', guardian: '守護異世界', island_pioneer: '島嶼開拓者' };
 const fbGame = (r) => (typeof r.context?.game === 'string' ? r.context.game : 'guardian');
+// 同一個資料庫還有別的專案（貓閣咖啡，game＝catloft），它的回報不是樂園的，不列（伺服器也會排掉）
+const fbList = async (status, hidden) => (await auth.feedback.list(status, hidden)).filter((r) => fbGame(r) !== 'catloft');
 let fbFilter = '';
 let fbGameFilter = '';
 
@@ -597,7 +599,7 @@ let fbGameFilter = '';
 async function paintFeedbackDot(rows) {
   if (!who.is_admin) return;
   try {
-    const all = rows ?? await auth.feedback.list();
+    const all = rows ?? await fbList();
     $('#fb-dot').hidden = !all.some(isPending);
   } catch { /* 紅點而已，失敗就不亮 */ }
 }
@@ -606,7 +608,7 @@ async function renderFeedback() {
   const manage = !!who.is_admin;
   const hidden = fbFilter === 'hidden';
   const status = fbFilter && fbFilter !== 'pending' && !hidden ? fbFilter : null;
-  const all = await auth.feedback.list(status, hidden);
+  const all = await fbList(status, hidden);
   const rows = (fbFilter === 'pending' ? all.filter(isPending) : all)
     .filter((r) => !fbGameFilter || fbGame(r) === fbGameFilter);
   if (!fbFilter) paintFeedbackDot(all);
