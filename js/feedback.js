@@ -99,6 +99,8 @@
     wontfix: ['看過了', 'close', '我們看過了，這次先不改，謝謝你告訴我們。'],
   };
   const isUnread = (r) => !!r.updated_at && (!r.seen_at || Date.parse(r.updated_at) > Date.parse(r.seen_at));
+  // 同一個資料庫還有貓閣咖啡（game＝catloft）的回報，那邊的回覆不在樂園顯示
+  const mineOnly = (rows) => (rows || []).filter((r) => r.context?.game !== 'catloft');
   const unread = () => (mine || []).filter(isUnread).length;
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
@@ -108,7 +110,7 @@
     if (opts.onDot) try { opts.onDot(n); } catch { /* 遊戲自己的紅點壞了不影響回報 */ }
   }
   async function loadMine() {
-    try { mine = await rpc('my_feedback'); } catch { mine = mine || null; }
+    try { mine = mineOnly(await rpc('my_feedback')); } catch { mine = mine || null; }
     paintDot();
     if (opts.notify) notifyFixed();
   }
@@ -264,7 +266,7 @@
       paint();
       if (cur !== 'mine') return;
       try {
-        mine = await rpc('my_feedback');
+        mine = mineOnly(await rpc('my_feedback'));
         if (mine.some(isUnread)) {
           await rpc('seen_my_feedback');
           const now = new Date().toISOString();
