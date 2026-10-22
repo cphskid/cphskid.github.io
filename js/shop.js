@@ -84,9 +84,26 @@ addEventListener('park:coins', (e) => {
   if (st && e.detail?.balance != null) { st = { ...st, balance: e.detail.balance }; paintHud(); }
 });
 
+// 在樂園裡就做得到的任務（換裝、照顧寵物）做完馬上重讀，不用重新整理頁面才變「領」
+let rechecking = null;
+function recheck() {
+  if (!st) return Promise.resolve(null);
+  return rechecking ??= auth.coins.me()
+    .then((s) => { if (s) { st = s; paintHud(); } return st; })
+    .catch(() => st)
+    .finally(() => { rechecking = null; });
+}
+addEventListener('park:traveller', () => { recheck(); });
+addEventListener('park:pet-care', () => { recheck(); });
+
 // ---------- 我的時光幣：餘額、本週冒險值、每日任務 ----------
 export function openWallet(msg = null) {
   if (!st) return;
+  paintWallet(msg);
+  // 先畫手上的，再跟伺服器對一次（萬一在別的分頁或遊戲裡剛做完）
+  if (!msg) recheck().then(() => { if (!layer.hidden && $('.wallet', layer)) paintWallet(); });
+}
+function paintWallet(msg = null) {
   const d = st.daily;
   const pct = Math.min(100, Math.round(st.week / st.goal * 100));
   const rows = d.tasks.map((t) => `<li class="${t.claimed ? 'got' : t.done ? 'ready' : ''}">
@@ -120,9 +137,9 @@ export function openWallet(msg = null) {
         st = { ...st, ...r };
         sfx('SE-20');
         paintHud();
-        openWallet(['ok', r.got > d.each ? `領到 ${r.got} 時光幣，今天全部完成！` : `領到 ${r.got} 時光幣！`]);
+        paintWallet(['ok', r.got > d.each ? `領到 ${r.got} 時光幣，今天全部完成！` : `領到 ${r.got} 時光幣！`]);
       } catch (err) {
-        openWallet(['bad', err.message]);
+        paintWallet(['bad', err.message]);
       }
     };
   });

@@ -868,7 +868,7 @@ function wishDone(a, what) {
   for (let k = 0; k < 3; k++) a.timers.push(setTimeout(() => floatUp(a, '♥'), k * 250));
   say(pick(['謝謝你！你最懂我了！', '耶～好開心！', '最喜歡你了！']), a.p.id);
   // 照顧中的那隻：心情 +4、經驗 +1（一天前 3 次，資料庫判斷）
-  if (a.p.active && !state.quiet) api.play('wish').then(refresh).catch(() => {});
+  if (a.p.active && !state.quiet) api.play('wish').then(cared).catch(() => {});
   if (book.done[a.p.id] < 3) laterWish(a, rnd(25000, 45000));
 }
 
@@ -947,7 +947,7 @@ async function throwBall(at) {
   if (ball) { const b = ball.el; b.classList.add('gone'); setTimeout(() => b.remove(), 500); ball = null; }
   if (a.useId !== id) return;
   if (a.wish === 'ball') wishDone(a, 'ball');
-  else if (a.p.active && !state.quiet) api.play('ball').then(refresh).catch(() => {});   // 陪牠玩：心情 +2
+  else if (a.p.active && !state.quiet) api.play('ball').then(cared).catch(() => {});   // 陪牠玩：心情 +2
   leave(a);
 }
 
@@ -1343,6 +1343,8 @@ function oops(msg) {
   const home = myPet();
   if (home) say(msg, home.id);
 }
+// 餵、摸、陪玩成功：套新狀態，也跟每日任務說一聲（js/shop.js 會重讀）
+function cared(s) { refresh(s); dispatchEvent(new Event('park:pet-care')); }
 // 資料庫回來的新狀態套到島上的每一隻
 function refresh(s) {
   state = { ...state, ...s, granted: [] };
@@ -1410,7 +1412,7 @@ async function feed(code) {
         setTimeout(() => bowl.remove(), 600);
         floatUp(a, `${i?.icon ?? '✨'} +${r.xp ?? 0}`);
         say(reply(r, a.p, code), a.p.id);
-        refresh(r);
+        cared(r);
         a.mode = 'rest';
         a.until = performance.now() + 2500;
         a.restPose = r.was === 'angry' ? 'angry' : 'cheer';
@@ -1431,7 +1433,7 @@ async function pat() {
     const r = await api.pat();
     if (a.mode === 'use' || a.using || a.next) leave(a);
     const was = a.mode;
-    refresh(r);
+    cared(r);
     say(reply(r, a.p, null), a.p.id);
     if (r.tired) { say(pick(['嘿嘿，摸好多次了～換個方式陪我玩嘛（丟球、幫我完成願望）', '好舒服…可是我想玩丟球！']), a.p.id); }
     if (['normal', 'happy'].includes(a.p.mood) && !['hungry', 'asleep'].includes(r.was)) {
