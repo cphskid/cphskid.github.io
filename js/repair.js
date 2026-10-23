@@ -73,6 +73,8 @@ const CSS = `
 .rp-head p{margin:2px 0 0;font-size:14px;color:#8a6a4a}
 .rp-tabs{display:flex;gap:6px}
 .rp-tabs button{flex:1;padding:8px 4px;white-space:nowrap;font-size:14px !important;border:3px solid #c9a46b;border-radius:14px;background:#fffaf0;font:900 15px/1.2 "Noto Sans TC",system-ui,sans-serif;color:#6b3f1f;cursor:pointer}
+.rp-tabs button{position:relative}
+.rp-dot{position:absolute;top:-5px;right:-5px;width:14px;height:14px;border-radius:50%;background:#e2553f;border:2px solid #fff}
 .rp-tabs button.on{background:#ffd877;border-color:#6b3f1f}
 .rp-body{overflow-y:auto;min-height:120px;display:flex;flex-direction:column;gap:10px;padding-right:2px}
 .rp-ver{padding:8px 10px;border-radius:14px;background:#fff;border:2px solid #f0dcb4}
@@ -147,7 +149,8 @@ async function paintWall(body) {
     if (String(h.date) > String(x.last.date)) x.last = h;
     by.set(h.who, x);
   }
-  const cards = [...by.values()].sort((a, b) => String(b.last.date).localeCompare(String(a.last.date)));
+  // 自己排第一，其他人最近幫忙的在前面
+  const cards = [...by.values()].sort((a, b) => (b.who === mine) - (a.who === mine) || String(b.last.date).localeCompare(String(a.last.date)));
   body.innerHTML = '<p class="rp-tip">這些小幫手告訴我們哪裡壞了、哪裡看不懂，樂園才越來越好玩！你的回報被採用，名字也會出現在這裡喔。</p>'
     + (cards.length ? `<div class="rp-wall">${cards.map((c) => `<div class="rp-helper ${c.who === mine ? 'me' : ''}"><b>${esc(c.who)}</b><small>幫忙 ${c.n} 次・${esc(c.last.game)}</small><small>${esc(c.last.what)}</small></div>`).join('')}</div>`
       : '<p>還沒有人上榜，你來當第一個小幫手吧！</p>');
@@ -168,7 +171,7 @@ export async function open() {
   veil.setAttribute('aria-modal', 'true');
   veil.innerHTML = `<div class="rp-box">
     <div class="rp-head"><img src="img/tick/point.webp" alt=""><div><h2>時光修理站</h2><p>看看最近修好了什麼，還有幫忙的小幫手們！</p></div></div>
-    <div class="rp-tabs"><button type="button" data-t="news" class="on">🔧 修好了什麼</button><button type="button" data-t="wall">💡 小幫手牆</button><button type="button" data-t="report">💬 我要回報</button></div>
+    <div class="rp-tabs"><button type="button" data-t="wall" class="on">💡 小幫手牆</button><button type="button" data-t="news">🔧 修好了什麼<i class="rp-dot" hidden></i></button><button type="button" data-t="report">💬 我要回報</button></div>
     <div class="rp-body"><p>翻開工作日誌中…</p></div>
     <button class="rp-btn" type="button" data-close>關閉</button></div>`;
   const close = () => { veil.remove(); removeEventListener('keydown', onKey); };
@@ -177,7 +180,7 @@ export async function open() {
   const body = veil.querySelector('.rp-body');
   const show = (t) => {
     veil.querySelectorAll('.rp-tabs button').forEach((b) => b.classList.toggle('on', b.dataset.t === t));
-    if (t === 'news') paintNews(body, before);
+    if (t === 'news') { paintNews(body, before); seenNews(); }
     else if (t === 'wall') paintWall(body);
     else paintReport(body, close);
   };
@@ -187,8 +190,13 @@ export async function open() {
     if (t) show(t.dataset.t);
   });
   document.body.appendChild(veil);
-  show('news');
+  // 一進來先看小幫手牆（自己排第一）；有沒看過的新版本，「修好了什麼」亮紅點，點進去才算看過
+  show('wall');
   const all = await loadLogs();
-  markSeen(all);
-  button?.querySelector('.repair-new')?.setAttribute('hidden', '');
+  veil.querySelector('.rp-dot').hidden = !hasNew(all);
+  async function seenNews() {
+    markSeen(await loadLogs());
+    veil.querySelector('.rp-dot')?.setAttribute('hidden', '');
+    button?.querySelector('.repair-new')?.setAttribute('hidden', '');
+  }
 }
