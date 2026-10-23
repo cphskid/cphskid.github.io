@@ -335,3 +335,17 @@ table.heat.many th,table.heat.many td{padding:5px 3px}
 .kid-days details[open] summary{margin-bottom:8px}
 .kid-days .tl-list{max-height:none}
 tbody[hidden]{display:none}
+.play .all-cls{display:flex;gap:8px;align-items:center;margin:0 0 10px;font-weight:700;color:var(--wood)}.play .all-cls select{max-width:100%}
+/* 管理員：要改善的地方 */
+details.fold{border-top:2px solid var(--cream-2);padding:8px 0}
+details.fold>summary{cursor:pointer;list-style:none;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+details.fold>summary::-webkit-details-marker{display:none}
+details.fold>summary::before{content:"▶";font-size:11px;color:var(--muted);transition:transform .15s}
+details.fold[open]>summary::before{transform:rotate(90deg)}
+details.fold>summary h3{margin:0}
+details.fold>summary small{color:var(--muted)}
+details.fold[open]>summary{margin-bottom:8px}
+details.fold.sub{border-top:1px dashed var(--cream-2);padding:6px 0 0;margin-top:6px}
+details.fold.sub>summary{font-weight:700;color:var(--wood)}
+.pill{display:inline-block;padding:1px 9px;border-radius:999px;font:800 12.5px/1.6 var(--f-body);color:#fff}
+.pill.good{background:#4aa834}.pill.mid{background:#d99c0b}.pill.bad{background:#e0533f}.pill.none{background:var(--cream-2);color:var(--muted)}
