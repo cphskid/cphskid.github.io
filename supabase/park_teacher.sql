@@ -359,16 +359,19 @@ declare
 begin
   if not public.is_teacher_of(v_code) then raise exception '這不是你的班'; end if;
 
+  -- 有在玩的排前面：最後活動時間新的在上，沒玩過的照暱稱排在最後
   select coalesce(jsonb_agg(jsonb_build_object(
            'id', s.id, 'login_id', s.login_id, 'nickname', s.nickname,
            'primary', s.class_code = v_code,
            'primary_class', s.class_code,
            'joined_at', m.joined_at,
+           'last_active', la.last_active,
            'locked', coalesce(s.locked_until > now(), false))
-         order by s.nickname, s.login_id), '[]'::jsonb)
+         order by la.last_active desc nulls last, s.nickname, s.login_id), '[]'::jsonb)
     into v_students
     from public.park_class_members m
     join public.students s on s.id = m.student_id
+    left join public.park_class_last_active(v_code) la on la.student_id = m.student_id
    where m.class_code = v_code;
 
   for f in
@@ -401,6 +404,42 @@ begin
   end loop;
 
   return jsonb_build_object('students', v_students, 'games', v_games);
+end;
+$$;
+
+-- 全班每個人的「最後活動時間」：各遊戲、樂園裡學生自己做的事（答題、存檔、過關、
+-- 金幣、寵物、換裝）取最新的一筆。表還沒裝到這個資料庫就跳過，所以各遊戲可以分開上線。
+-- 老師做的事（重設密碼、改暱稱、加班）不算；守護異世界的 characters 註冊時就建好，也不算。
+create or replace function public.park_class_last_active(p_code text)
+returns table (student_id uuid, last_active timestamptz)
+language plpgsql stable security definer set search_path = public, pg_temp as $$
+declare
+  v_src text[][] := array[
+    ['answer_events', 'at'], ['island_saves', 'updated_at'], ['level_progress', 'cleared_at'],
+    ['word_stats', 'last_at'], ['item_uses', 'at'],
+    ['room_members', 'joined_at'], ['park_coin_ledger', 'created_at'],
+    ['park_pets', 'played_at'], ['park_pets', 'patted_at'], ['park_pets', 'fed_at'],
+    ['park_travellers', 'updated_at'], ['park_profiles', 'updated_at']];
+  v_parts text[] := '{}';
+  i int;
+begin
+  for i in 1 .. array_length(v_src, 1) loop
+    if exists (select 1 from information_schema.columns c
+                where c.table_schema = 'public' and c.table_name = v_src[i][1]
+                  and c.column_name = v_src[i][2])
+       and exists (select 1 from information_schema.columns c
+                    where c.table_schema = 'public' and c.table_name = v_src[i][1]
+                      and c.column_name = 'student_id') then
+      v_parts := v_parts || format(
+        'select t.student_id, max(t.%I) at from public.%I t
+           join public.park_class_members m on m.student_id = t.student_id and m.class_code = $1
+          group by t.student_id', v_src[i][2], v_src[i][1]);
+    end if;
+  end loop;
+  if array_length(v_parts, 1) is null then return; end if;
+  return query execute
+    'select x.student_id, max(x.at) from (' || array_to_string(v_parts, ' union all ') || ') x group by x.student_id'
+    using p_code;
 end;
 $$;
 
@@ -595,6 +634,7 @@ $$;
 -- 8. 權限
 -- -----------------------------------------------------------------------------
 revoke all on function
+  public.park_class_last_active(text),
   public.park_teaches_student(uuid), public.park_log(text, text, text, jsonb),
   public.park_require_staff(), public.park_facility_list(), public.park_can_enter(text),
   public.park_teacher_classes(), public.park_create_class(text, int, text),

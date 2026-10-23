@@ -32,6 +32,7 @@ let classes = [];
 let active = null;                            // 現在選的班級代碼
 let facilities = [];                          // park_facility_list：設施現在的狀態
 let onlyAttention = false;
+let byName = false;                           // 全班總覽：預設有在玩的排前面，可切回依名字
 let tab = 'classes';
 
 if (IS_DEV) $('#env').hidden = false;
@@ -443,7 +444,14 @@ async function paintOverview(c) {
   const plays = new Map((await playsP ?? []).map((r) => [r.student_id, r]));
   lastOverview = { cls: c, ...ov, plays };
   const games = ov.games;
-  const students = ov.students;
+  // 最後活動：資料庫有給（park_class_last_active）就用，沒有就拿各遊戲的最後遊玩時間
+  const lastOf = (s) => [s.last_active, ...games.map((g) => g.rows[s.id]?.last_played)]
+    .filter(Boolean).map((t) => new Date(t).getTime()).reduce((a, b) => Math.max(a, b), 0);
+  const name = (a, b) => a.nickname.localeCompare(b.nickname, 'zh-TW') || a.login_id.localeCompare(b.login_id);
+  const students = ov.students.map((s) => ({ ...s, last: lastOf(s) }))
+    .sort(byName ? name : (a, b) => (b.last - a.last) || name(a, b));
+  const week = students.filter((s) => s.last > Date.now() - 7 * 86400000).length;
+  lastOverview.students = students;
   const flagged = (s) => s.locked || games.some((g) => g.rows[s.id]?.attention);
   const nFlag = students.filter(flagged).length;
   const shown = onlyAttention ? students.filter(flagged) : students;
@@ -468,13 +476,15 @@ async function paintOverview(c) {
       <div class="st">${esc(r.status ?? '')}</div>${r.attention && r.reason ? `<div class="why">${ico('st-attention')}${esc(r.reason)}</div>` : ''}</td>`;
   };
   p.innerHTML = `<div class="head">${h2('chart', '全班總覽')}
-      <div class="row"><button class="toggle small ${onlyAttention ? 'on' : ''}" data-att><i></i>只看需要注意（${nFlag}）</button>
+      <div class="row"><button class="toggle small ${byName ? '' : 'on'}" data-sort title="打開：最近有在玩的排前面；關掉：依名字排"><i></i>有在玩的排前面</button>
+      <button class="toggle small ${onlyAttention ? 'on' : ''}" data-att><i></i>只看需要注意（${nFlag}）</button>
       <button class="ghost small" data-csv>${ico('export')}匯出 CSV</button><button class="ghost small" data-reload>${ico('clock')}重新整理</button></div></div>
-    <p class="lead">${students.length} 位學生${nFlag ? `，<b class="warn">${nFlag} 位需要注意</b>` : ''}。${games.length ? '每一欄是這個班有開放的遊戲。' : '這個班還沒有開放任何遊戲，在上面勾選。'}</p>
+    <p class="lead">${students.length} 位學生，<b>最近 7 天有 ${week} 位來玩</b>${nFlag ? `，<b class="warn">${nFlag} 位需要注意</b>` : ''}。${games.length ? '每一欄是這個班有開放的遊戲。' : '這個班還沒有開放任何遊戲，在上面勾選。'}</p>
     <div class="tablewrap"><table class="ov">
       <thead><tr><th class="stu">學生</th>${head}<th class="ops">學生管理</th></tr></thead>
       <tbody>${shown.map((s) => `<tr>
         <td class="stu">${avCell(avs.get(s.id))}<b>${esc(s.nickname)}</b><small>${esc(s.login_id)}</small>
+          <small class="seen ${s.last > Date.now() - 7 * 86400000 ? 'on' : ''}" title="在任何遊戲或樂園裡最後一次動作的時間">${s.last ? `最後活動 ${esc(ago(s.last))}` : '還沒玩過'}</small>
           ${plays.get(s.id) ? `<small class="now" title="最近 60 天最後玩的地方">在玩：${esc(playText(plays.get(s.id)))}</small>` : ''}
           ${s.primary ? '' : `<span class="tag" title="這個班不是他的主要班級；守護異世界的排行榜在他的主要班級">${ico('st-info')}另外加入</span>`}
           ${s.locked ? `<span class="tag bad">${ico('st-locked')}密碼鎖住了</span>` : ''}</td>
@@ -487,6 +497,7 @@ async function paintOverview(c) {
       </tbody></table></div>
     ${shown.length ? '' : `<div class="empty small"><img src="img/admin/tick-done.webp" alt=""><p>目前沒有需要注意的學生。</p></div>`}`;
 
+  $('[data-sort]', p).onclick = () => { byName = !byName; paintOverview(c); };
   $('[data-att]', p).onclick = () => { onlyAttention = !onlyAttention; paintOverview(c); };
   $('[data-reload]', p).onclick = (e) => run(e.currentTarget, () => paintOverview(c));
   $('[data-csv]', p).onclick = () => exportCsv();
@@ -623,10 +634,10 @@ function exportCsv() {
   if (!lastOverview) return;
   const { cls, students, games } = lastOverview;
   const q = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
-  const head = ['暱稱', '帳號', '主要班級', '最後在玩'];
+  const head = ['暱稱', '帳號', '主要班級', '最後活動', '最後在玩'];
   games.forEach((g) => head.push(`${g.name} 進度%`, `${g.name} 最後遊玩`, `${g.name} 狀態`, `${g.name} 需要注意`));
   const rows = students.map((s) => {
-    const r = [s.nickname, s.login_id, s.primary ? '是' : s.primary_class ?? '',
+    const r = [s.nickname, s.login_id, s.primary ? '是' : s.primary_class ?? '', s.last ? new Date(s.last).toLocaleString('zh-TW') : '',
       lastOverview.plays?.get(s.id) ? playText(lastOverview.plays.get(s.id)) : ''];
     games.forEach((g) => {
       const x = g.rows[s.id];
