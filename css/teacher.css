@@ -268,3 +268,33 @@ td.stu .av .doll.head{position:relative;display:block;width:100%;height:100%;bor
 td.stu .av .doll.head img{position:absolute;left:-50%;top:-12.5%;width:200%;height:auto;aspect-ratio:448/600;border-radius:0;background:none;object-fit:fill}
 
 .fb-filters{display:flex;gap:8px;flex-wrap:wrap}
+
+/* ---------- 遊玩紀錄：總覽的「在玩」、學生時間軸、管理員全站動態 ---------- */
+td.stu small.now{display:block;color:var(--wood-2);font-weight:700;max-width:16em}
+small.sub{display:block;color:var(--muted);font:500 12px/1.4 var(--f-body)}
+th.num,td.num{text-align:right}
+.hint{margin:4px 0 0;color:var(--muted);font-size:13px}
+label.inline{flex-direction:row;align-items:center;gap:8px}
+label.inline select{width:auto}
+dialog:has(.dlg.tl){max-width:min(680px,calc(100vw - 32px))}
+.tl-list{max-height:min(60vh,520px);overflow-y:auto;padding-right:4px}
+.tl-list h4{margin:12px 0 6px;font:900 15px/1.2 var(--f-body);color:var(--wood);position:sticky;top:0;background:var(--paper);padding:4px 0}
+.tl-list ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.tl-list li{display:grid;grid-template-columns:7.5em 32px 1fr;gap:8px;align-items:center;background:#fff;border:2px solid var(--cream-2);border-radius:12px;padding:6px 10px}
+.tl-list li.k-save,.tl-list li.k-stamp{background:var(--paper);border-style:dashed}
+.tl-list time{font:700 13px/1.2 var(--f-body);color:var(--muted);font-variant-numeric:tabular-nums}
+.tl-list img{width:32px;height:32px;object-fit:contain}
+.tl-list small{display:block;color:var(--muted);font-size:12px}
+@media (max-width:520px){.tl-list li{grid-template-columns:1fr 28px;}.tl-list li time{grid-column:1 / -1}.tl-list li img{display:none}}
+.kpis{display:flex;flex-wrap:wrap;gap:12px;margin:8px 0 14px}
+.kpi{flex:1 1 140px;background:#fff;border:2px solid var(--cream-2);border-radius:16px;padding:10px 14px}
+.kpi b{display:block;font:900 30px/1.1 var(--f-disp);color:var(--wood);font-variant-numeric:tabular-nums}
+.kpi span{color:var(--muted);font:700 13px/1.2 var(--f-body)}
+figure.days{display:flex;align-items:flex-end;gap:2px;height:150px;margin:0 0 16px;padding:8px 10px 0;background:#fff;border:2px solid var(--cream-2);border-radius:16px;overflow-x:auto}
+figure.days .day{flex:1 0 22px;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:2px}
+figure.days .day i{display:block;width:70%;max-width:28px;min-height:2px;background:var(--sea);border-radius:4px 4px 0 0}
+figure.days .day:hover i{background:var(--sea-deep)}
+figure.days .n{font:700 12px/1 var(--f-body);color:var(--ink);font-variant-numeric:tabular-nums}
+figure.days small{font:500 11px/1.6 var(--f-body);color:var(--muted);white-space:nowrap}
+.act-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:14px;margin-bottom:14px}
+#p-act h3{margin:10px 0 6px;font:900 17px/1.3 var(--f-body);color:var(--wood)}

@@ -199,6 +199,9 @@ export const teacher = {
   removeStudent:  (code, id) => call('park_remove_from_class', { p_code: code, p_student: id }),
   setPrimary:     (code, id) => call('park_teacher_set_primary', { p_code: code, p_student: id }),
   facilities:     () => call('park_facility_list'),
+  // 遊玩紀錄（park_playlog.sql）：全班每個人最後在玩什麼、一位學生的時間軸
+  lastPlay:       (code) => call('park_class_last_play', { p_code: code }),
+  activity:       (id, days = 30) => call('park_student_activity', { p_student: id, p_days: days }),
 };
 export const admin = {
   facilities:     () => call('park_admin_facilities'),
@@ -216,6 +219,7 @@ export const admin = {
   addBannedWord:  (word, whole) => call('admin_add_banned_word', { p_word: word, p_whole: whole }),
   removeBannedWord: (word) => call('admin_remove_banned_word', { p_word: word }),
   flaggedNicknames: () => call('admin_flagged_nicknames'),
+  activity:       (days = 7) => call('park_admin_activity', { p_days: days }),   // 全站動態
 };
 // 問題回報收件匣（守護異世界 schema.sql 的函式，P3 從英文管理員頁搬過來）。
 // 管理員看全部、可以分類／回覆／刪除；老師只看得到自己班學生的回報（伺服器過濾），唯讀。
