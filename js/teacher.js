@@ -462,7 +462,9 @@ async function paintOverview(c) {
     return;
   }
   const head = games.map((g) => {
-    const url = IS_DEV ? g.detail_url_dev : g.detail_url;
+    // 帶 ?teacher&class=：遊戲那邊直接開老師頁的這一班（老師自己也是學生時，不會被帶進遊戲）
+    const base = IS_DEV ? g.detail_url_dev : g.detail_url;
+    const url = base && `${base}${base.includes('?') ? '&' : '?'}teacher&class=${encodeURIComponent(c.code)}`;
     return `<th><div class="gh"><img src="${esc(badgeOf(g.code))}" alt=""><span><b>${esc(g.name)}</b>
       ${url ? `<a href="${esc(url)}" title="這個遊戲自己的老師頁：最常錯的字、額外開放關卡">細節頁 ›</a>` : ''}</span></div>
       ${g.error ? `<small class="warn">${esc(g.error)}</small>` : ''}</th>`;
