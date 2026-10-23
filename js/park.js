@@ -355,6 +355,7 @@ const fbBtn = $('#fb-btn');
 window.ParkFeedback?.mount({
   game: 'park',
   fab: false,
+  notify: true,   // 一登入就跳「你回報的問題處理囉！」
   getToken: async () => (await db?.auth.getSession())?.data.session?.access_token,
   // 在哪一幕、開著哪個視窗
   context: () => ({ screen: [document.body.dataset.scene, ...['acct', 'pass', 'petroom', 'wardrobe', 'veil'].filter((id) => !$('#' + id).hidden)].join('/') }),
