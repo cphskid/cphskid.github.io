@@ -15,6 +15,7 @@
 //     context: () => ({ screen: 'ch3-2' }),// 選填：送出當下要附上的東西，screen 會另外存一欄
 //     fab: true,                           // 選填：要不要放浮動按鈕；false 就自己做按鈕叫 ParkFeedback.open()
 //     onDot: (n) => {},                    // 選填：「我的回報」有幾則新回覆，給自己做的按鈕亮紅點
+//     notify: true,                        // 選填：一登入就跳「你回報的問題處理囉！」（樂園大門用；看過就不再跳）
 //   })
 (function () {
   if (window.ParkFeedback) return;
@@ -109,6 +110,7 @@
   async function loadMine() {
     try { mine = await rpc('my_feedback'); } catch { mine = mine || null; }
     paintDot();
+    if (opts.notify) notifyFixed();
   }
 
   // ---------- 畫面 ----------
@@ -156,6 +158,41 @@
 
   let veil = null;
   function close() { if (veil) { veil.remove(); veil = null; } }
+
+  // 登入時跳一次「你回報的問題處理囉！」：老師改了狀態或回覆、學生還沒看過的才算
+  // （updated_at 只在老師處理時才有）。按「好」或關掉就記成看過，下次不再跳。
+  function notifyFixed() {
+    const rows = (mine || []).filter(isUnread);
+    if (!rows.length || veil) return;
+    injectCss();
+    veil = document.createElement('div');
+    veil.className = 'pfb pfb-veil pop';
+    setTimeout(() => veil && veil.classList.remove('pop'), 400);
+    veil.setAttribute('role', 'dialog');
+    veil.setAttribute('aria-modal', 'true');
+    veil.innerHTML = `<div class="pfb-box"><button class="pfb-x" data-close aria-label="關閉">✕</button>
+      <h2>💌 謝謝你的問題回報！</h2><p>你回報的問題處理囉！</p>
+      <div class="pfb-list">${rows.slice(0, 3).map((r) => {
+        const [label, tone, say] = MY_STATUS[r.status] || MY_STATUS.new;
+        const msg = String(r.message || '');
+        return `<div class="pfb-item fresh">
+          <div class="pfb-row"><span class="pfb-badge ${tone}">${label}</span><span>你在 ${new Date(r.created_at).toLocaleDateString('zh-TW')} 說：</span></div>
+          <div class="pfb-msg">${esc(msg.length > 60 ? msg.slice(0, 60) + '…' : msg)}</div>
+          <div class="pfb-reply">${r.reply ? '💌 ' + esc(r.reply) : say}</div></div>`;
+      }).join('')}</div>
+      ${rows.length > 3 ? `<p class="note">還有 ${rows.length - 3} 則，按「看全部」看。</p>` : ''}
+      <div class="pfb-btns"><button class="b" data-all>看全部</button><button class="b go" data-close>好</button></div></div>`;
+    const seen = () => {
+      const now = new Date().toISOString();
+      mine = (mine || []).map((r) => ({ ...r, seen_at: now }));
+      paintDot();
+      rpc('seen_my_feedback').catch(() => { /* 沒記到就下次再跳一次 */ });
+    };
+    veil.querySelectorAll('[data-close]').forEach((b) => { b.onclick = () => { seen(); close(); }; });
+    veil.addEventListener('click', (e) => { if (e.target === veil) { seen(); close(); } });
+    veil.querySelector('[data-all]').onclick = () => { close(); open('mine'); };   // 「我的回報」打開時自己會記成看過
+    document.body.appendChild(veil);
+  }
 
   function open(tab) {
     injectCss();
