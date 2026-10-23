@@ -569,20 +569,26 @@ function dayList(n) {
 }
 const dayHead = (iso) => { const d = new Date(iso + 'T00:00:00'); return `<b>${d.getMonth() + 1}/${d.getDate()}</b><small>${'日一二三四五六'[d.getDay()]}</small>`; };
 
+let allClasses = null;                      // 管理員：全站的班（遊玩紀錄分頁可以切到別人的班）
 async function renderPlay() {
   if (!classes.length) classes = await auth.teacher.classes();
-  if (!classes.some((c) => c.code === active)) active = classes[0]?.code ?? null;
+  if (who.is_admin && !allClasses) allClasses = await auth.admin.classes().catch(() => []);
+  const others = (allClasses ?? []).filter((x) => !classes.some((c) => c.code === x.code) && x.members > 0);
+  if (!classes.some((c) => c.code === active) && !others.some((c) => c.code === active)) active = classes[0]?.code ?? others[0]?.code ?? null;
   if (!active) {
     view.innerHTML = `<section class="panel"><div class="empty"><img src="img/admin/tick-empty.webp" alt=""><p>還沒有班級，先到「我的班級」開一個。</p></div></section>`;
     return;
   }
-  const c = classes.find((x) => x.code === active);
+  const c = classes.find((x) => x.code === active) ?? others.find((x) => x.code === active);
   view.innerHTML = `<section class="panel play">
     <div class="head">${h2('clock', '遊玩紀錄')}
       <label class="inline">看最近 <select data-days>${[7, 14, 28].map((d) => `<option value="${d}" ${d === playDays ? 'selected' : ''}>${d} 天</option>`).join('')}</select></label></div>
-    ${classes.length > 1 ? `<div class="classtabs" role="tablist">${classes.map((x) => `<button role="tab" data-code="${esc(x.code)}" class="${x.code === active ? 'on' : ''}"><b>${esc(x.name || x.code)}</b><small>${x.members} 人</small></button>`).join('')}</div>` : ''}
+    ${others.length ? `<label class="inline all-cls">管理員：看全站其他班 <select data-other><option value="">選一班…</option>
+      ${others.map((x) => `<option value="${esc(x.code)}" ${x.code === active ? 'selected' : ''}>${esc(x.name || x.code)}（${esc(x.owner_name ?? '')}・${x.members} 人）</option>`).join('')}</select></label>` : ''}
+    ${classes.length > 1 || (others.length && classes.length) ? `<div class="classtabs" role="tablist">${classes.map((x) => `<button role="tab" data-code="${esc(x.code)}" class="${x.code === active ? 'on' : ''}"><b>${esc(x.name || x.code)}</b><small>${x.members} 人</small></button>`).join('')}</div>` : ''}
     <div id="play-body"><p class="loading"><img src="img/tick/map.webp" alt="">整理中…</p></div></section>`;
   $('[data-days]').onchange = (e) => { playDays = Number(e.target.value); renderPlay(); };
+  $('[data-other]')?.addEventListener('change', (e) => { if (e.target.value) { active = e.target.value; playKid = null; renderPlay(); } });
   $$('.play .classtabs [data-code]').forEach((b) => { b.onclick = () => { active = b.dataset.code; playKid = null; renderPlay(); }; });
   if (playNames.code !== c.code) {
     const ov = lastOverview?.cls?.code === c.code ? lastOverview : await auth.teacher.overview(c.code);
@@ -850,6 +856,63 @@ async function renderFeedback() {
 // =============================================================================
 // ---------- 管理員：全站動態（park_admin_activity） ----------
 let actDays = 7;
+// ---------- 管理員：要改善的地方（park_admin_insights）：大家卡在哪、玩多久、常錯什麼 ----------
+const ISLAND_ORDER = ['ch1', 'ch2', 'ch3', 'ch4', 'ch5', 'ch6', 'ch7', 'end', 'village', 'town', 'sky', 'isles', 'post'];
+const NOW_SLOTS = ['village', 'town', 'sky', 'isles', 'post'];   // 現在篇：沒有「過關」
+const SKILL_ZH = { recognize: '認字', spell: '拼字', listen: '聽音' };
+// 紅黃綠：80% 以上綠、60~79% 黃、不到 60% 紅
+const pctPill = (a, b) => { if (!b) return '<span class="pill none">—</span>'; const v = Math.round(100 * a / b);
+  return `<span class="pill ${v >= 80 ? 'good' : v >= 60 ? 'mid' : 'bad'}">${v}%</span>`; };
+let insDays = 14;
+async function paintInsights(days = insDays) {
+  const p = $('#p-ins');
+  if (!p) return;
+  insDays = days;
+  const head = `<div class="head">${h2('search', '要改善的地方')}
+    <div class="row">${[14, 30, 90].map((d) => `<button class="toggle small ${d === days ? 'on' : ''}" data-ins-days="${d}"><i></i>最近 ${d} 天</button>`).join('')}</div></div>`;
+  let a;
+  try { a = await auth.admin.insights(days); }
+  catch (e) {
+    p.innerHTML = `${head}<div class="empty small"><img src="img/admin/tick-error.webp" alt=""><p>${esc(/park_admin_insights|schema cache/.test(e.message) ? '分析還沒裝到資料庫。' : e.message)}</p></div>`;
+    return;
+  }
+  const h = a.habit ?? { one: 0, few: 0, many: 0, trips: [] };
+  const island = [...a.island].sort((x, y) => ISLAND_ORDER.indexOf(x.slot) - ISLAND_ORDER.indexOf(y.slot));
+  const stuckTxt = (o) => Object.entries(o ?? {}).sort((x, y) => y[1] - x[1]).map(([k, n]) => `${k === '0' ? '剛開始' : `第 ${k} 步`} ${n} 人`).join('、');
+  const stopped = [...a.guardian].filter((g) => g.stopped > 0).sort((x, y) => y.stopped - x.stopped).slice(0, 8);
+  const chs = [...new Set(a.guardian.map((g) => g.chapter))];
+  p.innerHTML = `${head}
+    <p class="lead">「過關率」看的是全部時間；「答對率」「常錯的字」「回來玩」看最近 ${a.days} 天。紅色＝不到 60%，先看紅的。</p>
+    <details class="fold" open><summary><h3>大家會不會回來玩</h3></summary>
+      <div class="kpis">
+        <div class="kpi"><b>${h.one}</b><span>人只來 1 天</span></div>
+        <div class="kpi"><b>${h.few}</b><span>人來 2～3 天</span></div>
+        <div class="kpi"><b>${h.many}</b><span>人來 4 天以上</span></div>
+      </div>
+      ${h.trips.length ? `<p class="tip">進一次待多久（中位數）：${h.trips.map((t) => `${esc(t.game.replace(/^穿越吧！/, ''))} ${t.median} 分鐘（${t.trips} 趟）`).join('、')}。太短可能是一進去就不知道要做什麼。</p>` : ''}
+    </details>
+    <details class="fold" open><summary><h3>島嶼開拓者：每一章卡在哪</h3></summary>
+      <div class="tablewrap"><table class="adm">
+        <thead><tr><th>章節／地點</th><th class="num">開始</th><th class="num">過關</th><th>過關率</th><th>沒過的人停在</th><th class="num">平均失誤</th></tr></thead>
+        <tbody>${island.map((r) => `<tr><td><b>${esc(r.label)}</b></td><td class="num">${r.started}</td><td class="num">${r.done}</td>
+          ${NOW_SLOTS.includes(r.slot) ? '<td>—</td><td>—</td>' : `<td>${pctPill(r.done, r.started)}</td><td>${esc(stuckTxt(r.stuck)) || '—'}</td>`}<td class="num">${r.mistakes ?? '—'}</td></tr>`).join('') || '<tr><td colspan="6">還沒有人玩</td></tr>'}</tbody></table></div>
+      <p class="tip">現在篇（漁村、小鎮…）沒有「過關」，看開始人數就好。</p>
+    </details>
+    <details class="fold"><summary><h3>守護異世界：大家停在哪一關</h3>${stopped.length ? `<small>最多人停住：${esc(stopped[0].name)}（${stopped[0].stopped} 人）</small>` : ''}</summary>
+      ${stopped.length ? `<p class="tip">「停住」＝打到這關就沒有再往後、也還沒過。人多的關可能太難。</p>
+      <div class="tablewrap"><table class="adm"><thead><tr><th>關卡</th><th class="num">停住</th><th class="num">打過</th><th class="num">過關</th><th>最近答對率</th></tr></thead>
+        <tbody>${stopped.map((g) => `<tr><td><b>第${'一二三'[g.chapter - 1]}章 ${g.no}. ${esc(g.name)}</b></td><td class="num">${g.stopped}</td><td class="num">${g.played}</td><td class="num">${g.cleared}</td><td>${pctPill(g.ok, g.n)}</td></tr>`).join('')}</tbody></table></div>` : '<p class="tip">還沒有人停在半路。</p>'}
+      ${chs.map((c) => `<details class="fold sub"><summary>第${'一二三'[c - 1]}章每一關</summary><div class="tablewrap"><table class="adm">
+        <thead><tr><th>關卡</th><th class="num">打過</th><th class="num">過關</th><th class="num">停住</th><th>最近答對率</th></tr></thead>
+        <tbody>${a.guardian.filter((g) => g.chapter === c).map((g) => `<tr><td>${g.no}. ${esc(g.name)}</td><td class="num">${g.played}</td><td class="num">${g.cleared}</td><td class="num">${g.stopped || ''}</td><td>${pctPill(g.ok, g.n)}</td></tr>`).join('')}</tbody></table></div></details>`).join('')}
+    </details>
+    <details class="fold"><summary><h3>守護異世界：全站最常錯的字</h3></summary>
+      <div class="tablewrap"><table class="adm"><thead><tr><th>字</th><th>題型</th><th class="num">錯幾次</th><th class="num">幾個人錯</th><th>答對率</th></tr></thead>
+        <tbody>${a.words.map((w) => `<tr><td><b>${esc(w.word)}</b><small class="sub">${esc(w.zh)}</small></td><td>${esc(SKILL_ZH[w.skill] ?? w.skill)}</td><td class="num">${w.bad}</td><td class="num">${w.kids}</td><td>${pctPill(w.n - w.bad, w.n)}</td></tr>`).join('') || '<tr><td colspan="5">還沒有人答錯</td></tr>'}</tbody></table></div>
+    </details>`;
+  $$('[data-ins-days]', p).forEach((b) => { b.onclick = () => paintInsights(Number(b.dataset.insDays)); });
+}
+
 async function paintActivity(days) {
   const p = $('#p-act');
   if (!p) return;
@@ -886,13 +949,13 @@ async function paintActivity(days) {
         <thead><tr><th>地方</th><th class="num">人數</th><th class="num">次數</th></tr></thead>
         <tbody>${a.top.map((t) => `<tr><td><b>${esc(t.label)}</b><small class="sub">${esc(t.game)}</small></td><td class="num">${t.players}</td><td class="num">${t.times}</td></tr>`).join('') || '<tr><td colspan="3">還沒有人玩</td></tr>'}</tbody></table></div></div>
     </div>
-    <h3>最近動態</h3>
+    <details class="fold"><summary><h3>最近動態（${a.recent.length} 筆）</h3></summary>
     <div class="tablewrap"><table class="adm">
       <thead><tr><th>時間</th><th>誰</th><th>玩什麼</th><th>多久</th></tr></thead>
       <tbody>${a.recent.map((r) => `<tr><td class="nowrap">${esc(when(r.started_at))}</td>
         <td><b>${esc(r.nickname)}</b><small class="sub">${esc(r.login_id)}${r.class_code ? `・${esc(r.class_code)}` : ''}</small></td>
         <td>${esc(r.game)}${r.label && r.label !== r.game ? `・${esc(r.label)}` : ''}${r.note || r.kind === 'save' ? `<small class="sub">${esc([r.note, KIND_NOTE[r.kind]].filter(Boolean).join('・'))}</small>` : ''}</td>
-        <td class="nowrap">${esc(mins(r.seconds)) || '—'}</td></tr>`).join('') || '<tr><td colspan="4">還沒有動態</td></tr>'}</tbody></table></div>
+        <td class="nowrap">${esc(mins(r.seconds)) || '—'}</td></tr>`).join('') || '<tr><td colspan="4">還沒有動態</td></tr>'}</tbody></table></div></details>
     <p class="hint">「進來幾趟」「共玩幾分鐘」從 ${esc(a.log_since ? new Date(a.log_since).toLocaleDateString('zh-TW') : '遊玩紀錄上線那天')} 開始記錄；更早的只看得到守護異世界每一場的答題和島嶼開拓者每章的最後存檔。</p>`;
   wireAct(p);
 }
@@ -913,6 +976,7 @@ async function renderAdmin() {
 
   view.innerHTML = `
   <section class="panel" id="p-act"><div class="head">${h2('chart', '全站動態')}</div><p class="lead">讀取中…</p></section>
+  <section class="panel" id="p-ins"><div class="head">${h2('search', '要改善的地方')}</div><p class="lead">讀取中…</p></section>
   <section class="panel">
     <div class="head">${h2('settings', '設施管理')}</div>
     <p class="lead">遊戲出問題時改成「維修中」，學生馬上進不去，地圖上也會掛告示，不用重新部署。試營運只有下面填的試玩班能玩。年級只是建議，不會擋人。</p>
@@ -998,6 +1062,7 @@ async function renderAdmin() {
     </details>
   </section>`;
   paintActivity(actDays);
+  paintInsights();
 
   // 暱稱禁用字
   $$('tr[data-flag]').forEach((tr) => {

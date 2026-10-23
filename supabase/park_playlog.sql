@@ -306,14 +306,89 @@ begin
 end;
 $$;
 
+-- 管理員：要改哪裡（2026-10-23）。全站動態回答「多少人玩」，這個回答「大家卡在哪、玩多久、常錯什麼」。
+--   island  每一章（全部時間）：開始幾人、過關幾人、沒過關的停在第幾步、平均失誤、「想一想」答對率
+--   guardian 每一關（全部時間）：打過幾人、過關幾人、最遠停在這關（沒過）的人數；最近 N 天的答對率
+--   words   最近 N 天全站最常錯的字（守護異世界）
+--   habit   最近 N 天：來 1 天、2~3 天、4 天以上的人數；每個遊戲一趟平均幾分鐘
+create or replace function public.park_admin_insights(p_days int default 14)
+returns jsonb language plpgsql stable security definer set search_path = public, pg_temp as $$
+declare
+  v_days  int := least(greatest(coalesce(p_days, 14), 1), 90);
+  v_since timestamptz := now() - make_interval(days => v_days);
+  v_island jsonb := '[]'; v_guard jsonb := '[]'; v_words jsonb := '[]'; v_habit jsonb;
+begin
+  if not public.is_admin() then raise exception '只有管理員可以看'; end if;
+
+  if to_regclass('public.island_saves') is not null then
+    execute $q$
+      select coalesce(jsonb_agg(x order by x ->> 'slot'), '[]') from (
+        select jsonb_build_object('slot', s.slot, 'label', public.park_island_label(s.slot),
+                 'started', count(*), 'done', count(*) filter (where s.done),
+                 'stuck', (select coalesce(jsonb_object_agg(t.step, t.n), '{}') from (
+                             select s2.step, count(*) n from public.island_saves s2
+                              where s2.slot = s.slot and not s2.done group by s2.step) t),
+                 'mistakes', round(avg(case when jsonb_typeof(s.data -> 'mistakes') = 'number' then (s.data ->> 'mistakes')::numeric
+                                            when jsonb_typeof(s.data -> 'broken') = 'number' then (s.data ->> 'broken')::numeric end), 1),
+                 'last', max(s.updated_at)) as x
+          from public.island_saves s
+         where s.slot not in ('world', 'medals')
+         group by s.slot) t
+    $q$ into v_island;
+  end if;
+
+  select coalesce(jsonb_agg(x order by (x ->> 'ord')::int), '[]') into v_guard from (
+    select jsonb_build_object('level', l.id, 'ord', row_number() over (order by l.chapter, l.no), 'chapter', l.chapter, 'no', l.no, 'name', l.name,
+             'played', (select count(distinct a.student_id) from public.answer_events a where a.level_id = l.id),
+             'cleared', (select count(*) from public.level_progress p where p.level_id = l.id and p.cleared_at is not null),
+             'stopped', (select count(*) from (
+                           select distinct on (a.student_id) a.student_id, a.level_id
+                             from public.answer_events a join public.levels l2 on l2.id = a.level_id
+                            order by a.student_id, l2.chapter desc, l2.no desc) f
+                          where f.level_id = l.id
+                            and not exists (select 1 from public.level_progress p where p.student_id = f.student_id and p.level_id = l.id and p.cleared_at is not null)),
+             'n', count(a.*), 'ok', count(a.*) filter (where a.correct)) as x
+      from public.levels l
+      left join public.answer_events a on a.level_id = l.id and a.at >= v_since
+     group by l.id, l.chapter, l.no, l.name) t
+   where (x ->> 'played')::int > 0;
+
+  select coalesce(jsonb_agg(x), '[]') into v_words from (
+    select jsonb_build_object('word', w.word, 'zh', w.zh, 'skill', a.skill, 'n', count(*), 'bad', count(*) filter (where not a.correct),
+             'kids', count(distinct a.student_id) filter (where not a.correct)) as x
+      from public.answer_events a join public.words w on w.id = a.word_id
+     where a.at >= v_since
+     group by w.word, w.zh, a.skill
+    having count(*) filter (where not a.correct) > 0
+     order by count(*) filter (where not a.correct) desc, count(distinct a.student_id) desc
+     limit 15) t;
+
+  with act as materialized (select * from public.park_activity_rows(v_since, null) where kind <> 'stamp'),
+  per as (select student_id, count(distinct (started_at at time zone 'Asia/Taipei')::date) d from act group by 1)
+  select jsonb_build_object(
+    'one', (select count(*) from per where d = 1),
+    'few', (select count(*) from per where d between 2 and 3),
+    'many', (select count(*) from per where d >= 4),
+    'trips', (select coalesce(jsonb_agg(jsonb_build_object('game', public.park_facility_name(t.facility), 'trips', t.n, 'avg', t.avg, 'median', t.med)), '[]') from (
+                select l.facility, count(*) n,
+                       round(avg(extract(epoch from coalesce(l.ended_at, l.last_seen) - l.started_at)) / 60.0, 1) avg,
+                       round((percentile_cont(0.5) within group (order by extract(epoch from coalesce(l.ended_at, l.last_seen) - l.started_at)) / 60.0)::numeric, 1) med
+                  from public.park_play_log l
+                 where l.started_at >= v_since and l.facility <> 'park' and l.place not in ('map', 'world')
+                 group by l.facility) t)) into v_habit;
+
+  return jsonb_build_object('days', v_days, 'island', v_island, 'guardian', v_guard, 'words', v_words, 'habit', v_habit);
+end;
+$$;
+
 revoke all on function
   public.park_island_label(text), public.park_activity_rows(timestamptz, uuid[]), public.park_facility_name(text),
   public.park_play_start(text, text, text), public.park_play_beat(bigint, boolean),
   public.park_student_activity(uuid, int), public.park_class_last_play(text), public.park_admin_activity(int),
-  public.park_class_days(text, int)
+  public.park_class_days(text, int), public.park_admin_insights(int)
   from public, anon;
 grant execute on function
   public.park_play_start(text, text, text), public.park_play_beat(bigint, boolean),
   public.park_student_activity(uuid, int), public.park_class_last_play(text), public.park_admin_activity(int),
-  public.park_class_days(text, int)
+  public.park_class_days(text, int), public.park_admin_insights(int)
   to authenticated;
