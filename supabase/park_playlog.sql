@@ -281,12 +281,39 @@ begin
 end;
 $$;
 
+-- 老師「遊玩紀錄」分頁：全班每人每天、每個遊戲玩了多久（台北時間的日期；最多 35 天）
+-- seconds＝遊玩紀錄表的時間（大廳不算）；plays＝幾趟／幾場（含舊紀錄，所以 10/23 前沒有時間也看得出有來玩）
+create or replace function public.park_class_days(p_code text, p_days int default 7)
+returns table (student_id uuid, day date, facility text, game text, seconds int, plays int, stamps int)
+language plpgsql stable security definer set search_path = public, pg_temp as $$
+declare
+  v_code  text := upper(btrim(coalesce(p_code, '')));
+  v_days  int := least(greatest(coalesce(p_days, 7), 1), 35);
+  v_today date := (now() at time zone 'Asia/Taipei')::date;
+  v_ids   uuid[];
+begin
+  if not public.is_teacher_of(v_code) then raise exception '這不是你的班'; end if;
+  select array_agg(m.student_id) into v_ids from public.park_class_members m where m.class_code = v_code;
+  if v_ids is null then return; end if;
+  return query
+  select r.student_id, (r.started_at at time zone 'Asia/Taipei')::date, r.facility, public.park_facility_name(r.facility),
+         coalesce(sum(r.seconds) filter (where r.kind = 'play'), 0)::int,
+         (count(*) filter (where r.kind in ('level', 'save') or (r.kind = 'play' and r.place <> 'enter')))::int,
+         (count(*) filter (where r.kind = 'stamp'))::int
+    from public.park_activity_rows(((v_today - (v_days - 1))::timestamp at time zone 'Asia/Taipei'), v_ids) r
+   where r.facility <> 'park'
+   group by 1, 2, 3;
+end;
+$$;
+
 revoke all on function
   public.park_island_label(text), public.park_activity_rows(timestamptz, uuid[]), public.park_facility_name(text),
   public.park_play_start(text, text, text), public.park_play_beat(bigint, boolean),
-  public.park_student_activity(uuid, int), public.park_class_last_play(text), public.park_admin_activity(int)
+  public.park_student_activity(uuid, int), public.park_class_last_play(text), public.park_admin_activity(int),
+  public.park_class_days(text, int)
   from public, anon;
 grant execute on function
   public.park_play_start(text, text, text), public.park_play_beat(bigint, boolean),
-  public.park_student_activity(uuid, int), public.park_class_last_play(text), public.park_admin_activity(int)
+  public.park_student_activity(uuid, int), public.park_class_last_play(text), public.park_admin_activity(int),
+  public.park_class_days(text, int)
   to authenticated;

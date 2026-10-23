@@ -202,6 +202,7 @@ export const teacher = {
   // 遊玩紀錄（park_playlog.sql）：全班每個人最後在玩什麼、一位學生的時間軸
   lastPlay:       (code) => call('park_class_last_play', { p_code: code }),
   activity:       (id, days = 30) => call('park_student_activity', { p_student: id, p_days: days }),
+  days:           (code, days = 7) => call('park_class_days', { p_code: code, p_days: days }),   // 遊玩紀錄分頁：全班每人每天
 };
 export const admin = {
   facilities:     () => call('park_admin_facilities'),

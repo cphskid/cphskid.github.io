@@ -299,3 +299,39 @@ figure.days .n{font:700 12px/1 var(--f-body);color:var(--ink);font-variant-numer
 figure.days small{font:500 11px/1.6 var(--f-body);color:var(--muted);white-space:nowrap}
 .act-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:14px;margin-bottom:14px}
 #p-act h3{margin:10px 0 6px;font:900 17px/1.3 var(--f-body);color:var(--wood)}
+
+/* 遊玩紀錄分頁：全班熱度表＋孩子每天一列 */
+.play .head .inline{margin-left:auto}
+.play .classtabs{margin:0 0 12px}
+.linkish{border:0;background:none;padding:0;font:800 15px/1.3 var(--f-body);color:var(--wood);text-decoration:underline;cursor:pointer}
+table.heat{border-collapse:collapse;width:100%;font-size:14px}
+table.heat th,table.heat td{padding:6px 6px;border-bottom:1px solid var(--cream-2);text-align:center;white-space:nowrap}
+table.heat th{background:var(--cream);font-weight:700}
+table.heat th small{display:block;color:var(--muted);font-size:11px}
+table.heat td:first-child,table.heat th:first-child{text-align:left;padding-left:12px;position:sticky;left:0;background:#fff}
+table.heat th:first-child{background:var(--cream)}
+table.heat td.sum{color:var(--wood);font-weight:700;text-align:right;padding-right:12px}
+table.heat tr.idle td{color:var(--muted)}
+table.heat tr.idle .linkish{color:var(--muted)}
+table.heat td[class^=hx]{font-weight:800;font-variant-numeric:tabular-nums;border-left:2px solid #fff}
+table.heat.many{font-size:12px}
+table.heat.many th,table.heat.many td{padding:5px 3px}
+.hx1,table.heat tr td.hx1{background:#e3f4d6;color:#3b6b25}.hx2,table.heat tr td.hx2{background:#b7e29a;color:#2f5c1b}.hx3,table.heat tr td.hx3{background:#7cc653;color:#fff}.hx4,table.heat tr td.hx4{background:#4a9a2c;color:#fff}
+.heat-legend{display:flex;gap:4px;align-items:center;margin:-6px 0 10px;font-size:12px}
+.heat-legend span{padding:2px 8px;border-radius:6px;font-weight:700}
+.kid-h{margin:10px 0 8px;font:900 18px/1.3 var(--f-body);color:var(--wood)}
+.kid-days{display:flex;flex-direction:column;gap:6px}
+.kid-days details{background:#fff;border:2px solid var(--cream-2);border-radius:12px;padding:8px 12px}
+.kid-days summary{cursor:pointer;list-style:none;display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px}
+.kid-days summary::-webkit-details-marker{display:none}
+.kid-days summary::before{content:"▶";font-size:11px;color:var(--muted);transition:transform .15s}
+.kid-days details[open] summary::before{transform:rotate(90deg)}
+.kid-days summary .d{min-width:6.5em;color:var(--wood)}
+.kid-days summary .m{min-width:5em;font-weight:800;color:#3b7a22}
+.kid-days summary .gs{display:flex;flex-wrap:wrap;gap:6px}
+.kid-days .g{display:inline-flex;align-items:center;gap:4px;padding:2px 8px 2px 4px;border-radius:999px;background:var(--cream);font-size:13px;font-weight:700}
+.kid-days .g img{width:22px;height:22px;object-fit:contain}
+.kid-days .g small{color:var(--muted);font-weight:700;margin-left:2px}
+.kid-days details[open] summary{margin-bottom:8px}
+.kid-days .tl-list{max-height:none}
+tbody[hidden]{display:none}
