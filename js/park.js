@@ -5,6 +5,7 @@ import * as account from './account.js';
 import * as pet from './pet.js';
 import * as traveller from './traveller.js';
 import * as shop from './shop.js';
+import * as repair from './repair.js';
 import { facilityStatus, db } from './auth.js';
 import * as snd from './audio.js';
 import * as playlog from './playlog.js';
@@ -103,6 +104,7 @@ park.map.slots.forEach((s, i) => {
   b.className = 'isle';
   b.style.cssText = `left:${s.left}px;top:${s.top}px;width:${s.width}px;--in:${(i * .05).toFixed(2)}s;--delay:${-i * 1.3}s`;
   const z = bySlot.get(s.slot);
+  if (s.slot === park.map.repair_slot && !z) return; // 時光修理站自己畫（js/repair.js）
   if (s.slot === park.map.pet_slot && !z) {
     b.classList.add('pet-isle');
     b.setAttribute('aria-label', '寵物島');
@@ -127,6 +129,10 @@ park.map.slots.forEach((s, i) => {
   }
   islesLayer.appendChild(b);
 });
+
+// ---------- 時光修理站：最近修好了什麼＋小幫手牆（js/repair.js） ----------
+repair.init({ host: islesLayer, me: () => account.current(), dragged: () => dragged,
+  slot: park.map.slots.find((s) => s.slot === park.map.repair_slot && !bySlot.has(s.slot)) });
 
 // ---------- 主島桌寵：住在寵物島（js/pet.js） ----------
 pet.init({ me: () => account.current(), host: () => islesLayer, dragged: () => dragged,
