@@ -17,7 +17,7 @@
   --sea:#2f9fd8; --sea-deep:#1d7fbf; --cream:#fff8ea; --cream-2:#f6dfb4; --paper:#fffdf7;
   --wood:#6b3f1f; --wood-2:#8a5429; --gold:#ffc23d; --ink:#3a2412; --muted:#6e5640;
   --park:#d9822b; --park-bg:#fff0d8; --social:#2e9b5f; --social-bg:#e6f6ea; --eng:#2f78d0; --eng-bg:#e5f0fc;
-  --kid:#d2508a; --kid-bg:#fde9f2; --safe:#6a5acd; --safe-bg:#eeebfb; --warn:#c8641e; --warn-bg:#fff1dc;
+  --kid:#d2508a; --kid-bg:#fde9f2; --safe:#6a5acd; --safe-bg:#eeebfb; --cls:#16857a; --cls-bg:#e1f4f1; --warn:#c8641e; --warn-bg:#fff1dc;
 }
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%;scroll-padding-top:70px}
@@ -130,6 +130,23 @@ details p{margin:0;padding:0 16px 14px;color:var(--muted);font-size:16px}
 
 footer{text-align:center;font-size:14px;color:var(--muted);padding:12px 16px 40px}
 
+/* ---- 開班管理 ---- */
+.open-cta{text-align:center;margin:6px 0 0}
+.open-cta .goalt{color:var(--muted)}
+.feat .shot+.shot{margin-top:12px}
+.feat .shot{margin-bottom:16px}
+.num{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:50%;background:var(--c);color:#fff;font-weight:900;font-size:16px;margin-bottom:6px}
+.block>h3{font-size:clamp(20px,4.8vw,24px);color:var(--wood);margin-bottom:6px}
+.sub{color:var(--muted);margin:0 0 16px}
+.open-steps{list-style:none;counter-reset:s;margin:0 0 22px;padding:0;display:grid;gap:10px}
+.open-steps li{counter-increment:s;background:var(--paper);border:2px solid var(--bg);border-radius:14px;padding:12px 14px 12px 52px;position:relative}
+.open-steps li::before{content:counter(s);position:absolute;left:14px;top:12px;width:26px;height:26px;border-radius:50%;background:var(--c);color:#fff;font-weight:900;display:grid;place-items:center;line-height:1}
+.open-steps b{display:block}
+.open-steps span{font-size:15px;color:var(--muted)}
+.class-teaser{display:flex;gap:14px;align-items:center;flex-wrap:wrap;background:var(--cls-bg);border:2px solid #fff;border-radius:18px;padding:16px;box-shadow:0 4px 0 var(--cream-2)}
+.class-teaser p{margin:0;flex:1 1 260px;font-size:16px}
+.class-teaser button{font:inherit;font-size:16px;font-weight:900;color:#fff;background:var(--cls);border:0;border-radius:99px;padding:8px 18px;cursor:pointer}
+
 @media (min-width:680px){
   .cards.two{grid-template-columns:1fr 1fr}
   .cards.three{grid-template-columns:repeat(3,1fr)}
@@ -152,7 +169,7 @@ footer{text-align:center;font-size:14px;color:var(--muted);padding:12px 16px 40p
     <img class="shot" src="img/park-map.webp" alt="樂園的冒險地圖：中間是英文的守護異世界，右邊是社會的島嶼開拓者" width="960" height="540">
     <div class="hero-go">
       <a class="go" href="../?join=TRYIT">免費試玩</a>
-      <p class="goalt">試玩班代碼 TRYIT，按下去會自動填好</p>
+      <p class="goalt">試玩班代碼 TRYIT，按下去會自動填好・<a href="#class">老師、家長想自己開班看進度？</a></p>
     </div>
   </div>
 </header>
@@ -164,6 +181,7 @@ footer{text-align:center;font-size:14px;color:var(--muted);padding:12px 16px 40p
     <button role="tab" id="t-english" aria-controls="english" style="--c:var(--eng)">英文</button>
     <button role="tab" id="t-kids" aria-controls="kids" style="--c:var(--kid)">孩子的小天地</button>
     <button role="tab" id="t-safe" aria-controls="safe" style="--c:var(--safe)">安心設計</button>
+    <button role="tab" id="t-class" aria-controls="class" style="--c:var(--cls)">開班管理</button>
     <button role="tab" id="t-parents" aria-controls="parents" style="--c:var(--wood-2)">給家長</button>
   </div>
 </nav>
@@ -357,6 +375,100 @@ footer{text-align:center;font-size:14px;color:var(--muted);padding:12px 16px 40p
           </ul>
         </div>
       </div>
+      <div class="next"><button type="button" data-go="class">下一頁：開班管理 ›</button></div>
+    </div>
+  </section>
+
+  <!-- ========== 開班管理 ========== -->
+  <section class="panel" id="class" role="tabpanel" aria-labelledby="t-class" style="--c:var(--cls);--bg:var(--cls-bg)">
+    <div class="wrap">
+      <span class="kicker">老師・家長開班</span>
+      <h2>自己開一個班，孩子玩了什麼一目了然</h2>
+      <p class="lead">學校老師可以開全班，家長可以開一個「家庭班」，兄弟姊妹、親戚的孩子都能一起加入。開班免費，只要 email 和密碼，不用收確認信，開好就拿到一組班級代碼。孩子加入之後，下面這些在後台都看得到。</p>
+      <div class="open-cta">
+        <a class="go" href="../?staff=signup">免費開班</a>
+        <p class="goalt">已經有開班帳號？<a href="../teacher.html">直接登入後台</a></p>
+      </div>
+
+      <div class="block feat">
+        <span class="num">1</span>
+        <h3>誰有在玩，打開就知道</h3>
+        <p class="sub">全班總覽會把最近有在玩的孩子排在前面，每個人名字下面寫著「最後活動 18 分鐘前」，還有他最後在玩哪一座島、第幾章。</p>
+        <img class="shot" src="img/class-board.webp" alt="全班總覽：有在玩的排前面，每個孩子顯示最後活動時間、在玩哪個遊戲、各遊戲進度和需要注意的提醒" width="960" height="807" loading="lazy">
+        <ul class="ticks two">
+          <li><b>最近 7 天有幾位來玩</b><span>一行字告訴你全班有多少人真的在用，7 天內有來的會標綠色。</span></li>
+          <li><b>每個遊戲玩到哪</b><span>進度條、玩到第幾關或第幾章、最後一次玩是什麼時候。</span></li>
+          <li><b>需要注意的會標紅</b><span>超過 7 天沒來、最近答對率偏低、密碼試錯被鎖住，一眼就看到。</span></li>
+          <li><b>想照名字排也可以</b><span>「有在玩的排前面」關掉就回到依名字排，也能只看需要注意的孩子。</span></li>
+        </ul>
+      </div>
+
+      <div class="block feat">
+        <span class="num">2</span>
+        <h3>遊玩紀錄：每天玩了多久</h3>
+        <p class="sub">一張表看全班這一週（或 14、28 天）每天各玩了幾分鐘，顏色越深玩越久。點孩子的名字，就看得到他每天去了哪些島、從幾點玩到幾點、拿到哪些勳章。</p>
+        <img class="shot" src="img/class-play.webp" alt="遊玩紀錄分頁：全班每個孩子每天玩了幾分鐘的表格，顏色越深玩越久" width="960" height="410" loading="lazy">
+        <img class="shot" src="img/class-kid.webp" alt="點進一個孩子：每天一列，點開看那天幾點在哪個遊戲、玩了幾分鐘、拿到什麼勳章" width="960" height="587" loading="lazy">
+        <p class="note">很適合拿來對照「每次 20 到 30 分鐘」的建議：玩太久、太晚還在玩，或是好幾天沒來，都看得出來。</p>
+      </div>
+
+      <div class="block feat">
+        <span class="num">3</span>
+        <h3>細節頁：看得出卡在哪裡</h3>
+        <p class="sub">每個遊戲都有自己的細節頁，用家長看得懂的話寫，不只告訴你分數，還告訴你可以陪孩子練什麼。</p>
+        <div class="how">
+          <div class="how-item">
+            <img class="shot" src="img/class-island.webp" alt="社會的細節頁：每一章全班想一想的答對率，綠黃紅三色，還有幾個人過關、平均失誤次數" width="960" height="454" loading="lazy">
+            <div>
+              <h3 style="color:var(--social)">社會：每一章想一想答對多少</h3>
+              <p>每章最後的「想一想」，全班答對率用綠、黃、紅標出來，紅色的先看。點開看大家最常選錯哪個、正確答案的理由；也有每個孩子自己的白話學習報告，適合拿來跟孩子聊這一章。</p>
+            </div>
+          </div>
+          <div class="how-item small">
+            <img class="shot" src="img/class-english.webp" alt="英文的細節頁：認字、拼字、聽音三張卡片的答對率，錯最多的字，答對率比較低的關卡" width="720" height="853" loading="lazy">
+            <div>
+              <h3 style="color:var(--eng)">英文：認字、拼字、聽音哪個弱</h3>
+              <p>把答題分成認字、拼字、聽音三張卡，馬上知道孩子是「看得懂但拼不出來」還是「聽不出來」。點卡片看錯最多的字，還會列出答對率比較低的關卡，陪他把那關的字先念一遍再打。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="block feat">
+        <span class="num">4</span>
+        <h3>孩子的回報，你也收得到</h3>
+        <p class="sub">孩子在遊戲裡按「💬 問題回報」說哪裡卡住、哪裡不好玩、想加什麼，開班的人在後台的「班上的回報」都看得到，也看得到處理進度和我們的回覆。</p>
+        <img class="shot" src="img/class-feedback.webp" alt="班上的回報：孩子送來的想法和問題，標著處理進度和回覆" width="960" height="391" loading="lazy">
+        <p class="note">回報處理好之後，孩子下次登入會先跳出「謝謝你的問題回報！你回報的問題處理囉！」；建議被採用的孩子，名字還會出現在樂園「時光修理站」的小幫手牆上。孩子會發現自己說的話真的有人聽。</p>
+      </div>
+
+      <div class="block">
+        <span class="num">5</span>
+        <h3>還有這些小幫手</h3>
+        <div class="cards three" style="margin-top:12px">
+          <div class="card"><div class="ic">🔑</div><h3>忘記密碼直接重設</h3><p>順便解鎖試錯被鎖住的帳號，也能幫孩子改暱稱，每次都留紀錄。</p></div>
+          <div class="card"><div class="ic">🏫</div><h3>一個孩子可以在好幾個班</h3><p>學校班和家庭班同時看得到同一個孩子。孩子可以在「我的資料」自己選主要班級，老師也能幫忙設。</p></div>
+          <div class="card"><div class="ic">🏝️</div><h3>決定開放哪些島</h3><p>勾起來的遊戲孩子才進得去，新的島開幕時，先勾好的班當天就能玩。</p></div>
+          <div class="card"><div class="ic">😴</div><h3>上課時間寵物休息</h3><p>打開後週一到週五 8:00–16:00 寵物會睡覺，上課不會分心。</p></div>
+          <div class="card"><div class="ic">🚪</div><h3>關起門來的班</h3><p>全班加入完就可以關閉加入，代碼流出去也沒用；需要的話隨時換一組代碼。</p></div>
+          <div class="card"><div class="ic">📄</div><h3>匯出 CSV</h3><p>全班名單、最後活動時間和各遊戲進度一鍵匯出，方便做紀錄。</p></div>
+        </div>
+      </div>
+
+      <div class="block">
+        <span class="kicker">三步開班</span>
+        <h2>五分鐘就能開好</h2>
+        <ol class="open-steps">
+          <li><b>建立開班帳號</b><span>按下面的「免費開班」，填 email、密碼和要顯示的名字（例如「王老師」「小明媽媽」），不用收確認信。</span></li>
+          <li><b>開一個班</b><span>取班名、選學校班或家庭班和年級，馬上拿到 6 碼班級代碼和分享連結。</span></li>
+          <li><b>讓孩子加入</b><span>孩子第一次來，在樂園按「第一次來」填代碼；已經在試玩班玩過的，到「我的資料」輸入代碼就好，進度都會帶著走。</span></li>
+        </ol>
+        <div class="open-cta">
+          <a class="go" href="../?staff=signup">免費開班</a>
+          <p class="goalt">開班的人只看得到自己班上的孩子；孩子一樣不用 email、不用真名。</p>
+        </div>
+        <p class="note">這一頁的後台畫面都是示範資料，暱稱和數字不是真的孩子。</p>
+      </div>
       <div class="next"><button type="button" data-go="parents">下一頁：給家長 ›</button></div>
     </div>
   </section>
@@ -395,20 +507,10 @@ footer{text-align:center;font-size:14px;color:var(--muted);padding:12px 16px 40p
       <div class="block">
         <span class="kicker">家長後台</span>
         <h2>孩子玩到哪，家長看得到</h2>
-        <p class="lead">家長可以自己開一個「家庭班」，孩子加入後，在後台就看得到這些：</p>
-        <div class="how">
-          <img class="shot" src="img/parent-board.webp" alt="家長後台的全班總覽：每個遊戲的進度、最後遊玩時間、需要注意的提醒" width="960" height="275" loading="lazy">
-          <ul class="ticks two">
-            <li><b>每個遊戲玩到哪</b><span>進度百分比、玩到第幾關或第幾章、最後一次玩是什麼時候。</span></li>
-            <li><b>需要注意的提醒</b><span>很久沒來、最近答對率偏低、密碼試錯被鎖住，都會標出來。</span></li>
-            <li><b>英文：最常錯的字</b><span>點進「細節頁」看得到孩子最常答錯的單字，可以順手一起複習。</span></li>
-            <li><b>社會：每章想了什麼</b><span>每一章的星星、圖鑑收集，還有章節裡思考題的回答和「這一章在教什麼」，適合拿來跟孩子聊。</span></li>
-            <li><b>開放哪些遊戲</b><span>自己決定孩子在樂園裡能進哪幾座島。</span></li>
-            <li><b>帳號管理</b><span>忘記密碼可以直接幫孩子重設，也能改暱稱、匯出紀錄。</span></li>
-          </ul>
-          <img class="shot" src="img/parent-class.webp" alt="家長後台的班級卡：班級代碼、分享連結、開放加入開關" width="960" height="351" loading="lazy">
+        <div class="class-teaser">
+          <p>開一個免費的「家庭班」，孩子每天玩了多久、玩到哪一章、哪些字常錯、最近有沒有來，在後台都看得到。</p>
+          <button type="button" data-go="class">看開班能看到什麼 ›</button>
         </div>
-        <p class="note">開班方式：在樂園登入畫面按「我是老師／家長」→「第一次使用」，填 email 和密碼就能開班，拿到班級代碼給孩子。孩子已經在試玩班的話，到「我的資料」輸入代碼加入就好，進度都會帶著走。</p>
       </div>
 
       <div class="block" id="try">
@@ -439,6 +541,7 @@ footer{text-align:center;font-size:14px;color:var(--muted);padding:12px 16px 40p
         <details><summary>適合幾年級？</summary><p>社會目前是照小五的內容做的；英文從國小常用字開始，一路到國中範圍，三到六年級都可以玩，程度好的孩子可以往後挑戰。</p></details>
         <details><summary>在哪裡玩？要安裝嗎？</summary><p>手機、平板、電腦的瀏覽器都可以，不用安裝 App。畫面比較大的平板或電腦玩起來最舒服。</p></details>
         <details><summary>試玩班會跟陌生人互動嗎？</summary><p>試玩班的排行榜是所有試玩的孩子一起比，只看得到暱稱和自己捏的角色；遊戲裡沒有聊天，也不能互送東西。暱稱不要用真實姓名就好。想完全只看自己孩子的話，可以開一個家庭班。</p></details>
+        <details><summary>學校老師可以拿來在班上用嗎？</summary><p>可以，開班一樣免費。老師開一個學校班、把代碼給全班，就能在後台看到誰有在玩、每個人玩到哪、哪一章大家答錯最多，也能決定班上開放哪些遊戲。詳細看「開班管理」那一頁。</p></details>
         <details><summary>忘記密碼怎麼辦？</summary><p>請開班的老師或家長在後台幫忙重設。在試玩班的話，可以在遊戲左上角的齒輪按「問題回報」告訴我們。</p></details>
         <details><summary>有建議或發現錯誤，要怎麼告訴你們？</summary><p>遊戲裡左上角的齒輪有「問題回報」，哪裡卡住、哪裡不好玩、內容哪裡不對，或希望之後加什麼，都很歡迎留言。自然科和小四的內容也還在構思，很想聽聽大家的想法。</p></details>
       </div>
