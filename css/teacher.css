@@ -170,6 +170,7 @@ tbody tr:hover td{background:#fffbf1}
 td.stu{min-width:150px}
 td.stu b,td b{font-weight:900}
 td.stu small,td small{display:block;font-size:13px;color:var(--muted)}
+td.stu small.seen.on{color:#2f8a4a;font-weight:700}
 td.ops{white-space:nowrap}
 td.ops .ghost{margin:2px 0}
 td.num{white-space:nowrap}
