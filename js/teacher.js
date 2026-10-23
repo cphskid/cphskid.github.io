@@ -168,7 +168,7 @@ async function start() {
   $('#tabs').hidden = false;
   $('#tab-admin').hidden = !who.is_admin;
   const want = location.hash.slice(1);
-  tab = want === 'admin' && who.is_admin ? 'admin' : want === 'feedback' ? 'feedback' : 'classes';
+  tab = want === 'admin' && who.is_admin ? 'admin' : ['feedback', 'play'].includes(want) ? want : 'classes';
   paintTabs();
   paintFeedbackDot();
   await show();
@@ -195,6 +195,7 @@ async function show() {
   try {
     if (tab === 'admin') await renderAdmin();
     else if (tab === 'feedback') await renderFeedback();
+    else if (tab === 'play') await renderPlay();
     else await renderClasses();
   } catch (e) {
     if (e.missing) return renderMissing(e.message);
@@ -504,7 +505,7 @@ async function paintOverview(c) {
   $('[data-reload]', p).onclick = (e) => run(e.currentTarget, () => paintOverview(c));
   $('[data-csv]', p).onclick = () => exportCsv();
   const byId = new Map(students.map((s) => [s.id, s]));
-  $$('[data-tl]', p).forEach((b) => { b.onclick = () => showTimeline(byId.get(b.dataset.tl)); });
+  $$('[data-tl]', p).forEach((b) => { b.onclick = () => openPlay(c.code, b.dataset.tl); });
   $$('[data-pw]', p).forEach((b) => { b.onclick = () => resetPassword(byId.get(b.dataset.pw)); });
   $$('[data-nick]', p).forEach((b) => { b.onclick = () => renameStudent(c, byId.get(b.dataset.nick)); });
   $$('[data-rm]', p).forEach((b) => { b.onclick = () => removeStudent(c, byId.get(b.dataset.rm)); });
@@ -524,19 +525,8 @@ const dayOf = (t) => new Date(t).toLocaleDateString('zh-TW', { month: 'numeric',
 const clock = (t) => new Date(t).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', hour12: false });
 const KIND_NOTE = { save: '舊紀錄：只知道最後存檔時間' };
 
-// 一位學生的時間軸：依天分組，最新的在上面
-async function showTimeline(s, days = 30) {
-  dlg.innerHTML = `<div class="dlg tl"><h3>${esc(s.nickname)} 的遊玩紀錄</h3><p class="lead">讀取中…</p></div>`;
-  if (!dlg.open) dlg.showModal();
-  let rows;
-  try { rows = await auth.teacher.activity(s.id, days); }
-  catch (e) {
-    $('.lead', dlg).textContent = /park_student_activity|schema cache/.test(e.message) ? '遊玩紀錄還沒裝到資料庫。' : e.message;
-    dlg.querySelector('.dlg').insertAdjacentHTML('beforeend', '<div class="row end"><button class="btn" data-ok>好</button></div>');
-    $('[data-ok]', dlg).onclick = () => dlg.close();
-    return;
-  }
-  // 同一分鐘拿到好幾個勳章（樂園一次補蓋）併成一行
+// 同一分鐘拿到好幾個勳章（樂園一次補蓋）併成一行
+function mergeStamps(rows) {
   const merged = [];
   for (const r of rows) {
     const prev = merged[merged.length - 1];
@@ -546,28 +536,134 @@ async function showTimeline(s, days = 30) {
       prev.label = prev.names.length > 3 ? `拿到 ${prev.names.length} 個勳章：${prev.names.slice(0, 3).join('')}…` : `拿到勳章${prev.names.join('')}`;
     } else merged.push(r.kind === 'stamp' ? { ...r, names: [r.label.replace(/^拿到勳章/, '')] } : r);
   }
-  rows = merged;
+  return merged;
+}
+const tlItems = (list) => list.map((r) => `<li class="k-${esc(r.kind)}">
+        <time>${esc(clock(r.started_at))}${r.ended_at && r.seconds ? `–${esc(clock(r.ended_at))}` : ''}</time>
+        <img src="${esc(r.facility === 'park' ? 'img/admin/park.webp' : badgeOf(r.facility))}" alt="">
+        <span><b>${esc(r.game)}</b>${r.label && r.label !== r.game && !(r.kind === 'play' && r.place === 'enter') ? `・${esc(r.label)}` : ''}
+          <small>${esc([mins(r.seconds), r.note, KIND_NOTE[r.kind]].filter(Boolean).join('・'))}</small></span></li>`).join('');
+
+// =============================================================================
+// 遊玩紀錄分頁：全班一週表（每格＝那天玩幾分鐘，顏色越深玩越久），點孩子看每天一列摘要，再點那天才看細節
+// =============================================================================
+let playDays = 7;
+let playKid = null;
+let playNames = { code: null, list: [] };   // 這班的名單（暱稱），換班才重讀
+
+function openPlay(code, kid = null) {
+  active = code; playKid = kid; tab = 'play';
+  history.replaceState(null, '', '#play'); paintTabs(); show();
+}
+const minText = (sec) => (sec >= 60 ? `${Math.round(sec / 60)}` : sec > 0 ? '<1' : '');
+// 顏色深淺：0 / 1~14 / 15~29 / 30~59 / 60 分鐘以上
+const heat = (sec, plays) => (sec >= 3600 ? 4 : sec >= 1800 ? 3 : sec >= 900 ? 2 : sec > 0 || plays ? 1 : 0);
+function dayList(n) {
+  const out = [];
+  const t = new Date();
+  for (let i = n - 1; i >= 0; i--) {
+    const d = new Date(t.getFullYear(), t.getMonth(), t.getDate() - i);
+    out.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`);
+  }
+  return out;
+}
+const dayHead = (iso) => { const d = new Date(iso + 'T00:00:00'); return `<b>${d.getMonth() + 1}/${d.getDate()}</b><small>${'日一二三四五六'[d.getDay()]}</small>`; };
+
+async function renderPlay() {
+  if (!classes.length) classes = await auth.teacher.classes();
+  if (!classes.some((c) => c.code === active)) active = classes[0]?.code ?? null;
+  if (!active) {
+    view.innerHTML = `<section class="panel"><div class="empty"><img src="img/admin/tick-empty.webp" alt=""><p>還沒有班級，先到「我的班級」開一個。</p></div></section>`;
+    return;
+  }
+  const c = classes.find((x) => x.code === active);
+  view.innerHTML = `<section class="panel play">
+    <div class="head">${h2('clock', '遊玩紀錄')}
+      <label class="inline">看最近 <select data-days>${[7, 14, 28].map((d) => `<option value="${d}" ${d === playDays ? 'selected' : ''}>${d} 天</option>`).join('')}</select></label></div>
+    ${classes.length > 1 ? `<div class="classtabs" role="tablist">${classes.map((x) => `<button role="tab" data-code="${esc(x.code)}" class="${x.code === active ? 'on' : ''}"><b>${esc(x.name || x.code)}</b><small>${x.members} 人</small></button>`).join('')}</div>` : ''}
+    <div id="play-body"><p class="loading"><img src="img/tick/map.webp" alt="">整理中…</p></div></section>`;
+  $('[data-days]').onchange = (e) => { playDays = Number(e.target.value); renderPlay(); };
+  $$('.play .classtabs [data-code]').forEach((b) => { b.onclick = () => { active = b.dataset.code; playKid = null; renderPlay(); }; });
+  if (playNames.code !== c.code) {
+    const ov = lastOverview?.cls?.code === c.code ? lastOverview : await auth.teacher.overview(c.code);
+    playNames = { code: c.code, list: ov.students.map((s) => ({ id: s.id, nickname: s.nickname })) };
+  }
+  if (playKid) return paintKidDays(c, playNames.list.find((s) => s.id === playKid) ?? { id: playKid, nickname: '' });
+  await paintClassDays(c);
+}
+
+async function paintClassDays(c) {
+  const box = $('#play-body');
+  let rows;
+  try { rows = await auth.teacher.days(c.code, playDays); }
+  catch (e) { box.innerHTML = `<div class="empty"><img src="img/admin/tick-error.webp" alt=""><p>${esc(/park_class_days|schema cache/.test(e.message) ? '遊玩紀錄分頁還沒裝到資料庫。' : e.message)}</p></div>`; return; }
+  const days = dayList(playDays);
+  // 學生 → 日期 → { sec, plays, stamps, games: [{facility, game, sec}] }
+  const by = new Map();
+  for (const r of rows) {
+    const k = by.get(r.student_id) ?? new Map(); by.set(r.student_id, k);
+    const d = k.get(r.day) ?? { sec: 0, plays: 0, stamps: 0, games: [] }; k.set(r.day, d);
+    d.sec += r.seconds; d.plays += r.plays; d.stamps += r.stamps;
+    if (r.seconds || r.plays) d.games.push(r);
+  }
+  const tot = (id) => [...(by.get(id)?.values() ?? [])].reduce((a, d) => a + d.sec, 0);
+  const cnt = (id) => [...(by.get(id)?.values() ?? [])].filter((d) => d.sec || d.plays).length;
+  const kids = [...playNames.list].sort((a, b) => tot(b.id) - tot(a.id) || cnt(b.id) - cnt(a.id) || a.nickname.localeCompare(b.nickname, 'zh-TW'));
+  const came = kids.filter((k) => cnt(k.id)).length;
+  const idle = kids.length - came;
+  const rowOf = (k) => `<tr class="${cnt(k.id) ? '' : 'idle'}"><td><button class="linkish" data-kid="${esc(k.id)}">${esc(k.nickname)}</button></td>
+        ${days.map((d) => { const x = by.get(k.id)?.get(d); if (!x || !(x.sec || x.plays)) return '<td></td>';
+          const tip = x.games.map((g) => `${g.game} ${g.seconds ? mins(g.seconds) : `${g.plays} 次`}`).join('、');
+          return `<td class="hx${heat(x.sec, x.plays)}" title="${esc(tip)}">${x.sec ? minText(x.sec) : '✓'}</td>`; }).join('')}
+        <td class="sum">${tot(k.id) ? `${Math.max(1, Math.round(tot(k.id) / 60))} 分` : cnt(k.id) ? `${cnt(k.id)} 天` : '沒來'}</td></tr>`;
+  box.innerHTML = `
+    <p class="lead">最近 ${playDays} 天有 <b>${came}</b> / ${kids.length} 人來玩。每一格是那天玩了幾分鐘，顏色越深玩越久；「✓」是有玩但沒記到時間（2026-10-23 以前的紀錄）。點名字看那個孩子每天玩了什麼。</p>
+    <p class="heat-legend"><span class="hx1">1–14</span><span class="hx2">15–29</span><span class="hx3">30–59</span><span class="hx4">60+ 分鐘</span></p>
+    <div class="tablewrap"><table class="heat ${playDays > 14 ? 'many' : ''}">
+      <thead><tr><th>暱稱</th>${days.map((d) => `<th>${dayHead(d)}</th>`).join('')}<th>合計</th></tr></thead>
+      <tbody>${kids.filter((k) => cnt(k.id)).map(rowOf).join('')}</tbody>
+      ${idle ? `<tbody class="idle-rows" hidden>${kids.filter((k) => !cnt(k.id)).map(rowOf).join('')}</tbody>` : ''}
+    </table></div>
+    ${idle ? `<p class="row"><button class="linkish" data-idle>還有 ${idle} 人這 ${playDays} 天沒來玩，點這裡列出來</button></p>` : ''}`;
+  $('[data-idle]', box)?.addEventListener('click', (e) => { $('.idle-rows', box).hidden = false; e.currentTarget.remove(); });
+  $$('[data-kid]', box).forEach((b) => { b.onclick = () => { playKid = b.dataset.kid; renderPlay(); }; });
+}
+
+async function paintKidDays(c, s) {
+  const box = $('#play-body');
+  let rows;
+  try { rows = mergeStamps(await auth.teacher.activity(s.id, playDays)); }
+  catch (e) { box.innerHTML = `<div class="empty"><img src="img/admin/tick-error.webp" alt=""><p>${esc(e.message)}</p></div>`; return; }
   const byDay = new Map();
   for (const r of rows) {
     const d = dayOf(r.started_at);
     if (!byDay.has(d)) byDay.set(d, []);
     byDay.get(d).push(r);
   }
-  const total = rows.filter((r) => r.kind === 'play' && r.facility !== 'park').reduce((a, r) => a + (r.seconds ?? 0), 0);
-  dlg.innerHTML = `<div class="dlg tl">
-    <h3>${esc(s.nickname)} 的遊玩紀錄</h3>
-    <div class="row"><label class="inline">看最近 <select data-days>${[7, 30, 90].map((d) => `<option value="${d}" ${d === days ? 'selected' : ''}>${d} 天</option>`).join('')}</select></label>
-      ${total ? `<span class="tag">在遊戲裡共 ${esc(mins(total))}</span>` : ''}</div>
-    ${rows.length ? `<div class="tl-list">${[...byDay].map(([d, list]) => `<h4>${esc(d)}</h4><ul>${list.map((r) => `<li class="k-${esc(r.kind)}">
-        <time>${esc(clock(r.started_at))}${r.ended_at && r.seconds ? `–${esc(clock(r.ended_at))}` : ''}</time>
-        <img src="${esc(r.facility === 'park' ? 'img/admin/park.webp' : badgeOf(r.facility))}" alt="">
-        <span><b>${esc(r.game)}</b>${r.label && !(r.kind === 'play' && r.place === 'enter') ? `・${esc(r.label)}` : ''}
-          <small>${esc([mins(r.seconds), r.note, KIND_NOTE[r.kind]].filter(Boolean).join('・'))}</small></span></li>`).join('')}</ul>`).join('')}</div>`
-      : `<div class="empty small"><img src="img/admin/tick-empty.webp" alt=""><p>最近 ${days} 天沒有遊玩紀錄。</p></div>`}
-    <p class="hint">玩多久從 2026-10-23 開始記錄；更早的只有守護異世界每一場的答題，和島嶼開拓者每章的最後存檔時間。</p>
-    <div class="row end"><button class="btn" data-ok>好</button></div></div>`;
-  $('[data-ok]', dlg).onclick = () => dlg.close();
-  $('[data-days]', dlg).onchange = (e) => showTimeline(s, Number(e.target.value));
+  const play = (r) => r.kind === 'play' && r.facility !== 'park';
+  const total = rows.filter(play).reduce((a, r) => a + (r.seconds ?? 0), 0);
+  const summary = (list) => {
+    const games = new Map();
+    for (const r of list) {
+      if (r.facility === 'park' || r.kind === 'stamp') continue;
+      const g = games.get(r.facility) ?? { game: r.game, sec: 0, n: 0 }; games.set(r.facility, g);
+      if (play(r)) g.sec += r.seconds ?? 0;
+      if (r.kind !== 'play' || r.place !== 'enter') g.n += 1;
+    }
+    const stamps = list.filter((r) => r.kind === 'stamp').reduce((a, r) => a + (r.names?.length ?? 1), 0);
+    return `${[...games].map(([f, g]) => `<span class="g"><img src="${esc(badgeOf(f))}" alt="">${esc(g.game.replace(/^穿越吧！/, ''))}<small>${esc(g.sec ? mins(g.sec) : `${g.n} 次`)}</small></span>`).join('')}
+      ${stamps ? `<span class="g st">${ico('passport')}${stamps} 個勳章</span>` : ''}`;
+  };
+  box.innerHTML = `
+    <div class="row"><button class="linkish" data-back>‹ 回全班</button></div>
+    <h3 class="kid-h">${esc(s.nickname)} 最近 ${playDays} 天${total ? `<span class="tag">在遊戲裡共 ${esc(mins(total))}</span>` : ''}</h3>
+    ${rows.length ? `<div class="kid-days">${[...byDay].map(([d, list]) => {
+      const sec = list.filter(play).reduce((a, r) => a + (r.seconds ?? 0), 0);
+      return `<details><summary><b class="d">${esc(d)}</b><span class="m">${sec ? esc(mins(sec)) : ''}</span><span class="gs">${summary(list)}</span></summary>
+        <div class="tl-list"><ul>${tlItems(list)}</ul></div></details>`; }).join('')}</div>`
+      : `<div class="empty small"><img src="img/admin/tick-empty.webp" alt=""><p>最近 ${playDays} 天沒有遊玩紀錄。</p></div>`}
+    <p class="hint">每天一列，點開看那天的每一筆。玩多久從 2026-10-23 開始記；更早的只有守護異世界每一場的答題，和島嶼開拓者每章的最後存檔時間。</p>`;
+  $('[data-back]', box).onclick = () => { playKid = null; renderPlay(); };
 }
 
 // 學生的樂園頭像（時空旅人的大頭）＋護照章數；還沒建旅人就只顯示章數
