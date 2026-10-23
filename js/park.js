@@ -7,6 +7,7 @@ import * as traveller from './traveller.js';
 import * as shop from './shop.js';
 import { facilityStatus, db } from './auth.js';
 import * as snd from './audio.js';
+import * as playlog from './playlog.js';
 import { settle, warm } from './warm.js';
 import { mark } from './perf.js';
 import './sw-register.js';
@@ -377,6 +378,7 @@ function showTitle() {
   select.hidden = true;
   title.hidden = false;
   setScene('title');
+  playlog.active(false);
 }
 function greeting() {
   const w = account.current();
@@ -393,6 +395,7 @@ function showMap({ animate = true } = {}) {
   title.hidden = true;
   select.hidden = false;
   setScene('map');
+  playlog.active(account.current().kind === 'student');
   paintPassBtn(); paintDock();
   snd.music('MU-01'); snd.ambience('SE-16');
   const stamped = account.current().profile?.unseen?.length;
@@ -616,6 +619,7 @@ function onAccountChange(w) {
   pet.load().then(() => { if (w.kind === 'student') warmStudent(); });
   if (w.kind !== 'student') { traveller.close(); shop.close(); }   // 旅人在 account 讀「我是誰」時一起讀好了
   shop.load(w);
+  playlog.active(w.kind === 'student' && !select.hidden);
   if (w.kind === 'guest' && !select.hidden) { history.replaceState(null, '', location.pathname); showTitle(); }
 }
 const me = await meReady;

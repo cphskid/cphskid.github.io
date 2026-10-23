@@ -12,6 +12,7 @@ import * as auth from './auth.js';
 import { readSky, makeSky, SKY_NAME } from './petsky.js';
 import { warm } from './warm.js';
 import { span } from './perf.js';
+import * as playlog from './playlog.js';
 
 const $ = (s, root = document) => root.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -152,6 +153,7 @@ export function close() {
   stopScene();
   layer.hidden = true;
   layer.innerHTML = '';
+  playlog.at('gate', '樂園大廳');
   news = [];
   paintMap();
   hooks.onChange(state);
@@ -169,6 +171,7 @@ function problem(msg) {
 
 export async function open() {
   if (hooks.me().kind !== 'student') return;
+  playlog.at('pet', '寵物島');
   if (!state) {
     try { state = await api.me(); } catch (e) { problem(e.missing ? '夥伴們很快就會搬進寵物島，再等一下下！' : e.message); return; }
   }
