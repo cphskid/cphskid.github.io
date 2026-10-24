@@ -7,7 +7,7 @@ import * as traveller from './traveller.js';
 import * as shop from './shop.js';
 import * as repair from './repair.js';
 import * as news from './news.js';
-import { facilityStatus, db } from './auth.js';
+import { facilityStatus, db, wish } from './auth.js';
 import * as snd from './audio.js';
 import * as playlog from './playlog.js';
 import { settle, warm } from './warm.js';
@@ -62,6 +62,10 @@ function starsHtml(n) {
 function facilityUrl(f) {
   return (IS_DEV ? f.url_dev : f.url) || null;
 }
+// 搶先玩（Beta）：正式版還在施工，先放一個試玩版（park.json 的 beta，只寫在 park.json，不進資料庫）
+function betaUrl(f) {
+  return (IS_DEV ? f.beta?.url_dev : f.beta?.url) || null;
+}
 // 島的名牌下面那行：玩法類型，或島的狀態（施工中、維修中、試營運）
 function zoneSub(z) {
   return z.status === 'open' ? z.subtitle : `${z.subtitle}・${STATUS[z.status]?.label ?? ''}`;
@@ -76,6 +80,7 @@ function buildIsle(btn, z) {
   btn.innerHTML = `<div class="bob"><div class="lift"><div class="foam"></div><div class="shadow"></div><img class="art" crossorigin="anonymous" src="${esc(z.art)}" alt=""><div class="sink"></div><img class="spark" src="img/fx/sparkle.webp" alt=""></div></div>`;
   if (z.status === 'trial') btn.querySelector('.lift').insertAdjacentHTML('beforeend', '<span class="flag">試營運</span>');
   if (z.status === 'maintenance') btn.querySelector('.lift').insertAdjacentHTML('beforeend', '<span class="flag maint">維修中</span>');
+  if (z.status !== 'open' && facilitiesOf(z.code).some(betaUrl)) btn.querySelector('.lift').insertAdjacentHTML('beforeend', '<span class="flag beta">搶先玩</span>');
   addUnits(btn.querySelector('.lift'), z.units);
   btn.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') hoverSound(); });
   return btn;
@@ -472,22 +477,64 @@ function facilityHtml(f, z) {
     can = false;
     note = '你的班還沒有開放這個遊戲，請問問老師。';
   }
+  const beta = !(can && url) && betaUrl(f);
   const chips = [
+    beta && '<span class="chip beta">Beta 搶先玩</span>',
     f.genre && `<span class="chip">${esc(f.genre)}</span>`,
     starsHtml(f.stars),
     `<span class="chip ${f.status}">${st.label}</span>`,
   ].filter(Boolean).join('');
   const action = can && url
     ? `<a class="btn go" href="${esc(url)}">開始冒險</a>`
-    : `<span class="note"><img src="img/ui/lock.webp" alt="">${esc(note ?? '還不能進入。')}</span>`;
+    : beta
+      ? `<a class="btn go" href="${esc(beta)}">搶先玩 Beta</a><span class="note">${esc(f.beta.note ?? '正式版還在施工，先玩搶先版！')}</span>`
+      : `<span class="note"><img src="img/ui/lock.webp" alt="">${esc(note ?? '還不能進入。')}</span>`;
   const head = f.name === z.name ? '' : `<h3>${esc(f.name)}</h3>`;
-  return `<div class="fac">${head}<div class="chips">${chips}</div><p>${esc(f.description)}</p><div class="row">${action}</div></div>`;
+  return `<div class="fac">${head}<div class="chips">${chips}</div><p>${esc(f.description)}</p><div class="row">${action}</div>${f.wish ? wishHtml(f) : ''}</div>`;
+}
+// ---------- 許願池：還沒開幕的設施，選「多想玩」（supabase/park_wish.sql） ----------
+const WISHES = [['🙂', '想玩'], ['😆', '超想玩'], ['🤩', '迫不及待'], ['🚀', '太好玩了快出！']];
+function wishHtml(f) {
+  return `<div class="wishpool" data-wish="${esc(f.code)}"><b>🌠 許個願：你有多想玩？</b>
+    <div class="opts">${WISHES.map(([e, t], i) => `<button type="button" data-lv="${i + 1}"><i class="bar"></i><span class="e">${e}</span><span class="t">${t}</span><em>…</em></button>`).join('')}</div>
+    <small class="sum">許願越多，越快開幕！</small></div>`;
+}
+function paintWish(box, r) {
+  const total = r.counts.reduce((a, b) => a + b, 0), max = Math.max(1, ...r.counts);
+  box.querySelectorAll('button').forEach((b, i) => {
+    b.classList.toggle('on', r.mine === i + 1);
+    b.querySelector('em').textContent = r.counts[i];
+    b.querySelector('.bar').style.height = `${(r.counts[i] / max) * 100}%`;
+  });
+  box.querySelector('.sum').textContent = total
+    ? `已經有 ${total} 個人許願${r.mine ? '，你的願望也在裡面！' : '，你也來一個！'}`
+    : '還沒有人許願，你來當第一個！';
+}
+async function initWish(box) {
+  const code = box.dataset.wish;
+  try { paintWish(box, await wish.counts(code)); } catch { box.querySelector('.sum').textContent = '許願池暫時連不上，等一下再試。'; }
+  box.querySelectorAll('button').forEach((b) => b.addEventListener('click', async () => {
+    if (account.current().kind === 'guest') { showToast('先登入才能許願喔！'); return; }
+    const lv = +b.dataset.lv;
+    snd.sfx('SE-13');
+    b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop');
+    // 一顆星星從按鈕飛上去
+    const star = document.createElement('span');
+    star.className = 'wish-star'; star.textContent = '⭐';
+    b.appendChild(star);
+    setTimeout(() => star.remove(), 1000);
+    try {
+      paintWish(box, await wish.vote(code, lv));
+      showToast(lv === 4 ? '收到你的超強願望！工人們要加班趕工了！' : lv === 3 ? '願望送出！工人們聽到了，正在加快腳步！' : '願望送出！謝謝你告訴我們！');
+    } catch (e) { showToast(e.message); }
+  }));
 }
 // 卡片底下滴答說的話：能玩就興奮，還不能玩就說明原因
 function tickLine(facs) {
   const open = facs.some((f) => (f.status === 'open' ? f.mine !== false : f.status === 'trial' && f.mine === true) && facilityUrl(f));
   if (open) return ['excited', '準備好了嗎？按「開始冒險」出發！'];
   if (facs.some((f) => f.status === 'maintenance')) return ['worried', '這裡暫時在維修，修好就能玩了。'];
+  if (facs.some((f) => betaUrl(f))) return ['excited', '可以搶先玩了！玩完記得許個願，告訴大家你有多想玩！'];
   if (facs.some((f) => f.status === 'open' && f.mine === false)) return ['thinking', '請老師在後台幫你的班打開這個遊戲喔！'];
   return ['thinking', '這裡還在施工，蓋好了我第一個通知你！'];
 }
@@ -532,6 +579,7 @@ function openCard(z) {
   veil.querySelector('[data-open-wear]')?.addEventListener('click', () => { closeCard(); traveller.open(); });
   veil.querySelector('[data-open-board]')?.addEventListener('click', () => { closeCard(); news.openBoard(); });
   veil.querySelectorAll('a.btn.go').forEach((a) => a.addEventListener('click', () => news.entered(z.code)));
+  veil.querySelectorAll('[data-wish]').forEach(initWish);
   (veil.querySelector('.card .btn') ?? $('#close')).focus();
 }
 // 進設施：時空傳送門轉一圈再換頁

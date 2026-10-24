@@ -241,6 +241,12 @@ export const feedback = {
   hide:   (id, hidden) => call('hide_feedback', { p_id: id, p_hidden: hidden }),
 };
 
+// 許願池（park_wish.sql）：還沒開幕的設施，大家選「多想玩」。回傳 { counts:[四段票數], mine }
+export const wish = {
+  counts: (facility) => call('park_wish_counts', { p_facility: facility }),
+  vote:   (facility, level) => call('park_wish', { p_facility: facility, p_level: level }),
+};
+
 // ---------- 樂園護照與頭像（P4，supabase/park_passport.sql） ----------
 // 還沒裝這份 SQL 時丟出 missing，畫面會說「護照還在準備中」，其他功能照常。
 async function pcall(fn, args) {

@@ -66,12 +66,12 @@
     },
     {
       "code": "science",
-      "name": "科學戰士",
-      "subtitle": "神秘新島",
+      "name": "時光祕境島",
+      "subtitle": "冒險・變身",
       "slot": 4,
       "art": "img/l-04.webp",
-      "status": "construction",
-      "description": "雲霧裡浮出一座神秘的新島，工人們正在趕工，蓋好就會開放！"
+      "status": "trial",
+      "description": "雲霧裡浮出一座神秘的新島！第一區「時光動物祕境」開始試營運，試玩班的旅人可以先進去冒險。"
     }
   ],
 
@@ -122,17 +122,19 @@
     {
       "code": "science_warrior",
       "zone": "science",
-      "name": "科學戰士",
+      "name": "時光動物祕境",
       "subject": "自然",
-      "genre": "神秘新島",
-      "stars": null,
-      "grade_min": null,
+      "genre": "冒險・變身",
+      "stars": 2,
+      "_beta": "搶先玩：正式版還在施工時，先放試玩版（只寫在這裡，不進資料庫）。url 是正式站、url_dev 是測試站；沒寫就不顯示。wish 打開許願池（supabase/park_wish.sql）",
+      "wish": true,
+      "grade_min": 5,
       "grade_max": null,
-      "status": "construction",
-      "url": null,
-      "url_dev": null,
+      "status": "trial",
+      "url": "animal/",
+      "url_dev": "animal/",
       "summary_fn": null,
-      "description": "雲霧裡浮出一座神秘的新島，工人們正在趕工，蓋好就會開放！"
+      "description": "時光颶風把祕境吹得亂七八糟，小石虎斑斑也跟媽媽走散了。用變身懷錶變成各種動物，陪斑斑找媽媽！"
     }
   ]
 }
