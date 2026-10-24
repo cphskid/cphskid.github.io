@@ -963,6 +963,7 @@ body[data-scene="map"] #hud{display:block}
    旅人是 448×600 的圖一張張疊起來；.doll 決定大小，裡面的圖全部鋪滿、對齊。 */
 .doll{position:relative;display:inline-block;width:var(--dw,120px);aspect-ratio:448/600;flex:none}
 .doll img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none;user-select:none}
+.doll img.masked{-webkit-mask-size:100% 100%;mask-size:100% 100%;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat}
 .doll.mid{--dw:96px}
 .doll.mini{--dw:84px}
 .doll.big{--dw:min(360px,100%)}
