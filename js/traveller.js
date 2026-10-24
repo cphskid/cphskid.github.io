@@ -35,16 +35,21 @@ export const EVENT_SETS = [
   { code: 'pumpkin', name: '南瓜騎士', months: [10] },
   { code: 'vampire', name: '小吸血鬼', months: [10] },
 ];
-const I = (code, slot, name, set = null, price = null) => ({ code, slot, name, set, free: !set, price,
+// 沒有套裝、也沒有價錢的才是人人都有的（臉型、髮型）；沒套裝但有價錢的是商店單賣（常駐頭飾）
+const I = (code, slot, name, set = null, price = null) => ({ code, slot, name, set, free: !set && price == null, price,
   months: EVENT_SETS.find((s) => s.code === set)?.months ?? null });
 export const ITEMS = [
   I('face-girl', 'face', '女孩'), I('face-boy', 'face', '男孩'),
   I('hair-crop', 'hair', '紋理短髮'), I('hair-wolf', 'hair', '狼尾'), I('hair-wavy', 'hair', '長捲髮'), I('hair-pony', 'hair', '高馬尾'),
+  I('hair-school', 'hair', '學生短髮'), I('hair-bob', 'hair', '妹妹頭'), I('hair-spiky', 'hair', '運動刺刺頭'), I('hair-twin', 'hair', '綁兩邊'),
+  I('hair-comma', 'hair', '韓系逗號瀏海'), I('hair-buns', 'hair', '雙丸子頭'),
   I('hat-bucket', 'hat', '燈芯絨漁夫帽', 'street', 60), I('hat-visor', 'hat', 'AR 眼鏡', 'tech', 60), I('hat-cap', 'hat', '黑熊棒球帽', 'tw', 60),
   I('top-street', 'top', '牛仔外套配帽T', 'street', 100), I('top-tech', 'top', '發光機能外套', 'tech', 100), I('top-floral', 'top', '客家花布襯衫', 'tw', 100),
   I('bottom-wide', 'bottom', '工裝寬褲老爹鞋', 'street', 80), I('bottom-tech', 'bottom', '機能褲發光鞋', 'tech', 80), I('bottom-shorts', 'bottom', '寬短褲配拖鞋', 'tw', 80),
   I('hand-camera', 'hand', '底片相機', 'street', 50), I('hand-tea', 'hand', '黑糖珍奶', 'tw', 50),
   I('back-drone', 'back', '小無人機', 'tech', 120),
+  I('hat-bow', 'hat', '蝴蝶結髮夾', null, 40), I('hat-cat', 'hat', '貓耳髮箍', null, 50), I('hat-glasses', 'hat', '圓框眼鏡', null, 50),
+  I('hat-phones', 'hat', '耳罩耳機', null, 60), I('hat-straw', 'hat', '草編遮陽帽', null, 60), I('hat-goggles', 'hat', '時空飛行護目鏡', null, 70),
   I('hat-witch', 'hat', '星星巫師帽', 'witch', 80), I('top-witch', 'top', '星月巫師袍', 'witch', 120), I('hand-broom', 'hand', '小掃帚', 'witch', 70),
   I('hat-pumpkin', 'hat', '南瓜帽', 'pumpkin', 80), I('top-pumpkin', 'top', '南瓜騎士服', 'pumpkin', 120), I('hand-lantern', 'hand', '南瓜燈糖果桶', 'pumpkin', 70),
   I('top-vampire', 'top', '紅領披風禮服', 'vampire', 120), I('bottom-vampire', 'bottom', '黑長褲皮鞋', 'vampire', 90), I('back-bat', 'back', '蝙蝠翅膀', 'vampire', 100),
@@ -52,6 +57,8 @@ export const ITEMS = [
 const inSeason = (x) => !x.months || x.months.includes(new Date().getMonth() + 1);
 const item = (code) => ITEMS.find((x) => x.code === code);
 const HIDES_HAIR = new Set();   // 戴上會把頭髮整個蓋住的頭飾（之後的太空頭盔之類）
+// 蓋住頭頂的帽子：頭髮套 img/traveller/mask/<帽子>.webp，把凸出帽頂、帽簷以上的頭髮藏起來
+const HAIR_MASK = new Set(['hat-bucket', 'hat-cap', 'hat-straw', 'hat-witch', 'hat-pumpkin']);
 const EMPTY = Object.fromEntries(SLOTS.map((s) => [s.id, null]));
 const setLook = (setCode) => Object.fromEntries(ITEMS.filter((x) => x.set === setCode).map((x) => [x.slot, x.code]));
 
@@ -113,7 +120,8 @@ export function dollHtml(look, cls = '') {
     const code = s === 'base' ? 'base' : L[s];
     if (!code) return '';
     if (s === 'hair' && HIDES_HAIR.has(L.hat)) return '';
-    return `<img src="img/traveller/${esc(code)}.webp" alt="" draggable="false">`;
+    const mask = s === 'hair' && HAIR_MASK.has(L.hat) ? ` class="masked" style="-webkit-mask-image:url(img/traveller/mask/${esc(L.hat)}.webp);mask-image:url(img/traveller/mask/${esc(L.hat)}.webp)"` : '';
+    return `<img src="img/traveller/${esc(code)}.webp" alt="" draggable="false"${mask}>`;
   }).join('');
   return `<span class="doll${cls ? ' ' + cls : ''}">${imgs}</span>`;
 }

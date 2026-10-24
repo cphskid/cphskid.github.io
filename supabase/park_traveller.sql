@@ -79,6 +79,12 @@ insert into public.park_wear_items (code, slot, name, set_code, free, price, sor
   ('hair-wolf',     'hair',   '狼尾',           null,     true, null, 2),
   ('hair-wavy',     'hair',   '長捲髮',         null,     true, null, 3),
   ('hair-pony',     'hair',   '高馬尾',         null,     true, null, 4),
+  ('hair-school',   'hair',   '學生短髮',       null,     true, null, 5),
+  ('hair-bob',      'hair',   '妹妹頭',         null,     true, null, 6),
+  ('hair-spiky',    'hair',   '運動刺刺頭',     null,     true, null, 7),
+  ('hair-twin',     'hair',   '綁兩邊',         null,     true, null, 8),
+  ('hair-comma',    'hair',   '韓系逗號瀏海',   null,     true, null, 9),
+  ('hair-buns',     'hair',   '雙丸子頭',       null,     true, null, 10),
   ('hat-bucket',    'hat',    '燈芯絨漁夫帽',   'street', false, 60, 1),
   ('hat-visor',     'hat',    'AR 眼鏡',        'tech',   false, 60, 2),
   ('hat-cap',       'hat',    '黑熊棒球帽',     'tw',     false, 60, 3),
@@ -90,7 +96,14 @@ insert into public.park_wear_items (code, slot, name, set_code, free, price, sor
   ('bottom-shorts', 'bottom', '寬短褲配拖鞋',   'tw',     false, 80, 3),
   ('hand-camera',   'hand',   '底片相機',       'street', false, 50, 1),
   ('hand-tea',      'hand',   '黑糖珍奶',       'tw',     false, 50, 2),
-  ('back-drone',    'back',   '小無人機',       'tech',   false, 120, 1)
+  ('back-drone',    'back',   '小無人機',       'tech',   false, 120, 1),
+  -- 常駐頭飾：不屬於套裝，商店單賣
+  ('hat-bow',       'hat',    '蝴蝶結髮夾',     null,     false, 40, 21),
+  ('hat-cat',       'hat',    '貓耳髮箍',       null,     false, 50, 22),
+  ('hat-glasses',   'hat',    '圓框眼鏡',       null,     false, 50, 23),
+  ('hat-phones',    'hat',    '耳罩耳機',       null,     false, 60, 24),
+  ('hat-straw',     'hat',    '草編遮陽帽',     null,     false, 60, 25),
+  ('hat-goggles',   'hat',    '時空飛行護目鏡', null,     false, 70, 26)
 on conflict (code) do update set slot = excluded.slot, name = excluded.name, set_code = excluded.set_code,
   free = excluded.free, price = excluded.price, sort = excluded.sort;
 
