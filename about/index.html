@@ -43,6 +43,36 @@ p{margin:0 0 12px}
 .hero .shot{margin:0 auto;max-width:min(760px,100%)}
 .hero-go{margin-top:22px}
 
+/* ---- 開頭輪播：自動換、可滑、圓點；文字放圖下面，手機也看得清楚 ---- */
+.car{position:relative;max-width:760px;margin:0 auto;text-align:left;color:var(--ink)}
+.track{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;border-radius:18px;
+  box-shadow:0 4px 0 var(--cream-2),0 12px 28px #0a325a44;background:var(--paper);overscroll-behavior-x:contain}
+.track::-webkit-scrollbar{display:none}
+.track:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
+.slide{flex:0 0 100%;scroll-snap-align:start;scroll-snap-stop:always;margin:0;display:flex;flex-direction:column}
+.pic{position:relative;aspect-ratio:16/9;background:linear-gradient(#bfe6fa,#e9f6ee);display:grid;place-items:center;overflow:hidden}
+.pic.fill img,.pic.fit img{position:absolute;inset:0;width:100%;height:100%;max-width:none}
+.pic.fill img{object-fit:cover}
+.pic.fit img{inset:8px;width:calc(100% - 16px);height:calc(100% - 16px);object-fit:contain;filter:drop-shadow(0 4px 8px #6b3f1f33)}
+.pic.end{background:linear-gradient(#5bc0ff,#8fe07a 75%,#f7d774);gap:6px;padding:12px;text-align:center;align-content:center}
+.pic.end img{width:min(300px,62%);height:auto;filter:drop-shadow(0 6px 10px #0004)}
+.pic.end p{margin:0;font-weight:900;color:#16324f;font-size:clamp(15px,3.8vw,18px)}
+.end-go{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.go.small{font-size:18px;padding:6px 20px;border-width:3px;box-shadow:inset 0 2px 0 #fffe,0 4px 0 var(--wood)}
+.go.alt{background:linear-gradient(#f2fffc,#c9efe8 60%,#93d9cc)}
+.slide figcaption{flex:1;padding:12px 16px 16px;display:flex;flex-direction:column;gap:2px;border-top:3px solid var(--cream-2)}
+.slide .stag{align-self:flex-start;font-size:12px;font-weight:900;letter-spacing:.08em;color:#fff;background:var(--wood-2);border-radius:99px;padding:1px 10px;margin-bottom:4px}
+.slide b{font-size:clamp(18px,4.6vw,22px);line-height:1.4;color:var(--wood)}
+.slide figcaption span:not(.stag){font-size:15px;color:var(--muted);line-height:1.6}
+.slide figcaption button{align-self:flex-start;margin-top:6px;font:inherit;font-size:15px;font-weight:900;color:var(--sea-deep);background:none;border:0;padding:0;cursor:pointer}
+.arrow{position:absolute;top:calc((min(760px,100vw - 32px)) * 9 / 32 - 20px);width:40px;height:40px;border-radius:50%;border:3px solid #fff;
+  background:#3a2412aa;color:#fff;font:900 24px/1 inherit;cursor:pointer;display:none;place-items:center;padding:0 0 3px}
+.arrow.prev{left:8px}.arrow.next2{right:8px}
+.dots{display:flex;justify-content:center;gap:8px;margin-top:12px}
+.dots button{width:10px;height:10px;border-radius:99px;border:0;padding:0;background:#ffffff99;cursor:pointer;transition:width .3s,background .3s;box-shadow:0 1px 3px #0a3c6455}
+.dots button[aria-selected=true]{width:26px;background:#fff}
+@media (hover:hover) and (pointer:fine){.arrow{display:grid}}
+
 /* ---- 頁籤 ---- */
 .tabbar{position:sticky;top:0;z-index:10;background:var(--cream);border-bottom:2px solid var(--cream-2);box-shadow:0 4px 12px #6b3f1f14}
 .tabs{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:10px 16px;max-width:860px;margin:0 auto;scroll-snap-type:x proximity}
@@ -156,7 +186,7 @@ footer{text-align:center;font-size:14px;color:var(--muted);padding:12px 16px 40p
   .time{grid-template-columns:repeat(4,1fr)}
   .ticks.two{grid-template-columns:1fr 1fr}
 }
-@media (prefers-reduced-motion:reduce){.go{transition:none}}
+@media (prefers-reduced-motion:reduce){.go{transition:none}.track{scroll-behavior:auto}}
 </style>
 </head>
 <body>
@@ -166,7 +196,51 @@ footer{text-align:center;font-size:14px;color:var(--muted);padding:12px 16px 40p
     <img class="logo" src="../img/logo.webp" alt="Time Adventure Park 時空冒險樂園" width="900" height="452">
     <h1>給家長的介紹</h1>
     <p class="pitch">把小五社會和英文單字，做成孩子願意自己打開的小遊戲。<br>在玩的過程中理解一點、記住一點，對科目不再那麼排斥。</p>
-    <img class="shot" src="img/park-map.webp" alt="樂園的冒險地圖：中間是英文的守護異世界，右邊是社會的島嶼開拓者" width="960" height="540">
+    <div class="car" aria-roledescription="輪播" aria-label="樂園重點">
+      <div class="track" tabindex="0">
+        <figure class="slide" role="group" aria-roledescription="投影片" aria-label="1 / 9：樂園地圖">
+          <div class="pic fill"><img src="img/park-map.webp" alt="" width="960" height="540"></div>
+          <figcaption><span class="stag">樂園地圖</span><b>一個帳號，社會和英文都在這座樂園</b><span>每座島是一個遊戲，孩子自己挑想去哪裡玩。</span><button type="button" data-go="park">看更多 ›</button></figcaption>
+        </figure>
+        <figure class="slide" role="group" aria-roledescription="投影片" aria-label="2 / 9：社會">
+          <div class="pic fill"><img src="img/island-ch5.webp" alt="" width="960" height="462" loading="lazy"></div>
+          <figcaption><span class="stag">社會</span><b>不用死背，親手蓋八堡圳就懂為什麼要修水圳</b><span>從史前玩到今天的臺灣，先懂「為什麼」，名詞自然記得住。</span><button type="button" data-go="social">看更多 ›</button></figcaption>
+        </figure>
+        <figure class="slide" role="group" aria-roledescription="投影片" aria-label="3 / 9：英文">
+          <div class="pic fill"><img src="img/guardian-td.webp" alt="" width="960" height="540" loading="lazy"></div>
+          <figcaption><span class="stag">英文</span><b>點對英文字，箭塔才會發射</b><span>2000 個單字變成守城的魔力，認字、聽音、拼字輪著來。</span><button type="button" data-go="english">看更多 ›</button></figcaption>
+        </figure>
+        <figure class="slide" role="group" aria-roledescription="投影片" aria-label="4 / 9：孩子的小天地">
+          <div class="pic fill"><img src="img/pet.webp" alt="" width="960" height="540" loading="lazy"></div>
+          <figcaption><span class="stag">孩子的小天地</span><b>每天想回來看看自己的寵物</b><span>衣服、傢俱、點心都用玩出來的時光幣換，不花一毛錢。</span><button type="button" data-go="kids">看更多 ›</button></figcaption>
+        </figure>
+        <figure class="slide" role="group" aria-roledescription="投影片" aria-label="5 / 9：安心設計">
+          <div class="pic fill"><img src="img/wear.webp" alt="" width="960" height="540" loading="lazy"></div>
+          <figcaption><span class="stag">安心設計</span><b>不收 email 和真名、沒有聊天室</b><span>頭像是自己捏的角色，東西不能互送，排行榜只有同班看得到。</span><button type="button" data-go="safe">看更多 ›</button></figcaption>
+        </figure>
+        <figure class="slide" role="group" aria-roledescription="投影片" aria-label="6 / 9：開班管理">
+          <div class="pic fit"><img src="img/class-board.webp" alt="" width="960" height="807" loading="lazy"></div>
+          <figcaption><span class="stag">開班管理</span><b>誰有在玩、玩到哪，打開後台就看到</b><span>有在玩的排前面，最後活動時間、各遊戲進度和要注意的孩子一目了然。</span><button type="button" data-go="class">看更多 ›</button></figcaption>
+        </figure>
+        <figure class="slide" role="group" aria-roledescription="投影片" aria-label="7 / 9：遊玩紀錄">
+          <div class="pic fit"><img src="img/class-play.webp" alt="" width="960" height="410" loading="lazy"></div>
+          <figcaption><span class="stag">遊玩紀錄</span><b>每天玩了幾分鐘，太久、太晚都看得出來</b><span>一張表看全班這週每天玩多久，點名字看孩子每天去了哪裡。</span><button type="button" data-go="class">看更多 ›</button></figcaption>
+        </figure>
+        <figure class="slide" role="group" aria-roledescription="投影片" aria-label="8 / 9：細節頁">
+          <div class="pic fit"><img src="img/class-english.webp" alt="" width="720" height="853" loading="lazy"></div>
+          <figcaption><span class="stag">細節頁</span><b>哪裡不會？一眼標出來</b><span>英文分認字、拼字、聽音看哪個弱，社會看每章哪一題錯最多。</span><button type="button" data-go="class">看更多 ›</button></figcaption>
+        </figure>
+        <figure class="slide last" role="group" aria-roledescription="投影片" aria-label="9 / 9：免費試玩">
+          <div class="pic end"><img src="../img/logo.webp" alt="" width="900" height="452" loading="lazy">
+            <p>完全免費、沒有廣告、不用安裝</p>
+            <div class="end-go"><a class="go small" href="../?join=TRYIT">免費試玩</a><a class="go small alt" href="../?staff=signup">免費開班</a></div></div>
+          <figcaption><span class="stag">開始吧</span><b>先讓孩子玩玩看</b><span>試玩班代碼 TRYIT，按「免費試玩」會自動填好；想看孩子進度就自己開一個班。</span></figcaption>
+        </figure>
+      </div>
+      <button type="button" class="arrow prev" aria-label="上一張">‹</button>
+      <button type="button" class="arrow next2" aria-label="下一張">›</button>
+      <div class="dots" role="tablist" aria-label="選一張"></div>
+    </div>
     <div class="hero-go">
       <a class="go" href="../?join=TRYIT">免費試玩</a>
       <p class="goalt">試玩班代碼 TRYIT，按下去會自動填好・<a href="#class">老師、家長想自己開班看進度？</a></p>
@@ -586,6 +660,59 @@ footer{text-align:center;font-size:14px;color:var(--muted);padding:12px 16px 40p
   show(h === 'try' ? 'parents' : h, false);
   if (h === 'try') document.getElementById('try').scrollIntoView();
   addEventListener('hashchange', function () { show(location.hash.slice(1), true); });
+})();
+</script>
+<script>
+// 開頭輪播：5 秒自動換一張；滑過、點圓點或箭頭就停下來不再自動轉；滑鼠移上去暫停；看不到輪播時不轉
+(function () {
+  var car = document.querySelector('.car');
+  if (!car) return;
+  var track = car.querySelector('.track');
+  var slides = [].slice.call(car.querySelectorAll('.slide'));
+  var dotBox = car.querySelector('.dots');
+  var cur = 0, stopped = matchMedia('(prefers-reduced-motion: reduce)').matches, hover = false, seen = true;
+  var dots = slides.map(function (s, i) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.setAttribute('role', 'tab'); b.setAttribute('aria-label', s.getAttribute('aria-label'));
+    b.onclick = function () { stop(); go(i); };
+    dotBox.appendChild(b);
+    return b;
+  });
+  function paint(i) {
+    cur = i;
+    dots.forEach(function (d, k) { d.setAttribute('aria-selected', k === i); });
+    // 下一張先載好，輪到時不會空白
+    var n = slides[(i + 1) % slides.length].querySelector('img');
+    if (n && n.loading === 'lazy') n.loading = 'eager';
+  }
+  function go(i) {
+    i = (i + slides.length) % slides.length;
+    track.scrollTo({ left: i * track.clientWidth, behavior: 'smooth' });
+    paint(i);
+  }
+  function stop() { stopped = true; }
+  function tick() { if (!stopped && !hover && seen && !document.hidden) go(cur + 1); }
+  car.querySelector('.prev').onclick = function () { stop(); go(cur - 1); };
+  car.querySelector('.next2').onclick = function () { stop(); go(cur + 1); };
+  ['pointerdown', 'wheel', 'touchstart', 'keydown'].forEach(function (e) { track.addEventListener(e, stop, { passive: true }); });
+  car.addEventListener('mouseenter', function () { hover = true; });
+  car.addEventListener('mouseleave', function () { hover = false; });
+  // 手滑之後跟著更新圓點
+  var t;
+  track.addEventListener('scroll', function () {
+    clearTimeout(t);
+    t = setTimeout(function () {
+      var i = Math.round(track.scrollLeft / track.clientWidth);
+      if (i !== cur) paint(Math.max(0, Math.min(slides.length - 1, i)));
+    }, 80);
+  }, { passive: true });
+  track.addEventListener('keydown', function (e) {
+    if (e.key === 'ArrowRight') { e.preventDefault(); go(cur + 1); }
+    if (e.key === 'ArrowLeft') { e.preventDefault(); go(cur - 1); }
+  });
+  if ('IntersectionObserver' in window) new IntersectionObserver(function (es) { seen = es[0].isIntersecting; }, { threshold: 0.4 }).observe(car);
+  paint(0);
+  setInterval(tick, 5000);
 })();
 </script>
 </body>
