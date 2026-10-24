@@ -6,6 +6,7 @@ import * as pet from './pet.js';
 import * as traveller from './traveller.js';
 import * as shop from './shop.js';
 import * as repair from './repair.js';
+import * as news from './news.js';
 import { facilityStatus, db } from './auth.js';
 import * as snd from './audio.js';
 import * as playlog from './playlog.js';
@@ -115,6 +116,7 @@ park.map.slots.forEach((s, i) => {
       pet.openIsland();
     });
   } else if (z) {
+    b.dataset.zone = z.code;
     buildIsle(b, z);
     b.insertAdjacentHTML('beforeend', `<div class="plate"><b>${esc(z.name)}</b><span>${esc(zoneSub(z))}</span></div>`);
     b.addEventListener('click', () => !dragged && openCard(z));
@@ -133,6 +135,25 @@ park.map.slots.forEach((s, i) => {
 // ---------- 時光修理站：最近修好了什麼＋小幫手牆（js/repair.js） ----------
 repair.init({ host: islesLayer, me: () => account.current(), dragged: () => dragged,
   slot: park.map.slots.find((s) => s.slot === park.map.repair_slot && !bySlot.has(s.slot)) });
+
+// ---------- 樂園公告：村莊布告欄、島嶼布條、熱氣球、信鴿送信（js/news.js） ----------
+news.init({
+  me: () => account.current(),
+  isle: (code) => islesLayer.querySelector(`.isle[data-zone="${code}"]`),
+  mapLayer: () => islesLayer, mapWidth: MAP_W,
+  scene: () => document.body.dataset.scene,
+  go: (link) => {
+    if (link === 'repair') return repair.open();
+    if (link === 'wear') return traveller.open();
+    if (link === 'pet') return pet.open();
+    if (link === 'shop-month') return shop.openShop(null, 'month');
+    const z = zones.get(String(link).replace(/^zone:/, ''));
+    if (!z) return;
+    const s = park.map.slots.find((x) => x.slot === z.slot);
+    if (s) setPan(s.left + s.width / 2 - 800);
+    openCard(z);
+  },
+});
 
 // ---------- 主島桌寵：住在寵物島（js/pet.js） ----------
 pet.init({ me: () => account.current(), host: () => islesLayer, dragged: () => dragged,
@@ -361,7 +382,7 @@ const fbBtn = $('#fb-btn');
 window.ParkFeedback?.mount({
   game: 'park',
   fab: false,
-  notify: true,   // 一登入就跳「你回報的問題處理囉！」
+  notify: 'courier',   // 「你回報的問題處理囉！」交給信鴿送到信箱（js/news.js）
   getToken: async () => (await db?.auth.getSession())?.data.session?.access_token,
   // 在哪一幕、開著哪個視窗
   context: () => ({ screen: [document.body.dataset.scene, ...['acct', 'pass', 'petroom', 'wardrobe', 'veil'].filter((id) => !$('#' + id).hidden)].join('/') }),
@@ -409,6 +430,7 @@ function showMap({ animate = true } = {}) {
   snd.sfx('SE-15');
   if (stamped) setTimeout(() => snd.sfx('SE-19'), 700);
   say(stamped ? 'cheer' : 'wave', greeting());
+  news.onMap();
   setTimeout(askTraveller, reduceMotion ? 300 : 1500);
   if (animate) {
     select.classList.add('entering');
@@ -495,7 +517,8 @@ function openCard(z) {
     <button class="x" id="close" aria-label="關閉，回到地圖"></button>
     <div class="art"><img crossorigin="anonymous" src="${esc(z.art)}" alt="">${z.badge ? `<img class="badge" src="${esc(z.badge)}" alt="">` : ''}</div>
     <div><h2>${esc(z.name)}</h2><p class="lead">${esc(z.description)}</p>
-    ${village ? villageHtml() : facs.length ? facs.map((f) => facilityHtml(f, z)).join('') : '<p class="lead">島上的設施還在規劃。</p>'}
+    ${village ? '' : news.cardHtml(z.code)}
+    ${village ? news.villageHtml() + villageHtml() : facs.length ? facs.map((f) => facilityHtml(f, z)).join('') : '<p class="lead">島上的設施還在規劃。</p>'}
     <div class="say"><img src="img/tick/${face}.webp" alt="滴答"><p>${line}</p></div></div></div>`;
   veil.hidden = false;
   snd.sfx('SE-03');
@@ -507,6 +530,8 @@ function openCard(z) {
   veil.querySelector('[data-open-av]')?.addEventListener('click', () => { closeCard(); account.openAvatar(); });
   veil.querySelector('[data-open-pet]')?.addEventListener('click', () => { closeCard(); pet.open(); });
   veil.querySelector('[data-open-wear]')?.addEventListener('click', () => { closeCard(); traveller.open(); });
+  veil.querySelector('[data-open-board]')?.addEventListener('click', () => { closeCard(); news.openBoard(); });
+  veil.querySelectorAll('a.btn.go').forEach((a) => a.addEventListener('click', () => news.entered(z.code)));
   (veil.querySelector('.card .btn') ?? $('#close')).focus();
 }
 // 進設施：時空傳送門轉一圈再換頁
@@ -626,6 +651,7 @@ function onAccountChange(w) {
   pet.load().then(() => { if (w.kind === 'student') warmStudent(); });
   if (w.kind !== 'student') { traveller.close(); shop.close(); }   // 旅人在 account 讀「我是誰」時一起讀好了
   shop.load(w);
+  news.load();
   playlog.active(w.kind === 'student' && !select.hidden);
   if (w.kind === 'guest' && !select.hidden) { history.replaceState(null, '', location.pathname); showTitle(); }
 }
@@ -633,6 +659,7 @@ const me = await meReady;
 travReady = meReady;
 await Promise.all([syncFacilities(), pet.load()]);
 shop.load(me);
+news.load();
 if (route && me.kind === 'guest') {
   // 從遊戲回來但已經登出（或換人用平板）：先回開場，按 Start 再登入
   history.replaceState(null, '', location.pathname);

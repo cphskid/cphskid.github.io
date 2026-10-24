@@ -419,7 +419,7 @@ declare
     ['word_stats', 'last_at'], ['item_uses', 'at'],
     ['room_members', 'joined_at'], ['park_coin_ledger', 'created_at'],
     ['park_pets', 'played_at'], ['park_pets', 'patted_at'], ['park_pets', 'fed_at'],
-    ['park_travellers', 'updated_at'], ['park_profiles', 'updated_at']];
+    ['park_travellers', 'updated_at'], ['park_profiles', 'updated_at'], ['park_play_log', 'last_seen']];
   v_parts text[] := '{}';
   i int;
 begin

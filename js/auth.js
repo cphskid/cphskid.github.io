@@ -223,6 +223,15 @@ export const admin = {
   activity:       (days = 7) => call('park_admin_activity', { p_days: days }),   // 全站動態
   insights:       (days = 14) => call('park_admin_insights', { p_days: days }),  // 要改善的地方
 };
+// 樂園公告（park_news.sql）：管理員四種方式都能發；老師只能寄信給自己的班
+export const news = {
+  list: () => call('park_news_list'),
+  post: (v) => call('park_news_post', {
+    p_kinds: v.kinds, p_title: v.title, p_body: v.body, p_ends_on: v.ends_on, p_banner: v.banner || null,
+    p_link: v.link || null, p_zones: v.zones ?? [], p_classes: v.classes?.length ? v.classes : null,
+    p_sign: v.sign || null, p_important: !!v.important, p_starts_on: v.starts_on || null }),
+  hide: (id) => call('park_news_hide', { p_id: id }),
+};
 // 問題回報收件匣（守護異世界 schema.sql 的函式，P3 從英文管理員頁搬過來）。
 // 管理員看全部、可以分類／回覆／刪除；老師只看得到自己班學生的回報（伺服器過濾），唯讀。
 export const feedback = {
