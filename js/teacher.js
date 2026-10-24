@@ -168,7 +168,7 @@ async function start() {
   $('#tabs').hidden = false;
   $('#tab-admin').hidden = !who.is_admin;
   const want = location.hash.slice(1);
-  tab = want === 'admin' && who.is_admin ? 'admin' : ['feedback', 'play'].includes(want) ? want : 'classes';
+  tab = want === 'admin' && who.is_admin ? 'admin' : ['feedback', 'play', 'news'].includes(want) ? want : 'classes';
   paintTabs();
   paintFeedbackDot();
   await show();
@@ -196,6 +196,7 @@ async function show() {
     if (tab === 'admin') await renderAdmin();
     else if (tab === 'feedback') await renderFeedback();
     else if (tab === 'play') await renderPlay();
+    else if (tab === 'news') await renderNews();
     else await renderClasses();
   } catch (e) {
     if (e.missing) return renderMissing(e.message);
@@ -848,6 +849,106 @@ async function renderFeedback() {
     };
     const back = $('[data-restore]', el);
     if (back) back.onclick = () => run(back, async () => { await auth.feedback.hide(id, false); toast('救回來了'); await reload(); });
+  });
+}
+
+// =============================================================================
+// 樂園公告（park_news.sql）：一則公告勾要用哪幾種方式出現；老師只能寄信給自己的班
+// =============================================================================
+const NEWS_KINDS = [
+  { id: 'board',   name: '📌 村莊布告欄',   tip: '貼在樂園村莊，村莊亮紅點', admin: true },
+  { id: 'flag',    name: '🚩 島嶼布條＋紅點', tip: '掛在選的島上，孩子進去玩過就收', admin: true },
+  { id: 'balloon', name: '🎈 熱氣球布條',   tip: '天上飄過一次，特別的事才用', admin: true },
+  { id: 'letter',  name: '✉️ 信差來信',     tip: '信鴿送到信箱，點了才打開' },
+];
+const NEWS_LINKS = [['', '不用'], ['shop-month', '商店本月限定'], ['repair', '時光修理站'], ['wear', '換裝間'], ['pet', '寵物島']];
+const taipeiDay = (plus = 0) => new Date(Date.now() + 8 * 3600e3 + plus * 864e5).toISOString().slice(0, 10);
+
+async function renderNews() {
+  const admin = !!who.is_admin;
+  const [rows, mine] = await Promise.all([auth.news.list(), auth.teacher.classes()]);
+  classes = mine;
+  if (!park.zones.length) park = await fetch('data/park.json', { cache: 'no-cache' }).then((r) => r.json()).catch(() => park);
+  const zones = park.zones.filter((z) => z.status !== 'hidden' && z.code !== 'village');
+  const links = [...NEWS_LINKS, ...zones.map((z) => [`zone:${z.code}`, `島：${z.name}`])];
+  const kinds = NEWS_KINDS.filter((k) => admin || !k.admin);
+  const kindText = (ks) => ks.map((k) => NEWS_KINDS.find((x) => x.id === k)?.name.split(' ')[0] ?? k).join('');
+
+  view.innerHTML = `<section class="panel">
+    <div class="head">${h2('notify', admin ? '發樂園公告' : '寄信給班上')}</div>
+    <p class="lead">${admin
+      ? '一則公告寫一次，勾要用哪幾種方式出現（可以勾好幾種）。全部只在樂園地圖出現，進遊戲不會跳；看過就收起來。'
+      : '寄一封信給你班上的小朋友：他們回到樂園地圖時，信鴿會把信送到名牌下面的信箱。'}</p>
+    <form class="form news-form" id="nf" novalidate>
+      <fieldset class="news-kinds"><legend>出現方式</legend>
+        ${kinds.map((k) => `<label class="check"><input type="checkbox" name="kind" value="${k.id}" ${admin ? '' : 'checked disabled'}>${k.name}<small>${k.tip}</small></label>`).join('')}
+        ${admin ? '' : '<p class="tip">布告欄、島嶼布條、熱氣球只有管理員能用。</p>'}
+      </fieldset>
+      <label>標題<input name="title" maxlength="40" placeholder="${admin ? '例如 萬聖節限定開張囉！' : '例如 第 5 關提前開放囉！'}"></label>
+      <label data-for="flag balloon" hidden>布條上的字（14 字內，沒填用標題）<input name="banner" maxlength="14"></label>
+      <label>內文<textarea name="body" maxlength="400" rows="4" placeholder="兩三句就好，小朋友看得懂的話。"></textarea></label>
+      <fieldset class="news-zones" data-for="flag" hidden><legend>布條掛在哪座島</legend>
+        ${zones.map((z) => `<label class="check"><input type="checkbox" name="zone" value="${esc(z.code)}">${esc(z.name)}</label>`).join('')}</fieldset>
+      <label>按鈕帶去哪<select name="link">${links.map(([v, t]) => `<option value="${esc(v)}">${esc(t)}</option>`).join('')}</select></label>
+      <fieldset class="news-to"><legend>給誰看</legend>
+        ${admin ? '<label class="check"><input type="radio" name="to" value="all" checked>全站</label><label class="check"><input type="radio" name="to" value="class">指定班級</label>' : ''}
+        <div class="news-classes" ${admin ? 'hidden' : ''}>${(classes.length ? classes : []).map((c) => `<label class="check"><input type="checkbox" name="cls" value="${esc(c.code)}" ${classes.length === 1 ? 'checked' : ''}>${esc(c.name || c.code)}</label>`).join('') || '<p class="tip">你還沒有班級。</p>'}</div>
+      </fieldset>
+      <div class="form grid">
+        <label>開始<input type="date" name="starts" value="${taipeiDay()}"></label>
+        <label>結束<input type="date" name="ends" value="${taipeiDay(14)}"></label>
+        <label data-for="letter">署名<input name="sign" maxlength="20" value="${esc(who.display_name ?? '')}"></label>
+      </div>
+      <label class="check" data-for="letter"><input type="checkbox" name="important">重要：第一次登入自動打開一次</label>
+      <div class="row"><button class="btn go" type="submit">${admin ? '發出公告' : '寄出'}</button></div><p class="msg" hidden></p>
+    </form>
+  </section>
+  <section class="panel">
+    <div class="head">${h2('mail', admin ? '發過的公告' : '寄過的信')}</div>
+    ${rows.length ? `<div class="news-list">${rows.map((n) => `<article class="news-row${n.hidden ? ' gone' : ''}" data-id="${n.id}">
+      <div class="row"><span class="chip">${kindText(n.kinds)}</span><b>${esc(n.title)}</b><span class="spacer"></span>
+        ${n.hidden ? '<span class="chip">已撤回</span>' : `<button class="ghost small danger" data-hide>${ico('delete')}撤回</button>`}</div>
+      ${n.body ? `<p>${esc(n.body)}</p>` : ''}
+      <div class="row tip"><span>${esc(n.starts_on)} ～ ${esc(n.ends_on)}・${n.classes ? esc(n.classes.join('、')) : '全站'}${n.zones?.length ? '・島：' + esc(n.zones.join('、')) : ''}・${esc(n.author_name)}</span>
+        <span class="spacer"></span><span>看過 ${n.seen} / ${n.reach} 人</span></div>
+    </article>`).join('')}</div>` : '<div class="empty small"><img src="img/admin/tick-empty.webp" alt=""><p>還沒發過。</p></div>'}
+  </section>`;
+
+  const f = $('#nf');
+  // 勾了哪幾種，就只顯示用得到的欄位
+  const sync = () => {
+    const on = new Set($$('input[name=kind]', f).filter((i) => i.checked).map((i) => i.value));
+    $$('[data-for]', f).forEach((el) => { el.hidden = !el.dataset.for.split(' ').some((k) => on.has(k)); });
+    if (admin) $('.news-classes', f).hidden = f.elements.to.value !== 'class';
+  };
+  f.addEventListener('change', sync);
+  sync();
+  f.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const msg = $('.msg', f);
+    msg.hidden = true;
+    const v = {
+      kinds: $$('input[name=kind]', f).filter((i) => i.checked).map((i) => i.value),
+      title: f.elements.title.value.trim(), body: f.elements.body.value.trim(), banner: f.elements.banner.value.trim(),
+      link: f.elements.link.value, zones: $$('input[name=zone]', f).filter((i) => i.checked).map((i) => i.value),
+      classes: (!admin || f.elements.to.value === 'class') ? $$('input[name=cls]', f).filter((i) => i.checked).map((i) => i.value) : null,
+      starts_on: f.elements.starts.value, ends_on: f.elements.ends.value, sign: f.elements.sign.value.trim(),
+      important: f.elements.important.checked,
+    };
+    if (!v.kinds.length) { msg.textContent = '至少勾一種出現方式'; msg.hidden = false; return; }
+    if (v.classes && !v.classes.length) { msg.textContent = '選要給哪一班'; msg.hidden = false; return; }
+    run($('button[type=submit]', f), async () => {
+      await auth.news.post(v);
+      toast(admin ? '公告發出去了' : '信寄出去了，小朋友回到樂園地圖就會收到');
+      await renderNews();
+    });
+  });
+  $$('.news-row').forEach((el) => {
+    const b = $('[data-hide]', el);
+    if (b) b.onclick = () => {
+      if (!confirm('撤回這則公告？小朋友那邊會馬上消失（看過的信也會從信箱拿掉）。')) return;
+      run(b, async () => { await auth.news.hide(Number(el.dataset.id)); toast('撤回了'); await renderNews(); });
+    };
   });
 }
 

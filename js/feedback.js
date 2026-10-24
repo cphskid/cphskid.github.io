@@ -15,7 +15,8 @@
 //     context: () => ({ screen: 'ch3-2' }),// 選填：送出當下要附上的東西，screen 會另外存一欄
 //     fab: true,                           // 選填：要不要放浮動按鈕；false 就自己做按鈕叫 ParkFeedback.open()
 //     onDot: (n) => {},                    // 選填：「我的回報」有幾則新回覆，給自己做的按鈕亮紅點
-//     notify: true,                        // 選填：一登入就跳「你回報的問題處理囉！」（樂園大門用；看過就不再跳）
+//     notify: true,                        // 選填：一登入就跳「你回報的問題處理囉！」（看過就不再跳）
+//                                          //   'courier'：不自己跳，改發 park:feedback-fixed 事件（樂園大門：交給信鴿送信，js/news.js）
 //   })
 (function () {
   if (window.ParkFeedback) return;
@@ -108,11 +109,12 @@
     const n = unread();
     if (fab) fab.querySelector('i').hidden = n === 0;
     if (opts.onDot) try { opts.onDot(n); } catch { /* 遊戲自己的紅點壞了不影響回報 */ }
+    if (opts.notify === 'courier') window.dispatchEvent(new CustomEvent('park:feedback-fixed', { detail: { n } }));
   }
   async function loadMine() {
     try { mine = mineOnly(await rpc('my_feedback')); } catch { mine = mine || null; }
     paintDot();
-    if (opts.notify) notifyFixed();
+    if (opts.notify === true) notifyFixed();
   }
 
   // ---------- 畫面 ----------
@@ -323,7 +325,7 @@
     loadMine();
   }
 
-  window.ParkFeedback = { mount, open, refresh: loadMine, close };
+  window.ParkFeedback = { mount, open, refresh: loadMine, close, showFixed: () => notifyFixed() };
   // 遊戲可能比這支先準備好：先把設定放在 window.ParkFeedbackConfig，這裡載好就自己掛上
   if (window.ParkFeedbackConfig) mount(window.ParkFeedbackConfig);
 })();

@@ -210,8 +210,9 @@ let tab = 'wear';
 let shop = null;
 let pick = null;     // 主角分頁：正在看哪一件（左邊的旅人會穿上）
 
-export async function openShop(msg = null) {
+export async function openShop(msg = null, startTab = null) {
   if (!st) return;
+  if (startTab) tab = startTab;
   show('<div class="shop loading" role="dialog" aria-modal="true" aria-label="商店"><p>商店開門中…</p></div>');
   try { shop = await auth.coins.shop(); } catch (err) { show(`<div class="shop"><button class="x" data-close aria-label="關閉"></button><p class="note bad">${esc(err.message)}</p></div>`); return; }
   paintShop(msg);
