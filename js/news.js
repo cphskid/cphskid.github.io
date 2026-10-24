@@ -96,7 +96,7 @@ function paint() {
   for (const n of active('flag')) if (!seen(n, 'flag')) for (const z of n.zones) if (!flags.has(z)) flags.set(z, n);
   for (const [z, n] of flags) {
     hooks.isle(z)?.querySelector('.lift')?.insertAdjacentHTML('beforeend',
-      `<div class="news-flag" aria-hidden="true"><i></i><span>${esc(n.banner || n.title)}</span><b class="news-dot">NEW</b></div>`);
+      `<div class="news-flag" aria-hidden="true"><img src="img/news/flag.webp" alt="">${bannerText(n)}<b class="news-dot">NEW</b></div>`);
   }
   // 信箱（學生才有）
   if (mailBtn) {
@@ -108,6 +108,12 @@ function paint() {
     dot.textContent = n;
     mailBtn.setAttribute('aria-label', n ? `信箱：有 ${n} 封新信` : '信箱');
   }
+}
+
+// 布條上的字：寫在圖上空白那一塊，字多就縮小（--n＝字數）
+function bannerText(n) {
+  const t = n.banner || n.title;
+  return `<span style="--n:${Math.max(4, [...t].length)}">${esc(t)}</span>`;
 }
 
 // 島的介紹卡最上面：這座島掛著的布條寫了什麼
@@ -161,8 +167,8 @@ function launchBalloon() {
   el.type = 'button';
   el.className = 'news-balloon';
   el.setAttribute('aria-label', `熱氣球：${n.title}，點一下看看`);
-  el.style.setProperty('--span', hooks.mapWidth + 400 + 'px');
-  el.innerHTML = `<img src="img/news/balloon.webp" alt=""><span>${esc(n.banner || n.title)}</span>`;
+  el.style.setProperty('--span', hooks.mapWidth + 700 + 'px');
+  el.innerHTML = `<div class="news-tow"><img src="img/news/tow.webp" alt="">${bannerText(n)}</div><img class="news-ball" src="img/news/balloon.webp" alt="">`;
   const done = () => { el.remove(); balloonEl = null; markSeen([n], 'balloon'); };
   el.addEventListener('click', (e) => { e.stopPropagation(); done(); openNews(n); });
   el.addEventListener('animationend', done);
@@ -271,16 +277,17 @@ export function openMail() {
 const CSS = `
 .news-dot{position:absolute;right:10%;top:6%;z-index:3;padding:4px 10px;border-radius:999px;background:#e2553f;color:#fff;border:3px solid #fff;font:900 15px/1 var(--f-body,system-ui);box-shadow:0 3px 0 #8a2a1a;animation:newsPing 1s ease-in-out infinite alternate;pointer-events:none}
 @keyframes newsPing{from{transform:scale(1) rotate(-6deg)}to{transform:scale(1.15) rotate(6deg)}}
-.news-flag{position:absolute;left:14%;top:-4%;z-index:3;pointer-events:none;display:flex;align-items:flex-start}
-.news-flag>i{display:block;width:6px;height:110px;border-radius:3px;background:linear-gradient(90deg,#8a5a2a,#c99a4a,#8a5a2a);box-shadow:0 2px 0 #5e3a18}
-.news-flag>i::before{content:"";display:block;width:14px;height:14px;margin:-8px 0 0 -4px;border-radius:50%;background:#ffd23f;border:2px solid #b8860b}
-.news-flag>span{margin-top:6px;padding:8px 16px 8px 12px;background:#fffaf0;border:3px solid #e2553f;border-left:0;border-radius:0 8px 8px 0;font:900 24px/1.1 var(--f-body,system-ui);color:#a5321c;white-space:nowrap;box-shadow:0 4px 0 rgba(0,0,0,.18);transform-origin:left center;animation:newsWave 2.6s ease-in-out infinite}
-.news-flag .news-dot{right:auto;left:100%;top:-26px;margin-left:-20px}
-@keyframes newsWave{50%{transform:skewY(-4deg) scaleX(.97)}}
-.news-balloon{position:absolute;left:-260px;top:190px;z-index:5;display:flex;align-items:center;gap:0;border:0;background:none;padding:0;cursor:pointer;animation:newsFly 46s linear forwards}
-.news-balloon img{width:120px;animation:newsBob 3.2s ease-in-out infinite}
-.news-balloon span{position:relative;margin-left:28px;padding:10px 18px;background:#fffaf0;border:3px solid #e2553f;border-radius:6px;font:900 28px/1 var(--f-body,system-ui);color:#a5321c;white-space:nowrap;box-shadow:0 5px 0 rgba(0,0,0,.18);animation:newsWave 2.6s ease-in-out infinite}
-.news-balloon span::before{content:"";position:absolute;right:100%;top:50%;width:30px;border-top:3px dashed #8a5a2a}
+.news-flag{position:absolute;left:4%;top:-14%;z-index:3;width:340px;pointer-events:none;transform-origin:8% 90%;animation:newsWave 3s ease-in-out infinite}
+.news-flag>img{display:block;width:100%;filter:drop-shadow(0 5px 4px rgba(0,0,0,.25))}
+.news-flag>span,.news-tow>span{position:absolute;display:flex;align-items:center;justify-content:center;text-align:center;white-space:nowrap;font:900 calc(min(30px, 190px / var(--n))) / 1 var(--f-body,system-ui);color:#a5321c;letter-spacing:.02em}
+.news-flag>span{left:12.6%;top:19.7%;width:59%;height:36%}
+.news-flag .news-dot{right:-2%;top:-6%}
+@keyframes newsWave{50%{transform:rotate(-2deg)}}
+.news-balloon{position:absolute;left:-560px;top:190px;z-index:5;display:flex;align-items:center;gap:0;border:0;background:none;padding:0;cursor:pointer;animation:newsFly 52s linear forwards}
+.news-ball{width:120px;animation:newsBob 3.2s ease-in-out infinite}
+.news-tow{position:relative;width:400px;margin:70px -6px 0 0;animation:newsBob 3.2s ease-in-out infinite .4s}
+.news-tow>img{display:block;width:100%;transform:scaleX(-1);filter:drop-shadow(0 5px 4px rgba(0,0,0,.2))}
+.news-tow>span{left:7.9%;top:18.4%;width:65.4%;height:63.6%;font-size:calc(min(32px, 240px / var(--n)))}
 @keyframes newsFly{from{transform:translateX(0)}to{transform:translateX(var(--span))}}
 @keyframes newsBob{50%{transform:translateY(-12px)}}
 #mail-btn{position:absolute;right:22px;top:96px;z-index:8;width:66px;height:66px;border-radius:50%;border:3px solid var(--wood,#6b3f1f);background:var(--cream,#fff4dc);box-shadow:0 4px 0 var(--wood,#6b3f1f),0 8px 14px rgba(0,0,0,.2);cursor:pointer;padding:6px;transition:transform .2s cubic-bezier(.34,1.7,.5,1)}
@@ -337,9 +344,8 @@ body:not([data-scene="map"]) #mail-btn{display:none}
 .nw-item small{color:#8a6a4a;white-space:nowrap}
 @media (max-width:700px),(max-height:520px){
   #mail-btn{right:10px;top:62px;width:50px;height:50px;border-width:2px;padding:4px}
-  .news-flag>span{font-size:22px}
 }
-@media (prefers-reduced-motion:reduce){.news-dot,.news-flag>span,.news-balloon,.news-balloon img,.news-balloon span{animation:none}}
+@media (prefers-reduced-motion:reduce){.news-dot,.news-flag,.news-balloon,.news-ball,.news-tow{animation:none}}
 `;
 const st = document.createElement('style');
 st.textContent = CSS;
