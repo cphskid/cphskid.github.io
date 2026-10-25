@@ -277,17 +277,17 @@ export function openMail() {
 const CSS = `
 .news-dot{position:absolute;right:10%;top:6%;z-index:3;padding:4px 10px;border-radius:999px;background:#e2553f;color:#fff;border:3px solid #fff;font:900 15px/1 var(--f-body,system-ui);box-shadow:0 3px 0 #8a2a1a;animation:newsPing 1s ease-in-out infinite alternate;pointer-events:none}
 @keyframes newsPing{from{transform:scale(1) rotate(-6deg)}to{transform:scale(1.15) rotate(6deg)}}
-.news-flag{position:absolute;left:4%;top:-14%;z-index:3;width:340px;pointer-events:none;transform-origin:8% 90%;animation:newsWave 3s ease-in-out infinite}
+.news-flag{position:absolute;left:6%;top:-4%;z-index:3;width:270px;pointer-events:none;transform-origin:8% 90%;animation:newsWave 3s ease-in-out infinite}
 .news-flag>img{display:block;width:100%;filter:drop-shadow(0 5px 4px rgba(0,0,0,.25))}
-.news-flag>span,.news-tow>span{position:absolute;display:flex;align-items:center;justify-content:center;text-align:center;white-space:nowrap;font:900 calc(min(30px, 190px / var(--n))) / 1 var(--f-body,system-ui);color:#a5321c;letter-spacing:.02em}
-.news-flag>span{left:12.6%;top:19.7%;width:59%;height:36%}
+.news-flag>span,.news-tow>span{position:absolute;display:flex;align-items:center;justify-content:center;text-align:center;white-space:nowrap;font:900 calc(min(36px, 280px / var(--n))) / 1 var(--f-body,system-ui);color:#a5321c;letter-spacing:.02em}
+.news-flag>span{left:11%;top:16%;width:72%;height:44%;white-space:normal;text-wrap:balance;line-height:1.05;font-size:calc(min(28px, 280px / var(--n)))}
 .news-flag .news-dot{right:-2%;top:-6%}
 @keyframes newsWave{50%{transform:rotate(-2deg)}}
 .news-balloon{position:absolute;left:-560px;top:190px;z-index:5;display:flex;align-items:center;gap:0;border:0;background:none;padding:0;cursor:pointer;animation:newsFly 52s linear forwards}
 .news-ball{width:120px;animation:newsBob 3.2s ease-in-out infinite}
-.news-tow{position:relative;width:400px;margin:70px -6px 0 0;animation:newsBob 3.2s ease-in-out infinite .4s}
+.news-tow{position:relative;width:440px;margin:70px -6px 0 0;animation:newsBob 3.2s ease-in-out infinite .4s}
 .news-tow>img{display:block;width:100%;transform:scaleX(-1);filter:drop-shadow(0 5px 4px rgba(0,0,0,.2))}
-.news-tow>span{left:7.9%;top:18.4%;width:65.4%;height:63.6%;font-size:calc(min(32px, 240px / var(--n)))}
+.news-tow>span{left:7.9%;top:18.4%;width:65.4%;height:63.6%}
 @keyframes newsFly{from{transform:translateX(0)}to{transform:translateX(var(--span))}}
 @keyframes newsBob{50%{transform:translateY(-12px)}}
 #mail-btn{position:absolute;right:22px;top:96px;z-index:8;width:66px;height:66px;border-radius:50%;border:3px solid var(--wood,#6b3f1f);background:var(--cream,#fff4dc);box-shadow:0 4px 0 var(--wood,#6b3f1f),0 8px 14px rgba(0,0,0,.2);cursor:pointer;padding:6px;transition:transform .2s cubic-bezier(.34,1.7,.5,1)}
