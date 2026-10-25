@@ -436,6 +436,7 @@ async function paintOverview(c) {
   const avatarsP = auth.passport.classAvatars(c.code).catch(() => null);
   const looksP = auth.traveller.classLooks(c.code).catch(() => null);   // 頭像＝學生的時空旅人大頭
   const playsP = auth.teacher.lastPlay(c.code).catch(() => null);        // 最後在玩什麼：沒裝 park_playlog.sql 就不顯示
+  const starterP = auth.starter.class(c.code).catch(() => null);        // 新手手冊翻到第幾頁：沒裝 park_starter.sql 就不顯示
   try { ov = await auth.teacher.overview(c.code); }
   catch (e) {
     p.innerHTML = `<div class="head">${h2('chart', '全班總覽')}</div><div class="empty"><img src="img/admin/tick-error.webp" alt=""><p>${esc(e.message)}</p></div>`;
@@ -444,6 +445,7 @@ async function paintOverview(c) {
   const looks = new Map((await looksP ?? []).map((a) => [a.student_id, a.look]));
   const avs = new Map((await avatarsP ?? []).map((a) => [a.student_id, { ...a, look: looks.get(a.student_id) }]));
   const plays = new Map((await playsP ?? []).map((r) => [r.student_id, r]));
+  const guides = new Map((await starterP ?? []).map((r) => [r.student_id, r]));
   lastOverview = { cls: c, ...ov, plays };
   const games = ov.games;
   // 最後活動：資料庫有給（park_class_last_active）就用，沒有就拿各遊戲的最後遊玩時間
@@ -490,6 +492,7 @@ async function paintOverview(c) {
         <td class="stu">${avCell(avs.get(s.id))}<b>${esc(s.nickname)}</b><small>${esc(s.login_id)}</small>
           <small class="seen ${s.last > Date.now() - 7 * 86400000 ? 'on' : ''}" title="在任何遊戲或樂園裡最後一次動作的時間">${s.last ? `最後活動 ${esc(ago(s.last))}` : '還沒玩過'}</small>
           ${plays.get(s.id) ? `<small class="now" title="最近 60 天最後玩的地方">在玩：${esc(playText(plays.get(s.id)))}</small>` : ''}
+          ${guides.get(s.id) ? `<small class="now" title="新註冊的孩子前七天照新手手冊走，一天開一頁">${guides.get(s.id).finished ? '新手手冊：七頁都完成了' : `新手手冊：做完 ${guides.get(s.id).pages} / 7 頁`}</small>` : ''}
           ${s.primary ? '' : `<span class="tag" title="這個班不是他的主要班級；守護異世界的排行榜在他的主要班級">${ico('st-info')}另外加入</span>`}
           ${s.locked ? `<span class="tag bad">${ico('st-locked')}密碼鎖住了</span>` : ''}</td>
         ${games.map((g) => cell(g, s)).join('')}

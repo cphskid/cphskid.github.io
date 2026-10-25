@@ -5,6 +5,7 @@ import * as account from './account.js';
 import * as pet from './pet.js';
 import * as traveller from './traveller.js';
 import * as shop from './shop.js';
+import * as starter from './starter.js';
 import * as repair from './repair.js';
 import * as news from './news.js';
 import { facilityStatus, db, wish } from './auth.js';
@@ -167,18 +168,23 @@ pet.init({ me: () => account.current(), host: () => islesLayer, dragged: () => d
 // ---------- 時空旅人換裝（js/traveller.js） ----------
 // 第一次進地圖還沒有旅人：請他建一個（頭像就是旅人的大頭）。一頁只問一次，按叉叉之後下次再問。
 traveller.init({ me: () => account.current(), changed: () => dispatchEvent(new Event('park:traveller')) });
-shop.init({
-  me: () => account.current(), toast: (t) => showToast(t, 4200),
-  // 每日任務「今天的指定島」按「去」：打開那座島的卡片（再按開始冒險）
-  go: (code) => {
-    if (code === 'pet') return pet.open();
-    if (code === 'wear') return traveller.open();
-    const z = zones.get(park.facilities.find((f) => f.code === code)?.zone);
-    if (!z) return;
-    const s = park.map.slots.find((x) => x.slot === z.slot);
-    if (s) setPan(s.left + s.width / 2 - 800);
-    openCard(z);
-  },
+// 每日任務「今天的指定島」、新手手冊按「去」：打開那座島的卡片（再按開始冒險）
+function goTo(code) {
+  if (code === 'pet') return pet.open();
+  if (code === 'wear') return traveller.open();
+  if (code === 'shop') return shop.openShop(null, 'pet');
+  if (code === 'passport') return account.openPassport();
+  const z = zones.get(park.facilities.find((f) => f.code === code)?.zone);
+  if (!z) return;
+  const s = park.map.slots.find((x) => x.slot === z.slot);
+  if (s) setPan(s.left + s.width / 2 - 800);
+  openCard(z);
+}
+shop.init({ me: () => account.current(), toast: (t) => showToast(t, 4200), go: goTo });
+// ---------- 新手冒險手冊（js/starter.js）：新手期取代每日任務 ----------
+starter.init({
+  me: () => account.current(), toast: (t) => showToast(t, 4200), go: goTo,
+  isle: (code) => islesLayer.querySelector(`.isle[data-zone="${park.facilities.find((f) => f.code === code)?.zone}"]`),
 });
 let travReady = Promise.resolve();
 let travAsked = false;
@@ -432,6 +438,8 @@ function greeting() {
   if (w.kind === 'student' && fresh.length) {
     return `哇！${w.nickname}，你拿到新的護照章「${fresh[fresh.length - 1].name}」${fresh.length > 1 ? `等 ${fresh.length} 個` : ''}！點左下角的護照看看。`;
   }
+  const guide = w.kind === 'student' ? starter.line() : null;
+  if (guide) return guide;
   const petNews = w.kind === 'student' ? pet.notice() : null;
   if (petNews) return petNews;
   const name = w.kind === 'student' ? w.nickname : w.kind === 'staff' ? w.display_name : '';
@@ -712,6 +720,7 @@ function onAccountChange(w) {
   pet.load().then(() => { if (w.kind === 'student') warmStudent(); });
   if (w.kind !== 'student') { traveller.close(); shop.close(); }   // 旅人在 account 讀「我是誰」時一起讀好了
   shop.load(w);
+  starter.load(w);
   news.load();
   playlog.active(w.kind === 'student' && !select.hidden);
   if (w.kind === 'guest' && !select.hidden) { history.replaceState(null, '', location.pathname); showTitle(); }
@@ -720,6 +729,7 @@ const me = await meReady;
 travReady = meReady;
 await Promise.all([syncFacilities(), pet.load()]);
 shop.load(me);
+starter.load(me).then(() => { if (!select.hidden && starter.line()) say('point', greeting()); });
 news.load();
 if (route && me.kind === 'guest') {
   // 從遊戲回來但已經登出（或換人用平板）：先回開場，按 Start 再登入
@@ -753,6 +763,7 @@ snd.music('MU-01'); snd.ambience('SE-16');
 const loading = $('#loading');
 loading.classList.add('out');
 mark('樂園開門（圖都到了）');
+playlog.ready();
 setTimeout(() => loading.remove(), 400);
 
 // ---------- 背景預熱：下一步會用到的圖先抓好，點開介紹卡、護照、寵物島時不用等 ----------

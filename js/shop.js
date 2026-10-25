@@ -32,6 +32,8 @@ export async function load(w = hooks.me()) {
   return st;
 }
 
+// 新手期（js/starter.js）每日任務先收起來
+const starterOn = () => document.body.dataset.starter === 'on';
 function canClaim() { return (st?.daily?.tasks ?? []).filter((t) => t.done && !t.claimed).length; }
 
 function paintHud() {
@@ -122,16 +124,19 @@ function paintWallet(msg = null) {
     <h3>本週冒險值 <small>這週新賺到的時光幣，週一重新算</small></h3>
     <div class="wk"><div class="bar"><i style="width:${pct}%"></i></div><b>${st.week} / ${st.goal}</b>
       ${myClasses().length ? '<button type="button" class="ghost small" data-board>🏆 班級排行</button>' : ''}</div>
-    <h3>今天的任務 <small>每個 ${d.each}，全部完成再加 ${d.bonus}${d.weekend ? '；週末多一個加碼' : ''}</small></h3>
+    ${starterOn() ? '<h3>新手手冊 <small>新手期間先照手冊走，翻完七頁就換成每日任務</small></h3><p class="tip"><button type="button" class="ghost small" data-guide>📖 打開新手手冊</button></p>'
+      : `<h3>今天的任務 <small>每個 ${d.each}，全部完成再加 ${d.bonus}${d.weekend ? '；週末多一個加碼' : ''}</small></h3>
     <ul class="daily">${rows}</ul>
     ${wk}
-    ${d.all ? '<p class="note ok">今天的任務都完成了，明天再來！</p>' : ''}
+    ${d.all ? '<p class="note ok">今天的任務都完成了，明天再來！</p>' : ''}`}
     ${msg ? `<p class="note ${msg[0]}">${esc(msg[1])}</p>` : ''}
     <p class="tip">去各座島過關、拿星星就會賺時光幣；重玩一整章也有，但一次比一次少。</p>
     <div class="row end"><button type="button" class="ghost" data-close>關閉</button>
       <button type="button" class="btn go" data-shop><img src="img/ui/shop.webp" alt="">去商店</button></div>
   </div>`);
   $('[data-shop]', layer).onclick = () => openShop();
+  const gd = $('[data-guide]', layer);
+  if (gd) gd.onclick = () => { close(); $('#guide-btn').click(); };
   layer.querySelectorAll('[data-go]').forEach((b) => { b.onclick = () => { close(); hooks.go(b.dataset.go); }; });
   const bb = $('[data-board]', layer);
   if (bb) bb.onclick = () => openBoard();

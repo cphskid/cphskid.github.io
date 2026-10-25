@@ -339,3 +339,10 @@ export const coins = {
   furniture: () => ccall('park_my_furniture'),
   board:     (code, kind) => ccall('park_class_board', { p_code: code, p_kind: kind }),
 };
+
+// ---------- 新手冒險手冊（supabase/park_starter.sql） ----------
+// 還沒裝這份 SQL 時丟出 missing，畫面就照舊顯示每日任務。
+export const starter = {
+  me:    () => ccall('park_starter_me'),
+  class: (code) => ccall('park_starter_class', { p_code: code }),
+};
