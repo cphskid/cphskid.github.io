@@ -220,6 +220,11 @@ begin
     select jsonb_build_object(
       'page', v_page, 'pages', 7, 'day', v_idx + 1, 'title', g.title, 'locked', v_locked,
       'gift', jsonb_build_object('name', g.name, 'art', g.art),
+      -- 七天的禮物一次列出來（大目標），手冊最上面那一排
+      'gifts', (select jsonb_agg(jsonb_build_object('page', a.page, 'name', a.name, 'art', a.art,
+                                                     'done', exists (select 1 from public.park_starter_done d
+                                                                      where d.student_id = v_me and d.code = 'page:' || a.page))
+                                 order by a.page) from public.park_starter_pages a),
       'steps', coalesce((select jsonb_agg(jsonb_build_object('code', st.code, 'name', st.name, 'hint', st.hint, 'go', st.go,
                                                      'done', d.code is not null and not d.skipped, 'skipped', coalesce(d.skipped, false))
                                   order by st.sort)

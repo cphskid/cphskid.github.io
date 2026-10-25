@@ -1251,13 +1251,13 @@ function paintCare() {
   const box = $('aside.care', layer);
   if (!box) return;
   const p = petById(selected);
-  const stamps = state.stamps ?? 0;
+  const clears = state.clears ?? state.stamps ?? 0;     // 領養只看過關章（park_pet_clears）
   const left = freeStarters();
-  const locked = (state.unlock_at ?? []).filter((n) => stamps < n).slice(0, Math.max(0, left.length - (canAdopt() ? 1 : 0)));
+  const locked = (state.unlock_at ?? []).filter((n) => clears < n).slice(0, Math.max(0, left.length - (canAdopt() ? 1 : 0)));
   $('.pals-s', layer).innerHTML = state.pets.map((x) => `<button type="button" class="pal-s${x.id === selected ? ' on' : ''}${x.active ? ' care' : ''}" data-sel="${x.id}" aria-label="${esc(x.name)}${x.active ? '（照顧中）' : ''}">
       <img src="${art(x.species, x.stage)}" alt="">${x.active ? '<i>照顧中</i>' : ''}</button>`).join('')
     + (canAdopt() ? '<button type="button" class="pal-s new" data-adopt aria-label="新的時光蛋：領養一隻新夥伴"><span class="egg"></span><i>新的蛋！</i></button>' : '')
-    + locked.map((n) => `<span class="pal-s locked" title="護照蓋到 ${n} 個章就能領養"><img src="${art(left[0]?.code ?? 'puppy')}" alt=""><i>${n} 個章</i></span>`).join('');
+    + locked.map((n) => `<span class="pal-s locked" title="過關章蓋到 ${n} 個就能領養"><img src="${art(left[0]?.code ?? 'puppy')}" alt=""><i>過 ${n} 關</i></span>`).join('');
   let top = '', body = '';
   if (p?.active) {
     const m = moodOf(p);

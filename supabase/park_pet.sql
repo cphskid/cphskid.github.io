@@ -136,10 +136,20 @@ create policy park_pet_inventory_read on public.park_pet_inventory for select to
 -- -----------------------------------------------------------------------------
 
 -- 可以養幾隻：第一隻免費，護照章 3 個、6 個各多一隻
+create or replace function public.park_pet_clears(p_student uuid)
+returns int language sql stable security definer set search_path = public, pg_temp as $$
+  select count(*)::int from public.park_student_stamps x
+    join public.park_stamps t on t.facility = x.facility and t.code = x.stamp
+   where x.student_id = p_student and t.kind = 'clear' and t.code not like 'a-%';   -- 守護異世界 a- 開頭是成就章
+$$;
+revoke all on function public.park_pet_clears(uuid) from public, anon, authenticated;
+
 create or replace function public.park_pet_slots(p_student uuid)
 returns int language sql stable security definer set search_path = public, pg_temp as $$
+  -- 只算「過關」章（kind = clear）：守護異世界一場就可能一次拿好幾個成就章，
+  -- 全部算進來的話第一關打完就把三隻都開了（2026-10-25 Chuck 實測）
   select 1 + (n >= 3)::int + (n >= 6)::int
-    from (select count(*) as n from public.park_student_stamps x where x.student_id = p_student) c;
+    from (select public.park_pet_clears(p_student) as n) c;
 $$;
 
 -- 經驗 → 階段：0 幼年、12 成長、40 完全體
@@ -268,6 +278,7 @@ returns jsonb language sql stable security definer set search_path = public, pg_
     'quiet', public.park_pet_quiet(p_student),
     'slots', public.park_pet_slots(p_student),
     'stamps', (select count(*) from public.park_student_stamps x where x.student_id = p_student),
+    'clears', public.park_pet_clears(p_student),
     'unlock_at', jsonb_build_array(3, 6),
     'granted', p_granted);
 $$;
@@ -321,7 +332,7 @@ begin
   select count(*) into v_have from public.park_pets p where p.student_id = v_me;
   if v_have >= public.park_pet_slots(v_me) then
     raise exception '%', case when v_have = 0 then '現在不能領養' when v_have >= 3 then '起始夥伴都領養完了'
-                              else '再多蓋幾個護照章，就能領養下一隻夥伴' end;
+                              else '再多過幾關，就能領養下一隻夥伴' end;
   end if;
   if p_species is null or p_species = 'random' then
     select s.code into v_sp from public.park_pet_species s

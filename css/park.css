@@ -1062,7 +1062,7 @@ body[data-scene="map"] #hud{display:block}
   #wardrobe{padding:8px}
   .ward{grid-template-columns:minmax(0,1fr);grid-template-rows:none;gap:12px;padding:16px;border-radius:22px;overflow-y:auto}
   /* 叉叉固定在畫面角落（不跟著捲走），避開瀏海與 Safari 頂端 */
-  #wardrobe .ward>.x{position:fixed;right:calc(env(safe-area-inset-right) + 14px);top:calc(env(safe-area-inset-top) + 18px);width:52px;height:52px;z-index:30;touch-action:manipulation}
+  #wardrobe>.x,#wardrobe .ward>.x{position:fixed;right:calc(env(safe-area-inset-right) + 14px);top:calc(env(safe-area-inset-top) + 18px);width:52px;height:52px;z-index:30;touch-action:manipulation}
   #wardrobe{padding:max(8px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left))}
   .ward .pane{overflow:visible;padding-right:0}
   .ward .stage{padding:8px 6px 26px}
@@ -1446,6 +1446,14 @@ body[data-starter="on"][data-scene="map"] #tick .bubble{display:none}
 .starter-book .pages i{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font:900 15px/1 var(--f-body);font-style:normal;background:#eadbc0;color:#8a6a4a}
 .starter-book .pages i.on{background:#3fae5a;color:#fff}
 .starter-book .pages i.cur{background:var(--gold);color:var(--ink);box-shadow:0 0 0 3px #fff,0 0 0 5px var(--gold)}
+/* 七天禮物那一排（有 gifts 才是這種）：小卡片＝禮物圖＋第幾天 */
+.starter-book .pages.gifts{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}
+.starter-book .pages.gifts i{width:auto;height:auto;aspect-ratio:auto;border-radius:12px;display:flex;flex-direction:column;align-items:center;gap:1px;padding:4px 2px 3px;background:#f3e6cc;border:2px solid #e2cfa6}
+.starter-book .pages.gifts img{width:100%;max-width:44px;aspect-ratio:1;object-fit:contain;filter:grayscale(.5) opacity(.75)}
+.starter-book .pages.gifts span{font:900 11px/1.2 var(--f-body);white-space:nowrap}
+.starter-book .pages.gifts i.on{background:#dff3d9;border-color:#3fae5a;color:#2f7a3c}
+.starter-book .pages.gifts i.on img,.starter-book .pages.gifts i.cur img{filter:none}
+.starter-book .pages.gifts i.cur{background:#fff3c9;border-color:var(--gold);color:var(--ink);box-shadow:0 0 0 2px #fff,0 0 0 4px var(--gold)}
 .starter-book .daily li.now{border-color:var(--gold);background:#fff8e0}
 .starter-book .daily li.skip{opacity:.55}
 .starter-book .present{display:flex;align-items:center;gap:14px;margin:14px 0 4px;padding:10px 14px;border-radius:18px;background:linear-gradient(#fff3c9,#ffe39a);border:3px dashed #d99a1a}

@@ -69,10 +69,11 @@ function paintTarget() {
 function paint() {
   const on = active();
   document.body.dataset.starter = on ? 'on' : '';
+  const s = on ? current() : null;
   btn.hidden = !on;
-  strip.hidden = !on;
+  // 今天這頁做完了就把「下一步」條收起來（2026-10-25 Chuck：一直停在下面）；功能列的手冊鈕還在
+  strip.hidden = !s;
   if (!on) { paintTarget(); return; }
-  const s = current();
   const done = st.steps.filter((x) => x.done || x.skipped).length;
   $('.badge', btn).textContent = `${st.page}/${st.pages}`;
   btn.dataset.state = s ? 'left' : 'all';
@@ -114,11 +115,14 @@ export function openBook(msg = null) {
       <span class="tk">${x.done ? '✓' : ''}</span><b>${esc(x.name)}</b>
       ${x.done ? '<small>完成</small>' : x.skipped ? '<small>你的班還沒開這座島，先跳過</small>'
         : x === s && x.go ? '<button type="button" class="btn small go" data-go>去</button>' : '<small>還沒做</small>'}</li>`).join('');
-  const dots = Array.from({ length: st.pages }, (_, i) => `<i class="${i + 1 < st.page ? 'on' : i + 1 === st.page ? 'cur' : ''}">${i + 1}</i>`).join('');
+  // 七天的禮物一排列出來：做完的打勾、今天這頁發亮、還沒到的先看得到禮物（大目標）
+  const gifts = st.gifts ?? Array.from({ length: st.pages }, (_, i) => ({ page: i + 1, done: i + 1 < st.page }));
+  const dots = gifts.map((g) => `<i class="${g.done ? 'on' : g.page === st.page ? 'cur' : ''}" title="${esc(g.name ?? '')}">
+      ${g.art ? `<img src="${esc(g.art)}" alt="">` : ''}<span>${g.done ? '✓' : `第 ${g.page} 天`}</span></i>`).join('');
   show(`<div class="wallet starter-book" role="dialog" aria-modal="true" aria-label="新手手冊">
     <button class="x" data-close aria-label="關閉"></button>
     <h2>新手手冊</h2>
-    <p class="pages">${dots}</p>
+    <p class="pages gifts">${dots}</p>
     ${msg ? `<p class="note ok gift">🎁 ${esc(msg)}</p>` : ''}
     <h3>${esc(st.title)}${st.locked ? '' : ` <small>做完這頁送你</small>`}</h3>
     ${st.locked
