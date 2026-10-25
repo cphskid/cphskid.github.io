@@ -400,9 +400,22 @@ snd.preload(['SE-01', 'SE-02', 'SE-03', 'SE-10', 'SE-11', 'SE-12', 'SE-14', 'SE-
 // ---------- 換場 ----------
 const flash = $('#flash');
 // 目前是哪一幕：介面層的按鈕（回到開場、護照、滴答）只在地圖出現；直拿時兩幕的縮放也不一樣
+// 冒險地圖木牌：進地圖先大大的，2 秒後收成小牌（不擋島和公告布條）；同一次遊玩再回地圖就直接是小牌
+const sign = $('#hud .sign');
+let signTimer = 0;
 function setScene(name) {
   document.body.dataset.scene = name;
   fit();
+  if (name !== 'map') return;
+  clearTimeout(signTimer);
+  let seen = false;
+  try { seen = sessionStorage.getItem('park:sign-mini') === '1'; } catch {}
+  if (seen) { sign.classList.add('mini'); return; }
+  sign.classList.remove('mini');
+  signTimer = setTimeout(() => {
+    sign.classList.add('mini');
+    try { sessionStorage.setItem('park:sign-mini', '1'); } catch {}
+  }, 2000);
 }
 function showTitle() {
   closeCard();

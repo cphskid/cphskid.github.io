@@ -1321,6 +1321,11 @@ button.stamp:hover,button.stamp:focus-visible{transform:translateY(-3px);outline
 .sign>div{position:absolute;left:14%;right:14%;top:36%;bottom:14%;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#5a3418}
 .sign b{font:900 40px/1 var(--f-body);letter-spacing:.12em;text-shadow:0 2px 0 rgba(255,255,255,.4)}
 .sign small{font:700 15px/1.4 var(--f-body);color:#8a5a2a;letter-spacing:.2em}
+.sign{transition:width .5s cubic-bezier(.34,1.4,.5,1),top .5s ease}
+.sign small{transition:opacity .3s}
+.sign.mini{width:240px}
+.sign.mini small{opacity:0;font-size:0}
+.sign.mini b{font-size:24px}
 
 #gear{position:absolute;left:24px;top:20px;z-index:12}
 body[data-scene="map"] #gear{left:186px}
@@ -1357,6 +1362,8 @@ body[data-scene="map"] #tick .bubble{margin-bottom:120px}
   .sign{width:230px;top:66px}
   .sign b{font-size:24px}
   .sign small{font-size:10px}
+  .sign.mini{width:124px;top:58px}
+  .sign.mini b{font-size:15px}
   #back{font-size:0!important;width:44px;height:44px;padding:0!important;border-radius:50%!important;display:grid;place-items:center}
   #back::before{content:'🏠';font-size:22px}
   #gear{left:10px;top:10px}
@@ -1378,6 +1385,8 @@ body[data-scene="map"] #tick .bubble{margin-bottom:120px}
 @media (max-height:560px){
   .sign{top:2px;width:190px}
   .sign b{font-size:20px}
+  .sign.mini{top:2px;width:124px}
+  .sign.mini b{font-size:15px}
   #tick{bottom:6px}
 }
 .board .tabs.kinds .tab{flex:1;text-align:center}
