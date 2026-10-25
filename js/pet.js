@@ -242,10 +242,18 @@ function wish() {
 }
 function newsHtml() {
   if (!news.length) return '';
-  const t = news.map((g) => {
+  // 同一座島蓋了好幾個章（守護異世界一關一個章）合成一句，不要同一句重複十幾次
+  const sum = new Map();
+  news.forEach((g) => {
+    const k = `${g.source === 'daily' ? 'daily' : 'stamp'}:${g.item}`;
+    const o = sum.get(k) ?? { ...g, qty: 0, n: 0 };
+    o.qty += g.qty; o.n += 1;
+    sum.set(k, o);
+  });
+  const t = [...sum.values()].map((g) => {
     const i = item(g.item);
     if (g.source === 'daily') return `今天的 ${g.qty} 份${esc(i?.name ?? '飼料')}送到了`;
-    return `在「${esc(i?.facility_name ?? '島上')}」蓋了章，拿到${esc(i?.name ?? '點心')}`;
+    return `在「${esc(i?.facility_name ?? '島上')}」蓋了${g.n > 1 ? ` ${g.n} 個` : ''}章，拿到${esc(i?.name ?? '點心')}${g.qty > 1 ? ` ×${g.qty}` : ''}`;
   });
   return `<div class="gotnew"><img src="img/fx/sparkle.webp" alt=""><p>${t.join('；')}！</p></div>`;
 }
