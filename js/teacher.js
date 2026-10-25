@@ -999,6 +999,14 @@ async function paintInsights(days = insDays) {
           ${NOW_SLOTS.includes(r.slot) ? '<td>—</td><td>—</td>' : `<td>${pctPill(r.done, r.started)}</td><td>${esc(stuckTxt(r.stuck)) || '—'}</td>`}<td class="num">${r.mistakes ?? '—'}</td></tr>`).join('') || '<tr><td colspan="6">還沒有人玩</td></tr>'}</tbody></table></div>
       <p class="tip">現在篇（漁村、小鎮…）沒有「過關」，看開始人數就好。</p>
     </details>
+    ${a.animal?.length ? `<details class="fold" open><summary><h3>時光動物祕境：每一關卡在哪</h3></summary>
+      <div class="tablewrap"><table class="adm">
+        <thead><tr><th>關卡</th><th class="num">開始</th><th class="num">過關</th><th>過關率</th><th>沒過的人停在</th><th class="num">平均失誤</th><th class="num">過關要多久</th></tr></thead>
+        <tbody>${a.animal.map((r) => `<tr><td><b>${esc(r.label)}</b></td><td class="num">${r.started}</td><td class="num">${r.done}</td><td>${pctPill(r.done, r.started)}</td>
+          <td>${esc(stuckTxt(r.stuck)) || '—'}${r.steps ? `<small class="sub">共 ${r.steps} 步</small>` : ''}</td><td class="num">${r.misses ?? '—'}</td>
+          <td class="num">${r.sec ? `${Math.round(r.sec / 60)} 分鐘` : '—'}</td></tr>`).join('')}</tbody></table></div>
+      <p class="tip">每一步是什麼，在老師細節頁（時光動物祕境的「細節頁 ›」）的「每一關：大家卡在哪」。過關要多久是中位數。</p>
+    </details>` : ''}
     <details class="fold"><summary><h3>守護異世界：大家停在哪一關</h3>${stopped.length ? `<small>最多人停住：${esc(stopped[0].name)}（${stopped[0].stopped} 人）</small>` : ''}</summary>
       ${stopped.length ? `<p class="tip">「停住」＝打到這關就沒有再往後、也還沒過。人多的關可能太難。</p>
       <div class="tablewrap"><table class="adm"><thead><tr><th>關卡</th><th class="num">停住</th><th class="num">打過</th><th class="num">過關</th><th>最近答對率</th></tr></thead>
