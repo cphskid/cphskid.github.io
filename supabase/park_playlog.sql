@@ -121,7 +121,10 @@ begin
          coalesce(l.label, case when l.facility = 'island_pioneer' then public.park_island_label(l.place) end, l.place),
          l.started_at, coalesce(l.ended_at, l.last_seen),
          extract(epoch from coalesce(l.ended_at, l.last_seen) - l.started_at)::int,
-         case when l.facility = 'island_pioneer' and to_regclass('public.park_coin_ledger') is not null then (
+         case when l.facility = 'science_warrior' and to_regclass('public.animal_progress') is not null then (
+           select case when p.first_clear_at between l.started_at and coalesce(l.ended_at, l.last_seen) + interval '1 minute' then '第一次過關' end
+             from public.animal_progress p where p.student_id = l.student_id and p.level = l.place)
+              when l.facility = 'island_pioneer' and to_regclass('public.park_coin_ledger') is not null then (
            select nullif(concat_ws('・',
                     case when count(*) filter (where c.source like 'island:' || l.place || ':s%') > 0
                          then '新過了 ' || count(*) filter (where c.source like 'island:' || l.place || ':s%') || ' 步' end,
@@ -311,14 +314,32 @@ $$;
 --   guardian 每一關（全部時間）：打過幾人、過關幾人、最遠停在這關（沒過）的人數；最近 N 天的答對率
 --   words   最近 N 天全站最常錯的字（守護異世界）
 --   habit   最近 N 天：來 1 天、2~3 天、4 天以上的人數；每個遊戲一趟平均幾分鐘
+--   animal  時光祕境島每一關（全部時間）：開始幾人、過關幾人、沒過關的停在哪一步、平均失誤、過關中位數秒數（2026-10-25）
 create or replace function public.park_admin_insights(p_days int default 14)
 returns jsonb language plpgsql stable security definer set search_path = public, pg_temp as $$
 declare
   v_days  int := least(greatest(coalesce(p_days, 14), 1), 90);
   v_since timestamptz := now() - make_interval(days => v_days);
-  v_island jsonb := '[]'; v_guard jsonb := '[]'; v_words jsonb := '[]'; v_habit jsonb;
+  v_island jsonb := '[]'; v_guard jsonb := '[]'; v_words jsonb := '[]'; v_habit jsonb; v_animal jsonb := '[]';
 begin
   if not public.is_admin() then raise exception '只有管理員可以看'; end if;
+
+  -- 時光祕境島（park_animal.sql 還沒套就跳過）
+  if to_regclass('public.animal_progress') is not null then
+    execute $q$
+      select coalesce(jsonb_agg(x order by x ->> 'label'), '[]') from (
+        select jsonb_build_object('level', p.level, 'label', public.animal_level_label(p.level),
+                 'steps', max(p.steps), 'started', count(*), 'done', count(p.first_clear_at),
+                 'stuck', (select coalesce(jsonb_object_agg(t.k, t.n), '{}') from (
+                             select p2.best_no::text k, count(*) n from public.animal_progress p2
+                              where p2.level = p.level and p2.first_clear_at is null group by 1) t),
+                 'misses', round(avg(p.misses), 1),
+                 'sec', percentile_cont(0.5) within group (order by p.best_sec) filter (where p.best_sec is not null),
+                 'last', max(p.updated_at)) as x
+          from public.animal_progress p
+         group by p.level) t
+    $q$ into v_animal;
+  end if;
 
   if to_regclass('public.island_saves') is not null then
     execute $q$
@@ -377,7 +398,7 @@ begin
                  where l.started_at >= v_since and l.facility <> 'park' and l.place not in ('map', 'world')
                  group by l.facility) t)) into v_habit;
 
-  return jsonb_build_object('days', v_days, 'island', v_island, 'guardian', v_guard, 'words', v_words, 'habit', v_habit);
+  return jsonb_build_object('days', v_days, 'island', v_island, 'guardian', v_guard, 'words', v_words, 'habit', v_habit, 'animal', v_animal);
 end;
 $$;
 
