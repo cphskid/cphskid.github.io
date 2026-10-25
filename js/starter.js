@@ -24,14 +24,6 @@ function current() {
   if (!st || st.finished || st.locked) return null;
   return st.steps.find((s) => !s.done && !s.skipped) ?? null;
 }
-// 滴答進地圖時要說的話
-export function line() {
-  if (!active()) return null;
-  const s = current();
-  if (!s) return `今天的新手手冊完成了！明天再來，會送你「${st.gift.name}」喔。`;
-  return st.page === 1 && st.steps.every((x) => !x.done) ? `歡迎來到樂園！先照著新手手冊走：${s.name}。` : `新手手冊的下一步：${s.name}！`;
-}
-
 export async function load(w = hooks.me()) {
   const before = st;
   st = null;
@@ -86,10 +78,10 @@ function paint() {
   btn.dataset.state = s ? 'left' : 'all';
   btn.setAttribute('aria-label', `新手手冊：第 ${st.page} 頁`);
   strip.innerHTML = s
-    ? `<button type="button" class="book" data-book aria-label="打開新手手冊"><img src="img/ui/task.webp" alt=""><small>第 ${st.page} 頁 ${done}/${st.steps.length}</small></button>
+    ? `<button type="button" class="gbook" data-book aria-label="打開新手手冊"><img src="img/ui/task.webp" alt=""><small>第 ${st.page} 頁 ${done}/${st.steps.length}</small></button>
        <p><b>${esc(s.name)}</b><span>${esc(s.hint)}</span></p>
        ${s.go ? '<button type="button" class="btn small go" data-go>去！</button>' : ''}`
-    : `<button type="button" class="book" data-book aria-label="打開新手手冊"><img src="img/ui/task.webp" alt=""><small>第 ${st.page} 頁</small></button>
+    : `<button type="button" class="gbook" data-book aria-label="打開新手手冊"><img src="img/ui/task.webp" alt=""><small>第 ${st.page} 頁</small></button>
        <p><b>今天的手冊完成了！</b><span>明天再來翻下一頁，送你「${esc(st.gift.name)}」。</span></p>`;
   strip.dataset.state = s ? 'go' : 'wait';
   $('[data-book]', strip).onclick = () => openBook();

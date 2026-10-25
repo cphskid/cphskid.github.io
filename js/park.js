@@ -438,8 +438,6 @@ function greeting() {
   if (w.kind === 'student' && fresh.length) {
     return `哇！${w.nickname}，你拿到新的護照章「${fresh[fresh.length - 1].name}」${fresh.length > 1 ? `等 ${fresh.length} 個` : ''}！點左下角的護照看看。`;
   }
-  const guide = w.kind === 'student' ? starter.line() : null;
-  if (guide) return guide;
   const petNews = w.kind === 'student' ? pet.notice() : null;
   if (petNews) return petNews;
   const name = w.kind === 'student' ? w.nickname : w.kind === 'staff' ? w.display_name : '';
@@ -729,7 +727,7 @@ const me = await meReady;
 travReady = meReady;
 await Promise.all([syncFacilities(), pet.load()]);
 shop.load(me);
-starter.load(me).then(() => { if (!select.hidden && starter.line()) say('point', greeting()); });
+starter.load(me);
 news.load();
 if (route && me.kind === 'guest') {
   // 從遊戲回來但已經登出（或換人用平板）：先回開場，按 Start 再登入

@@ -1419,22 +1419,24 @@ body[data-scene="map"] #tick .bubble{margin-bottom:120px}
 body[data-starter="on"] #task-btn{display:none!important}
 #guide-btn .badge{background:#f08a24}
 #guide-btn[data-state=all] .badge{background:#3fae5a}
-#starter{position:absolute;left:50%;bottom:132px;translate:-50% 0;z-index:7;width:min(640px,calc(100% - 24px));display:flex;align-items:center;gap:12px;padding:8px 10px 8px 8px;border-radius:22px;background:#fffaf0;border:4px solid var(--wood);box-shadow:0 6px 0 #3b200c,0 12px 22px rgba(0,0,0,.3);animation:starterIn .5s cubic-bezier(.34,1.7,.5,1) both}
+#starter{position:absolute;left:50%;bottom:162px;translate:-50% 0;z-index:7;width:min(580px,calc(100% - 24px));display:flex;align-items:center;gap:12px;padding:8px 10px 8px 8px;border-radius:22px;background:#fffaf0;border:4px solid var(--wood);box-shadow:0 6px 0 #3b200c,0 12px 22px rgba(0,0,0,.3);animation:starterIn .5s cubic-bezier(.34,1.7,.5,1) both}
 #starter[hidden],body:not([data-scene="map"]) #starter{display:none}
-#starter .book{flex:none;display:flex;flex-direction:column;align-items:center;gap:0;border:0;background:none;padding:0;cursor:pointer}
-#starter .book img{width:46px;height:46px;object-fit:contain}
-#starter .book small{font:900 12px/1 var(--f-body);color:#8a5a2a;white-space:nowrap}
+#starter .gbook{flex:none;display:flex;flex-direction:column;align-items:center;gap:0;border:0;background:none;padding:0;cursor:pointer}
+#starter .gbook img{width:46px;height:46px;object-fit:contain}
+#starter .gbook small{font:900 12px/1 var(--f-body);color:#8a5a2a;white-space:nowrap}
 #starter p{flex:1;min-width:0;margin:0;display:flex;flex-direction:column;gap:3px}
 #starter p b{font:900 19px/1.25 var(--f-body);color:var(--ink)}
 #starter p span{font:700 14px/1.3 var(--f-body);color:#8a6a4a}
 #starter .btn.go{flex:none;font-size:20px;padding:10px 20px 12px;animation:taskhop 1.8s ease-in-out infinite}
 #starter[data-state=wait]{background:#eefbe9;border-color:#3f8a3a}
 @keyframes starterIn{from{opacity:0;transform:translateY(20px)}}
+/* 新手期滴答要說的話都在「下一步」那條，泡泡先收起來，免得疊在一起 */
+body[data-starter="on"][data-scene="map"] #tick .bubble{display:none}
 /* 要去的地方：島上、功能列的按鈕跳箭頭 */
 .starter-target{position:relative}
 .isle.starter-target::before,#dock>button.starter-target::before{content:'';position:absolute;left:50%;width:54px;height:54px;translate:-50% 0;background:url(../img/ui/arrow-right.webp) center/contain no-repeat;z-index:3;pointer-events:none;transform:rotate(90deg);animation:starterArrow 1s ease-in-out infinite;filter:drop-shadow(0 3px 3px rgba(0,0,0,.35))}
 .isle.starter-target::before{top:-30px;width:80px;height:80px}
-#dock>button.starter-target::before{top:-58px}
+#dock>button.starter-target::before{top:-50px;width:46px;height:46px}
 #dock>button.starter-target{box-shadow:inset 0 -3px 0 #d9b77a,0 0 0 3px #ffd34d,0 0 16px #ffd34d}
 .isle.starter-target .plate b{background:linear-gradient(#ffb23d,#e07a10);border-color:#7a3d06}
 @keyframes starterArrow{0%,100%{transform:translateY(0) rotate(90deg)}50%{transform:translateY(14px) rotate(90deg)}}
@@ -1452,11 +1454,11 @@ body[data-starter="on"] #task-btn{display:none!important}
 .starter-book .note.gift{font-size:18px}
 @media (max-width:760px),(max-height:560px){
   #starter{bottom:84px;left:8px;right:84px;translate:none;width:auto;gap:8px;padding:6px 8px 6px 6px;border-width:3px;border-radius:16px}
-  #starter .book img{width:34px;height:34px}
+  #starter .gbook img{width:34px;height:34px}
   #starter p b{font-size:15px}
   #starter p span{display:none}
   #starter .btn.go{font-size:16px;padding:8px 14px 9px}
   .isle.starter-target::before{width:60px;height:60px;top:-20px}
-  #dock>button.starter-target::before{width:40px;height:40px;top:-44px}
-  body[data-starter="on"][data-scene="map"] #tick .bubble{margin-bottom:96px}
+  #dock>button.starter-target::before{display:none}
+  body[data-starter="on"] .env-tag{bottom:150px}
 }
