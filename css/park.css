@@ -1448,12 +1448,15 @@ body[data-starter="on"][data-scene="map"] #tick .bubble{display:none}
 .starter-book .pages i.cur{background:var(--gold);color:var(--ink);box-shadow:0 0 0 3px #fff,0 0 0 5px var(--gold)}
 /* 七天禮物那一排（有 gifts 才是這種）：小卡片＝禮物圖＋第幾天 */
 .starter-book .pages.gifts{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}
-.starter-book .pages.gifts i{width:auto;height:auto;aspect-ratio:auto;border-radius:12px;display:flex;flex-direction:column;align-items:center;gap:1px;padding:4px 2px 3px;background:#f3e6cc;border:2px solid #e2cfa6}
+.starter-book .pages.gifts button{cursor:pointer;font:inherit;color:#8a6a4a;width:auto;height:auto;aspect-ratio:auto;border-radius:12px;display:flex;flex-direction:column;align-items:center;gap:1px;padding:4px 2px 3px;background:#f3e6cc;border:2px solid #e2cfa6}
 .starter-book .pages.gifts img{width:100%;max-width:44px;aspect-ratio:1;object-fit:contain;filter:grayscale(.5) opacity(.75)}
+.starter-book .pages.gifts button.sel{border-color:var(--wood);transform:translateY(-2px);box-shadow:0 3px 0 var(--wood)}
+.starter-book .peek{margin:-4px 0 8px;padding:6px 12px;border-radius:12px;background:#fff8e0;font:700 16px/1.4 var(--f-body);color:#8a6a4a;text-align:center}
+.starter-book .peek b{color:var(--ink)}
 .starter-book .pages.gifts span{font:900 11px/1.2 var(--f-body);white-space:nowrap}
-.starter-book .pages.gifts i.on{background:#dff3d9;border-color:#3fae5a;color:#2f7a3c}
-.starter-book .pages.gifts i.on img,.starter-book .pages.gifts i.cur img{filter:none}
-.starter-book .pages.gifts i.cur{background:#fff3c9;border-color:var(--gold);color:var(--ink);box-shadow:0 0 0 2px #fff,0 0 0 4px var(--gold)}
+.starter-book .pages.gifts button.on{background:#dff3d9;border-color:#3fae5a;color:#2f7a3c}
+.starter-book .pages.gifts button.on img,.starter-book .pages.gifts button.cur img,.starter-book .pages.gifts button.sel img{filter:none}
+.starter-book .pages.gifts button.cur{background:#fff3c9;border-color:var(--gold);color:var(--ink);box-shadow:0 0 0 2px #fff,0 0 0 4px var(--gold)}
 .starter-book .daily li.now{border-color:var(--gold);background:#fff8e0}
 .starter-book .daily li.skip{opacity:.55}
 .starter-book .present{display:flex;align-items:center;gap:14px;margin:14px 0 4px;padding:10px 14px;border-radius:18px;background:linear-gradient(#fff3c9,#ffe39a);border:3px dashed #d99a1a}

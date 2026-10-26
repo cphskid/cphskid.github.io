@@ -117,12 +117,15 @@ export function openBook(msg = null) {
         : x === s && x.go ? '<button type="button" class="btn small go" data-go>去</button>' : '<small>還沒做</small>'}</li>`).join('');
   // 七天的禮物一排列出來：做完的打勾、今天這頁發亮、還沒到的先看得到禮物（大目標）
   const gifts = st.gifts ?? Array.from({ length: st.pages }, (_, i) => ({ page: i + 1, done: i + 1 < st.page }));
-  const dots = gifts.map((g) => `<i class="${g.done ? 'on' : g.page === st.page ? 'cur' : ''}" title="${esc(g.name ?? '')}">
-      ${g.art ? `<img src="${esc(g.art)}" alt="">` : ''}<span>${g.done ? '✓' : `第 ${g.page} 天`}</span></i>`).join('');
+  // 點哪一天就在下面寫那天送什麼（2026-10-26 Chuck：只看圖示看不出是什麼）
+  const dots = gifts.map((g) => `<button type="button" data-day="${g.page}" class="${g.done ? 'on' : g.page === st.page ? 'cur' : ''}${g.page === st.page ? ' sel' : ''}" aria-label="第 ${g.page} 天的禮物：${esc(g.name ?? '')}">
+      ${g.art ? `<img src="${esc(g.art)}" alt="">` : ''}<span>${g.done ? '✓' : `第 ${g.page} 天`}</span></button>`).join('');
+  const peekText = (g) => !g?.name ? '' : `第 ${g.page} 天：<b>${esc(g.name)}</b>　${g.done ? '已經拿到了' : g.page === st.page ? (st.locked ? '明天翻開這頁' : '做完今天這頁就送') : (g.page - (st.day ?? 1) > 0 ? `再過 ${g.page - (st.day ?? 1)} 天就能翻到` : '先把前面幾頁做完')}`;
   show(`<div class="wallet starter-book" role="dialog" aria-modal="true" aria-label="新手手冊">
     <button class="x" data-close aria-label="關閉"></button>
     <h2>新手手冊</h2>
     <p class="pages gifts">${dots}</p>
+    ${st.gifts ? `<p class="peek">${peekText(gifts.find((g) => g.page === st.page))}</p>` : ''}
     ${msg ? `<p class="note ok gift">🎁 ${esc(msg)}</p>` : ''}
     <h3>${esc(st.title)}${st.locked ? '' : ` <small>做完這頁送你</small>`}</h3>
     ${st.locked
@@ -134,6 +137,14 @@ export function openBook(msg = null) {
   </div>`);
   const g = $('[data-go]', layer);
   if (g) g.onclick = () => go(s);
+  layer.querySelectorAll('[data-day]').forEach((b) => {
+    b.onclick = () => {
+      layer.querySelectorAll('[data-day]').forEach((x) => x.classList.toggle('sel', x === b));
+      const peek = $('.peek', layer);
+      if (peek) peek.innerHTML = peekText(gifts.find((x) => x.page === +b.dataset.day));
+      sfx('SE-01');
+    };
+  });
 }
 function show(html) {
   layer.innerHTML = html;
