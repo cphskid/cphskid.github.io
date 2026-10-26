@@ -132,10 +132,15 @@ export function headHtml(look) {
 const thumb = (code) => `<img src="img/traveller/thumb/${esc(code)}.webp" alt="" draggable="false">`;
 
 // ---------- 外框 ----------
+const SMALL = matchMedia('(max-width:760px),(max-height:560px)');
 function show(html) {
   layer.classList.toggle('again', !layer.hidden);
   layer.innerHTML = html;
   layer.hidden = false;
+  // 手機：叉叉搬出會捲動的 .ward，直接掛在 #wardrobe 上。
+  // iPhone Safari 橫拿時，捲動框裡的 position:fixed 按鈕有時點了沒反應（2026-10-25 Chuck 實機）。
+  const x = layer.querySelector('.ward>.x');
+  if (x && SMALL.matches) layer.appendChild(x);
   layer.querySelectorAll('[data-close]').forEach((b) => { b.onclick = close; });
 }
 export function close() {

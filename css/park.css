@@ -1062,7 +1062,7 @@ body[data-scene="map"] #hud{display:block}
   #wardrobe{padding:8px}
   .ward{grid-template-columns:minmax(0,1fr);grid-template-rows:none;gap:12px;padding:16px;border-radius:22px;overflow-y:auto}
   /* 叉叉固定在畫面角落（不跟著捲走），避開瀏海與 Safari 頂端 */
-  #wardrobe .ward>.x{position:fixed;right:calc(env(safe-area-inset-right) + 14px);top:calc(env(safe-area-inset-top) + 18px);width:52px;height:52px;z-index:30;touch-action:manipulation}
+  #wardrobe>.x,#wardrobe .ward>.x{position:fixed;right:calc(env(safe-area-inset-right) + 14px);top:calc(env(safe-area-inset-top) + 18px);width:52px;height:52px;z-index:30;touch-action:manipulation}
   #wardrobe{padding:max(8px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left))}
   .ward .pane{overflow:visible;padding-right:0}
   .ward .stage{padding:8px 6px 26px}

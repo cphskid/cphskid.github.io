@@ -242,10 +242,18 @@ function wish() {
 }
 function newsHtml() {
   if (!news.length) return '';
-  const t = news.map((g) => {
+  // 同一座島蓋了好幾個章（守護異世界一關一個章）合成一句，不要同一句重複十幾次
+  const sum = new Map();
+  news.forEach((g) => {
+    const k = `${g.source === 'daily' ? 'daily' : 'stamp'}:${g.item}`;
+    const o = sum.get(k) ?? { ...g, qty: 0, n: 0 };
+    o.qty += g.qty; o.n += 1;
+    sum.set(k, o);
+  });
+  const t = [...sum.values()].map((g) => {
     const i = item(g.item);
     if (g.source === 'daily') return `今天的 ${g.qty} 份${esc(i?.name ?? '飼料')}送到了`;
-    return `在「${esc(i?.facility_name ?? '島上')}」蓋了章，拿到${esc(i?.name ?? '點心')}`;
+    return `在「${esc(i?.facility_name ?? '島上')}」蓋了${g.n > 1 ? ` ${g.n} 個` : ''}章，拿到${esc(i?.name ?? '點心')}${g.qty > 1 ? ` ×${g.qty}` : ''}`;
   });
   return `<div class="gotnew"><img src="img/fx/sparkle.webp" alt=""><p>${t.join('；')}！</p></div>`;
 }
@@ -1243,13 +1251,13 @@ function paintCare() {
   const box = $('aside.care', layer);
   if (!box) return;
   const p = petById(selected);
-  const stamps = state.stamps ?? 0;
+  const clears = state.clears ?? state.stamps ?? 0;     // 領養只看過關章（park_pet_clears）
   const left = freeStarters();
-  const locked = (state.unlock_at ?? []).filter((n) => stamps < n).slice(0, Math.max(0, left.length - (canAdopt() ? 1 : 0)));
+  const locked = (state.unlock_at ?? []).filter((n) => clears < n).slice(0, Math.max(0, left.length - (canAdopt() ? 1 : 0)));
   $('.pals-s', layer).innerHTML = state.pets.map((x) => `<button type="button" class="pal-s${x.id === selected ? ' on' : ''}${x.active ? ' care' : ''}" data-sel="${x.id}" aria-label="${esc(x.name)}${x.active ? '（照顧中）' : ''}">
       <img src="${art(x.species, x.stage)}" alt="">${x.active ? '<i>照顧中</i>' : ''}</button>`).join('')
     + (canAdopt() ? '<button type="button" class="pal-s new" data-adopt aria-label="新的時光蛋：領養一隻新夥伴"><span class="egg"></span><i>新的蛋！</i></button>' : '')
-    + locked.map((n) => `<span class="pal-s locked" title="護照蓋到 ${n} 個章就能領養"><img src="${art(left[0]?.code ?? 'puppy')}" alt=""><i>${n} 個章</i></span>`).join('');
+    + locked.map((n) => `<span class="pal-s locked" title="過關章蓋到 ${n} 個就能領養"><img src="${art(left[0]?.code ?? 'puppy')}" alt=""><i>過 ${n} 關</i></span>`).join('');
   let top = '', body = '';
   if (p?.active) {
     const m = moodOf(p);
