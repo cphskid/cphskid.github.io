@@ -179,7 +179,7 @@ $$;
 -- -----------------------------------------------------------------------------
 -- 5. 拜訪
 -- -----------------------------------------------------------------------------
--- 同班同學的島（試玩班不列）：[{卡片}]，有佈置過的、最近改過的排前面
+-- 同班同學的島（試玩班不列、還沒打開過寵物島的不列）：[{卡片}]，最近改過的排前面
 create or replace function public.park_isle_class()
 returns jsonb language plpgsql stable security definer set search_path = public, pg_temp as $$
 declare v_me uuid := public.current_student_id();
@@ -189,7 +189,7 @@ begin
     select distinct b.student_id as sid, i.updated_at as up
       from public.park_class_members a
       join public.park_class_members b on b.class_code = a.class_code and b.student_id <> v_me
-      left join public.park_isle i on i.student_id = b.student_id
+      join public.park_isle i on i.student_id = b.student_id   -- 打開過寵物島的才列
      where a.student_id = v_me and not public.park_isle_open_class(a.class_code)
      limit 80) x), '[]'::jsonb);
 end;
