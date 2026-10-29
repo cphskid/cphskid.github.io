@@ -170,6 +170,9 @@ footer{text-align:center;font-size:14px;color:var(--muted);padding:12px 16px 40p
 .num{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:50%;background:var(--c);color:#fff;font-weight:900;font-size:16px;margin-bottom:6px}
 .block>h3{font-size:clamp(20px,4.8vw,24px);color:var(--wood);margin-bottom:6px}
 .sub{color:var(--muted);margin:0 0 16px}
+.audience{scroll-margin-top:70px;margin-top:40px;padding-top:28px;border-top:3px dashed var(--tch)}
+.aud-jump{margin:0 0 16px;font-size:15px;color:var(--muted)}.aud-jump a{color:var(--tch);font-weight:900}
+.aud-tag{display:inline-block;margin:0 0 14px;font-weight:900;color:var(--tch);background:var(--tch-bg);border-radius:12px;padding:6px 14px}
 .lesson{width:100%;border-collapse:separate;border-spacing:0 8px;font-size:16px}
 .lesson th{text-align:left;color:#fff;background:var(--c);font-weight:900;padding:8px 12px;white-space:nowrap}
 .lesson th:first-child{border-radius:12px 0 0 12px}.lesson th:last-child{border-radius:0 12px 12px 0}
@@ -264,8 +267,7 @@ footer{text-align:center;font-size:14px;color:var(--muted);padding:12px 16px 40p
     <button role="tab" id="t-kids" aria-controls="kids" style="--c:var(--kid)">孩子的小天地</button>
     <button role="tab" id="t-safe" aria-controls="safe" style="--c:var(--safe)">安心設計</button>
     <button role="tab" id="t-class" aria-controls="class" style="--c:var(--cls)">開班管理</button>
-    <button role="tab" id="t-teacher" aria-controls="teacher" style="--c:var(--tch)">給老師</button>
-    <button role="tab" id="t-parents" aria-controls="parents" style="--c:var(--wood-2)">給家長</button>
+    <button role="tab" id="t-parents" aria-controls="parents" style="--c:var(--wood-2)">給家長・老師</button>
   </div>
 </nav>
 
@@ -552,15 +554,89 @@ footer{text-align:center;font-size:14px;color:var(--muted);padding:12px 16px 40p
         </div>
         <p class="note">這一頁的後台畫面都是示範資料，暱稱和數字不是真的孩子。</p>
       </div>
-      <div class="next"><button type="button" data-go="teacher">下一頁：給老師 ›</button></div>
+      <div class="next"><button type="button" data-go="parents">下一頁：給家長・老師 ›</button></div>
     </div>
   </section>
 
-  <!-- ========== 給老師 ========== -->
-  <section class="panel" id="teacher" role="tabpanel" aria-labelledby="t-teacher" style="--c:var(--tch);--bg:var(--tch-bg)">
+  <!-- ========== 給家長 ========== -->
+  <section class="panel" id="parents" role="tabpanel" aria-labelledby="t-parents" style="--c:var(--wood-2);--bg:var(--cream-2)">
     <div class="wrap">
-      <span class="kicker">給學校老師</span>
-      <h2>把社會和英文，變成全班回家想玩的功課</h2>
+      <p class="aud-jump">這一頁上半給家長，下半給學校老師。<a href="#teacher">老師直接看這裡 ›</a></p>
+      <div class="helper">
+        <span class="kicker" style="--c:var(--warn)">請先知道</span>
+        <h2>這是輔助，不是主要的教材</h2>
+        <p>這些遊戲的目的是<b>提升孩子的興趣</b>，讓他們回到課本時會覺得「這個我玩過」，而不是用來取代課本、老師或爸媽的陪伴。</p>
+        <ul>
+          <li>遊戲只能帶到一部分重點，課本上的內容還是要讀。</li>
+          <li>英文單字在遊戲裡是「認得、聽得出、拼得出」，句子、文法和口說還是要靠課堂。</li>
+          <li>玩完問孩子一句「今天去了哪個時代？」「學到哪個字？」，效果會比多玩一關好很多。</li>
+        </ul>
+      </div>
+
+      <div class="block">
+        <span class="kicker">遊玩時間建議</span>
+        <h2>每次 20 到 30 分鐘就好</h2>
+        <p class="lead">短短玩、常常玩，比一次玩很久更記得住，也不會傷眼睛。</p>
+        <div class="time">
+          <div class="tcard"><span class="big">20–30 分</span><span>每次玩的長度</span></div>
+          <div class="tcard"><span class="big">1 次</span><span>一天最多一次</span></div>
+          <div class="tcard"><span class="big">3–5 天</span><span>一週這樣就夠</span></div>
+          <div class="tcard"><span class="big">休息 10 分</span><span>玩 30 分鐘就休息</span></div>
+        </div>
+        <ul class="tips">
+          <li>社會一章大約 20 到 30 分鐘，剛好一次玩完一章；英文一關大約 3 到 5 分鐘，一次玩幾關就好。</li>
+          <li>建議先寫完功課再玩，把它當成讀書後的小獎勵。</li>
+          <li>睡前一小時不要玩，讓眼睛和腦袋休息。</li>
+        </ul>
+      </div>
+
+      <div class="block">
+        <span class="kicker">家長後台</span>
+        <h2>孩子玩到哪，家長看得到</h2>
+        <div class="class-teaser">
+          <p>開一個免費的「家庭班」，孩子每天玩了多久、玩到哪一章、哪些字常錯、最近有沒有來，在後台都看得到。</p>
+          <button type="button" data-go="class">看開班能看到什麼 ›</button>
+        </div>
+      </div>
+
+      <div class="block" id="try">
+        <div class="try">
+          <span class="kicker" style="--c:#16324f">免費試玩</span>
+          <h2>用試玩班讓孩子玩玩看</h2>
+          <p class="lead">不用 email，也不用真實姓名。孩子自己取一個帳號、密碼和暱稱就能開始。</p>
+          <div class="account">
+            <dl>
+              <dt>網址</dt><dd>timepark.ciyulab.com</dd>
+              <dt>班級代碼</dt><dd><span class="code">TRYIT</span></dd>
+            </dl>
+            <ol class="steps">
+              <li>按下面的「開始冒險」，代碼會自動填好。</li>
+              <li>幫孩子取帳號（英文或數字）、密碼（6 個字以上）和暱稱。</li>
+              <li>捏一個自己的時空旅人，就可以出發了。</li>
+            </ol>
+          </div>
+          <a class="go" href="../?join=TRYIT">開始冒險</a>
+          <p class="goalt">帳號密碼請幫孩子記下來・<a href="../">已經有帳號了？直接登入</a></p>
+        </div>
+      </div>
+
+      <div class="block">
+        <span class="kicker">家長常問</span>
+        <h2>還想知道的</h2>
+        <details><summary>要花錢嗎？</summary><p>不用，完全免費，沒有付費項目也沒有廣告。遊戲裡的時光幣只能靠玩出來，買不到。</p></details>
+        <details><summary>適合幾年級？</summary><p>社會目前是照小五的內容做的；英文從國小常用字開始，一路到國中範圍，三到六年級都可以玩，程度好的孩子可以往後挑戰。</p></details>
+        <details><summary>在哪裡玩？要安裝嗎？</summary><p>手機、平板、電腦的瀏覽器都可以，不用安裝 App。畫面比較大的平板或電腦玩起來最舒服。</p></details>
+        <details><summary>試玩班會跟陌生人互動嗎？</summary><p>試玩班的排行榜是所有試玩的孩子一起比，只看得到暱稱和自己捏的角色；遊戲裡沒有聊天，也不能互送東西。暱稱不要用真實姓名就好。想完全只看自己孩子的話，可以開一個家庭班。</p></details>
+        <details><summary>學校老師可以拿來在班上用嗎？</summary><p>可以，開班一樣免費。老師開一個學校班、把代碼給全班，就能在後台看到誰有在玩、每個人玩到哪、哪一章大家答錯最多，也能決定班上開放哪些遊戲。詳細看「開班管理」那一頁，下面也有給老師的課堂用法。</p></details>
+        <details><summary>忘記密碼怎麼辦？</summary><p>請開班的老師或家長在後台幫忙重設。在試玩班的話，可以在遊戲左上角的齒輪按「問題回報」告訴我們。</p></details>
+        <details><summary>有建議或發現錯誤，要怎麼告訴你們？</summary><p>遊戲裡左上角的齒輪有「問題回報」，哪裡卡住、哪裡不好玩、內容哪裡不對，或希望之後加什麼，都很歡迎留言。自然科和小四的內容也還在構思，很想聽聽大家的想法。</p></details>
+      </div>
+
+      <div class="audience" id="teacher" style="--c:var(--tch);--bg:var(--tch-bg)">
+        <p class="aud-tag">以下給學校老師</p>
+
+      
+      <h2 style="margin-top:0">把社會和英文，變成全班回家想玩的功課</h2>
       <p class="lead">時空冒險樂園免費、沒有廣告、沒有付費項目，學生不用 email、不用真名。老師開一個班、把代碼發給學生，就能在後台看到誰有在玩、全班卡在哪一章、哪些字最常錯。</p>
       <div class="open-cta">
         <a class="go" href="../?staff=signup">免費開一個學校班</a>
@@ -635,81 +711,6 @@ footer{text-align:center;font-size:14px;color:var(--muted);padding:12px 16px 40p
           <p class="goalt">開好就有班級代碼，五分鐘內學生就能開始玩。</p>
         </div>
       </div>
-      <div class="next"><button type="button" data-go="parents">下一頁：給家長 ›</button></div>
-    </div>
-  </section>
-
-  <!-- ========== 給家長 ========== -->
-  <section class="panel" id="parents" role="tabpanel" aria-labelledby="t-parents" style="--c:var(--wood-2);--bg:var(--cream-2)">
-    <div class="wrap">
-      <div class="helper">
-        <span class="kicker" style="--c:var(--warn)">請先知道</span>
-        <h2>這是輔助，不是主要的教材</h2>
-        <p>這些遊戲的目的是<b>提升孩子的興趣</b>，讓他們回到課本時會覺得「這個我玩過」，而不是用來取代課本、老師或爸媽的陪伴。</p>
-        <ul>
-          <li>遊戲只能帶到一部分重點，課本上的內容還是要讀。</li>
-          <li>英文單字在遊戲裡是「認得、聽得出、拼得出」，句子、文法和口說還是要靠課堂。</li>
-          <li>玩完問孩子一句「今天去了哪個時代？」「學到哪個字？」，效果會比多玩一關好很多。</li>
-        </ul>
-      </div>
-
-      <div class="block">
-        <span class="kicker">遊玩時間建議</span>
-        <h2>每次 20 到 30 分鐘就好</h2>
-        <p class="lead">短短玩、常常玩，比一次玩很久更記得住，也不會傷眼睛。</p>
-        <div class="time">
-          <div class="tcard"><span class="big">20–30 分</span><span>每次玩的長度</span></div>
-          <div class="tcard"><span class="big">1 次</span><span>一天最多一次</span></div>
-          <div class="tcard"><span class="big">3–5 天</span><span>一週這樣就夠</span></div>
-          <div class="tcard"><span class="big">休息 10 分</span><span>玩 30 分鐘就休息</span></div>
-        </div>
-        <ul class="tips">
-          <li>社會一章大約 20 到 30 分鐘，剛好一次玩完一章；英文一關大約 3 到 5 分鐘，一次玩幾關就好。</li>
-          <li>建議先寫完功課再玩，把它當成讀書後的小獎勵。</li>
-          <li>睡前一小時不要玩，讓眼睛和腦袋休息。</li>
-        </ul>
-      </div>
-
-      <div class="block">
-        <span class="kicker">家長後台</span>
-        <h2>孩子玩到哪，家長看得到</h2>
-        <div class="class-teaser">
-          <p>開一個免費的「家庭班」，孩子每天玩了多久、玩到哪一章、哪些字常錯、最近有沒有來，在後台都看得到。</p>
-          <button type="button" data-go="class">看開班能看到什麼 ›</button>
-        </div>
-      </div>
-
-      <div class="block" id="try">
-        <div class="try">
-          <span class="kicker" style="--c:#16324f">免費試玩</span>
-          <h2>用試玩班讓孩子玩玩看</h2>
-          <p class="lead">不用 email，也不用真實姓名。孩子自己取一個帳號、密碼和暱稱就能開始。</p>
-          <div class="account">
-            <dl>
-              <dt>網址</dt><dd>timepark.ciyulab.com</dd>
-              <dt>班級代碼</dt><dd><span class="code">TRYIT</span></dd>
-            </dl>
-            <ol class="steps">
-              <li>按下面的「開始冒險」，代碼會自動填好。</li>
-              <li>幫孩子取帳號（英文或數字）、密碼（6 個字以上）和暱稱。</li>
-              <li>捏一個自己的時空旅人，就可以出發了。</li>
-            </ol>
-          </div>
-          <a class="go" href="../?join=TRYIT">開始冒險</a>
-          <p class="goalt">帳號密碼請幫孩子記下來・<a href="../">已經有帳號了？直接登入</a></p>
-        </div>
-      </div>
-
-      <div class="block">
-        <span class="kicker">家長常問</span>
-        <h2>還想知道的</h2>
-        <details><summary>要花錢嗎？</summary><p>不用，完全免費，沒有付費項目也沒有廣告。遊戲裡的時光幣只能靠玩出來，買不到。</p></details>
-        <details><summary>適合幾年級？</summary><p>社會目前是照小五的內容做的；英文從國小常用字開始，一路到國中範圍，三到六年級都可以玩，程度好的孩子可以往後挑戰。</p></details>
-        <details><summary>在哪裡玩？要安裝嗎？</summary><p>手機、平板、電腦的瀏覽器都可以，不用安裝 App。畫面比較大的平板或電腦玩起來最舒服。</p></details>
-        <details><summary>試玩班會跟陌生人互動嗎？</summary><p>試玩班的排行榜是所有試玩的孩子一起比，只看得到暱稱和自己捏的角色；遊戲裡沒有聊天，也不能互送東西。暱稱不要用真實姓名就好。想完全只看自己孩子的話，可以開一個家庭班。</p></details>
-        <details><summary>學校老師可以拿來在班上用嗎？</summary><p>可以，開班一樣免費。老師開一個學校班、把代碼給全班，就能在後台看到誰有在玩、每個人玩到哪、哪一章大家答錯最多，也能決定班上開放哪些遊戲。詳細看「開班管理」那一頁。</p></details>
-        <details><summary>忘記密碼怎麼辦？</summary><p>請開班的老師或家長在後台幫忙重設。在試玩班的話，可以在遊戲左上角的齒輪按「問題回報」告訴我們。</p></details>
-        <details><summary>有建議或發現錯誤，要怎麼告訴你們？</summary><p>遊戲裡左上角的齒輪有「問題回報」，哪裡卡住、哪裡不好玩、內容哪裡不對，或希望之後加什麼，都很歡迎留言。自然科和小四的內容也還在構思，很想聽聽大家的想法。</p></details>
       </div>
     </div>
   </section>
@@ -748,10 +749,14 @@ footer{text-align:center;font-size:14px;color:var(--muted);padding:12px 16px 40p
   [].forEach.call(document.querySelectorAll('[data-go]'), function (b) {
     b.onclick = function () { history.replaceState(null, '', '#' + b.dataset.go); show(b.dataset.go, true); };
   });
-  var h = location.hash.slice(1);
-  show(h === 'try' ? 'parents' : h, false);
-  if (h === 'try') document.getElementById('try').scrollIntoView();
-  addEventListener('hashchange', function () { show(location.hash.slice(1), true); });
+  // #try、#teacher 是「給家長・老師」頁裡的段落
+  function route(scroll) {
+    var h = location.hash.slice(1), sub = h === 'try' || h === 'teacher';
+    show(sub ? 'parents' : h, scroll && !sub);
+    if (sub) document.getElementById(h).scrollIntoView({ behavior: scroll ? 'smooth' : 'auto' });
+  }
+  route(false);
+  addEventListener('hashchange', function () { route(true); });
 })();
 </script>
 <script>
