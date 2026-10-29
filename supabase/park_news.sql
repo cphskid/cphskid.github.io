@@ -36,6 +36,8 @@ create table if not exists public.park_news (
   hidden_at   timestamptz,
   check (ends_on >= starts_on)
 );
+-- 2026-10-29 時光試煉島：信鴿信可以只寄給班上幾個孩子。null＝整班（或全站）。
+alter table public.park_news add column if not exists students uuid[];
 create index if not exists park_news_active on public.park_news (ends_on desc) where hidden_at is null;
 
 create table if not exists public.park_news_seen (
@@ -77,6 +79,7 @@ begin
        and n.starts_on <= v_today
        and n.ends_on >= v_today - 60
        and (n.classes is null or n.classes && v_codes)
+       and (n.students is null or v_me = any(n.students))
        -- 沒登入（或老師）只看全站、還沒過期的布告欄
        and (v_me is not null or (n.classes is null and n.ends_on >= v_today and 'board' = any(n.kinds)))
   ), '[]'::jsonb);
