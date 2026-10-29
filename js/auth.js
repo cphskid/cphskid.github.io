@@ -297,6 +297,29 @@ export const pet = {
   setClassQuiet: (code, on) => petcall('park_pet_set_class_quiet', { p_code: code, p_quiet: on }),
 };
 
+// ---------- 寵物島裝扮、拜訪、今日精選（supabase/park_isle.sql） ----------
+// 還沒裝這份 SQL 時丟出 missing，寵物島退回只存在這台裝置、沒有拜訪。
+async function icall(fn, args) {
+  if (!db) throw new Error('帳號功能載入失敗，重新整理再試一次');
+  const { data, error } = await db.rpc(fn, args);
+  if (error?.code === 'PGRST202') {
+    const e = new Error('寵物島的資料庫還沒裝好（缺 ' + fn + '），請管理員套用 park_isle.sql');
+    e.missing = true;
+    throw e;
+  }
+  check(error);
+  return data;
+}
+export const isle = {
+  me:       () => icall('park_isle_me'),
+  seen:     () => icall('park_isle_seen'),
+  save:     (theme, name, layout, stored) => icall('park_isle_save', { p_theme: theme, p_name: name, p_layout: layout, p_stored: stored }),
+  mates:    () => icall('park_isle_class'),
+  featured: () => icall('park_isle_featured_today'),
+  view:     (id) => icall('park_isle_view', { p_student: id }),
+  react:    (id, kind) => icall('park_isle_react', { p_student: id, p_kind: kind }),
+};
+
 // ---------- 時空旅人換裝（supabase/park_traveller.sql） ----------
 // 還沒裝這份 SQL 時丟出 missing，換裝間退回只存在這台裝置（js/traveller.js）。
 async function tcall(fn, args) {

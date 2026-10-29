@@ -209,6 +209,7 @@ const TABS = [
   { id: 'wear', name: '主角', tip: '時空旅人的衣服配件，買了在換裝間穿上' },
   { id: 'pet', name: '寵物', tip: '點心放進寵物的背包，餵了長得快' },
   { id: 'furn', name: '傢俱', tip: '買了擺在寵物島上，寵物會去玩' },
+  { id: 'theme', name: '島的風格', tip: '把整座寵物島換個樣子，買了在寵物島按「裝扮」換上' },
   { id: 'month', name: '本月限定', tip: '這個月才買得到，下個月就下架；買到的會一直留著' },
 ];
 let tab = 'wear';
@@ -278,6 +279,7 @@ function paintShop(msg = null) {
         if (x.kind === 'frame') passport.gotFrame?.(x.ref);
         paintShop(['ok', x.kind === 'wear' ? `買好了！去換裝間把「${x.name}」穿上吧。`
           : x.kind === 'furn' ? `買好了！「${x.name}」已經擺到寵物島上。`
+          : x.kind === 'theme' ? `買好了！去寵物島按「裝扮」，就能換成「${x.name}」。`
           : x.kind === 'frame' ? `買好了！打開護照點頭像，就能換上「${x.name}」。` : `買好了！「${x.name}」放進寵物的背包了。`]);
       } catch (err) {
         paintShop(['bad', err.message]);

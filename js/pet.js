@@ -13,6 +13,7 @@ import { readSky, makeSky, SKY_NAME } from './petsky.js';
 import { warm } from './warm.js';
 import { span } from './perf.js';
 import * as playlog from './playlog.js';
+import * as isle from './isle.js';
 
 const $ = (s, root = document) => root.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -88,6 +89,7 @@ export async function load() {
   }
   // 商店買的傢俱（park_coins.sql 沒裝就沒有）
   bought = state ? await (api.furniture ?? auth.coins.furniture)().catch(() => []) : [];
+  if (state) await isle.load();      // 島的風格、島名、擺放（park_isle.sql 沒裝就只存在這台裝置）
   if (state?.granted?.length) news = state.granted;
   paintMap();
   return state;
@@ -348,12 +350,14 @@ function openScene({ select, say: first } = {}) {
   bagOpen = false;
   show(`<div class="pisle loading" role="dialog" aria-modal="true" aria-label="寵物島" data-wx="${sky.wx}" data-tod="${sky.tod}" data-season="${sky.season}">
     <div class="view"><div class="ground-box"><section class="ground" style="width:${GW}px;height:${GH}px">
-      <img class="land" src="img/pet/island.webp" alt="">
+      <img class="land" src="${isle.landSrc(isle.theme())}" alt="">
       <div class="actors"></div>
       <div class="haze" aria-hidden="true"></div>
     </section></div></div>
     <aside class="care"></aside>
     <p class="skychip">${SKY_NAME.wx[sky.wx]}・${SKY_NAME.season[sky.season]}・${SKY_NAME.tod[sky.tod]}</p>
+    <p class="isle-sign">${esc(isle.nameText(isle.name()))}</p>
+    ${isle.inboxHtml()}
     <p class="hint">點寵物看牠想做什麼，按住可以拎到傢俱上或湖裡</p>
     <div class="dock"><div class="pals-s"></div><nav class="bar" aria-label="照顧"></nav></div>
     <div class="bagpop" hidden></div>
@@ -380,7 +384,10 @@ function openScene({ select, say: first } = {}) {
   fitScene(true);
   paintCare();
   revealScene();
+  const feat = isle.greet();
+  $('[data-inbox-ok]', layer)?.addEventListener('click', (e) => { e.currentTarget.closest('.isle-inbox').remove(); isle.inboxSeen(); });
   if (first) say(first, selected);
+  else if (feat && home) say(feat, home.id);
   else if (fresh.length && home) say(`哇！新的傢俱：${fresh.map((id) => FURN_NAME[id]).join('、')}！謝謝你去過關～`, home.id);
   else if (home) {
     const m = moodOf(home);
@@ -390,6 +397,7 @@ function openScene({ select, say: first } = {}) {
   news = [];
   last = performance.now();
   raf = requestAnimationFrame(tick);
+  if (isle.ready() && !isle.saved()) saveIsle();     // 第一次打開：把現在的樣子存起來，同學才看得到
 }
 
 // 島佔滿整個視窗：照畫面大小算縮放 --g；手機直拿時島撐滿高度、可以左右滑
@@ -415,7 +423,7 @@ const FIRST_POSES = ['idle', 'walk1', 'walk2', 'sit', 'front1', 'front2', 'back1
 async function revealScene() {
   const t0 = performance.now();
   const pis = $('.pisle', layer);
-  const srcs = ['img/pet/island.webp', ...props.map((o) => `img/pet/furniture/${o.id}.webp`),
+  const srcs = [isle.landSrc(isle.theme()), ...props.map((o) => `img/pet/furniture/${o.id}.webp`),
     ...actors.flatMap((a) => FIRST_POSES.map((pose) => art(a.p.species, a.p.stage, pose)))];
   await Promise.race([Promise.all(srcs.map(loadImg)), new Promise((ok) => setTimeout(ok, 2500))]);
   if (pis !== $('.pisle', layer)) return;
@@ -522,21 +530,34 @@ function freshFurniture() {
 // 收起來的傢俱（記在這台電腦）：不擺在島上，打開「我的傢俱」再拿出來
 const STORE_KEY = 'park-pet-stored';
 function storedFurniture() {
+  if (isle.saved()) return isle.stored();
   try { return JSON.parse(localStorage.getItem(STORE_KEY) ?? '[]'); } catch { return []; }
 }
 function setStored(id, on) {
   const all = storedFurniture().filter((x) => x !== id);
   if (on) all.push(id);
   try { localStorage.setItem(STORE_KEY, JSON.stringify(all)); } catch { /* 存不了就只這次有效 */ }
+  if (isle.ready()) isle.save({ stored: all });
 }
 function propSpots() {
+  if (isle.saved()) return isle.layout();
   try { return JSON.parse(localStorage.getItem(PROP_KEY) ?? '{}'); } catch { return {}; }
 }
+// 島上現在的樣子存到伺服器（js/isle.js 會晚一點一起送）
+function saveIsle() {
+  if (!isle.ready()) return;
+  const layout = {};
+  props.forEach((o) => { layout[o.id] = { x: +o.x.toFixed(3), y: +o.y.toFixed(3), f: o.f ? 1 : 0 }; });
+  isle.save({ layout, stored: storedFurniture() });
+}
+// 給 js/isle.js 畫別人的島用
+const propLook = (id) => { const d = PROPS.find((x) => x.id === id); return d ? { w: d.w } : {}; };
 const propW = (o) => o.w * depth(o.y);
 const propZ = (o) => Math.round(o.y * 1000) - 2;
 // 傢俱圖上的一點 → 島上的座標
 function propPoint(o, [fx, fy]) {
   const w = propW(o), h = w * (ASPECT[o.id] ?? 1);
+  if (o.f) fx = 1 - fx;                            // 翻面的傢俱：左右對調
   return { x: o.x + (fx - .5) * w / GW, y: o.y + (fy - .88) * h / GH };
 }
 // 拎著的東西底下是哪件傢俱
@@ -563,10 +584,11 @@ function addProp(box, d) {
     el.className = `prop p-${d.id}`;
     el.setAttribute('aria-label', '傢俱（按住可以搬到別的地方）');
     el.innerHTML = `<span class="shadow"></span><img src="img/pet/furniture/${d.id}.webp" alt="">`;
-    const o = { id: d.id, w: d.w, el, x: at.x, y: at.y, user: null };
+    const o = { id: d.id, w: d.w, el, x: at.x, y: at.y, f: saved[d.id]?.f === 1, user: null };
     props.push(o);
     const put = () => {
       el.style.cssText = `left:${o.x * GW}px;top:${o.y * GH}px;width:${propW(o)}px;z-index:${el.classList.contains('held') ? 2000 : propZ(o)}`;
+      $('img', el).style.transform = o.f ? 'scaleX(-1)' : '';
     };
     put();
     box.appendChild(el);
@@ -592,7 +614,18 @@ function addProp(box, d) {
         removeEventListener('pointermove', move);
         removeEventListener('pointerup', up);
         removeEventListener('pointercancel', up);
-        if (!held) return;
+        if (!held) {
+          // 裝扮面板開著時，點一下傢俱＝翻面
+          if (!$('.furn', layer)?.hidden) {
+            if (o.user) leave(o.user);
+            o.f = !o.f;
+            el.classList.add('drop');
+            setTimeout(() => el.classList.remove('drop'), 450);
+            put();
+            saveIsle();
+          }
+          return;
+        }
         el.classList.remove('held', 'bad');
         if (!walkable(o.x, o.y)) { o.x = ok.x; o.y = ok.y; }
         el.classList.add('drop');
@@ -601,6 +634,7 @@ function addProp(box, d) {
         const all = propSpots();
         all[d.id] = { x: +o.x.toFixed(3), y: +o.y.toFixed(3) };
         try { localStorage.setItem(PROP_KEY, JSON.stringify(all)); } catch { /* 存不了就算了，下次回到原位 */ }
+        saveIsle();
       };
       addEventListener('pointermove', move);
       addEventListener('pointerup', up);
@@ -623,15 +657,21 @@ function paintFurn() {
   const own = ownedFurniture();
   const out = (id) => props.some((o) => o.id === id);
   const list = PROPS.filter((d) => own.includes(d.id) || !LIMITED.has(d.id));
-  box.innerHTML = `<h3>我的傢俱 <small>擺出來 ${own.filter(out).length}・全部 ${own.length} / ${list.length}</small></h3>
+  box.innerHTML = `<h3>裝扮寵物島</h3>
+    ${isle.decorHtml()}
+    <p class="lab">我的傢俱 <small>擺出來 ${own.filter(out).length}・全部 ${own.length} / ${list.length}</small></p>
     <div class="furn-list">${list.map((d) => own.includes(d.id)
       ? `<button type="button" class="furn-i${out(d.id) ? ' out' : ' kept'}" data-id="${d.id}" aria-label="${FURN_NAME[d.id]}：${out(d.id) ? '在島上，點一下收起來' : '收著，點一下擺到島上'}">
           <img src="img/pet/furniture/${d.id}.webp" alt=""><b>${FURN_NAME[d.id]}</b><small>${out(d.id) ? '📦 收起來' : '🏝️ 擺出來'}</small></button>`
       : `<span class="furn-i locked"><img src="img/pet/furniture/${d.id}.webp" alt=""><b>${FURN_NAME[d.id]}</b><i>🔒</i><small>${SHOP_FURN[d.id] ? `商店 ${SHOP_FURN[d.id]}` : `${FURN_STAMP[d.id]} 個章`}</small></span>`).join('')}</div>
-    <p class="note">點自己的傢俱就能收起來或擺出來；擺在島上的按住就能搬。去各個島嶼過關、蓋護照章會解鎖新傢俱，標「商店」的用時光幣買。現在有 ${state?.stamps ?? 0} 個章。</p>
+    <p class="note">點自己的傢俱就能收起來或擺出來；擺在島上的按住就能搬，點一下會翻面。擺 5 件以上，就有機會上「今日精選島」。去各個島嶼過關、蓋護照章會解鎖新傢俱，標「商店」的用時光幣買。現在有 ${state?.stamps ?? 0} 個章。</p>
     <button type="button" class="ghost small" data-furn-close>關起來</button>`;
   $('[data-furn-close]', box).onclick = () => { box.hidden = true; paintBar(); };
   box.querySelectorAll('button.furn-i').forEach((b) => { b.onclick = () => { putAway(b.dataset.id); paintFurn(); }; });
+  isle.bindDecor(box, {
+    onTheme: (t) => { $('.land', layer).src = isle.landSrc(t); saveIsle(); },
+    onName: () => { $('.isle-sign', layer).textContent = isle.nameText(isle.name()); },
+  });
 }
 // 收起來／擺出來：收的時候正在用的寵物先下來
 function putAway(id) {
@@ -648,6 +688,7 @@ function putAway(id) {
     n?.el.classList.add('drop');
     setTimeout(() => n?.el.classList.remove('drop'), 450);
   }
+  saveIsle();
 }
 
 // ---------- 用傢俱、泡湖水 ----------
@@ -1300,11 +1341,16 @@ function paintBar() {
   bar.innerHTML = (home ? `<button type="button" class="act${bagOpen ? ' on' : ''}" data-bag ${m === 'quiet' ? 'disabled' : ''} aria-expanded="${bagOpen}"><span>🍖</span><b>餵食</b></button>
     <button type="button" class="act" data-pat ${m === 'quiet' ? 'disabled' : ''}><span>${m === 'asleep' ? '⏰' : '✋'}</span><b>${m === 'asleep' ? '叫醒牠' : '摸摸'}</b></button>
     <button type="button" class="act" data-ball><span>🎾</span><b>丟球</b></button>` : '')
-    + `<button type="button" class="act${furnOpen ? ' on' : ''}" data-furn><span>🛋️</span><b>傢俱</b></button>`;
+    + `<button type="button" class="act${furnOpen ? ' on' : ''}" data-furn><span>🎨</span><b>裝扮</b></button>`
+    + (isle.ready() ? '<button type="button" class="act" data-visit><span>🏝️</span><b>拜訪</b></button>' : '');
   $('[data-bag]', bar)?.addEventListener('click', () => { if (bagOpen) closeBag(); else { bagOpen = true; $('.furn', layer).hidden = true; paintBag(); paintBar(); } });
   $('[data-pat]', bar)?.addEventListener('click', () => { closeBag(); focusHome(); pat(); });
   $('[data-ball]', bar)?.addEventListener('click', () => { closeBag(); focusHome(); ballNear(); });
   $('[data-furn]', bar).onclick = toggleFurn;
+  $('[data-visit]', bar)?.addEventListener('click', () => {
+    closeBag(); $('.furn', layer).hidden = true; paintBar();
+    isle.openVisit({ host: $('.pisle', layer), GW, GH, propLook, art, depth, somewhere: () => somewhere() });
+  });
 }
 function paintBag() {
   const pop = $('.bagpop', layer);
