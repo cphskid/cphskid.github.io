@@ -5,6 +5,7 @@
 // 權限一律由資料庫擋（supabase/park_teacher.sql），這裡只負責畫面不出錯、錯誤講白話。
 import * as auth from './auth.js';
 import { headHtml } from './traveller.js';
+import { renderGuide, startTour } from './teacher-guide.js';
 
 const $ = (s, root = document) => root.querySelector(s);
 const $$ = (s, root = document) => [...root.querySelectorAll(s)];
@@ -168,10 +169,17 @@ async function start() {
   $('#tabs').hidden = false;
   $('#tab-admin').hidden = !who.is_admin;
   const want = location.hash.slice(1);
-  tab = want === 'admin' && who.is_admin ? 'admin' : ['feedback', 'play', 'news'].includes(want) ? want : 'classes';
+  tab = want === 'admin' && who.is_admin ? 'admin' : ['feedback', 'play', 'news', 'guide'].includes(want) ? want : 'classes';
   paintTabs();
   paintFeedbackDot();
+  $('#help').hidden = false;
   await show();
+  if (tab === 'classes') startTour();   // 第一次進來跑一次導覽，看過就不再自己跳
+}
+// 右上「？」：回到我的班級重看導覽
+$('#help').onclick = async () => {
+  if (tab !== 'classes') { tab = 'classes'; history.replaceState(null, '', '#classes'); paintTabs(); await show(); }
+  startTour(true);
 }
 // 頁首橫幅：管理員、老師、家長（開的全是家庭班）用不同的頭像
 function paintHero() {
@@ -197,6 +205,7 @@ async function show() {
     else if (tab === 'feedback') await renderFeedback();
     else if (tab === 'play') await renderPlay();
     else if (tab === 'news') await renderNews();
+    else if (tab === 'guide') renderGuide(view, { onTour: () => $('#help').click() });
     else await renderClasses();
   } catch (e) {
     if (e.missing) return renderMissing(e.message);
@@ -289,12 +298,39 @@ async function renderClass() {
   const c = classes.find((x) => x.code === active);
   const box = $('#cls');
   box.innerHTML = `
+  <section class="panel notice" id="p-week" hidden></section>
   <section class="panel" id="p-info"></section>
   <section class="panel" id="p-fac"></section>
   <section class="panel" id="p-ov"><p class="loading"><img src="img/tick/map.webp" alt="">整理全班進度中…</p></section>`;
   paintInfo(c);
   paintFacilities(c);
   await paintOverview(c);
+  paintWeek(c);
+}
+
+// ---------- 本週該看的三件事：誰好幾天沒來、誰需要注意、下一步做什麼（用全班總覽算好的資料） ----------
+function paintWeek(c) {
+  const p = $('#p-week');
+  const ov = lastOverview;
+  if (!p || !ov?.students?.length || ov.cls?.code !== c.code) return;
+  const day = 86400000;
+  const away = ov.students.filter((s) => !s.last || s.last < Date.now() - 3 * day);
+  const att = ov.students.filter((s) => s.locked || ov.games.some((g) => g.rows[s.id]?.attention));
+  const names = (list) => list.slice(0, 5).map((s) => esc(s.nickname)).join('、') + (list.length > 5 ? ` 等 ${list.length} 位` : '');
+  const items = [
+    away.length
+      ? `<b>${away.length} 位 3 天以上沒來</b>：${names(away)}。可以在「樂園公告」寄封信鴿信提醒。`
+      : '<b>全班最近 3 天都有來</b>，很棒！',
+    att.length
+      ? `<b>${att.length} 位需要注意</b>：${names(att)}。在下面總覽點「只看需要注意」看原因。`
+      : '<b>沒有需要注意的孩子</b>，進度都正常。',
+    ov.games.length
+      ? '<b>看看哪裡常錯</b>：點總覽欄位上的「細節頁」，先看紅色（答對率不到 60%）的章，陪孩子對照課本。'
+      : '<b>還沒開放任何島</b>：在上面「開放哪些島」勾選。',
+  ];
+  p.innerHTML = `<div class="hello"><img src="img/tick/map.webp" alt=""><div><h3>本週該看的三件事</h3>
+    <ol class="week">${items.map((t) => `<li>${t}</li>`).join('')}</ol></div></div>`;
+  p.hidden = false;
 }
 
 // ---------- 班級資料：代碼、分享連結、開放加入 ----------

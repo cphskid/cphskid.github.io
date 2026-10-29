@@ -362,3 +362,27 @@ details.fold.sub>summary{font-weight:700;color:var(--wood)}
 .news-row{padding:10px 14px;border:2px solid var(--cream-2);border-radius:16px;background:#fff}
 .news-row p{margin:6px 0}
 .news-row.gone{opacity:.55}
+
+/* ---------- 新手導覽（teacher-guide.js）：聚光框＋說明卡 ---------- */
+.tour{position:fixed;inset:0;z-index:50}
+.tour-hole{position:fixed;border-radius:18px;box-shadow:0 0 0 9999px rgba(30,18,8,.62),0 0 0 4px var(--gold);transition:all .35s ease;pointer-events:none}
+.tour-tip{position:fixed;background:var(--paper);border:3px solid var(--wood-2);border-radius:18px;padding:16px 18px;box-shadow:0 10px 30px rgba(0,0,0,.35);transition:top .35s ease,left .35s ease}
+.tour-tip small{color:var(--muted);font:700 13px/1 var(--f-body)}
+.tour-tip h3{margin:6px 0;font:900 20px/1.3 var(--f-body);color:var(--wood)}
+.tour-tip p{margin:0 0 12px;font:500 16px/1.6 var(--f-body);color:var(--ink)}
+.tour-tip .row{display:flex;gap:8px;justify-content:flex-end;align-items:center;flex-wrap:wrap}
+.tour-tip [data-skip]{margin-right:auto}
+.bar .help img{width:20px;height:20px;vertical-align:-4px;margin-right:2px}
+/* 使用指南頁籤 */
+.guide .gtab{width:100%;border-collapse:collapse;margin-top:10px}
+.guide .gtab th{width:120px;text-align:left;vertical-align:top;padding:10px 12px 10px 0;font:900 16px/1.5 var(--f-body);color:var(--wood);white-space:nowrap}
+.guide .gtab td{padding:10px 0;font:500 16px/1.6 var(--f-body);color:var(--ink);border-bottom:1px dashed var(--cream-2)}
+.guide .gl{margin:10px 0 0;padding-left:22px;font:500 16px/1.7 var(--f-body)}
+.guide .gl li{margin-bottom:6px}
+.guide details{margin-top:8px;border-bottom:1px dashed var(--cream-2);padding:6px 0}
+.guide summary{cursor:pointer;font:700 16px/1.5 var(--f-body);color:var(--wood)}
+.guide details p{margin:6px 0 4px;font:500 15px/1.6 var(--f-body)}
+@media (max-width:640px){.guide .gtab th{display:block;width:auto;padding-bottom:0}.guide .gtab td{display:block}}
+/* 本週該看的三件事 */
+#p-week .week{margin:4px 0 0;padding-left:22px;font:500 16px/1.7 var(--f-body)}
+#p-week .week li{margin-bottom:4px}
