@@ -6,6 +6,7 @@
 import * as auth from './auth.js';
 import { headHtml } from './traveller.js';
 import { renderGuide, startTour } from './teacher-guide.js';
+import { renderQuiz } from './teacher-quiz.js';
 
 const $ = (s, root = document) => root.querySelector(s);
 const $$ = (s, root = document) => [...root.querySelectorAll(s)];
@@ -169,7 +170,7 @@ async function start() {
   $('#tabs').hidden = false;
   $('#tab-admin').hidden = !who.is_admin;
   const want = location.hash.slice(1);
-  tab = want === 'admin' && who.is_admin ? 'admin' : ['feedback', 'play', 'news', 'guide'].includes(want) ? want : 'classes';
+  tab = want === 'admin' && who.is_admin ? 'admin' : ['feedback', 'play', 'news', 'guide', 'quiz'].includes(want) ? want : 'classes';
   paintTabs();
   paintFeedbackDot();
   $('#help').hidden = false;
@@ -206,6 +207,11 @@ async function show() {
     else if (tab === 'play') await renderPlay();
     else if (tab === 'news') await renderNews();
     else if (tab === 'guide') renderGuide(view, { onTour: () => $('#help').click() });
+    else if (tab === 'quiz') {
+      if (!classes.length) classes = await auth.teacher.classes();
+      if (!classes.some((c) => c.code === active)) active = classes[0]?.code ?? null;
+      await renderQuiz(view, { classes, active, admin: !!who.is_admin, setActive: (c) => { active = c; }, toast });
+    }
     else await renderClasses();
   } catch (e) {
     if (e.missing) return renderMissing(e.message);
@@ -424,7 +430,7 @@ function paintFacilities(c) {
   const p = $('#p-fac');
   const on = new Set(c.facilities);
   const list = facilities
-    .filter((f) => f.status !== 'hidden')
+    .filter((f) => f.status !== 'hidden' && f.code !== 'quiz')   // 時光試煉島不用開放，出卷就能寫
     .map((f) => ({ ...f, fit: fits(f, c.grade) }))
     .sort((a, b) => (b.fit - a.fit) || 0);
   p.innerHTML = `<div class="head">${h2('park', '開放的遊戲')}</div>

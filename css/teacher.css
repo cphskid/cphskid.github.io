@@ -386,3 +386,67 @@ details.fold.sub>summary{font-weight:700;color:var(--wood)}
 /* 本週該看的三件事 */
 #p-week .week{margin:4px 0 0;padding-left:22px;font:500 16px/1.7 var(--f-body)}
 #p-week .week li{margin-bottom:4px}
+
+/* ---------- 時光試煉島（js/teacher-quiz.js） ---------- */
+.qt-sub{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.chip.on{background:var(--wood);border-color:var(--wood);color:#fff}
+button.chip{cursor:pointer}
+label.chip{display:inline-flex;align-items:center;gap:6px;cursor:pointer;white-space:normal}
+.qt-form{display:grid;gap:12px;margin:6px 0 10px}
+.qt-form>label,.qt-own label{display:flex;flex-direction:column;gap:4px;font-weight:700}
+.qt-form input:not([type]),.qt-own input:not([type]),.qt-own select,#qt-addkp{font:inherit;padding:8px 10px;border:2px solid var(--cream-2);border-radius:10px;background:#fff;max-width:100%}
+.qt-form details summary{cursor:pointer;margin-bottom:6px}
+.qt-plan,.qt-bank{list-style:none;margin:10px 0;padding:0;display:grid;gap:8px;counter-reset:q}
+.qt-plan>li{counter-increment:q}
+.qt-row{background:#fff;border:2px solid var(--cream-2);border-radius:12px;padding:8px 10px}
+.qt-row-h{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.qt-plan .qt-row-h::before{content:counter(q);font:700 14px/1 var(--f-disp);background:var(--cream);border-radius:6px;padding:3px 7px}
+.qt-row-h small{color:var(--muted)}
+.qt-row-h .spacer{flex:1}
+.qt-row details summary{cursor:pointer;margin-top:4px}
+.qt-b{font:700 12px/1 var(--f-body);padding:4px 7px;border-radius:6px}
+.b-weak{background:var(--red-bg);color:var(--red)} .b-seen{background:var(--amber-bg);color:var(--amber)}
+.b-new{background:#e4ecff;color:#3d4a80} .b-review{background:var(--green-bg);color:var(--green)} .b-pick{background:var(--cream-2);color:var(--wood)}
+.qt-prev{background:var(--paper);border-radius:10px;padding:6px 12px;margin-top:6px;font-size:15px}
+.qt-prev ol,.qt-prev ul{margin:4px 0;padding-left:22px}
+.qt-right{color:var(--green);font-weight:900}
+.qt-why,.qt-src{margin:4px 0;color:var(--muted);font-size:14px}
+.qt-q{font-weight:700;margin:6px 0 0}
+.qt-own{display:grid;gap:8px;background:var(--paper);border-radius:12px;padding:12px;margin-top:10px}
+.qt-mc{display:grid;gap:6px;grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
+.qt-papers td{vertical-align:top}
+.qt-papers small{color:var(--muted)}
+.qt-weak{margin:6px 0 10px;padding-left:20px}
+.qt-weak li{margin:4px 0}
+.qt-read{margin:8px 0 0;padding:6px 10px;border-radius:10px;background:var(--paper);font-size:14px}
+.qt-read small{color:var(--muted)}
+.r-ask,.r-stuck{background:var(--amber-bg)} .r-solid,.r-grew{background:var(--green-bg)}
+.qt-legend{display:flex;gap:6px;flex-wrap:wrap}
+.qt-kps{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.qt-kp{font:700 14px/1.2 var(--f-body);padding:7px 10px;border-radius:10px;border:2px solid transparent;cursor:pointer}
+span.qt-kp{cursor:default}
+.s-learned{background:var(--green-bg);border-color:#a9d79b;color:#2a6b1a}
+.s-weak{background:var(--red-bg);border-color:#f0a99d;color:var(--red)}
+.s-seen{background:var(--amber-bg);border-color:#ecc77a;color:#8a5a00}
+.s-new{background:#eef0f4;border-color:#d4d8e0;color:#68707e}
+.qt-flags{padding-left:18px}
+.qt-flags li{margin-bottom:10px}
+.qt-bank .st-off{opacity:.65}
+.qt-edit textarea{width:100%;font:13px/1.4 ui-monospace,monospace;border:2px solid var(--cream-2);border-radius:10px;padding:8px}
+/* 報告裡的每一題（樣式跟孩子的結果頁一樣） */
+.qz-results{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.qz-res{background:#fff;border:2px solid var(--cream-2);border-left-width:8px;border-radius:12px;padding:8px 12px}
+.qz-res.ok{border-left-color:var(--green)} .qz-res.no{border-left-color:var(--red)} .qz-res.part{border-left-color:var(--amber)}
+.qz-res-h{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.qz-no{font:700 14px/1 var(--f-disp);background:var(--cream);border-radius:6px;padding:3px 7px}
+.qz-kind{font-size:13px;color:var(--muted)}
+.qz-mark{font-weight:900;font-size:14px}
+.qz-res.ok .qz-mark{color:var(--green)} .qz-res.no .qz-mark{color:var(--red)} .qz-res.part .qz-mark{color:var(--amber)}
+.qz-fixed{font-size:12px;background:var(--red-bg);border-radius:6px;padding:2px 6px}
+.qz-fixed.ok{background:var(--green-bg)}
+.qz-res .qz-q{font-weight:700;margin:4px 0}
+.qz-passage{margin:4px 0;font-size:14px}
+.qz-mine{color:var(--red);margin:2px 0}
+.qz-key{color:var(--green);font-weight:700;margin:2px 0}
+.qz-why{margin:4px 0 0;font-size:14px;color:var(--muted)}
+label.chip input{width:18px;height:18px;margin:0;flex:none;accent-color:var(--wood)}

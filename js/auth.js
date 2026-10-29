@@ -369,3 +369,25 @@ export const starter = {
   me:    () => ccall('park_starter_me'),
   class: (code) => ccall('park_starter_class', { p_code: code }),
 };
+
+// ---------- 時光試煉島（supabase/park_quiz.sql） ----------
+// 孩子：我的卷、打開、交卷、訂正、這題怪怪的。老師／家長：題庫、全班狀況、出卷、報告、推薦去玩。管理員：審題。
+export const quiz = {
+  mine:      () => call('park_quiz_mine'),
+  open:      (paper) => call('park_quiz_open', { p_paper: paper }),
+  submit:    (paper, resp) => call('park_quiz_submit', { p_paper: paper, p_resp: resp }),
+  fix:       (paper, resp) => call('park_quiz_fix', { p_paper: paper, p_resp: resp }),
+  flag:      (paper, pos, note) => call('park_quiz_flag', { p_paper: paper, p_pos: pos, p_note: note }),
+  bank:      (code) => call('park_quiz_bank', { p_code: code }),
+  klass:     (code) => call('park_quiz_class', { p_code: code }),
+  create:    (code, title, plan) => call('park_quiz_create', { p_code: code, p_title: title, p_plan: plan }),
+  addOwn:    (code, kp, kind, body) => call('park_quiz_add_own', { p_code: code, p_kp: kp, p_kind: kind, p_body: body }),
+  papers:    (code) => call('park_quiz_papers', { p_code: code }),
+  report:    (paper) => call('park_quiz_report', { p_paper: paper }),
+  hide:      (paper) => call('park_quiz_hide', { p_paper: paper }),
+  mark:      (code, student, kp, on = true) => call('park_quiz_mark', { p_code: code, p_student: student, p_kp: kp, p_on: on }),
+  recommend: (code, student, body, zone) => call('park_quiz_recommend', { p_code: code, p_student: student, p_body: body, p_zone: zone }),
+  adminBank: () => call('park_quiz_admin_bank'),
+  review:    (item, status, body = null, note = null) => call('park_quiz_review', { p_item: item, p_status: status, p_body: body, p_note: note }),
+  flagDone:  (id, wrong) => call('park_quiz_flag_done', { p_id: id, p_wrong: wrong }),
+};

@@ -517,8 +517,9 @@ begin
                'coins', coalesce(t.coins, 0) + coalesce(t.fix_coins, 0),
                'slots', (select jsonb_agg(jsonb_build_object(
                                   'pos', s.pos, 'item', s.item, 'bucket', s.bucket, 'kp', q.kp, 'kind', q.kind, 'body', q.body,
-                                  'resp', a.resp, 'got', a.got, 'ms', a.ms, 'seed', p_paper::text || ':' || s.student || ':' || s.pos,
-                                  'fix', f.got) order by s.pos)
+                                  'show', public.quiz_public(q.kind, q.body, p_paper::text || ':' || s.student || ':' || s.pos),
+                                  'key', public.quiz_key(q.kind, q.body, p_paper::text || ':' || s.student || ':' || s.pos),
+                                  'resp', a.resp, 'got', a.got, 'ms', a.ms, 'fix', f.got) order by s.pos)
                            from public.quiz_slot s
                            join public.quiz_item q on q.id = s.item
                            left join public.quiz_answer a on a.paper = s.paper and a.student = s.student and a.pos = s.pos and not a.fix

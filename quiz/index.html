@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>時光試煉島｜時空冒險樂園</title>
+<meta name="description" content="時空冒險樂園的試煉島：寫家長和老師出的試煉卷，拿時光幣和勳章。">
+<link rel="icon" href="img/owl.webp">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Noto+Sans+TC:wght@500;700;900&display=swap">
+<link rel="stylesheet" href="quiz.css">
+</head>
+<body>
+<header class="qz-bar">
+  <a class="qz-home" href="../#map" title="回樂園"><img src="../img/logo.webp" alt="時空冒險樂園"></a>
+  <b class="qz-title">時光試煉島</b>
+  <span class="qz-env" id="env" hidden>測試站</span>
+  <span class="qz-space"></span>
+  <a class="qz-btn ghost" href="../#map">回樂園</a>
+</header>
+<main id="view"><p class="qz-loading"><img src="img/owl.webp" alt="">考官正在整理考卷…</p></main>
+<div id="toast" role="status" hidden></div>
+<script src="../js/vendor/supabase.js"></script>
+<script type="module" src="quiz.js"></script>
+</body>
+</html>

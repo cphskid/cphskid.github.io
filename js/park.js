@@ -8,7 +8,7 @@ import * as shop from './shop.js';
 import * as starter from './starter.js';
 import * as repair from './repair.js';
 import * as news from './news.js';
-import { facilityStatus, db, wish } from './auth.js';
+import { facilityStatus, db, wish, quiz } from './auth.js';
 import * as snd from './audio.js';
 import * as playlog from './playlog.js';
 import { settle, warm } from './warm.js';
@@ -149,6 +149,7 @@ news.init({
   mapLayer: () => islesLayer, mapWidth: MAP_W,
   scene: () => document.body.dataset.scene,
   go: (link) => {
+    if (link === 'quiz') { location.href = 'quiz/'; return; }
     if (link === 'repair') return repair.open();
     if (link === 'wear') return traveller.open();
     if (link === 'pet') return pet.open();
@@ -448,7 +449,7 @@ function showMap({ animate = true } = {}) {
   select.hidden = false;
   setScene('map');
   playlog.active(account.current().kind === 'student');
-  paintPassBtn(); paintDock();
+  paintPassBtn(); paintDock(); paintQuiz();
   snd.music('MU-01'); snd.ambience('SE-16');
   const stamped = account.current().profile?.unseen?.length;
   snd.sfx('SE-15');
@@ -688,6 +689,19 @@ petBtn.addEventListener('click', () => pet.open());
 outBtn.addEventListener('click', async () => { closeGear(); await account.logout(); });
 addEventListener('park:profile', paintDock);
 
+// ---------- 時光試煉島（/quiz/）：有家長或老師出的試煉卷才出現，紅字＝還沒寫的張數 ----------
+const quizBtn = $('#quiz-btn');
+async function paintQuiz() {
+  const w = account.current();
+  if (w.kind !== 'student') { quizBtn.hidden = true; return; }
+  const list = await quiz.mine().catch(() => []);
+  const todo = list.filter((p) => !p.done).length;
+  quizBtn.hidden = !list.length;
+  const b = quizBtn.querySelector('.badge');
+  b.hidden = !todo; b.textContent = todo;
+}
+quizBtn.addEventListener('click', () => { location.href = 'quiz/'; });
+
 // ---------- 左上角的齒輪：點開聲音、問題回報、登出、版號 ----------
 const gearBtn = $('#gear-btn'), gearMenu = $('#gear-menu');
 function closeGear() { gearMenu.hidden = true; gearBtn.setAttribute('aria-expanded', 'false'); }
@@ -729,6 +743,7 @@ await Promise.all([syncFacilities(), pet.load()]);
 shop.load(me);
 starter.load(me);
 news.load();
+paintQuiz();
 if (route && me.kind === 'guest') {
   // 從遊戲回來但已經登出（或換人用平板）：先回開場，按 Start 再登入
   history.replaceState(null, '', location.pathname);
