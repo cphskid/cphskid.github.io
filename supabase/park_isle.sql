@@ -68,9 +68,13 @@ $$;
 
 -- 商店上架（cat 'theme'，park_coins.sql 的 park_shop／park_shop_buy 會照傢俱一樣處理：買一次、記在 park_student_furniture）
 insert into public.park_shop_items (code, cat, ref, name, art, blurb, price, months, sort) values
-  ('theme-beach',  'theme', 'theme-beach',  '夕陽海灘', 'img/pet/land/beach.webp',  '寵物島換成椰子樹和金色沙灘', 300, null, 30),
-  ('theme-autumn', 'theme', 'theme-autumn', '楓葉野餐', 'img/pet/land/autumn.webp', '整座島變成紅紅黃黃的楓葉', 300, null, 31),
-  ('theme-snow',   'theme', 'theme-snow',   '雪夜木屋', 'img/pet/land/snow.webp',   '冬天限定：下雪的島、結冰的湖', 350, '{12,1,2}', 32)
+  ('theme-beach',  'theme', 'theme-beach',  '夕陽海灘', 'img/pet/land2/s-beach.webp',  '寵物島換成椰子樹和金色沙灘', 300, null, 30),
+  ('theme-autumn', 'theme', 'theme-autumn', '楓葉野餐', 'img/pet/land2/s-autumn.webp', '整座島變成紅紅黃黃的楓葉', 300, null, 31),
+  ('theme-snow',   'theme', 'theme-snow',   '雪夜木屋', 'img/pet/land2/s-snow.webp',   '冬天限定：下雪的島、結冰的湖', 350, '{12,1,2}', 32),
+  -- 寵物島 2.0：小屋（cat 'furn'，買了在裝扮的「小屋盆子」擺出來；小木屋一開始就有，不用買）
+  ('furn-house-mushroom', 'furn', 'house-mushroom', '蘑菇屋', 'img/pet/furniture/house-mushroom.webp', '紅紅的蘑菇屋，寵物會進去睡午覺', 250, null, 40),
+  ('furn-house-tree',     'furn', 'house-tree',     '樹屋',   'img/pet/furniture/house-tree.webp',     '爬梯子上去的小樹屋', 300, null, 41),
+  ('furn-house-igloo',    'furn', 'house-igloo',    '雪屋',   'img/pet/furniture/house-igloo.webp',    '冬天限定：圓圓的冰磚雪屋', 280, '{12,1,2}', 42)
 on conflict (code) do update
   set cat = excluded.cat, ref = excluded.ref, name = excluded.name, art = excluded.art, blurb = excluded.blurb,
       price = excluded.price, months = excluded.months, sort = excluded.sort;
@@ -149,7 +153,8 @@ $$;
 -- 存島：主題要有、島名每組 0～19、傢俱最多 40 件（id 只能英數和 -）、座標夾在 0～1
 create or replace function public.park_isle_save(p_theme text, p_name int[], p_layout jsonb, p_stored text[])
 returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
-declare v_me uuid := public.current_student_id(); v_layout jsonb := '{}'; v_k text; v_v jsonb;
+declare v_me uuid := public.current_student_id(); v_layout jsonb := '{}'; v_k text; v_v jsonb; v_items jsonb := '[]'; v_e jsonb;
+        v_furn int := 0; v_build int := 0;
 begin
   if v_me is null then raise exception '請先登入學生帳號'; end if;
   if not (coalesce(p_theme, 'spring') = any(public.park_isle_themes(v_me))) then raise exception '還沒拿到這個島的風格'; end if;
@@ -157,22 +162,37 @@ begin
     raise exception '島名要從選單挑';
   end if;
   if jsonb_typeof(coalesce(p_layout, '{}')) <> 'object' then raise exception '擺放資料不對'; end if;
-  for v_k, v_v in select * from jsonb_each(coalesce(p_layout, '{}')) loop
-    if v_k !~ '^[a-z][a-z0-9-]{1,30}$' or jsonb_typeof(v_v -> 'x') <> 'number' or jsonb_typeof(v_v -> 'y') <> 'number' then continue; end if;
-    v_layout := v_layout || jsonb_build_object(v_k, jsonb_build_object(
-      'x', round(least(1, greatest(0, (v_v ->> 'x')::numeric)), 3),
-      'y', round(least(1, greatest(0, (v_v ->> 'y')::numeric)), 3),
-      'f', case when (v_v ->> 'f') = '1' then 1 else 0 end));
-  end loop;
-  if (select count(*) from jsonb_object_keys(v_layout)) > 40 then raise exception '島上放太多東西了'; end if;
+  if p_layout ->> 'v' = '2' then
+    -- 寵物島 2.0：{ v: 2, items: [[id, i, j, f], …] }，28×28 格；傢俱最多 60 件、圍籬小路（s- 開頭）最多 150 格
+    if jsonb_typeof(p_layout -> 'items') <> 'array' then raise exception '擺放資料不對'; end if;
+    for v_e in select * from jsonb_array_elements(p_layout -> 'items') loop
+      if jsonb_typeof(v_e) <> 'array' or jsonb_array_length(v_e) <> 4 or (v_e ->> 0) !~ '^[a-z][a-z0-9-]{1,30}$'
+         or jsonb_typeof(v_e -> 1) <> 'number' or jsonb_typeof(v_e -> 2) <> 'number'
+         or (v_e ->> 1)::numeric not between 0 and 27 or (v_e ->> 2)::numeric not between 0 and 27 then continue; end if;
+      if (v_e ->> 0) like 's-%' then v_build := v_build + 1; else v_furn := v_furn + 1; end if;
+      v_items := v_items || jsonb_build_array(jsonb_build_array(v_e ->> 0, (v_e ->> 1)::int, (v_e ->> 2)::int, case when (v_e ->> 3) = '1' then 1 else 0 end));
+    end loop;
+    if v_furn > 60 or v_build > 150 then raise exception '島上放太多東西了'; end if;
+    v_layout := jsonb_build_object('v', 2, 'items', v_items);
+  else
+    for v_k, v_v in select * from jsonb_each(coalesce(p_layout, '{}')) loop
+      if v_k !~ '^[a-z][a-z0-9-]{1,30}$' or jsonb_typeof(v_v -> 'x') <> 'number' or jsonb_typeof(v_v -> 'y') <> 'number' then continue; end if;
+      v_layout := v_layout || jsonb_build_object(v_k, jsonb_build_object(
+        'x', round(least(1, greatest(0, (v_v ->> 'x')::numeric)), 3),
+        'y', round(least(1, greatest(0, (v_v ->> 'y')::numeric)), 3),
+        'f', case when (v_v ->> 'f') = '1' then 1 else 0 end));
+    end loop;
+    v_furn := (select count(*) from jsonb_object_keys(v_layout));
+    if v_furn > 40 then raise exception '島上放太多東西了'; end if;
+  end if;
   insert into public.park_isle as i (student_id, theme, name, layout, stored, placed, updated_at)
   values (v_me, coalesce(p_theme, 'spring'), p_name::smallint[], v_layout,
           coalesce((select array_agg(s) from unnest(p_stored) s where s ~ '^[a-z][a-z0-9-]{1,30}$' limit 60), '{}'),
-          (select count(*) from jsonb_object_keys(v_layout)), now())
+          v_furn, now())
   on conflict (student_id) do update
     set theme = excluded.theme, name = excluded.name, layout = excluded.layout, stored = excluded.stored,
         placed = excluded.placed, updated_at = now();
-  return jsonb_build_object('ok', true, 'placed', (select count(*) from jsonb_object_keys(v_layout)));
+  return jsonb_build_object('ok', true, 'placed', v_furn);
 end;
 $$;
 

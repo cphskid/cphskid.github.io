@@ -293,6 +293,7 @@ export const pet = {
   pat:           () => petcall('park_pet_pat'),
   play:          (kind) => petcall('park_pet_play', { p_kind: kind }),
   rename:        (name) => petcall('park_pet_rename', { p_name: name }),
+  bowl:          () => petcall('park_pet_bowl_fill'),      // 飼料盆放一份時光飼料（park_pet.sql）
   classQuiet:    (code) => petcall('park_pet_class_quiet', { p_code: code }),
   setClassQuiet: (code, on) => petcall('park_pet_set_class_quiet', { p_code: code, p_quiet: on }),
 };

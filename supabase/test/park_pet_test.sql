@@ -197,3 +197,33 @@ select test_as('d0000000-0000-0000-0000-000000000002', false, 't2b@parktest.loca
 select test_ok(public.park_pet_me() is null, '老師叫桌寵回空的');
 select test_denied($$select public.park_pet_adopt('puppy', '老師的狗')$$, '老師不能領養');
 reset role;
+
+\echo '── 寵物島 2.0：飼料盆'
+update public.park_pet_inventory set qty = 4 where student_id = :'amy' and item = 'kibble';
+update public.park_pets set fed_at = now() - interval '23 hours', sulky = false where student_id = :'amy' and active;
+delete from public.park_pet_bowl where student_id = :'amy';
+set role authenticated;
+select test_as('d0000000-0000-0000-0000-000000000011', true);
+select test_ok((public.park_pet_me() ->> 'bowl')::int = 0, '飼料盆一開始是空的');
+select test_ok((public.park_pet_bowl_fill() ->> 'bowl')::int = 1, '放一份');
+select public.park_pet_bowl_fill(); select public.park_pet_bowl_fill() as s \gset
+select test_ok((:'s'::jsonb ->> 'bowl')::int = 3 and (:'s'::jsonb -> 'inventory' ->> 'kibble')::int = 1, '放滿 3 份，背包少 3 份');
+select test_denied($$select public.park_pet_bowl_fill()$$, '滿了不能再放');
+select test_ok((public.park_pet_me() ->> 'bowl')::int = 3, '還沒餓不會去吃');
+reset role;
+update public.park_pets set fed_at = now() - interval '26 hours' where student_id = :'amy' and active;
+update public.park_pet_bowl set filled_at = now() - interval '5 hours' where student_id = :'amy';
+set role authenticated;
+select test_as('d0000000-0000-0000-0000-000000000011', true);
+select public.park_pet_me() as s \gset
+select test_ok((:'s'::jsonb ->> 'bowl')::int = 2 and :'s'::jsonb -> 'pets' -> 0 ->> 'mood' <> 'hungry', '餓的時候自己吃了一份，現在不餓');
+reset role;
+update public.park_pets set fed_at = now() - interval '3 days' where student_id = :'amy' and active;
+update public.park_pet_bowl set filled_at = now() - interval '3 days' where student_id = :'amy';
+set role authenticated;
+select test_as('d0000000-0000-0000-0000-000000000011', true);
+select public.park_pet_me() as s \gset
+select test_ok((:'s'::jsonb ->> 'bowl')::int = 0 and :'s'::jsonb -> 'pets' -> 0 ->> 'mood' = 'angry', '碗裡的吃完了還是會餓到生氣');
+select test_denied($$select public.park_pet_bowl_eat('d0000000-0000-0000-0000-000000000011')$$, '內部吃飯函式叫不動');
+select test_denied($$update public.park_pet_bowl set portions = 3$$, '學生不能直接改飼料盆');
+reset role;

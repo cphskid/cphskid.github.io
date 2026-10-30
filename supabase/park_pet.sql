@@ -85,6 +85,13 @@ create table if not exists public.park_pet_grants (
   primary key (student_id, source, key)
 );
 
+-- 寵物島 2.0 的飼料盆：先放時光飼料（最多 3 份），照顧中的那隻餓了會自己吃（park_pet_bowl_eat）
+create table if not exists public.park_pet_bowl (
+  student_id uuid primary key references public.students(id) on delete cascade,
+  portions   smallint not null default 0 check (portions between 0 and 3),
+  filled_at  timestamptz not null default now()    -- 最後一次放飼料的時間：在這之前餓的不算（那時碗是空的）
+);
+
 -- 班級設定多一欄：上課時間桌寵休息
 alter table public.park_class_settings add column if not exists pet_quiet boolean not null default false;
 
@@ -114,9 +121,10 @@ alter table public.park_pet_items     enable row level security;
 alter table public.park_pets          enable row level security;
 alter table public.park_pet_inventory enable row level security;
 alter table public.park_pet_grants    enable row level security;
+alter table public.park_pet_bowl      enable row level security;
 
 revoke all on public.park_pet_species, public.park_pet_items, public.park_pets,
-              public.park_pet_inventory, public.park_pet_grants from anon, authenticated;
+              public.park_pet_inventory, public.park_pet_grants, public.park_pet_bowl from anon, authenticated;
 grant select on public.park_pet_species, public.park_pet_items to anon, authenticated;
 grant select on public.park_pets, public.park_pet_inventory to authenticated;
 
@@ -280,6 +288,7 @@ returns jsonb language sql stable security definer set search_path = public, pg_
     'stamps', (select count(*) from public.park_student_stamps x where x.student_id = p_student),
     'clears', public.park_pet_clears(p_student),
     'unlock_at', jsonb_build_array(3, 6),
+    'bowl', coalesce((select b.portions from public.park_pet_bowl b where b.student_id = p_student), 0),
     'granted', p_granted);
 $$;
 
@@ -294,12 +303,57 @@ begin
 end;
 $$;
 
+-- 飼料盆：照顧中的那隻每次快餓的時候（或放飼料那時已經餓了）自己吃一份，一份跟餵時光飼料一樣撐 6 小時
+create or replace function public.park_pet_bowl_eat(p_student uuid)
+returns int language plpgsql security definer set search_path = public, pg_temp as $$
+declare v_b public.park_pet_bowl; v public.park_pets; v_fed timestamptz; v_at timestamptz; v_n int := 0;
+begin
+  select * into v_b from public.park_pet_bowl where student_id = p_student for update;
+  if v_b.student_id is null or v_b.portions <= 0 then return 0; end if;
+  select * into v from public.park_pets p where p.student_id = p_student and p.active for update;
+  if v.id is null then return 0; end if;
+  v_fed := v.fed_at;
+  while v_b.portions > 0 loop
+    v_at := greatest(v_fed + interval '1 day', v_b.filled_at);       -- 什麼時候會去吃
+    exit when v_at > now();
+    v_fed := v_at - interval '1 day' + interval '6 hours';
+    v_b.portions := v_b.portions - 1;
+    v_n := v_n + 1;
+  end loop;
+  if v_n > 0 then
+    update public.park_pets set fed_at = least(now(), v_fed), sulky = false where id = v.id;
+    update public.park_pet_bowl set portions = v_b.portions where student_id = p_student;
+  end if;
+  return v_n;
+end;
+$$;
+
+-- 飼料盆放一份時光飼料（從背包拿）
+create or replace function public.park_pet_bowl_fill()
+returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
+declare v_me uuid := public.current_student_id(); v_left int; v_n int;
+begin
+  if v_me is null then raise exception '請先登入學生帳號'; end if;
+  perform public.park_pet_bowl_eat(v_me);
+  select portions into v_n from public.park_pet_bowl where student_id = v_me;
+  if coalesce(v_n, 0) >= 3 then raise exception '飼料盆滿了，最多放 3 份'; end if;
+  update public.park_pet_inventory set qty = qty - 1
+   where student_id = v_me and item = 'kibble' and qty > 0
+  returning qty into v_left;
+  if v_left is null then raise exception '背包裡沒有時光飼料了'; end if;
+  insert into public.park_pet_bowl as b (student_id, portions, filled_at) values (v_me, 1, now())
+  on conflict (student_id) do update set portions = b.portions + 1, filled_at = now();
+  return public.park_pet_state(v_me) || jsonb_build_object('did', 'bowl');
+end;
+$$;
+
 -- 現在帶在身邊的那隻（上課時間休息中就不能互動）
 create or replace function public.park_pet_mine(p_student uuid)
 returns public.park_pets language plpgsql security definer set search_path = public, pg_temp as $$
 declare v public.park_pets;
 begin
   if p_student is null then raise exception '請先登入學生帳號'; end if;
+  perform public.park_pet_bowl_eat(p_student);
   select * into v from public.park_pets p where p.student_id = p_student and p.active for update;
   if v.id is null then raise exception '你還沒有桌寵'; end if;
   if public.park_pet_quiet(p_student) then raise exception '現在是上課時間，桌寵在休息，放學再來玩'; end if;
@@ -318,6 +372,7 @@ declare v_me uuid := public.current_student_id(); v_g jsonb;
 begin
   if v_me is null then return null; end if;
   v_g := public.park_pet_grant(v_me);
+  perform public.park_pet_bowl_eat(v_me);
   return public.park_pet_state(v_me, v_g);
 end;
 $$;
@@ -510,10 +565,11 @@ revoke all on function
   public.park_pet_mine(uuid), public.park_pet_me(), public.park_pet_adopt(text, text),
   public.park_pet_slots(uuid), public.park_pet_swap(bigint),
   public.park_pet_feed(text), public.park_pet_pat(), public.park_pet_rename(text),
-  public.park_pet_class_quiet(text), public.park_pet_set_class_quiet(text, boolean)
+  public.park_pet_class_quiet(text), public.park_pet_set_class_quiet(text, boolean),
+  public.park_pet_bowl_eat(uuid), public.park_pet_bowl_fill()
   from public, anon, authenticated;
 grant execute on function
   public.park_pet_me(), public.park_pet_adopt(text, text), public.park_pet_feed(text), public.park_pet_swap(bigint),
   public.park_pet_pat(), public.park_pet_play(text), public.park_pet_rename(text),
-  public.park_pet_class_quiet(text), public.park_pet_set_class_quiet(text, boolean)
+  public.park_pet_class_quiet(text), public.park_pet_set_class_quiet(text, boolean), public.park_pet_bowl_fill()
   to authenticated;

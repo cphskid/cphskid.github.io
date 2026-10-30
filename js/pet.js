@@ -14,6 +14,7 @@ import { warm } from './warm.js';
 import { span } from './perf.js';
 import * as playlog from './playlog.js';
 import * as isle from './isle.js';
+import * as W from './isleworld.js';
 
 const $ = (s, root = document) => root.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -285,48 +286,59 @@ function gauges(p, m) {
 }
 
 // ---------- 寵物島場景 ----------
-// 座標：島圖（L-07）上的比例 0～1。WALK 是草原＋沙灘可以走的範圍，LAKE 是湖（不能站）。
-const GW = 1120, GH = 842;                        // 場景裡島圖的大小（舞台 1600×900 的座標）
-const WALK = [[.22, .33], [.36, .29], [.6, .29], [.66, .4], [.76, .53], [.93, .56], [.92, .66], [.76, .79],
-              [.5, .83], [.4, .8], [.3, .7], [.2, .58], [.18, .45]];
-const LAKE = { x: .455, y: .43, rx: .21, ry: .15 };
-const EGG_AT = { x: .58, y: .7 };
-function walkable(x, y) {
-  if (((x - LAKE.x) / LAKE.rx) ** 2 + ((y - LAKE.y) / LAKE.ry) ** 2 < 1) return false;
-  let inside = false;
-  for (let i = 0, j = WALK.length - 1; i < WALK.length; j = i++) {
-    const [xi, yi] = WALK[i], [xj, yj] = WALK[j];
-    if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) inside = !inside;
-  }
-  return inside;
+// 島是 28×28 格的大島（js/isleworld.js），可以拖曳、兩指或滾輪縮放。座標：島圖上的比例 0～1。
+// 擺設（傢俱、小屋、盆子、圍籬小路）存成格子座標；寵物照格子找路，不會穿過圍籬、樹叢、小屋、池塘。
+const { GW, GH, N } = W;
+const LAKE = W.LAKE;
+const EGG_AT = W.center(17, 11);
+let items = [];                     // 島上擺的全部 { id, i, j, f }
+let occ = W.occupancy([]);          // 佔地表
+const walkable = (x, y) => W.walkableIn(occ.solid, x, y);
+const clearPath = (a, b) => W.lineFree(occ.solid, a, b);
+function freeCells() {
+  const out = [];
+  for (let c = 0; c < N * N; c++) if (!occ.solid[c]) out.push(c);
+  return out;
 }
-// from：從哪裡走過去（整條路都要能走，才不會穿過湖）
+// 找一個可以站的地方：near＝在附近（4 格內）；from＝要走得到
 function somewhere(near, from) {
-  for (let k = 0; k < 80; k++) {
-    const x = near ? near.x + rnd(-.18, .18) : rnd(.18, .93);
-    const y = near ? near.y + rnd(-.12, .12) : rnd(.29, .84);
-    if (walkable(x, y) && (!from || clearPath(from, { x, y }))) return { x, y };
+  let pool = from ? W.reachable(occ.solid, from) : freeCells();
+  if (near) {
+    const c = W.cellOf(near.x, near.y);
+    const close = pool.filter((k) => Math.abs((k % N) - c.i) <= 4 && Math.abs(Math.floor(k / N) - c.j) <= 4);
+    if (close.length) pool = close;
   }
-  return from ? { x: from.x, y: from.y } : { x: .7, y: .68 };
+  if (!pool.length) return from ? { x: from.x, y: from.y } : W.center(14, 14);
+  const k = pick(pool), p = W.center(k % N, Math.floor(k / N));
+  return { x: p.x + rnd(-6, 6) / GW, y: p.y + rnd(-3, 3) / GH };
 }
-function clearPath(a, b) {
-  for (let t = .1; t < 1; t += .1) if (!walkable(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t)) return false;
+// 走過去：照找到的路一段一段走（tick 走到一點再接下一點）；走不到回傳 false
+function go(a, to, next = null) {
+  const path = W.route(occ.solid, a, to);
+  if (!path) return false;
+  a.path = path;
+  const p = a.path.shift();
+  a.tx = p.x; a.ty = p.y; a.mode = 'walk'; a.next = next;
   return true;
 }
-// 前面（y 大）的看起來大一點
-const depth = (y) => .78 + (y - .29) * .55;
-const SIZE = [0, 128, 150, 172];
+// 前面（y 大）的看起來大一點（大島只差一點點）
+const depth = (y) => .9 + (y - .2) * .28;
+const SIZE = [0, 84, 98, 112];
 
-let actors = [];            // { p, el, img, x, y, tx, ty, mode, until, face, frame, speed }
-let props = [];             // 島上的傢俱 { id, el, x, y, user }
+let actors = [];            // { p, el, img, x, y, tx, ty, path, mode, until, face, frame, speed }
+let props = [];             // 有圖的擺設 { id, it(items 裡那一筆), el, x, y, w, f, users }
 let sky = null, skyFx = null;
 let selected = null;        // 選到哪一隻（id）
 let raf = 0, last = 0;
 let busy = false;           // 餵食／摸摸的動畫還在跑
 let talkTimer = 0;
 let sceneTimers = [];
+let sceneAbort = null;      // 關掉場景時把掛在 window 上的事件一起拿掉
 let cardOpen = false;       // 左上的狀態卡展開了沒
 let bagOpen = false;        // 餵食的點心列開著沒
+let cam = { x: 0, y: 0, k: 1 };     // 鏡頭：島移到哪、放多大
+let panned = false;         // 這次按下去有拖地圖（放開時不要當成點一下）
+let deco = null;            // 裝扮模式 { tab, tool, sel, undo }
 
 function stopScene() {
   cancelAnimationFrame(raf);
@@ -336,9 +348,12 @@ function stopScene() {
   props = [];
   skyFx = null;
   ball = null;
+  deco = null;
   sceneTimers.forEach(clearTimeout);
   sceneTimers = [];
   clearTimeout(talkTimer);
+  sceneAbort?.abort();
+  sceneAbort = null;
 }
 
 function openScene({ select, say: first } = {}) {
@@ -348,39 +363,46 @@ function openScene({ select, say: first } = {}) {
   sky = readSky();
   cardOpen = news.length > 0;
   bagOpen = false;
+  const land = W.landSrc(isle.theme());
   show(`<div class="pisle loading" role="dialog" aria-modal="true" aria-label="寵物島" data-wx="${sky.wx}" data-tod="${sky.tod}" data-season="${sky.season}">
-    <div class="view"><div class="ground-box"><section class="ground" style="width:${GW}px;height:${GH}px">
-      <img class="land" src="${isle.landSrc(isle.theme())}" alt="">
+    <div class="view"><section class="ground" style="width:${GW}px;height:${GH}px">
+      <img class="land" src="${land}" alt="">
+      <svg class="floor" viewBox="0 0 ${GW} ${GH}" width="${GW}" height="${GH}" aria-hidden="true"></svg>
       <div class="actors"></div>
-      <div class="haze" aria-hidden="true"></div>
-    </section></div></div>
+      <div class="haze" aria-hidden="true" style="-webkit-mask-image:url(${land});mask-image:url(${land})"></div>
+    </section></div>
     <aside class="care"></aside>
     <p class="skychip">${SKY_NAME.wx[sky.wx]}・${SKY_NAME.season[sky.season]}・${SKY_NAME.tod[sky.tod]}</p>
     <p class="isle-sign">${esc(isle.nameText(isle.name()))}</p>
     ${isle.inboxHtml()}
-    <p class="hint">點寵物看牠想做什麼，按住可以拎到傢俱上或湖裡</p>
+    <p class="hint">拖曳可以看整座島，兩指或滾輪放大縮小；按住寵物可以拎起來</p>
+    <div class="zoom" aria-label="放大縮小"><button type="button" data-zoom="1.25" aria-label="放大">＋</button><button type="button" data-zoom="0.8" aria-label="縮小">－</button></div>
     <div class="dock"><div class="pals-s"></div><nav class="bar" aria-label="照顧"></nav></div>
     <div class="bagpop" hidden></div>
+    <div class="deco-top" hidden></div>
     <div class="furn" hidden></div>
     <div class="veil-load" aria-live="polite"><span class="egg"></span><p>寵物島準備中…</p></div>
     <button class="x" data-close aria-label="關閉，回到地圖"></button></div>`);
+  sceneAbort = new AbortController();
   const box = $('.actors', layer);
   const fresh = freshFurniture();
-  addProps(box);
+  items = loadItems(fresh);
+  rebuildWorld();
   addDecor(box);
   fresh.forEach((id) => props.find((o) => o.id === id)?.el.classList.add('new'));
   state.pets.forEach((p) => addActor(box, p));
   actors.forEach((a) => { if (Math.random() < .7) laterWish(a, rnd(2500, 9000)); });
-  // 點空地丟球
+  // 點空地丟球（拖地圖不算）
   $('.ground', layer).addEventListener('click', (e) => {
+    if (panned || deco) return;
     if (e.target.closest('.actor,.prop')) return;
-    if (bagOpen || !$('.furn', layer).hidden) { closeBag(); $('.furn', layer).hidden = true; paintBar(); return; }   // 先把打開的清單收起來
-    const g = $('.ground', layer).getBoundingClientRect(), k = g.width / GW;
-    const at = { x: (e.clientX - g.left) / k / GW, y: (e.clientY - g.top) / k / GH };
+    if (bagOpen) { closeBag(); return; }
+    const at = toIsle(e);
     if (walkable(at.x, at.y)) throwBall(at);
   });
   if (canAdopt()) addEgg(box);
   skyFx = makeSky($('.ground', layer), sky, { w: GW, h: GH, lake: LAKE });
+  bindCam();
   fitScene(true);
   paintCare();
   revealScene();
@@ -397,39 +419,126 @@ function openScene({ select, say: first } = {}) {
   news = [];
   last = performance.now();
   raf = requestAnimationFrame(tick);
-  if (isle.ready() && !isle.saved()) saveIsle();     // 第一次打開：把現在的樣子存起來，同學才看得到
+  if (isle.ready() && (!isle.saved() || !W.unpack(isle.layout()))) saveIsle();     // 第一次打開、舊的擺法：存成新的樣子
 }
 
-// 島佔滿整個視窗：照畫面大小算縮放 --g；手機直拿時島撐滿高度、可以左右滑
+// ---------- 鏡頭：拖曳移動、兩指或滾輪縮放、＋－鈕 ----------
 const isTall = (w, h) => w < h * .9;
+const toIsle = (e) => { const g = $('.ground', layer).getBoundingClientRect(); return { x: (e.clientX - g.left) / g.width, y: (e.clientY - g.top) / g.height }; };
+function camBox() {
+  const v = $('.view', layer);
+  const vw = v.clientWidth, vh = v.clientHeight;
+  return { vw, vh, kMin: Math.min(vw / GW, vh / GH) * .92, kMax: 1.6 };
+}
+function applyCam() {
+  const g = $('.ground', layer);
+  if (!g) return;
+  g.style.transform = `translate(${cam.x.toFixed(1)}px,${cam.y.toFixed(1)}px) scale(${cam.k.toFixed(4)})`;
+  $('.pisle', layer).style.setProperty('--g', cam.k.toFixed(4));
+}
+// 島比畫面小就置中；比較大時最多拖到島的邊在畫面四成的地方
+function clampCam() {
+  const { vw, vh, kMin, kMax } = camBox();
+  cam.k = Math.min(kMax, Math.max(kMin, cam.k));
+  const w = GW * cam.k, h = GH * cam.k;
+  cam.x = w <= vw ? (vw - w) / 2 : Math.min(vw * .4, Math.max(vw * .6 - w, cam.x));
+  cam.y = h <= vh ? (vh - h) / 2 : Math.min(vh * .4, Math.max(vh * .6 - h, cam.y));
+}
+function lookAt(p, k = cam.k) {
+  const { vw, vh } = camBox();
+  cam.k = k;
+  cam.x = vw / 2 - p.x * GW * k;
+  cam.y = vh / 2 - p.y * GH * k;
+  clampCam();
+  applyCam();
+}
+// 用畫面上的一點（sx, sy：在 .view 裡）當中心縮放
+function zoomTo(k, sx, sy) {
+  const k0 = cam.k;
+  const { kMin, kMax } = camBox();
+  cam.k = Math.min(kMax, Math.max(kMin, k));
+  cam.x = sx - (sx - cam.x) * cam.k / k0;
+  cam.y = sy - (sy - cam.y) * cam.k / k0;
+  clampCam();
+  applyCam();
+}
+// 一開始：手機直拿大約看到 9 格寬，電腦看到大半座島；對準照顧中那隻
 function fitScene(first) {
-  const pis = $('.pisle', layer), view = $('.view', layer);
-  if (!pis || !view) return;
-  const W = view.clientWidth, H = view.clientHeight;
-  const contain = Math.min(W / GW, H / GH);
-  const g = isTall(W, H) ? Math.min(1.1, H * .95 / GH)
-    : Math.max(contain, Math.min(1.15, W / (.86 * GW), H / (.66 * GH)));
-  pis.style.setProperty('--g', g.toFixed(4));
-  if (!first) return;
-  // 一開始對準照顧中那隻（直拿）或島中間
+  if (!$('.view', layer)) return;
+  if (!first) { clampCam(); applyCam(); return; }
+  const { vw, vh, kMin } = camBox();
+  const k = isTall(vw, vh) ? Math.max(kMin, vw / 820) : Math.max(kMin, Math.min(1, vw / (GW * .78)));
   const a = actors.find((x) => x.p.id === selected);
-  const cx = isTall(W, H) && a ? a.x : .55, cy = .56;
-  view.scrollLeft = cx * GW * g - W / 2;
-  view.scrollTop = cy * GH * g - H / 2;
+  lookAt(a ? { x: a.x, y: a.y - .03 } : W.center(14, 13), k);
 }
 addEventListener('resize', () => { if (!layer.hidden) fitScene(false); });
-// 先把島、擺出來的傢俱、每隻夥伴站著和走路的圖抓好再掀開（最多等 2.5 秒）；掀開後再在背景抓其他動作
+function bindCam() {
+  const v = $('.view', layer), sig = { signal: sceneAbort.signal };
+  const pts = new Map();
+  let pan = null, pinch = null;
+  const rel = (p) => { const r = v.getBoundingClientRect(); return { x: p.x - r.left, y: p.y - r.top }; };
+  v.addEventListener('pointerdown', (e) => {
+    if (e.button > 0 || e.target.closest('.actor,.prop.movable,.deco-sel')) return;
+    if (pts.size === 0) panned = false;
+    if (pts.size === 0 && paintStart(e)) return;      // 裝扮時選了圍籬小路：一指是畫
+    pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pts.size === 1) pan = { x: e.clientX, y: e.clientY, cx: cam.x, cy: cam.y, moved: false };
+    else if (pts.size === 2) {
+      const [p, q] = [...pts.values()];
+      pinch = { d: Math.hypot(p.x - q.x, p.y - q.y), k: cam.k };
+      pan = null;
+      panned = true;
+    }
+  }, sig);
+  addEventListener('pointermove', (e) => {
+    if (!pts.has(e.pointerId)) return;
+    pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pinch && pts.size >= 2) {
+      const [p, q] = [...pts.values()];
+      const m = rel({ x: (p.x + q.x) / 2, y: (p.y + q.y) / 2 });
+      zoomTo(pinch.k * Math.hypot(p.x - q.x, p.y - q.y) / pinch.d, m.x, m.y);
+    } else if (pan) {
+      const dx = e.clientX - pan.x, dy = e.clientY - pan.y;
+      if (!pan.moved && Math.hypot(dx, dy) < 8) return;
+      pan.moved = true;
+      panned = true;
+      cam.x = pan.cx + dx; cam.y = pan.cy + dy;
+      clampCam();
+      applyCam();
+    }
+  }, sig);
+  const up = (e) => {
+    if (!pts.delete(e.pointerId)) return;
+    if (pts.size < 2) pinch = null;
+    if (pts.size === 1) { const [p] = pts.values(); pan = { x: p.x, y: p.y, cx: cam.x, cy: cam.y, moved: true }; }
+    if (!pts.size) pan = null;
+  };
+  addEventListener('pointerup', up, sig);
+  addEventListener('pointercancel', up, sig);
+  v.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const m = rel({ x: e.clientX, y: e.clientY });
+    zoomTo(cam.k * Math.exp(-e.deltaY * .0015), m.x, m.y);
+  }, { passive: false, signal: sceneAbort.signal });
+  layer.querySelectorAll('[data-zoom]').forEach((b) => {
+    b.onclick = () => { const { vw, vh } = camBox(); zoomTo(cam.k * +b.dataset.zoom, vw / 2, vh / 2); };
+  });
+}
+
+// 先把島、擺出來的東西、每隻夥伴站著和走路的圖抓好再掀開（最多等 2.5 秒）；掀開後再在背景抓其他動作
 const FIRST_POSES = ['idle', 'walk1', 'walk2', 'sit', 'front1', 'front2', 'back1', 'back2'];
 async function revealScene() {
   const t0 = performance.now();
   const pis = $('.pisle', layer);
-  const srcs = [isle.landSrc(isle.theme()), ...props.map((o) => `img/pet/furniture/${o.id}.webp`),
+  const srcs = [W.landSrc(isle.theme()), ...new Set(props.map((o) => `img/pet/furniture/${o.id}.webp`)),
+    ...new Set(W.trees(isle.theme()).map((t) => `img/pet/tree/${t.id}.webp`)),
     ...actors.flatMap((a) => FIRST_POSES.map((pose) => art(a.p.species, a.p.stage, pose)))];
   await Promise.race([Promise.all(srcs.map(loadImg)), new Promise((ok) => setTimeout(ok, 2500))]);
   if (pis !== $('.pisle', layer)) return;
   pis.classList.remove('loading');
   span('寵物島掀開', t0);
-  warm(...new Set(actors.map((a) => `img/pet/${a.p.species}/${a.p.stage}-`)), 'img/pet/food/', 'img/pet/furniture/');
+  warm(...new Set(actors.map((a) => `img/pet/${a.p.species}/${a.p.stage}-`)), 'img/pet/food/', 'img/pet/furniture/', 'img/pet/land2/');
+  guideFirst();
 }
 
 function addActor(box, p, at) {
@@ -438,8 +547,8 @@ function addActor(box, p, at) {
   el.className = 'actor';
   el.innerHTML = '<span class="shadow"></span><span class="body"><img alt=""></span><span class="tag"></span><span class="bub" hidden></span><span class="wish" hidden></span>';
   box.appendChild(el);
-  const pos = at ?? somewhere();
-  const a = { p, el, img: $('img', el), x: pos.x, y: pos.y, tx: pos.x, ty: pos.y, mode: 'rest', until: performance.now() + rnd(300, 1500),
+  const pos = at ?? somewhere(p.active ? props.find((o) => W.kindOf(o.id) === 'house') ?? null : null);
+  const a = { p, el, img: $('img', el), x: pos.x, y: pos.y, tx: pos.x, ty: pos.y, path: null, mode: 'rest', until: performance.now() + rnd(300, 1500),
               face: Math.random() < .5 ? 1 : -1, frame: 0, pose: '', lift: 0, timers: [] };
   actors.push(a);
   dress(a);
@@ -447,28 +556,20 @@ function addActor(box, p, at) {
   place(a);
   return a;
 }
-// ---------- 傢俱（二期改成用時光幣換、存在資料庫）----------
-// 擺的位置先記在這台電腦（localStorage），拖曳方式跟拎寵物一樣
+
+// ---------- 擺設：傢俱（蓋章解鎖、商店買）、小屋、盆子、圍籬小路 ----------
+// 舊島（第 1 期以前）的預設位置，搬家時用
 const PROPS = [
-  { id: 'bed', x: .8, y: .72, w: 120 }, { id: 'tent', x: .88, y: .62, w: 120 },
-  { id: 'slide', x: .3, y: .68, w: 130 }, { id: 'fountain', x: .64, y: .79, w: 80 },
-  { id: 'pool', x: .25, y: .5, w: 115 }, { id: 'swing', x: .44, y: .64, w: 100 },
-  { id: 'bench', x: .68, y: .62, w: 105 }, { id: 'tunnel', x: .5, y: .8, w: 95 },
-  { id: 'toybox', x: .57, y: .6, w: 62 }, { id: 'flowers', x: .24, y: .38, w: 54 },
-  { id: 'lantern', x: .67, y: .45, w: 40 },
+  { id: 'bed', x: .8, y: .72 }, { id: 'tent', x: .88, y: .62 }, { id: 'slide', x: .3, y: .68 }, { id: 'fountain', x: .64, y: .79 },
+  { id: 'pool', x: .25, y: .5 }, { id: 'swing', x: .44, y: .64 }, { id: 'bench', x: .68, y: .62 }, { id: 'tunnel', x: .5, y: .8 },
+  { id: 'toybox', x: .57, y: .6 }, { id: 'flowers', x: .24, y: .38 }, { id: 'lantern', x: .67, y: .45 },
   // 下面是商店賣的（js/shop.js、park_coins.sql 的 park_shop_items）
-  { id: 'scratcher', x: .36, y: .56, w: 58 }, { id: 'sandbox', x: .76, y: .86, w: 112 },
-  { id: 'trampoline', x: .42, y: .86, w: 108 }, { id: 'hammock', x: .9, y: .82, w: 100 },
-  { id: 'rabbit-lamp', x: .3, y: .8, w: 56 },
-  { id: 'pumpkin-lamp', x: .62, y: .33, w: 58 }, { id: 'ghost-house', x: .24, y: .5, w: 100 },
-  { id: 'candy-bucket', x: .7, y: .7, w: 64 }, { id: 'web-swing', x: .84, y: .63, w: 100 },
+  { id: 'scratcher', x: .36, y: .56 }, { id: 'sandbox', x: .76, y: .86 }, { id: 'trampoline', x: .42, y: .86 },
+  { id: 'hammock', x: .9, y: .82 }, { id: 'rabbit-lamp', x: .3, y: .8 },
+  { id: 'pumpkin-lamp', x: .62, y: .33 }, { id: 'ghost-house', x: .24, y: .5 }, { id: 'candy-bucket', x: .7, y: .7 }, { id: 'web-swing', x: .84, y: .63 },
 ];
-// 圖的高／寬
-const ASPECT = { bed: .77, tent: .985, slide: .835, tunnel: .815, scratcher: 1.408, swing: 1.081, pool: .68, fountain: 1.136,
-                 bench: .705, lantern: 1.626, flowers: 1.081, toybox: .885,
-                 sandbox: .73, trampoline: .749, hammock: .966, 'rabbit-lamp': 1.176,
-                 'pumpkin-lamp': 1.081, 'ghost-house': 1.227, 'candy-bucket': 1.111, 'web-swing': 1.099 };
-// 怎麼用：at＝在傢俱圖上的哪一點（左上 0,0；右下 1,1），door＝從地上哪裡過去（預設 at 正下方的地面）
+// 怎麼用：at＝在圖上的哪一點（左上 0,0；右下 1,1），door＝從地上哪裡過去（預設 at 正下方的地面）
+const HOUSE = { kind: 'hide', sleep: true };
 const USE = {
   bed:      { kind: 'lie', at: [.5, .58] },
   tent:     { kind: 'hide', at: [.45, .9], door: [.45, 1.03] },
@@ -489,36 +590,56 @@ const USE = {
   'ghost-house':  { kind: 'hide', at: [.5, .9], door: [.5, 1.03] },
   'candy-bucket': { kind: 'play', at: [.5, 1.08], poses: ['sniff', 'dig', 'chew', 'cheer'], every: 900, line: '不給糖就搗蛋！' },
   'web-swing':    { kind: 'sit', at: [.5, .7], sway: true },
+  // 小屋：門口在左前方那一面；累了、晚上、下雨會進去睡（一間睡兩隻）
+  'house-basic':    { ...HOUSE, at: [.3, .74], door: [.2, .95] },
+  'house-mushroom': { ...HOUSE, at: [.4, .8], door: [.28, .97] },
+  'house-tree':     { ...HOUSE, at: [.32, .86], door: [.22, .97] },
+  'house-igloo':    { ...HOUSE, at: [.26, .78], door: [.17, .96] },
+  'bowl-food':  { kind: 'play', at: [.5, 1.2], poses: ['eat', 'chew'], every: 420, line: '飼料好香～' },
+  'bowl-water': { kind: 'play', at: [.5, 1.2], poses: ['eat', 'chew'], every: 420, line: '咕嚕咕嚕' },
+  's-flowerbed': { kind: 'play', at: [.5, 1.12], poses: ['sniff', 'look', 'cheer'], every: 1000, line: '花開得好漂亮！' },
+  's-veg':       { kind: 'play', at: [.5, 1.12], poses: ['sniff', 'dig', 'sniff'], every: 900, line: '紅蘿蔔快長大了！' },
 };
-const PROP_KEY = 'park-pet-props';
 // 一開始送三件；其他的蓋護照章解鎖（FURN_STAMP：蓋到第幾個章）。之後樂園商店再加只能用時光幣換的。網址加 ?furn=all 可以全部看
 const STARTER = ['bed', 'slide', 'pool'];
+const FREE = ['house-basic', 'bowl-food', 'bowl-water', 's-fence-white', 's-fence-wood', 's-gate', 's-path-stone', 's-path-wood', 's-path-brick', 's-hedge', 's-flowerbed', 's-veg'];
 const FURN_STAMP = { tent: 1, swing: 2, fountain: 4, toybox: 5, bench: 7, tunnel: 8, flowers: 10, lantern: 12 };
 const FURN_NAME = { bed: '軟軟小床', tent: '露營帳篷', slide: '溜滑梯', fountain: '噴水池', pool: '小泳池', swing: '盪鞦韆',
                     bench: '野餐桌椅', tunnel: '鑽鑽隧道', toybox: '玩具箱', flowers: '花盆', lantern: '小燈籠',
                     scratcher: '貓抓板', sandbox: '小沙坑', trampoline: '彈跳床', hammock: '吊床', 'rabbit-lamp': '兔子燈',
-                    'pumpkin-lamp': '南瓜燈', 'ghost-house': '小鬼屋', 'candy-bucket': '糖果桶', 'web-swing': '蜘蛛網鞦韆' };
+                    'pumpkin-lamp': '南瓜燈', 'ghost-house': '小鬼屋', 'candy-bucket': '糖果桶', 'web-swing': '蜘蛛網鞦韆',
+                    'house-basic': '小木屋', 'house-mushroom': '蘑菇屋', 'house-tree': '樹屋', 'house-igloo': '雪屋',
+                    'bowl-food': '飼料盆', 'bowl-water': '水盆',
+                    's-fence-white': '白圍籬', 's-fence-wood': '木圍籬', 's-gate': '小門', 's-path-stone': '石磚路', 's-path-wood': '木地板',
+                    's-path-brick': '紅磚路', 's-hedge': '矮樹叢', 's-flowerbed': '花圃', 's-veg': '菜園' };
 const SHOP_FURN = { scratcher: 120, sandbox: 150, trampoline: 180, hammock: 200, 'rabbit-lamp': 250,
-                    'pumpkin-lamp': 150, 'ghost-house': 250, 'candy-bucket': 180, 'web-swing': 220 };   // 商店價（只給清單顯示，真的價錢看資料庫）
-const LIMITED = new Set(['rabbit-lamp', 'pumpkin-lamp', 'ghost-house', 'candy-bucket', 'web-swing']);   // 本月限定：沒買到就不放進清單
+                    'pumpkin-lamp': 150, 'ghost-house': 250, 'candy-bucket': 180, 'web-swing': 220,
+                    'house-mushroom': 250, 'house-tree': 300, 'house-igloo': 280 };   // 商店價（只給清單顯示，真的價錢看資料庫）
+const LIMITED = new Set(['rabbit-lamp', 'pumpkin-lamp', 'ghost-house', 'candy-bucket', 'web-swing', 'house-igloo']);   // 本月限定：沒買到就不放進清單
+const HOUSES = ['house-basic', 'house-mushroom', 'house-tree', 'house-igloo'];
+const BUILDS = ['s-fence-white', 's-fence-wood', 's-gate', 's-path-stone', 's-path-wood', 's-path-brick', 's-hedge', 's-flowerbed', 's-veg'];
 // 萬聖節（petsky.js 的 fest）島上自己會有的小南瓜燈：只是裝飾，不能拎、寵物不會用
-const FEST_DECOR = { halloween: [{ x: .35, y: .68 }, { x: .6, y: .78 }, { x: .22, y: .4 }, { x: .88, y: .6 }, { x: .45, y: .3 }] };
+const FEST_DECOR = { halloween: [[6, 20], [21, 6], [12, 24], [24, 19], [9, 13]] };
 function addDecor(box) {
-  for (const d of FEST_DECOR[sky.fest] ?? []) {
+  for (const [i, j] of FEST_DECOR[sky.fest] ?? []) {
+    if (occ.obj[j * N + i] || occ.solid[j * N + i]) continue;
+    const d = W.center(i, j);
     const el = document.createElement('span');
     el.className = 'decor d-pumpkin';
     el.innerHTML = '<img src="img/pet/furniture/pumpkin-lamp.webp" alt="">';
-    const w = 30 * depth(d.y);
-    el.style.cssText = `left:${d.x * GW}px;top:${d.y * GH}px;width:${w}px;z-index:${Math.round(d.y * 1000) - 3}`;
+    el.style.cssText = `left:${d.x * GW}px;top:${d.y * GH}px;width:22px;z-index:${Math.round(d.y * 1000) - 3}`;
     box.appendChild(el);
   }
 }
 const OWN_KEY = 'park-pet-furniture-seen';
+const all = () => new URLSearchParams(location.search).get('furn') === 'all';
+// 有哪些傢俱（蓋章解鎖、商店買的）；小屋、盆子、圍籬小路另外算（FREE 是一開始就有的）
 function ownedFurniture() {
-  if (new URLSearchParams(location.search).get('furn') === 'all') return PROPS.map((d) => d.id);
+  if (all()) return PROPS.map((d) => d.id);
   const stamps = state?.stamps ?? 0;
   return PROPS.map((d) => d.id).filter((id) => STARTER.includes(id) || stamps >= (FURN_STAMP[id] ?? 99) || bought.includes(id));
 }
+const owns = (id) => FREE.includes(id) || ownedFurniture().includes(id) || bought.includes(id) || (all() && HOUSES.includes(id));
 // 這次打開才解鎖的傢俱（記在這台電腦，只慶祝一次）
 function freshFurniture() {
   let seen = null;
@@ -527,168 +648,421 @@ function freshFurniture() {
   try { localStorage.setItem(OWN_KEY, JSON.stringify(own)); } catch { /* 存不了就算了 */ }
   return own.filter((id) => !(seen ?? STARTER).includes(id));
 }
-// 收起來的傢俱（記在這台電腦）：不擺在島上，打開「我的傢俱」再拿出來
-const STORE_KEY = 'park-pet-stored';
-function storedFurniture() {
-  if (isle.saved()) return isle.stored();
-  try { return JSON.parse(localStorage.getItem(STORE_KEY) ?? '[]'); } catch { return []; }
+// 讀島上的擺設：伺服器的新格式 → 這台電腦存的新格式 → 舊的擺法搬家 → 補小屋和盆子；新解鎖的傢俱自動擺出來
+const ISLE_KEY = 'park-pet-isle2', PROP_KEY = 'park-pet-props', STORE_KEY = 'park-pet-stored';
+function loadItems(fresh) {
+  const json = (k, d) => { try { return JSON.parse(localStorage.getItem(k) ?? 'null') ?? d; } catch { return d; } };
+  let list = isle.saved() ? W.unpack(isle.layout()) : W.unpack(json(ISLE_KEY, null));
+  if (!list) {
+    const old = isle.saved() ? isle.layout() : json(PROP_KEY, {});
+    const stored = isle.saved() ? isle.stored() : json(STORE_KEY, []);
+    const dflt = Object.fromEntries(PROPS.map((d) => [d.id, d]));
+    list = W.starter(W.migrate(old, ownedFurniture().filter((id) => !stored.includes(id)), dflt));
+  }
+  list = list.filter((o) => owns(o.id));
+  for (const id of fresh) {
+    if (list.some((o) => o.id === id)) continue;
+    const o = occAdd(list, id);
+    if (o) list.push(o);
+  }
+  return list;
 }
-function setStored(id, on) {
-  const all = storedFurniture().filter((x) => x !== id);
-  if (on) all.push(id);
-  try { localStorage.setItem(STORE_KEY, JSON.stringify(all)); } catch { /* 存不了就只這次有效 */ }
-  if (isle.ready()) isle.save({ stored: all });
+// 在小屋旁邊（沒有小屋就島中間）找一格擺 id
+function occAdd(list, id, near) {
+  const o = W.occupancy(list);
+  const h = list.find((x) => W.kindOf(x.id) === 'house');
+  const c = near ?? (h ? { i: h.i + 3, j: h.j } : { i: 14, j: 14 });
+  const p = W.nearestFree(o, id, c.i, c.j, 0);
+  return p ? { id, i: p.i, j: p.j, f: 0 } : null;
 }
-function propSpots() {
-  if (isle.saved()) return isle.layout();
-  try { return JSON.parse(localStorage.getItem(PROP_KEY) ?? '{}'); } catch { return {}; }
-}
-// 島上現在的樣子存到伺服器（js/isle.js 會晚一點一起送）
+// 島上現在的樣子存起來（伺服器晚一點一起送，js/isle.js）
 function saveIsle() {
-  if (!isle.ready()) return;
-  const layout = {};
-  props.forEach((o) => { layout[o.id] = { x: +o.x.toFixed(3), y: +o.y.toFixed(3), f: o.f ? 1 : 0 }; });
-  isle.save({ layout, stored: storedFurniture() });
+  const lay = W.pack(items);
+  try { localStorage.setItem(ISLE_KEY, JSON.stringify(lay)); } catch { /* 存不了就只存伺服器 */ }
+  if (isle.ready()) isle.save({ layout: lay, stored: [] });
 }
-// 給 js/isle.js 畫別人的島用
-const propLook = (id) => { const d = PROPS.find((x) => x.id === id); return d ? { w: d.w } : {}; };
-const propW = (o) => o.w * depth(o.y);
 const propZ = (o) => Math.round(o.y * 1000) - 2;
-// 傢俱圖上的一點 → 島上的座標
+// 圖上的一點 → 島上的座標
 function propPoint(o, [fx, fy]) {
-  const w = propW(o), h = w * (ASPECT[o.id] ?? 1);
-  if (o.f) fx = 1 - fx;                            // 翻面的傢俱：左右對調
-  return { x: o.x + (fx - .5) * w / GW, y: o.y + (fy - .88) * h / GH };
+  const c = W.CAT[o.id], h = o.w * c.aspect;
+  if (o.f) fx = 1 - fx;                            // 翻面的：左右對調
+  return { x: o.x + (fx - .5) * o.w / GW, y: o.y + (fy - c.base) * h / GH };
 }
-// 拎著的東西底下是哪件傢俱
+// 拎著的寵物底下是哪件傢俱
+const cap = (o) => (W.kindOf(o.id) === 'house' ? 2 : 1);
+const full = (o) => o.users.length >= cap(o);
 function propAt(x, y) {
   let hit = null;
   for (const o of props) {
     if (!USE[o.id]) continue;
-    const w = propW(o), h = w * (ASPECT[o.id] ?? 1);
-    const px = x * GW, py = y * GH, cx = o.x * GW, top = o.y * GH - .88 * h;
-    if (px > cx - w * .5 && px < cx + w * .5 && py > top + h * .1 && py < top + h * 1.08 && (!hit || propZ(o) > propZ(hit))) hit = o;
+    const c = W.CAT[o.id], h = o.w * c.aspect;
+    const px = x * GW, py = y * GH, cx = o.x * GW, top = o.y * GH - c.base * h;
+    if (px > cx - o.w * .5 && px < cx + o.w * .5 && py > top + h * .1 && py < top + h * 1.08 && (!hit || propZ(o) > propZ(hit))) hit = o;
   }
   return hit;
 }
-function addProps(box) {
-  const own = ownedFurniture(), stored = storedFurniture();
-  for (const d of PROPS.filter((x) => own.includes(x.id) && !stored.includes(x.id))) addProp(box, d);
-}
-function addProp(box, d) {
-  const saved = propSpots();
-  {
-    const at = saved[d.id] && walkable(saved[d.id].x, saved[d.id].y) ? saved[d.id] : d;
-    const el = document.createElement('button');
-    el.type = 'button';
-    el.className = `prop p-${d.id}`;
-    el.setAttribute('aria-label', '傢俱（按住可以搬到別的地方）');
-    el.innerHTML = `<span class="shadow"></span><img src="img/pet/furniture/${d.id}.webp" alt="">`;
-    const o = { id: d.id, w: d.w, el, x: at.x, y: at.y, f: saved[d.id]?.f === 1, user: null };
-    props.push(o);
-    const put = () => {
-      el.style.cssText = `left:${o.x * GW}px;top:${o.y * GH}px;width:${propW(o)}px;z-index:${el.classList.contains('held') ? 2000 : propZ(o)}`;
-      $('img', el).style.transform = o.f ? 'scaleX(-1)' : '';
-    };
-    put();
+// 全部重畫：樹、圍籬、小路、有圖的擺設（用著的寵物先下來）；站在不能走的地方的寵物挪到旁邊
+function rebuildWorld() {
+  props.forEach((o) => o.users.slice().forEach((a) => leave(a)));
+  const box = $('.actors', layer);
+  box.querySelectorAll('.prop,.fence,.tree').forEach((el) => el.remove());
+  props = [];
+  occ = W.occupancy(items);
+  for (const t of W.trees(isle.theme())) {
+    const el = document.createElement('span');
+    el.className = 'tree';
+    el.innerHTML = `<img src="img/pet/tree/${t.id}.webp" alt="">`;
+    el.style.cssText = `left:${t.x * GW}px;top:${t.y * GH}px;width:${t.w}px;z-index:${Math.round(t.y * 1000)};--base:${-t.base * 100}%`;
     box.appendChild(el);
-    el.addEventListener('pointerdown', (e) => {
-      if (busy || e.button > 0) return;
-      const g = $('.ground', layer).getBoundingClientRect();
-      const k = g.width / GW;
-      const sx = e.clientX, sy = e.clientY;
-      let held = false, ok = { x: o.x, y: o.y };
-      const move = (ev) => {
-        if (!held && Math.hypot(ev.clientX - sx, ev.clientY - sy) < 8) return;
-        if (!held && o.user) leave(o.user);            // 有寵物在用：先下來
-        held = true;
-        el.classList.add('held');
-        o.x = Math.min(.98, Math.max(.02, (ev.clientX - g.left) / k / GW));
-        o.y = Math.min(.95, Math.max(.05, (ev.clientY - g.top) / k / GH + .03));
-        const good = walkable(o.x, o.y);
-        el.classList.toggle('bad', !good);
-        if (good) ok = { x: o.x, y: o.y };
-        put();
-      };
-      const up = () => {
-        removeEventListener('pointermove', move);
-        removeEventListener('pointerup', up);
-        removeEventListener('pointercancel', up);
-        if (!held) {
-          // 裝扮面板開著時，點一下傢俱＝翻面
-          if (!$('.furn', layer)?.hidden) {
-            if (o.user) leave(o.user);
-            o.f = !o.f;
-            el.classList.add('drop');
-            setTimeout(() => el.classList.remove('drop'), 450);
-            put();
-            saveIsle();
-          }
-          return;
-        }
-        el.classList.remove('held', 'bad');
-        if (!walkable(o.x, o.y)) { o.x = ok.x; o.y = ok.y; }
-        el.classList.add('drop');
-        setTimeout(() => el.classList.remove('drop'), 450);
-        put();
-        const all = propSpots();
-        all[d.id] = { x: +o.x.toFixed(3), y: +o.y.toFixed(3) };
-        try { localStorage.setItem(PROP_KEY, JSON.stringify(all)); } catch { /* 存不了就算了，下次回到原位 */ }
-        saveIsle();
-      };
-      addEventListener('pointermove', move);
-      addEventListener('pointerup', up);
-      addEventListener('pointercancel', up);
-    });
+  }
+  items.forEach((it) => {
+    const kind = W.kindOf(it.id);
+    if (kind === 'fence' || kind === 'gate') {
+      const f = W.fenceEl(it.id, it.i, it.j, W.fenceNb(items, occ, it.i, it.j));
+      const el = document.createElement('span');
+      el.className = 'fence';
+      el.innerHTML = f.html;
+      el.style.cssText = `left:${f.left}px;top:${f.top}px;z-index:${f.z}`;
+      box.appendChild(el);
+    } else if (kind !== 'path') addProp(box, it);
+  });
+  $('.floor', layer).innerHTML = W.floorSvg(items, { grid: !!deco });
+  for (const a of actors) {
+    if (a.mode === 'held' || walkable(a.x, a.y)) continue;
+    const t = somewhere(a);
+    a.x = a.tx = t.x; a.y = a.ty = t.y; a.path = null;
+    place(a);
+  }
+  if (deco) paintSel();
+}
+function addProp(box, it) {
+  const c = W.CAT[it.id], at = W.spot(it.id, it.i, it.j, it.f);
+  const el = document.createElement('button');
+  el.type = 'button';
+  el.className = `prop p-${it.id} k-${c.kind}${deco ? ' movable' : ''}`;
+  el.setAttribute('aria-label', FURN_NAME[it.id] ?? '擺設');
+  el.innerHTML = `<span class="shadow"></span><img src="img/pet/furniture/${it.id}.webp" alt="">`;
+  const o = { id: it.id, it, el, x: at.x, y: at.y, w: c.w, f: !!it.f, users: [] };
+  props.push(o);
+  putProp(o);
+  box.appendChild(el);
+  el.addEventListener('pointerdown', (e) => { if (deco && e.button === 0) dragProp(o, e); });
+  el.addEventListener('click', () => { if (!deco && !panned) tapProp(o); });
+}
+function putProp(o) {
+  const c = W.CAT[o.id];
+  o.el.style.cssText = `left:${o.x * GW}px;top:${o.y * GH}px;width:${o.w}px;z-index:${o.el.classList.contains('held') ? 2000 : propZ(o)};--base:${-c.base * 100}%`;
+  $('img', o.el).style.transform = o.f ? 'scaleX(-1)' : '';
+}
+// 不是裝扮時點擺設：飼料盆可以先放飼料；小屋看看誰在睡
+function tapProp(o) {
+  if (o.id === 'bowl-food') { openBowl(o); return; }
+  if (W.kindOf(o.id) === 'house') {
+    const who = o.users.map((a) => a.p.name);
+    const home = myPet();
+    if (who.length) say(`${who.join('和')}在${FURN_NAME[o.id]}裡睡覺，噓～`, o.users[0].p.id);
+    else if (home) say(`這是我們的${FURN_NAME[o.id]}！累了就會進去睡覺`, home.id);
   }
 }
 
-// 傢俱清單：有的可以擺出來或收起來（島上才不會越來越擠）；沒有的上鎖，等蓋章或用時光幣換
+// ---------- 裝扮模式 ----------
+// 進來時格子會出現；傢俱按住拖到格子上（綠的放得下、紅的放不下），點一下選起來可以翻面、收起來。
+// 圍籬小路：選一種再在島上點或拖曳就會擺上去（一指是畫，要移動地圖先把工具收起來，或用兩指）。
+const snapshot = () => JSON.stringify(items);
+function pushUndo(before) {
+  if (!deco || before === snapshot()) return;
+  deco.undo.push(before);
+  if (deco.undo.length > 40) deco.undo.shift();
+}
 function toggleFurn() {
-  const box = $('.furn', layer);
-  if (!box.hidden) { box.hidden = true; paintBar(); return; }
+  if (deco) exitDeco(); else enterDeco();
+}
+function enterDeco() {
   closeBag();
-  paintFurn();
-  box.hidden = false;
+  deco = { tab: 'furn', tool: null, sel: null, undo: [], wipe: 0 };
+  $('.pisle', layer).classList.add('decorating');
+  rebuildWorld();
+  paintDeco();
   paintBar();
 }
-function paintFurn() {
-  const box = $('.furn', layer);
-  const own = ownedFurniture();
-  const out = (id) => props.some((o) => o.id === id);
-  const list = PROPS.filter((d) => own.includes(d.id) || !LIMITED.has(d.id));
-  box.innerHTML = `<h3>裝扮寵物島</h3>
-    ${isle.decorHtml()}
-    <p class="lab">我的傢俱 <small>擺出來 ${own.filter(out).length}・全部 ${own.length} / ${list.length}</small></p>
-    <div class="furn-list">${list.map((d) => own.includes(d.id)
-      ? `<button type="button" class="furn-i${out(d.id) ? ' out' : ' kept'}" data-id="${d.id}" aria-label="${FURN_NAME[d.id]}：${out(d.id) ? '在島上，點一下收起來' : '收著，點一下擺到島上'}">
-          <img src="img/pet/furniture/${d.id}.webp" alt=""><b>${FURN_NAME[d.id]}</b><small>${out(d.id) ? '📦 收起來' : '🏝️ 擺出來'}</small></button>`
-      : `<span class="furn-i locked"><img src="img/pet/furniture/${d.id}.webp" alt=""><b>${FURN_NAME[d.id]}</b><i>🔒</i><small>${SHOP_FURN[d.id] ? `商店 ${SHOP_FURN[d.id]}` : `${FURN_STAMP[d.id]} 個章`}</small></span>`).join('')}</div>
-    <p class="note">點自己的傢俱就能收起來或擺出來；擺在島上的按住就能搬，點一下會翻面。擺 5 件以上，就有機會上「今日精選島」。去各個島嶼過關、蓋護照章會解鎖新傢俱，標「商店」的用時光幣買。現在有 ${state?.stamps ?? 0} 個章。</p>
-    <button type="button" class="ghost small" data-furn-close>關起來</button>`;
-  $('[data-furn-close]', box).onclick = () => { box.hidden = true; paintBar(); };
-  box.querySelectorAll('button.furn-i').forEach((b) => { b.onclick = () => { putAway(b.dataset.id); paintFurn(); }; });
-  isle.bindDecor(box, {
-    onTheme: (t) => { $('.land', layer).src = isle.landSrc(t); saveIsle(); },
-    onName: () => { $('.isle-sign', layer).textContent = isle.nameText(isle.name()); },
-  });
-}
-// 收起來／擺出來：收的時候正在用的寵物先下來
-function putAway(id) {
-  const o = props.find((x) => x.id === id);
-  if (o) {
-    if (o.user) leave(o.user);
-    o.el.remove();
-    props = props.filter((x) => x !== o);
-    setStored(id, true);
-  } else {
-    setStored(id, false);
-    addProp($('.actors', layer), PROPS.find((d) => d.id === id));
-    const n = props.find((x) => x.id === id);
-    n?.el.classList.add('drop');
-    setTimeout(() => n?.el.classList.remove('drop'), 450);
-  }
+function exitDeco() {
+  deco = null;
+  $('.pisle', layer)?.classList.remove('decorating');
+  $('.furn', layer).hidden = true;
+  $('.deco-top', layer).hidden = true;
+  rebuildWorld();
+  paintBar();
   saveIsle();
+}
+const furnCount = () => items.filter((o) => !W.isBuild(o.id)).length;
+const buildCount = () => items.filter((o) => W.isBuild(o.id)).length;
+function decoMsg(t) {
+  const m = $('.deco-top .msg', layer);
+  if (!m) return;
+  m.textContent = t;
+  m.classList.remove('flash');
+  void m.offsetWidth;
+  m.classList.add('flash');
+}
+function paintDeco() {
+  const top = $('.deco-top', layer), box = $('.furn', layer);
+  top.hidden = false;
+  top.innerHTML = `<button type="button" class="ghost small" data-undo ${deco.undo.length ? '' : 'disabled'}>↶ 復原</button>
+    <button type="button" class="ghost small" data-wipe>${deco.wipe ? '再按一次：全部收起來' : '📦 全部收起來'}</button>
+    <p class="msg">${deco.tool ? `${FURN_NAME[deco.tool] ?? '擦掉'}：在島上點或拖曳` : '按住東西拖到格子上；點一下可以翻面、收起來'}</p>
+    <span class="cnt">傢俱 ${furnCount()}/${W.FURN_MAX}・圍籬小路 ${buildCount()}/${W.BUILD_MAX}</span>
+    <button type="button" class="btn small" data-done>完成</button>`;
+  $('[data-undo]', top).onclick = () => {
+    const prev = deco.undo.pop();
+    if (prev == null) return;
+    items = JSON.parse(prev);
+    deco.sel = null;
+    rebuildWorld();
+    saveIsle();
+    paintDeco();
+  };
+  $('[data-wipe]', top).onclick = () => {
+    if (!deco.wipe) { deco.wipe = setTimeout(() => { if (deco) { deco.wipe = 0; paintDeco(); } }, 3000); paintDeco(); return; }
+    clearTimeout(deco.wipe);
+    deco.wipe = 0;
+    pushUndo(snapshot());
+    items = [];
+    deco.sel = null;
+    rebuildWorld();
+    saveIsle();
+    paintDeco();
+    decoMsg('全部收進背包了，不小心按到可以按「復原」');
+  };
+  $('[data-done]', top).onclick = exitDeco;
+  const tabs = [['furn', '🪑 傢俱'], ['house', '🏠 小屋盆子'], ['build', '🧱 圍籬小路'], ['look', '🏝️ 島名風格']];
+  const tile = (id, extra = '') => {
+    const n = items.filter((o) => o.id === id).length, max = W.CAT[id].max;
+    const have = owns(id);
+    if (!have) return `<span class="dt-i locked"><img src="img/pet/furniture/${id}.webp" alt=""><b>${FURN_NAME[id]}</b><small>🔒 ${SHOP_FURN[id] ? `商店 ${SHOP_FURN[id]}` : `${FURN_STAMP[id]} 個章`}</small></span>`;
+    return `<button type="button" class="dt-i${n ? ' out' : ''}" data-add="${id}"${extra}><img src="img/pet/furniture/${id}.webp" alt=""><b>${FURN_NAME[id]}</b><small>${max > 1 ? `${n}/${max}` : n ? '在島上' : '＋ 擺出來'}</small></button>`;
+  };
+  let body = '';
+  if (deco.tab === 'furn') body = PROPS.filter((d) => owns(d.id) || !LIMITED.has(d.id)).map((d) => tile(d.id)).join('');
+  else if (deco.tab === 'house') body = [...HOUSES.filter((id) => owns(id) || !LIMITED.has(id)), 'bowl-food', 'bowl-water'].map((id) => tile(id)).join('');
+  else if (deco.tab === 'build') {
+    body = [...BUILDS, 'erase'].map((id) => `<button type="button" class="dt-i tool${deco.tool === id ? ' on' : ''}" data-tool="${id}">${toolIcon(id)}<b>${FURN_NAME[id] ?? '擦掉'}</b></button>`).join('');
+  }
+  box.hidden = false;
+  box.innerHTML = `<div class="dt-tabs">${tabs.map(([k, t]) => `<button type="button" data-tab="${k}" class="${deco.tab === k ? 'on' : ''}">${t}</button>`).join('')}</div>
+    ${deco.tab === 'look' ? isle.decorHtml() : `<div class="dt-list">${body}</div>`}
+    ${deco.tab === 'build' ? '<p class="note">選好一種，在島上點一下或拖曳就會擺上去；寵物不會穿過圍籬，記得留小門。再點一次同一個就收起來，可以移動地圖。</p>' : ''}`;
+  box.querySelectorAll('[data-tab]').forEach((b) => { b.onclick = () => { deco.tab = b.dataset.tab; deco.tool = null; paintDeco(); }; });
+  box.querySelectorAll('[data-add]').forEach((b) => { b.onclick = () => addItem(b.dataset.add); });
+  box.querySelectorAll('[data-tool]').forEach((b) => { b.onclick = () => { deco.tool = deco.tool === b.dataset.tool ? null : b.dataset.tool; deco.sel = null; paintSel(); paintDeco(); }; });
+  if (deco.tab === 'look') {
+    isle.bindDecor(box, {
+      onTheme: (t) => {
+        const src = W.landSrc(t);
+        $('.land', layer).src = src;
+        $('.haze', layer).style.cssText = `-webkit-mask-image:url(${src});mask-image:url(${src})`;
+        rebuildWorld();
+        saveIsle();
+      },
+      onName: () => { $('.isle-sign', layer).textContent = isle.nameText(isle.name()); },
+    });
+  }
+}
+function toolIcon(id) {
+  const kind = W.kindOf(id);
+  if (kind === 'tile') return `<img src="img/pet/furniture/${id}.webp" alt="">`;
+  if (kind === 'fence' || kind === 'gate') {
+    const f = W.fenceEl(id, 0, 0, kind === 'gate' ? { pi: true, ni: true } : { pi: true, ni: true });
+    return `<span class="ic">${f.html}</span>`;
+  }
+  if (kind === 'path') {
+    const color = { 's-path-stone': ['#b9af9f', '#e4ddcf'], 's-path-wood': ['#8a5a30', '#c99560'], 's-path-brick': ['#9a4a35', '#d9775a'] }[id];
+    return `<span class="ic"><svg viewBox="0 0 60 34" width="60" height="34"><polygon points="30,2 58,17 30,32 2,17" fill="${color[0]}"/><polygon points="30,6 50,17 30,28 10,17" fill="${color[1]}"/></svg></span>`;
+  }
+  return '<span class="ic erase">🧽</span>';
+}
+// 從清單擺一件出來：放在畫面中間附近的空格
+function addItem(id) {
+  const c = W.CAT[id], n = items.filter((o) => o.id === id).length;
+  if (n >= c.max) {
+    const o = props.find((x) => x.id === id);
+    if (o) { deco.sel = o.it; paintSel(); lookAt(o); }
+    decoMsg(c.max > 1 ? `${FURN_NAME[id]}最多擺 ${c.max} 個` : `${FURN_NAME[id]}已經在島上了`);
+    return;
+  }
+  if (furnCount() >= W.FURN_MAX) { decoMsg(`島上最多擺 ${W.FURN_MAX} 件，先收起來一些`); return; }
+  const { vw, vh } = camBox();
+  const mid = W.cellF((vw / 2 - cam.x) / cam.k / GW, (vh / 2 - cam.y) / cam.k / GH);
+  const before = snapshot();
+  const o = occAdd(items, id, { i: Math.round(mid.i - c.foot[0] / 2), j: Math.round(mid.j - c.foot[1] / 2) });
+  if (!o) { decoMsg('島上沒有空位了'); return; }
+  items.push(o);
+  pushUndo(before);
+  deco.sel = o;
+  rebuildWorld();
+  props.find((x) => x.it === o)?.el.classList.add('drop');
+  saveIsle();
+  paintDeco();
+}
+// 選起來的那件：上面一排小按鈕（翻面、收起來）
+function paintSel() {
+  $('.deco-sel', layer)?.remove();
+  const o = deco?.sel && props.find((x) => x.it === deco.sel);
+  props.forEach((x) => x.el.classList.toggle('sel', x === o));
+  if (!o) return;
+  const c = W.CAT[o.id];
+  const bar = document.createElement('div');
+  bar.className = 'deco-sel';
+  bar.style.cssText = `left:${o.x * GW}px;top:${o.y * GH - c.base * o.w * c.aspect}px`;
+  bar.innerHTML = `<button type="button" data-flip>↔ 翻面</button><button type="button" data-away>📦 收起來</button>`;
+  $('.actors', layer).appendChild(bar);
+  $('[data-flip]', bar).onclick = () => {
+    const it = o.it, before = snapshot();
+    const k = items.indexOf(it);
+    if (!W.canPlace(occ, it.id, it.i, it.j, !it.f, k)) { decoMsg('翻過來會撞到旁邊的東西'); return; }
+    it.f = it.f ? 0 : 1;
+    pushUndo(before);
+    rebuildWorld();
+    saveIsle();
+    paintDeco();
+  };
+  $('[data-away]', bar).onclick = () => {
+    const before = snapshot();
+    items = items.filter((x) => x !== o.it);
+    deco.sel = null;
+    pushUndo(before);
+    rebuildWorld();
+    saveIsle();
+    paintDeco();
+  };
+}
+// 拖傢俱：吸到格子上，放不下的時候變紅，放開就回到上一個放得下的地方
+function dragProp(o, e) {
+  e.stopPropagation();
+  const it = o.it, k = items.indexOf(it), c = W.CAT[it.id];
+  const [fa, fb] = it.f ? [c.foot?.[1] ?? 1, c.foot?.[0] ?? 1] : [c.foot?.[0] ?? 1, c.foot?.[1] ?? 1];
+  const sx = e.clientX, sy = e.clientY, start = toIsle(e);
+  const off = { x: start.x - o.x, y: start.y - o.y };
+  let held = false, good = { i: it.i, j: it.j }, cand = good;
+  const before = snapshot();
+  const foot = () => {
+    const ok = W.canPlace(occ, it.id, cand.i, cand.j, it.f, k);
+    $('.floor', layer).innerHTML = W.floorSvg(items, { grid: true }) + W.footSvg(it.id, cand.i, cand.j, it.f, ok);
+    return ok;
+  };
+  const move = (ev) => {
+    if (!held && Math.hypot(ev.clientX - sx, ev.clientY - sy) < 8) return;
+    if (!held) { o.users.slice().forEach((a) => leave(a)); $('.deco-sel', layer)?.remove(); }
+    held = true;
+    o.el.classList.add('held');
+    const p = toIsle(ev), f = W.cellF(p.x - off.x, p.y - off.y);
+    cand = { i: Math.round(f.i - fa / 2), j: Math.round(f.j - fb / 2) };
+    const ok = foot();
+    o.el.classList.toggle('bad', !ok);
+    if (ok) good = cand;
+    const at = W.spot(it.id, cand.i, cand.j, it.f);
+    o.x = at.x; o.y = at.y;
+    putProp(o);
+  };
+  const up = () => {
+    removeEventListener('pointermove', move);
+    removeEventListener('pointerup', up);
+    removeEventListener('pointercancel', up);
+    o.el.classList.remove('held', 'bad');
+    if (!held) { deco.sel = deco.sel === it ? null : it; paintSel(); return; }
+    it.i = good.i; it.j = good.j;
+    deco.sel = it;
+    pushUndo(before);
+    rebuildWorld();
+    props.find((x) => x.it === it)?.el.classList.add('drop');
+    saveIsle();
+    paintDeco();
+  };
+  addEventListener('pointermove', move);
+  addEventListener('pointerup', up);
+  addEventListener('pointercancel', up);
+}
+// 圍籬小路用畫的：按下去經過的格子都擺上去（擦掉＝拿掉圍籬小路）
+function paintStart(e) {
+  if (!deco?.tool) return false;
+  const before = snapshot(), seen = new Set();
+  let did = false;
+  const step = (ev) => {
+    const p = toIsle(ev), { i, j } = W.cellOf(p.x, p.y);
+    if (seen.has(j * N + i)) return;
+    seen.add(j * N + i);
+    if (deco.tool === 'erase' ? eraseAt(i, j) : buildAt(deco.tool, i, j)) { did = true; rebuildWorld(); paintDeco(); }
+  };
+  step(e);
+  const up = () => {
+    removeEventListener('pointermove', step);
+    removeEventListener('pointerup', up);
+    removeEventListener('pointercancel', up);
+    if (did) { pushUndo(before); saveIsle(); paintDeco(); }
+  };
+  addEventListener('pointermove', step);
+  addEventListener('pointerup', up);
+  addEventListener('pointercancel', up);
+  return true;
+}
+function buildAt(id, i, j) {
+  if (W.ground(i, j) !== '1') return false;
+  const path = W.kindOf(id) === 'path', layerOcc = path ? occ.floor : occ.obj;
+  const k = layerOcc[j * N + i];
+  if (k) {
+    const it = items[k - 1];
+    if (!W.isBuild(it.id) || it.id === id) return false;    // 傢俱佔著、或已經是一樣的
+    it.id = id;                                             // 換材質（白圍籬換木圍籬、石磚換紅磚）
+    return true;
+  }
+  if (buildCount() >= W.BUILD_MAX) { decoMsg(`圍籬小路最多 ${W.BUILD_MAX} 格`); return false; }
+  if (!W.canPlace(occ, id, i, j, 0)) return false;
+  items.push({ id, i, j, f: 0 });
+  occ = W.occupancy(items);
+  return true;
+}
+function eraseAt(i, j) {
+  const c = j * N + i;
+  for (const layerOcc of [occ.obj, occ.floor]) {
+    const k = layerOcc[c];
+    if (k && W.isBuild(items[k - 1].id)) { items.splice(k - 1, 1); occ = W.occupancy(items); return true; }
+  }
+  return false;
+}
+
+// 第一次打開大島：手指示範拖曳地圖（進場引導原則：第一下手指示範）
+const GUIDE_KEY = 'park-isle2-guide';
+function guideFirst() {
+  let seen = null;
+  try { seen = localStorage.getItem(GUIDE_KEY); } catch { /* 讀不到就再示範一次 */ }
+  if (seen) return;
+  try { localStorage.setItem(GUIDE_KEY, '1'); } catch { /* 存不了就算了 */ }
+  const hand = document.createElement('div');
+  hand.className = 'isle-hand';
+  hand.innerHTML = '<span>👆</span><p>島變大了！拖曳看看整座島</p>';
+  $('.pisle', layer)?.appendChild(hand);
+  sceneTimers.push(setTimeout(() => hand.remove(), 6500));
+  $('.view', layer)?.addEventListener('pointerdown', () => hand.remove(), { once: true });
+}
+
+// ---------- 飼料盆：先放飼料（最多 3 份），照顧中的那隻餓了會自己去吃 ----------
+async function openBowl(o) {
+  const pop = $('.bagpop', layer);
+  const n = state.bowl ?? 0, have = state.inventory?.kibble ?? 0;
+  bagOpen = true;
+  pop.innerHTML = `<p>飼料盆：裡面有 <b>${n}</b> 份（最多 3 份）</p>
+    <div class="bowl-row"><img src="img/pet/furniture/bowl-food.webp" alt="">
+      <button type="button" class="btn small" data-fill ${n >= 3 || !have || !api.bowl ? 'disabled' : ''}>放一份時光飼料（還有 ${have} 份）</button></div>
+    <p class="note">你不在的時候，照顧中的那隻肚子餓了會自己來吃。</p>`;
+  pop.hidden = false;
+  $('[data-fill]', pop).onclick = async (e) => {
+    e.currentTarget.disabled = true;
+    try {
+      refresh(await api.bowl());
+      const home = actors.find((a) => a.p.active);
+      if (home) say('碗裡有飼料了！餓了我會自己去吃～', home.p.id);
+    } catch (err) { oops(err.message); }
+    if (bagOpen) openBowl(o);
+  };
 }
 
 // ---------- 用傢俱、泡湖水 ----------
@@ -701,6 +1075,7 @@ function liking(id) {
   if (season === 'summer' && (id === 'pool' || id === 'lake')) w *= 1.6;
   if (season === 'winter' && (id === 'pool' || id === 'lake')) w *= .3;
   if (tod === 'night') w *= { bed: 5, tent: 2 }[id] ?? .5;
+  if (id.startsWith('house-')) w *= wx === 'rain' || wx === 'snow' || tod === 'night' ? 3 : .6;     // 下雨、晚上回小屋睡（上面已經各乘過一次）
   return w;
 }
 // 湖邊找一個走得到的岸邊點
@@ -720,21 +1095,23 @@ function doorOf(o) {
 // 停下來後要不要去玩傢俱；要的話走過去（a.next：走到了再開始用）
 function wantUse(a) {
   const opts = [];
+  const reach = new Set(W.reachable(occ.solid, a));
+  const can = (p) => { const c = W.cellOf(p.x, p.y); return reach.has(c.j * N + c.i); };
   for (const o of props) {
-    if (!USE[o.id] || o.user || o.el.classList.contains('held')) continue;
+    if (!USE[o.id] || full(o) || o.el.classList.contains('held')) continue;
     const d = doorOf(o);
-    if (!walkable(d.x, d.y) || !clearPath(a, d)) continue;
+    if (!walkable(d.x, d.y) || !can(d)) continue;
     opts.push({ o, d, w: liking(o.id) });
   }
   const s = liking('lake') ? shore(a) : null;
+  if (s && !can(s)) return false;
   if (s) opts.push({ o: null, d: s, w: liking('lake') });
   const total = opts.reduce((n, x) => n + x.w, 0);
   if (!total) return false;
   let r = Math.random() * total;
   const c = opts.find((x) => (r -= x.w) < 0) ?? opts[0];
-  if (c.o) { c.o.user = a; a.using = c.o; }
-  a.tx = c.d.x; a.ty = c.d.y; a.mode = 'walk';
-  a.next = () => (c.o ? useProp(a, c.o) : swimLake(a));
+  if (!go(a, c.d, () => (c.o ? useProp(a, c.o) : swimLake(a)))) return false;
+  if (c.o) { c.o.users.push(a); a.using = c.o; }
   return true;
 }
 
@@ -749,7 +1126,8 @@ async function useProp(a, o, dropped = false) {
   const u = USE[o.id];
   const id = a.useId = (a.useId ?? 0) + 1;
   const still = () => a.useId === id && a.el.isConnected;
-  o.user = a; a.using = o;
+  if (!o.users.includes(a)) o.users.push(a);
+  a.using = o;
   a.mode = 'use'; a.next = null;
   a.z = propZ(o) + 1;
   if (dropped) wishDone(a, o.id);
@@ -758,7 +1136,7 @@ async function useProp(a, o, dropped = false) {
   let exit = door;
   if (u.kind === 'lie' || u.kind === 'sit' || u.kind === 'swim') {
     a.el.classList.add('up');
-    await glide(a, P(u.at), 480, { arc: 46, poses: ['jump'] });
+    await glide(a, P(u.at), 480, { arc: 32, poses: ['jump'] });
     if (!still()) return;
     if (u.kind === 'lie') {
       setPose(a, 'lie');
@@ -788,7 +1166,7 @@ async function useProp(a, o, dropped = false) {
       a.el.classList.remove('wade');
       exit = P([.5, 1.1]);
     }
-    await glide(a, exit, 420, { arc: 34, poses: ['jump'] });
+    await glide(a, exit, 420, { arc: 24, poses: ['jump'] });
     if (!still()) return;
     a.el.classList.remove('up');
     if (u.kind === 'swim') { setPose(a, 'shake'); floatUp(a, '💦'); await wait(a, 1100); }
@@ -798,14 +1176,15 @@ async function useProp(a, o, dropped = false) {
     await glide(a, P(u.at), 450, { poses: ['back1', 'back2'] });
     if (!still()) return;
     a.el.classList.add('inside');
-    o.el.classList.add('rustle');
+    const nap = u.sleep && (sky.tod === 'night' || sky.wx === 'rain' || sky.wx === 'snow' || !a.p.active || Math.random() < .4);
+    o.el.classList.add(nap ? 'zz' : 'rustle');
     if (u.kind === 'through') {
       exit = P(u.out);
       a.face = exit.x > a.x ? 1 : -1;
       await glide(a, exit, 1800);
-    } else await wait(a, rnd(3500, 7000));
+    } else await wait(a, nap ? rnd(9000, 16000) : rnd(3500, 7000));
     if (!still()) return;
-    o.el.classList.remove('rustle');
+    if (o.users.length < 2) o.el.classList.remove('rustle', 'zz');
     a.el.classList.remove('inside');
     if (u.kind === 'hide') await glide(a, door, 450, { poses: ['front1', 'front2'] });
     if (!still()) return;
@@ -891,7 +1270,9 @@ async function swimLake(a, at) {
 // ---------- 小願望：寵物頭上冒出想做的事，幫牠完成就很開心（一隻一天最多 3 個）----------
 const WISH_TEXT = { bed: '想去床上躺躺', slide: '想溜滑梯！', pool: '想去泳池泡水～', tent: '想躲進帳篷', swing: '想盪鞦韆！',
                     fountain: '想喝水', toybox: '想玩玩具', bench: '想坐下來休息', tunnel: '想鑽隧道', flowers: '想去聞花香',
-                    lake: '想去湖裡游泳！', ball: '想玩丟球！（點一下地上）' };
+                    lake: '想去池塘游泳！', ball: '想玩丟球！（點一下地上）',
+                    'house-basic': '想回小屋睡一下', 'house-mushroom': '想去蘑菇屋', 'house-tree': '想去樹屋', 'house-igloo': '想去雪屋',
+                    'bowl-food': '想吃飼料', 'bowl-water': '想喝水', 's-flowerbed': '想去花圃聞花', 's-veg': '想去菜園看看' };
 const WISH_KEY = 'park-pet-wish';
 const today = () => new Date().toLocaleDateString('sv');
 function wishBook() {
@@ -901,7 +1282,7 @@ function wishBook() {
 const canWish = (a) => !['hungry', 'angry', 'asleep', 'quiet'].includes(moodOf(a.p)) && sky?.wx !== 'snow';
 function giveWish(a) {
   if (!a.el.isConnected || a.wish || !canWish(a) || (wishBook().done[a.p.id] ?? 0) >= 3) return;
-  const opts = [...ownedFurniture().filter((id) => USE[id]), 'ball', ...(sky.wx === 'rain' ? [] : ['lake'])];
+  const opts = [...new Set(props.filter((o) => USE[o.id]).map((o) => o.id)), 'ball', ...(sky.wx === 'rain' ? [] : ['lake'])];
   a.wish = pick(opts);
   const w = $('.wish', a.el);
   w.innerHTML = USE[a.wish] ? `<img src="img/pet/furniture/${a.wish}.webp" alt="">` : `<span>${a.wish === 'lake' ? '🌊' : '⚾'}</span>`;
@@ -967,20 +1348,19 @@ async function throwBall(at) {
   const id = a.useId = (a.useId ?? 0) + 1;
   const still = () => a.useId === id && a.el.isConnected && ball;
   a.mode = 'use'; a.next = null;
-  addBall({ x: .55, y: .92 });
+  addBall({ x: a.x, y: Math.min(.9, a.y + .06) });
   say(pick(['球！球！', '我來了！', '看我的！']), a.p.id);
   // 附近的夥伴偶爾也跑過去湊熱鬧
   actors.filter((b) => b !== a && free(b) && Math.random() < .5).forEach((b) => {
     const t = somewhere(at, b);
-    b.tx = t.x; b.ty = t.y; b.mode = 'walk';
-    b.next = () => { b.mode = 'rest'; b.until = performance.now() + rnd(1500, 2500); b.restPose = 'cheer'; };
+    go(b, t, () => { b.mode = 'rest'; b.until = performance.now() + rnd(1500, 2500); b.restPose = 'cheer'; });
   });
   let spot = at;
-  await flyBall(spot, 650, 90);
+  await flyBall(spot, 650, 60);
   for (let k = 0; k < 3; k++) {
     if (!still()) break;
     const side = ball.x > a.x ? -1 : 1;
-    await runTo(a, { x: ball.x + side * .035, y: ball.y + .004 });
+    await runTo(a, { x: ball.x + side * .013, y: ball.y + .002 });
     if (!still()) break;
     a.face = -side;
     setPose(a, k === 2 ? 'cheer' : 'play');
@@ -990,8 +1370,8 @@ async function throwBall(at) {
     // 推一下，球滾到旁邊
     let next = null;
     for (let n = 0; n < 12 && !next; n++) {
-      const p = { x: ball.x - side * rnd(.06, .14), y: ball.y + rnd(-.06, .06) };
-      if (walkable(p.x, p.y)) next = p;
+      const p = { x: ball.x - side * rnd(.02, .05), y: ball.y + rnd(-.025, .025) };
+      if (walkable(p.x, p.y) && clearPath(ball, p)) next = p;
     }
     if (!next) break;
     await flyBall(next, 500, 22);
@@ -1005,7 +1385,7 @@ async function throwBall(at) {
 
 // ---------- 兩隻碰在一起玩：走過去、一起跳、再你追我跑 ----------
 function wantFriend(a) {
-  const b = actors.filter((x) => x !== a && free(x) && clearPath(a, x)).sort(() => Math.random() - .5)[0];
+  const b = actors.filter((x) => x !== a && free(x) && clearPath(a, x) && Math.hypot((x.x - a.x) * GW, (x.y - a.y) * GH) < 700).sort(() => Math.random() - .5)[0];
   if (!b) return false;
   playTogether(a, b);
   return true;
@@ -1017,9 +1397,9 @@ async function playTogether(a, b) {
   a.partner = b; b.partner = a;
   b.tw = null; b.face = a.x > b.x ? 1 : -1; setPose(b, 'look');
   const side = a.x < b.x ? -1 : 1;
-  let meet = { x: b.x + side * .07, y: b.y };
-  if (!walkable(meet.x, meet.y)) meet = { x: b.x - side * .07, y: b.y };
-  if (!walkable(meet.x, meet.y)) { leave(a); return; }
+  let meet = { x: b.x + side * .025, y: b.y };
+  if (!walkable(meet.x, meet.y) || !clearPath(a, meet)) meet = { x: b.x - side * .025, y: b.y };
+  if (!walkable(meet.x, meet.y) || !clearPath(a, meet)) { leave(a); leave(b); return; }
   await runTo(a, meet, 70);
   if (!ok()) return;
   a.face = b.x > a.x ? 1 : -1; b.face = -a.face;
@@ -1029,9 +1409,11 @@ async function playTogether(a, b) {
   if (!ok()) return;
   loop(a, null); loop(b, null);
   // 你追我跑：a 先跑，b 跟在後面
-  const far = somewhere(null, a);
-  b.timers.push(setTimeout(() => { if (ok()) runTo(b, { x: far.x - (far.x > b.x ? .05 : -.05), y: far.y }, 125); }, 350));
-  await runTo(a, far, 135);
+  let far = somewhere(a, a);
+  if (!clearPath(a, far)) far = { x: a.x, y: a.y };
+  const behind = { x: far.x - (far.x > b.x ? .018 : -.018), y: far.y };
+  b.timers.push(setTimeout(() => { if (ok() && clearPath(b, behind)) runTo(b, behind, 100); }, 350));
+  await runTo(a, far, 105);
   if (!ok()) return;
   setPose(a, 'cheer');
   await wait(a, 700);
@@ -1049,7 +1431,13 @@ function leave(a, to) {
   const pal = a.partner;
   a.partner = null;
   if (pal?.partner === a) { pal.partner = null; leave(pal); }      // 一起玩的那隻也放開
-  if (a.using) { a.using.user = null; a.using.el.classList.remove('rustle'); a.using = null; }
+  if (a.using) {
+    const o = a.using;
+    o.users = o.users.filter((x) => x !== a);
+    if (!o.users.length) o.el.classList.remove('rustle', 'zz');
+    a.using = null;
+  }
+  a.path = null;
   a.el.classList.remove('up', 'sway', 'wade', 'inside');
   if (to === undefined && a.mode === 'use' && !walkable(a.x, a.y)) to = somewhere({ x: a.x, y: a.y });
   if (to && !walkable(to.x, to.y)) to = somewhere(to);
@@ -1142,10 +1530,11 @@ function tick(now) {
     if (a.mode === 'walk' || a.mode === 'goeat') {
       const dx = (a.tx - a.x) * GW, dy = (a.ty - a.y) * GH;
       const d = Math.hypot(dx, dy);
-      const speed = (m === 'hungry' ? 34 : m === 'happy' ? 80 : 58) * depth(a.y);
+      const speed = (m === 'hungry' ? 28 : m === 'happy' ? 64 : 46) * depth(a.y);
       if (d < 3) {
         a.x = a.tx; a.y = a.ty;
-        if (a.mode === 'goeat') { a.mode = 'eat'; a.arrive?.(); }
+        if (a.path?.length) { const p = a.path.shift(); a.tx = p.x; a.ty = p.y; }
+        else if (a.mode === 'goeat') { a.mode = 'eat'; a.arrive?.(); }
         else if (a.next) { const go = a.next; a.next = null; go(); }
         else { a.mode = 'rest'; a.until = now + rnd(1500, 4500); a.restPose = restPose(a); }
       } else {
@@ -1165,8 +1554,8 @@ function tick(now) {
         // 先看有沒有空著的夥伴可以一起玩，再看要不要去用傢俱
         const r = Math.random();
         if (!(r < .35 && actors.length > 1 && wantFriend(a)) && !(r >= .35 && r < .35 + fun && wantUse(a))) {
-          const t = somewhere(Math.random() < .6 ? a : null, a);
-          a.tx = t.x; a.ty = t.y; a.mode = 'walk';
+          const t = somewhere(Math.random() < .7 ? a : null, a);
+          if (!go(a, t)) { a.until = now + rnd(1500, 3000); }
         }
       }
     }
@@ -1202,6 +1591,7 @@ function grab(a) {
         if (a.mode === 'use' || a.using) leave(a, null);
         start.mode = a.mode;
         a.next = null;
+        a.path = null;
         el.setPointerCapture?.(e.pointerId);
         a.mode = 'held';
         el.classList.add('held');
@@ -1213,7 +1603,7 @@ function grab(a) {
       a.x = Math.min(.98, Math.max(.02, x)); a.y = Math.min(.95, Math.max(.05, y));
       const can = start.mode !== 'still';
       const hit = can ? propAt(a.x, a.y - .05) ?? propAt(a.x, a.y) : null;     // 手指或腳碰到都算
-      const target = hit && !hit.user ? hit : null;
+      const target = hit && !full(hit) ? hit : null;
       if (target !== aim) { aim?.el.classList.remove('aim'); target?.el.classList.add('aim'); aim = target; }
       const good = walkable(a.x, a.y) || !!aim || (can && inLake(a.x, a.y));
       el.classList.toggle('bad', !good);
@@ -1230,7 +1620,7 @@ function grab(a) {
       aim?.el.classList.remove('aim');
       el.classList.add('drop');
       setTimeout(() => el.classList.remove('drop'), 450);
-      if (aim && !aim.user) { a.mode = 'use'; useProp(a, aim, true); return; }
+      if (aim && !full(aim)) { a.mode = 'use'; useProp(a, aim, true); return; }
       if (start.mode !== 'still' && inLake(a.x, a.y)) { a.mode = 'use'; swimLake(a, true); return; }
       if (!walkable(a.x, a.y)) { a.x = ok.x; a.y = ok.y; }
       a.tx = a.x; a.ty = a.y;
@@ -1337,19 +1727,19 @@ function paintBar() {
   if (!bar) return;
   const home = myPet();
   const m = home ? moodOf(home) : 'quiet';
-  const furnOpen = !$('.furn', layer)?.hidden;
+  const furnOpen = !!deco;
   bar.innerHTML = (home ? `<button type="button" class="act${bagOpen ? ' on' : ''}" data-bag ${m === 'quiet' ? 'disabled' : ''} aria-expanded="${bagOpen}"><span>🍖</span><b>餵食</b></button>
     <button type="button" class="act" data-pat ${m === 'quiet' ? 'disabled' : ''}><span>${m === 'asleep' ? '⏰' : '✋'}</span><b>${m === 'asleep' ? '叫醒牠' : '摸摸'}</b></button>
     <button type="button" class="act" data-ball><span>🎾</span><b>丟球</b></button>` : '')
     + `<button type="button" class="act${furnOpen ? ' on' : ''}" data-furn><span>🎨</span><b>裝扮</b></button>`
     + (isle.ready() ? '<button type="button" class="act" data-visit><span>🏝️</span><b>拜訪</b></button>' : '');
-  $('[data-bag]', bar)?.addEventListener('click', () => { if (bagOpen) closeBag(); else { bagOpen = true; $('.furn', layer).hidden = true; paintBag(); paintBar(); } });
+  $('[data-bag]', bar)?.addEventListener('click', () => { if (bagOpen) closeBag(); else { if (deco) exitDeco(); bagOpen = true; paintBag(); paintBar(); } });
   $('[data-pat]', bar)?.addEventListener('click', () => { closeBag(); focusHome(); pat(); });
   $('[data-ball]', bar)?.addEventListener('click', () => { closeBag(); focusHome(); ballNear(); });
   $('[data-furn]', bar).onclick = toggleFurn;
   $('[data-visit]', bar)?.addEventListener('click', () => {
-    closeBag(); $('.furn', layer).hidden = true; paintBar();
-    isle.openVisit({ host: $('.pisle', layer), GW, GH, propLook, art, depth, somewhere: () => somewhere() });
+    closeBag(); if (deco) exitDeco();
+    isle.openVisit({ host: $('.pisle', layer), art });
   });
 }
 function paintBag() {
@@ -1388,9 +1778,9 @@ function ballNear() {
   if (!a) return;
   if (!free(a) && a.mode !== 'use') { say(['asleep', 'quiet'].includes(moodOf(a.p)) ? 'Zzz…' : pick(['現在不想玩…', '等一下再玩嘛']), a.p.id); return; }
   for (let k = 0; k < 40; k++) {
-    const ang = Math.random() * Math.PI * 2, d = rnd(.12, .22);
+    const ang = Math.random() * Math.PI * 2, d = rnd(.04, .08);
     const at = { x: a.x + Math.cos(ang) * d, y: a.y + Math.sin(ang) * d * .6 };
-    if (walkable(at.x, at.y)) { throwBall(at); return; }
+    if (walkable(at.x, at.y) && clearPath(a, at)) { throwBall(at); return; }
   }
   throwBall(somewhere(a));
 }
@@ -1436,17 +1826,17 @@ async function feed(code) {
   }
   if (a.mode === 'use' || a.using || a.next) leave(a);
   const i = item(code);
-  const side = a.x > .7 ? -1 : 1;
-  let spot = { x: a.x + side * .07, y: a.y + .015 };
-  if (!walkable(spot.x, spot.y)) spot = { x: a.x - side * .07, y: a.y + .015 };
-  if (!walkable(spot.x, spot.y)) spot = { x: a.x, y: Math.min(.8, a.y + .05) };
+  const side = Math.random() < .5 ? -1 : 1;
+  let spot = { x: a.x + side * .025, y: a.y + .006 };
+  if (!walkable(spot.x, spot.y)) spot = { x: a.x - side * .025, y: a.y + .006 };
+  if (!walkable(spot.x, spot.y)) spot = { x: a.x, y: a.y + .02 };
   const bowl = document.createElement('div');
   bowl.className = 'bowl';
   bowl.innerHTML = FOOD_IMG.has(code) ? `<img src="img/pet/food/${esc(code)}.webp" alt="">` : `<span>${esc(i?.icon ?? '🍽')}</span>`;
-  bowl.style.cssText = `left:${spot.x * GW}px;top:${spot.y * GH}px;z-index:${Math.round(spot.y * 1000) - 1};--d:${depth(spot.y).toFixed(3)}`;
+  bowl.style.cssText = `left:${spot.x * GW}px;top:${spot.y * GH}px;z-index:${Math.round(spot.y * 1000) - 1};--d:${(depth(spot.y) * .6).toFixed(3)}`;
   $('.actors', layer).appendChild(bowl);
   const wasStill = a.mode === 'still';
-  a.tx = spot.x - side * .045; a.ty = spot.y - .005;
+  a.tx = spot.x - side * .016; a.ty = spot.y - .002;
   if (!walkable(a.tx, a.ty)) { a.tx = a.x; a.ty = a.y; }
   a.face = side;
   a.mode = 'goeat';

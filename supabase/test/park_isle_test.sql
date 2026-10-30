@@ -75,3 +75,19 @@ select test_ok((public.park_isle_me() ->> 'featured')::boolean, '艾咪知道自
 \echo '── 沒登入'
 select test_as(null, false);
 select test_denied($$select public.park_isle_me()$$, '沒登入不能看');
+
+\echo '── 寵物島 2.0：格子擺法'
+set role authenticated;
+select test_as('d0000000-0000-0000-0000-000000000011', true);
+select public.park_isle_save('beach', array[3,4,5],
+  '{"v":2,"items":[["house-basic",14,12,0],["bed",10,10,1],["s-fence-white",5,5,0],["s-path-stone",6,6,0],["s-gate",7,5,0],["BAD",1,1,0],["bed",40,2,0]]}', '{}') as r \gset
+select test_ok((:'r'::jsonb ->> 'placed')::int = 2, '傢俱算 2 件（圍籬小路另外算、怪的不收）');
+select public.park_isle_me() -> 'layout' as l \gset
+select test_ok((:'l'::jsonb ->> 'v')::int = 2 and jsonb_array_length(:'l'::jsonb -> 'items') = 5, '存成新格式 5 筆');
+select test_ok(:'l'::jsonb -> 'items' -> 1 = '["bed", 10, 10, 1]'::jsonb, '翻面記得住');
+select test_denied($$select public.park_isle_save('beach', array[3,4,5], jsonb_build_object('v', 2, 'items',
+  (select jsonb_agg(jsonb_build_array('bed', g % 28, g / 28, 0)) from generate_series(0, 60) g)), '{}')$$, '傢俱超過 60 件不行');
+select test_denied($$select public.park_isle_save('beach', array[3,4,5], jsonb_build_object('v', 2, 'items',
+  (select jsonb_agg(jsonb_build_array('s-path-stone', g % 28, g / 28, 0)) from generate_series(0, 150) g)), '{}')$$, '圍籬小路超過 150 格不行');
+select test_ok((select count(*) from public.park_shop_items where code like 'furn-house-%') = 3, '商店上架三種小屋');
+reset role;

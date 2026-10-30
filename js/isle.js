@@ -5,6 +5,7 @@
 //   每座島每天可以留一個正面圖示，對方下次打開寵物島會看到。
 // 資料庫還沒裝（missing）時：裝扮照舊存在這台裝置，拜訪鈕不出現。
 import * as auth from './auth.js';
+import * as W from './isleworld.js';
 
 const $ = (s, root = document) => root.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -29,7 +30,8 @@ export const WORDS = [
 export const REACTS = [['heart', '好可愛'], ['star', '好厲害'], ['flower', '好漂亮'], ['laugh', '好好笑'], ['idea', '好有創意'], ['paw', '我來過了']];
 const reactImg = (k) => `<img src="img/pet/react/${REACTS[k][0]}.webp" alt="">`;
 
-export const landSrc = (theme) => (!theme || theme === 'spring' ? 'img/pet/island.webp' : `img/pet/land/${theme}.webp`);
+export const landSrc = W.landSrc;
+const thumb = W.landThumb;
 export const nameText = (n) => (n ?? [0, 0, 0]).map((x, i) => WORDS[i][x] ?? WORDS[i][0]).join('・');
 
 let me = null;          // park_isle_me()；null＝資料庫還沒裝或沒登入
@@ -94,8 +96,8 @@ export function decorHtml() {
       `<option value="${k}"${k === n[i] ? ' selected' : ''}>${esc(x)}</option>`).join('')}</select>`).join('<span>・</span>')}</div>
     <p class="lab">島的風格</p>
     <div class="isle-themes">${THEMES.map((t) => own.includes(t.id)
-      ? `<button type="button" class="isle-th${t.id === theme() ? ' on' : ''}" data-theme="${t.id}"><img src="${landSrc(t.id)}" alt=""><b>${t.name}</b></button>`
-      : `<span class="isle-th locked"><img src="${landSrc(t.id)}" alt=""><b>${t.name}</b><small>🔒 ${t.how}</small></span>`).join('')}</div>
+      ? `<button type="button" class="isle-th${t.id === theme() ? ' on' : ''}" data-theme="${t.id}"><img src="${thumb(t.id)}" alt=""><b>${t.name}</b></button>`
+      : `<span class="isle-th locked"><img src="${thumb(t.id)}" alt=""><b>${t.name}</b><small>🔒 ${t.how}</small></span>`).join('')}</div>
   </div>`;
 }
 // onTheme(theme)：換地面圖；onName()：換招牌
@@ -118,7 +120,7 @@ export function bindDecor(box, { onTheme, onName }) {
 }
 
 // ---------- 拜訪 ----------
-// ctx：pet.js 給的畫島工具 { host, GW, GH, propLook(id)→{w}, art(species, stage, pose), somewhere(), depth(y) }
+// ctx：pet.js 給的 { host（寵物島的外框）, art(species, stage, pose)（寵物圖）}；島怎麼畫看 js/isleworld.js
 let ctx = null;
 let tab = 'feat';
 export function openVisit(c) {
@@ -148,7 +150,7 @@ async function paintList(box) {
   if (!box.isConnected) return;
   const sum = (a) => (a ?? []).reduce((x, y) => x + y, 0);
   list.innerHTML = rows.length ? `<div class="iv-cards">${rows.map((r) => `<button type="button" class="iv-card" data-iv-go="${esc(r.id)}">
-      <span class="th"><img src="${landSrc(r.theme)}" alt="">${r.pet ? `<img class="pet" src="${ctx.art(r.pet.species, r.pet.stage, 'idle')}" alt="">` : ''}</span>
+      <span class="th"><img src="${thumb(r.theme)}" alt="">${r.pet ? `<img class="pet" src="${ctx.art(r.pet.species, r.pet.stage, 'idle')}" alt="">` : ''}</span>
       <b>${esc(nameText(r.name))}</b><small>${esc(r.nickname)} 的島・收到 ${sum(r.love)} 個圖示</small></button>`).join('')}</div>`
     : `<p class="tip">${tab === 'feat' ? '今天還沒有精選島。把自己的島擺上 5 件以上的東西，就有機會被選上！'
       : '班上還沒有其他同學。試玩班的同學互相不認識，所以只看得到「今日精選」。'}</p>`;
@@ -159,26 +161,46 @@ async function paintList(box) {
 async function paintVisit(box, id) {
   let v;
   try { v = await auth.isle.view(id); } catch (e) { toast(box, e.message); return; }
-  const { GW, GH } = ctx;
-  const props = Object.entries(v.layout ?? {}).map(([pid, at]) => ({ id: pid, ...at, ...ctx.propLook(pid) })).filter((o) => o.w);
-  const pets = (v.pets ?? []).map((p) => ({ ...p, ...ctx.somewhere() }));
+  const { GW, GH, N } = W;
+  // 舊的擺法（還沒打開過新的大島）：照舊位置搬過來看
+  const items = W.unpack(v.layout) ?? W.migrate(v.layout, Object.keys(v.layout ?? {}), {});
+  const occ = W.occupancy(items);
+  const free = [];
+  for (let c = 0; c < N * N; c++) if (!occ.solid[c]) free.push(c);
+  const pets = (v.pets ?? []).map((p) => { const c = free[Math.floor(Math.random() * free.length)] ?? 0; return { ...p, ...W.center(c % N, Math.floor(c / N)) }; });
+  const z = (y) => Math.round(y * 1000);
+  const fences = items.filter((o) => ['fence', 'gate'].includes(W.kindOf(o.id))).map((o) => {
+    const f = W.fenceEl(o.id, o.i, o.j, W.fenceNb(items, occ, o.i, o.j));
+    return `<span class="fence" style="left:${f.left}px;top:${f.top}px;z-index:${f.z}">${f.html}</span>`;
+  }).join('');
+  const props = items.filter((o) => ['furn', 'house', 'bowl', 'tile'].includes(W.kindOf(o.id))).map((o) => {
+    const c = W.CAT[o.id], at = W.spot(o.id, o.i, o.j, o.f);
+    return `<span class="iv-prop" style="left:${at.x * GW}px;top:${at.y * GH}px;width:${c.w}px;z-index:${z(at.y) - 2};--base:${-c.base * 100}%">
+      <img src="img/pet/furniture/${esc(o.id)}.webp" alt=""${o.f ? ' style="transform:scaleX(-1)"' : ''}></span>`;
+  }).join('');
+  const trees = W.trees(v.theme).map((t) => `<span class="tree" style="left:${t.x * GW}px;top:${t.y * GH}px;width:${t.w}px;z-index:${z(t.y)};--base:${-t.base * 100}%">
+    <img src="img/pet/tree/${t.id}.webp" alt=""></span>`).join('');
   box.innerHTML = `<div class="iv-view" role="dialog" aria-label="參觀 ${esc(v.nickname)} 的島">
     <div class="iv-top"><button type="button" class="ghost small" data-iv-back>‹ 回清單</button>
       <p><b>${esc(nameText(v.name))}</b><small>${esc(v.nickname)} 的島</small></p></div>
     <div class="iv-stage"><div class="iv-ground" style="width:${GW}px;height:${GH}px">
       <img class="land" src="${landSrc(v.theme)}" alt="">
-      ${props.map((o) => `<span class="iv-prop" style="left:${o.x * GW}px;top:${o.y * GH}px;width:${o.w * ctx.depth(o.y)}px;z-index:${Math.round(o.y * 1000) - 2}">
-        <img src="img/pet/furniture/${esc(o.id)}.webp" alt=""${o.f ? ' style="transform:scaleX(-1)"' : ''}></span>`).join('')}
-      ${pets.map((p, i) => `<span class="iv-pet" style="left:${p.x * GW}px;top:${p.y * GH}px;width:${[0, 128, 150, 172][p.stage] * ctx.depth(p.y) * .8}px;z-index:${Math.round(p.y * 1000)};--d:${rnd(0, 2).toFixed(2)}s;--k:${i % 2 ? -1 : 1}">
+      <svg class="floor" viewBox="0 0 ${GW} ${GH}" width="${GW}" height="${GH}" aria-hidden="true">${W.floorSvg(items)}</svg>
+      ${trees}${fences}${props}
+      ${pets.map((p, i) => `<span class="iv-pet" style="left:${p.x * GW}px;top:${p.y * GH}px;width:${[0, 84, 98, 112][p.stage] ?? 98}px;z-index:${z(p.y)};--d:${rnd(0, 2).toFixed(2)}s;--k:${i % 2 ? -1 : 1}">
         <img src="${ctx.art(p.species, p.stage, 'idle')}" alt="${esc(p.name)}"></span>`).join('')}
     </div></div>
     <div class="iv-react"></div>
     <p class="note iv-note"></p></div>`;
+  // 整座島放進畫面；手機直拿太小的話放大一點、可以左右滑
   const fit = () => {
     const st = $('.iv-stage', box);
     if (!st) return;
-    const k = Math.min(st.clientWidth / GW, st.clientHeight / GH);
-    $('.iv-ground', box).style.transform = `translate(-50%, -50%) scale(${k})`;
+    const k = Math.max(Math.min(st.clientWidth / GW, st.clientHeight / GH), Math.min(.55, st.clientHeight / GH));
+    const g = $('.iv-ground', box);
+    g.style.transform = `scale(${k})`;
+    g.parentElement.style.setProperty('--w', `${GW * k}px`);
+    g.parentElement.style.setProperty('--h', `${GH * k}px`);
   };
   fit();
   addEventListener('resize', fit);

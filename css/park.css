@@ -588,15 +588,12 @@ ul.classes li .row{gap:8px;justify-content:flex-end}
   background:radial-gradient(ellipse at 35% 55%,#7fd6f2,#38a9dc 55%,#1f7fb8);animation:fadein .3s ease-out}
 @keyframes fadein{from{opacity:0}}
 @keyframes hintout{to{opacity:0;visibility:hidden}}
-/* 島：.view 可以捲（手機直拿左右滑），.ground 用 --g 縮放（座標照舊） */
-.pisle .view{position:absolute;inset:0;overflow:auto;overscroll-behavior:contain;scrollbar-width:none;display:grid}
-.pisle .view>.ground-box{margin:auto}
-.pisle .view::-webkit-scrollbar{display:none}
-.ground-box{position:relative;flex:none;width:calc(1120px * var(--g,1));height:calc(842px * var(--g,1))}
-.pisle .ground{transform-origin:0 0;scale:var(--g,1)}
+/* 島：.ground 用 transform 移動、縮放（js/pet.js 的 cam），--g＝放大倍數（字跟著反過來放大，才看得清楚） */
+.pisle .view{position:absolute;inset:0;overflow:hidden;touch-action:none}
+.pisle .ground{position:absolute;left:0;top:0;transform-origin:0 0}
 .actor .bub.talk,.actor .tag,.actor .bub.mark{zoom:max(1,calc(.85 / var(--g,1)))}
 #petroom .pisle>.x{position:absolute;right:calc(env(safe-area-inset-right) + 12px);top:calc(env(safe-area-inset-top) + 10px);width:56px;height:56px;z-index:30;touch-action:manipulation}
-.pisle .ground{position:relative;touch-action:pan-x pan-y;user-select:none;-webkit-user-select:none}
+.pisle .ground{touch-action:none;user-select:none;-webkit-user-select:none}
 .pisle .land{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;-webkit-user-drag:none;filter:var(--tod) var(--wx) drop-shadow(0 18px 18px rgba(0,40,80,.35))}
 .pisle .actors{position:absolute;inset:0}
 .pisle .hint{position:absolute;left:50%;bottom:auto;top:calc(env(safe-area-inset-top) + 80px);animation:hintout 1s ease-in 7s forwards;transform:translateX(-50%);margin:0;padding:8px 18px;border-radius:99px;background:rgba(255,255,255,.85);font:700 16px/1 var(--f-body);color:var(--wood);white-space:nowrap;pointer-events:none}
@@ -716,7 +713,8 @@ aside.care .wish span img{width:40px;height:40px}
 #isle-pets .mini.egg-wait .glint{position:absolute;width:40px;left:-8px;top:-8px;animation:twinkle 1.4s ease-in-out infinite}
 @media (prefers-reduced-motion:reduce){.actor .bub.mark,.actor.egg-nest img{animation:none}}
 /* 寵物島傢俱（可拖曳） */
-.prop{position:absolute;transform:translate(-50%,-88%);border:0;padding:0;background:none;cursor:grab;touch-action:none}
+.prop{position:absolute;transform:translate(-50%,var(--base,-88%));border:0;padding:0;background:none;cursor:pointer;touch-action:none}
+.prop.movable{cursor:grab}
 .prop img{position:relative;display:block;width:100%;height:auto;pointer-events:none;-webkit-user-drag:none;filter:var(--tod) var(--wx) drop-shadow(0 4px 3px rgba(20,50,30,.3));transition:transform .15s}
 .prop .shadow{position:absolute;left:12%;right:12%;bottom:0;height:16%;border-radius:50%;background:rgba(30,60,20,.25);transition:transform .15s,opacity .15s}
 .prop.held{cursor:grabbing}
@@ -1520,10 +1518,13 @@ body[data-starter="on"][data-scene="map"] #tick .bubble{display:none}
 .iv-top p{margin:0;display:grid}
 .iv-top b{font:900 19px/1.2 var(--f-body);color:var(--wood)}
 .iv-top small{font:700 13px/1.2 var(--f-body);color:#8a6a4a}
-.iv-stage{position:relative;height:min(56dvh,560px);border-radius:16px;background:linear-gradient(#bfe3fb,#e3f4ff);overflow:hidden}
-.iv-ground{position:absolute;left:50%;top:50%;transform-origin:center}
+.iv-stage{position:relative;height:min(56dvh,560px);border-radius:16px;background:linear-gradient(#bfe3fb,#e3f4ff);overflow:auto;scrollbar-width:thin}
+.iv-stage::before{content:"";display:block;width:var(--w,100%);height:var(--h,100%)}
+.iv-ground{position:absolute;left:max(0px,calc(50% - var(--w,0px) / 2));top:max(0px,calc(50% - var(--h,0px) / 2));transform-origin:0 0}
+.iv-ground .floor,.iv-ground .fence{position:absolute;left:0;top:0;pointer-events:none}
+.iv-ground .fence svg{display:block}
 .iv-ground .land{position:absolute;inset:0;width:100%;height:100%}
-.iv-prop,.iv-pet{position:absolute;transform:translate(-50%,-88%);pointer-events:none}
+.iv-prop,.iv-pet{position:absolute;transform:translate(-50%,var(--base,-88%));pointer-events:none}
 .iv-prop img,.iv-pet img{display:block;width:100%;height:auto}
 .iv-pet{animation:ivbob 1.6s ease-in-out var(--d) infinite}
 .iv-pet img{transform:scaleX(var(--k))}
@@ -1541,4 +1542,76 @@ body[data-starter="on"][data-scene="map"] #tick .bubble{display:none}
   .iv-stage{height:42dvh}
   .iv-react button{font-size:13px;padding:4px 10px 4px 4px}
   .iv-react button img{width:28px;height:28px}
+}
+
+/* ---------- 寵物島 2.0：大島、樹、圍籬小路、裝扮模式（js/pet.js、js/isleworld.js） ---------- */
+.pisle .floor{position:absolute;left:0;top:0;pointer-events:none;filter:var(--tod) var(--wx)}
+.tree{position:absolute;transform:translate(-50%,var(--base));pointer-events:none}
+.tree img{display:block;width:100%;filter:var(--tod) var(--wx) drop-shadow(0 6px 4px rgba(20,50,30,.25))}
+.fence{position:absolute;pointer-events:none}
+.fence svg{display:block;filter:var(--tod) var(--wx)}
+.prop.k-house .shadow,.prop.k-tile .shadow,.prop.k-bowl .shadow{display:none}
+.prop.k-house img,.prop.k-tile img{filter:var(--tod) var(--wx) drop-shadow(0 5px 4px rgba(20,50,30,.22))}
+.prop.zz::after{content:"Zz";position:absolute;left:58%;top:6%;font:900 26px/1 var(--f-disp);color:#5a7fd6;text-shadow:0 2px 0 #fff,0 0 6px #fff;animation:zzz 2.4s ease-in-out infinite;pointer-events:none}
+@keyframes zzz{0%{transform:translate(0,6px) scale(.8);opacity:0}30%{opacity:1}100%{transform:translate(14px,-22px) scale(1.15);opacity:0}}
+.prop.new img{animation:petDrop .6s cubic-bezier(.34,1.7,.5,1) 2}
+.pisle.decorating .prop.movable:hover img{filter:var(--tod) var(--wx) brightness(1.08) drop-shadow(0 0 5px #fff7b0)}
+.pisle .prop.sel img{filter:var(--tod) var(--wx) brightness(1.1) drop-shadow(0 0 4px #fff) drop-shadow(0 0 8px #ffd34d)}
+.pisle .prop.held.bad img{filter:sepia(1) saturate(4) hue-rotate(-30deg) brightness(.9);opacity:.85}
+/* 放大縮小鈕 */
+.pisle .zoom{position:absolute;right:calc(env(safe-area-inset-right) + 12px);top:calc(env(safe-area-inset-top) + 76px);z-index:18;display:flex;flex-direction:column;gap:8px}
+.pisle .zoom button{width:46px;height:46px;border-radius:50%;border:3px solid var(--wood);background:var(--cream);color:var(--wood);font:900 26px/1 var(--f-body);box-shadow:0 3px 0 var(--wood);cursor:pointer;touch-action:manipulation}
+.pisle .zoom button:active{transform:translateY(2px);box-shadow:0 1px 0 var(--wood)}
+/* 第一次：手指示範拖曳 */
+.isle-hand{position:absolute;left:50%;top:48%;z-index:24;transform:translate(-50%,-50%);display:grid;justify-items:center;gap:6px;pointer-events:none}
+.isle-hand span{font-size:54px;animation:handdrag 1.8s ease-in-out infinite;filter:drop-shadow(0 4px 4px rgba(0,0,0,.3))}
+.isle-hand p{margin:0;padding:8px 16px;border-radius:99px;background:rgba(255,255,255,.92);font:900 17px/1.2 var(--f-body);color:var(--wood);box-shadow:0 3px 0 rgba(107,63,31,.3)}
+@keyframes handdrag{0%,100%{transform:translateX(-50px)}50%{transform:translateX(50px)}}
+/* 飼料盆 */
+.pisle .bagpop .bowl-row{display:flex;align-items:center;gap:10px}
+.pisle .bagpop .bowl-row img{width:56px;height:auto}
+.pisle .bagpop .note{margin:8px 0 0;font:700 13px/1.4 var(--f-body);color:#8a6a4a}
+/* 裝扮模式：上面一排（復原、全部收起、完成），下面的清單；其他照顧的東西先收起來 */
+.pisle.decorating :is(.dock,aside.care,.skychip,.isle-sign,.hint,.isle-inbox){display:none}
+.pisle .deco-top{position:absolute;left:calc(env(safe-area-inset-left) + 10px);right:calc(env(safe-area-inset-right) + 76px);top:calc(env(safe-area-inset-top) + 10px);z-index:26;
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 10px;border-radius:18px;background:rgba(255,248,230,.95);border:3px solid var(--wood);box-shadow:0 4px 0 var(--wood-2)}
+.pisle .deco-top[hidden]{display:none}
+.pisle .deco-top .ghost.small,.pisle .deco-top .btn.small{font-size:15px;padding:8px 12px;border-width:3px}
+.pisle .deco-top .ghost.small{background:#fff;border:3px solid var(--cream-2);border-radius:99px;color:var(--wood);font-weight:800;cursor:pointer}
+.pisle .deco-top .ghost.small:disabled{opacity:.45;cursor:default}
+.pisle .deco-top .btn.small{margin-left:auto}
+.pisle .deco-top .msg{flex:1 1 220px;margin:0;font:800 14px/1.35 var(--f-body);color:var(--wood)}
+.pisle .deco-top .msg.flash{animation:msgflash .9s ease-out}
+@keyframes msgflash{0%{color:#e2553f;transform:scale(1.04)}100%{color:var(--wood);transform:none}}
+.pisle .deco-top .cnt{font:700 13px/1 var(--f-body);color:#8a6a4a;white-space:nowrap}
+#petroom .pisle .furn{left:calc(env(safe-area-inset-left) + 10px);right:calc(env(safe-area-inset-right) + 10px);bottom:calc(env(safe-area-inset-bottom) + 10px);width:auto;max-width:980px;margin:0 auto;max-height:42dvh;overflow:auto;padding:10px 12px}
+#petroom .pisle .furn[hidden]{display:none}
+.dt-tabs{display:flex;gap:6px;margin-bottom:8px;overflow-x:auto;scrollbar-width:none}
+.dt-tabs button{flex:none;font:900 15px/1 var(--f-body);padding:9px 12px;border-radius:12px;border:3px solid var(--cream-2);background:#fff;color:#8a6a4a;cursor:pointer}
+.dt-tabs button.on{background:var(--gold);border-color:var(--wood);color:var(--wood)}
+.dt-list{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin}
+.dt-i{position:relative;flex:none;width:86px;display:grid;justify-items:center;gap:3px;padding:6px 4px;border-radius:14px;background:#fff;border:2px solid #ecd9b8;font:inherit;cursor:pointer}
+.dt-i img{width:60px;height:50px;object-fit:contain}
+.dt-i .ic{display:grid;place-items:center;width:60px;height:50px;overflow:hidden}
+.dt-i .ic svg{width:60px;height:auto}
+.dt-i .ic.erase{font-size:34px}
+.dt-i b{font:800 13px/1.2 var(--f-body);color:var(--ink);text-align:center}
+.dt-i small{font:800 11px/1 var(--f-body);color:#2f7fa8}
+.dt-i.out{background:#f1fbe8;border-color:#9cc97a}
+.dt-i.out small{color:#5a7a3a}
+.dt-i.tool.on{background:#ffe08a;border-color:var(--wood);box-shadow:0 3px 0 var(--wood)}
+.dt-i.locked{cursor:default}
+.dt-i.locked img{filter:grayscale(1) brightness(.75) opacity(.55)}
+.dt-i.locked small{color:#b0603a}
+button.dt-i:hover,button.dt-i:focus-visible{border-color:var(--wood);outline:none}
+#petroom .pisle .furn .note{margin:8px 0 0}
+/* 選起來的那件上面的小按鈕（不跟著島縮放） */
+.deco-sel{position:absolute;z-index:3000;display:flex;gap:6px;transform:translate(-50%,calc(-100% - 8px)) scale(calc(1 / var(--g,1)));transform-origin:50% 100%}
+.deco-sel button{font:900 15px/1 var(--f-body);padding:8px 12px;border-radius:99px;border:3px solid var(--wood);background:#fffaf0;color:var(--wood);box-shadow:0 3px 0 var(--wood);cursor:pointer;white-space:nowrap}
+@media (max-width:640px){
+  .pisle .deco-top{right:calc(env(safe-area-inset-right) + 70px)}
+  .pisle .deco-top .msg{flex-basis:100%;order:5;font-size:13px}
+  .pisle .deco-top .cnt{display:none}
+  .pisle .zoom{top:auto;bottom:calc(env(safe-area-inset-bottom) + 160px)}
+  .pisle.decorating .zoom{bottom:calc(42dvh + 24px)}
 }
