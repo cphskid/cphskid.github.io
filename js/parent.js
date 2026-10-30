@@ -20,7 +20,7 @@ const TASKS = {
   link:    { name: '和爸媽連起來', gift: '神秘蛋', art: 'img/parent/egg.webp' },
   view:    { name: '爸媽看過我的冒險', gift: '100 時光幣', art: 'img/ui/coin.webp' },
   sticker: { name: '爸媽送我鼓勵貼紙', gift: '親子長椅', art: 'img/pet/furniture/family-bench.webp' },
-  goal:    { name: '完成爸媽訂的本週目標', gift: '30 時光幣（每週都有）', art: 'img/ui/coin.webp' },
+  goal:    { name: '完成爸媽訂的本週目標', gift: '每週 30 時光幣', art: 'img/ui/coin.webp' },
   app:     { name: '把樂園放到桌面', gift: '50 時光幣', art: 'img/app/icon-192.png' },
 };
 const STICKER = { great: '好棒', cheer: '加油', better: '有進步', careful: '好認真', love: '爸媽愛你', play: '一起玩' };
@@ -60,7 +60,8 @@ function paint() {
 
 // 下一個動作：每一格都寫現在要做什麼（不要讓孩子不知道怎麼辦）
 function next(code) {
-  if (!st.linked && code !== 'app') return '先按下面「拿給爸媽看」，和爸媽連起來';
+  if (!st.linked && code === 'link') return '按上面的「拿給爸媽看」';
+  if (!st.linked && code !== 'app') return '和爸媽連起來之後就能做';
   if (code === 'link') return `已經和 ${st.parents.map(esc).join('、')} 連起來了`;
   if (code === 'view') return '請爸媽打開後台，看看你的冒險';
   if (code === 'sticker') return '請爸媽在後台送你一張貼紙';
