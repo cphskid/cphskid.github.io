@@ -65,6 +65,7 @@ insert into public.park_starter_steps (code, page, sort, name, hint, go, facilit
   ('ch1',    2, 1, '臺灣島：玩完第一章',          '回到很久很久以前的臺灣。',                               'island_pioneer', 'island_pioneer', 20),
   ('g3',     3, 1, '守護異世界：打到第三關',      '過了第三關，城堡會更熱鬧。',                             'guardian', 'guardian', 20),
   ('wish',   4, 1, '陪寵物玩：完成牠的願望或丟球', '點寵物頭上的泡泡，看看牠想做什麼。',                     'pet', null, 20),
+  ('forest', 4, 2, '去時光祕境島，玩完森林',      '幫斑斑找媽媽！過了森林，島上其他地方都能去。',           'science_warrior', 'science_warrior', 20),
   ('ch2',    5, 1, '臺灣島：玩完第二章',          '大航海時代的船來了！',                                   'island_pioneer', 'island_pioneer', 20),
   ('stamp5', 6, 1, '護照蓋滿 5 個章',             '在各座島過關就會蓋章，打開護照看看還缺哪些。',           'passport', null, 20),
   ('back',   7, 1, '翻開手冊的最後一頁',          '你回來了！最後一份禮物在這裡。',                         null, null, 30)
@@ -124,6 +125,11 @@ begin
                       and (p.ate_at is not null or p.patted_at is not null)) into v;
   elsif p_code = 'wish' then
     select exists (select 1 from public.park_pets p where p.student_id = p_student and p.played_at is not null) into v;
+  elsif p_code = 'forest' then
+    if to_regclass('public.animal_progress') is not null then
+      execute 'select exists (select 1 from public.animal_progress a where a.student_id = $1 and a.level = ''forest'' and a.first_clear_at is not null)'
+        into v using p_student;
+    end if;
   elsif p_code = 'stamp5' then
     select count(*) >= 5 from public.park_student_stamps s where s.student_id = p_student into v;
   elsif p_code in ('pro', 'ch1', 'ch2') then
