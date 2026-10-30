@@ -3,6 +3,7 @@
 import { quiz } from './auth.js';
 import { kidStates, pickPaper, readSlot, PLACE_NAME, STATE_NAME, placeZone, placeGame } from './quiz-core.js';
 import { resultHtml, KIND_NAME } from './quiz-items.js';
+import { openEditor } from './quiz-edit.js';
 
 const $ = (s, root = document) => root.querySelector(s);
 const $$ = (s, root = document) => [...root.querySelectorAll(s)];
@@ -434,15 +435,15 @@ async function paintBank(box) {
     b.onclick = () => {
       const it = bankData.items.find((i) => i.id === b.dataset.edit), ed = $('#ed-' + CSS.escape(it.id), box);
       ed.hidden = false;
-      ed.innerHTML = `<p class="tip">直接改內容（JSON）。改了會變成第 ${it.ver + 1} 版；之前的作答紀錄照舊。答案的數字是從 0 開始數。</p>
-        <textarea rows="8" class="mono">${esc(JSON.stringify(it.body, null, 1))}</textarea>
-        <div class="row"><button class="btn small" data-save>存檔（維持${{ draft: '待審', live: '上架', off: '停用' }[it.status]}）</button><button class="ghost small" data-x>取消</button></div>`;
-      ed.querySelector('[data-x]').onclick = () => { ed.hidden = true; };
-      ed.querySelector('[data-save]').onclick = async () => {
-        let body;
-        try { body = JSON.parse(ed.querySelector('textarea').value); } catch { return ctx.toast('JSON 格式不對', true); }
-        try { await quiz.review(it.id, it.status, body); ctx.toast('存好了'); paintBank(box); } catch (e) { ctx.toast(e.message, true); }
-      };
+      openEditor(ed, it, {
+        preview,
+        note: `改了會變成第 ${it.ver + 1} 版，之前孩子的作答紀錄照舊。`,
+        saveLabel: `存檔（維持${{ draft: '待審', live: '上架', off: '停用' }[it.status]}）`,
+        onCancel: () => { ed.hidden = true; ed.replaceChildren(); },
+        onSave: async (body) => {
+          try { await quiz.review(it.id, it.status, body); ctx.toast('存好了'); paintBank(box); } catch (e) { ctx.toast(e.message, true); }
+        },
+      });
     };
   });
   $$('[data-flag]', box).forEach((b) => {
