@@ -717,7 +717,7 @@ $$;
 create or replace function public.park_quiz_fix(p_paper uuid, p_resp jsonb)
 returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
 declare
-  v_me uuid := public.current_student_id(); v_t public.quiz_take; s record; v_r jsonb; v_got real; v_all boolean := true; v_coins int := 0;
+  v_me uuid := public.current_student_id(); v_t public.quiz_take; s record; v_r jsonb; v_got real; v_all boolean; v_coins int := 0;
 begin
   if v_me is null then raise exception '要先登入'; end if;
   select * into v_t from public.quiz_take where paper = p_paper and student = v_me for update;
@@ -725,13 +725,20 @@ begin
   for s in select a.pos, a.item, a.ver, a.kp, q.kind, q.body
              from public.quiz_answer a join public.quiz_item q on q.id = a.item
             where a.paper = p_paper and a.student = v_me and not a.fix and a.got < 1 order by a.pos loop
+    -- 只改這次有送來的題（第二次訂正只送還沒改對的；之前改對的不能被蓋掉）
+    v_r := null;
     select x into v_r from jsonb_array_elements(coalesce(p_resp, '[]')) x where (x->>'pos')::int = s.pos limit 1;
+    if v_r is null then continue; end if;
     v_got := public.quiz_grade(s.kind, s.body, p_paper::text || ':' || v_me || ':' || s.pos, v_r->'resp');
     insert into public.quiz_answer (paper, student, pos, fix, item, kp, ver, resp, got, ms)
     values (p_paper, v_me, s.pos, true, s.item, s.kp, s.ver, v_r->'resp', v_got, (v_r->>'ms')::int)
     on conflict (paper, student, pos, fix) do update set resp = excluded.resp, got = excluded.got, ms = excluded.ms, at = now();
-    if v_got < 1 then v_all := false; end if;
   end loop;
+  -- 全對＝原本錯的每一題，訂正紀錄都是對的
+  v_all := not exists (select 1 from public.quiz_answer a
+                        where a.paper = p_paper and a.student = v_me and not a.fix and a.got < 1
+                          and not exists (select 1 from public.quiz_answer f where f.paper = a.paper and f.student = a.student
+                                                                        and f.pos = a.pos and f.fix and f.got >= 1));
   if v_all then
     v_coins := public.park_coin_grant(v_me, 'quizfix:' || p_paper, 5, 'quiz', '試煉卷訂正全對');
     update public.quiz_take set fixed_at = coalesce(fixed_at, now()), fix_coins = fix_coins + v_coins where paper = p_paper and student = v_me;

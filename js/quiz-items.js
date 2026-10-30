@@ -122,7 +122,7 @@ export function resultHtml(x, n, { flag = false } = {}) {
     ${x.kind === 'cloze' ? `<p class="qz-passage small">${esc(x.show.text).replace(/\{(\d+)\}/g, (_, i) => `（${+i + 1}）＿＿`)}</p>` : ''}
     ${got < 1 ? `<p class="qz-mine">你的答案：${esc(say(x.kind, x.show, x.resp))}</p>` : ''}
     <p class="qz-key">正確答案：${esc(say(x.kind, x.show, x.key))}</p>
-    ${x.why ? `<p class="qz-why">💡 ${esc(x.why)}</p>` : ''}
+    ${x.why ? `<p class="qz-why"><b>💡 為什麼：</b>${esc(x.why)}</p>` : ''}
     ${flag ? `<button type="button" class="qz-flag" data-flag="${x.pos}">這題怪怪的？</button>` : ''}
   </li>`;
 }

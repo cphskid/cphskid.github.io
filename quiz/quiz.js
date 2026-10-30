@@ -1,7 +1,7 @@
 // 時光試煉島（孩子作答）：我的試煉卷 → 一題一頁作答 → 交卷看分數和解析 → 訂正錯的題。
 // 改分都在伺服器（supabase/park_quiz.sql），這裡拿不到答案；交卷後才拿到正確答案和解析。
 import { me, quiz } from '../js/auth.js';
-import { renderAsk, answered, resultHtml, KIND_NAME } from '../js/quiz-items.js';
+import { renderAsk, answered, resultHtml, say, KIND_NAME } from '../js/quiz-items.js';
 
 const $ = (s, root = document) => root.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -127,28 +127,36 @@ async function showPaper(paper) {
 }
 
 // ---------- 結果、訂正 ----------
-function showResult(p, just = null) {
+function showResult(p, just = null, show = null) {
   const wrong = p.items.filter((x) => Number(x.got) < 1);
   const needFix = wrong.filter((x) => !(Number(x.fix_got) >= 1));
+  // 預設只看錯的題，不用整張卷滾下去找
+  const mode = show ?? (needFix.length ? 'fix' : wrong.length ? 'wrong' : 'all');
+  const list = mode === 'fix' ? needFix : mode === 'wrong' ? wrong : p.items;
   const mood = p.score >= 80 ? 'happy' : p.score >= 60 ? '' : 'think';
   const said = p.score >= 100 ? '全部答對！你真的學會了。' : p.score >= 80 ? '很棒，只差一點點。看看錯的那幾題。'
     : p.score >= 60 ? '過關了！把錯的題看懂，下次會更好。' : '沒關係，試煉就是用來找出還不熟的地方。先看解析，再訂正一次。';
   const coinLine = just ? (just.capped ? '這星期已經拿過 3 張卷的時光幣了，這張先不給幣，但分數會記下來。'
     : just.coins ? `拿到 <b>${just.coins}</b> 個時光幣！` : '') : (p.coins ? `這張卷拿到 ${p.coins + (p.fix_coins || 0)} 個時光幣。` : '');
+  const tab = (k, t, n) => (n ? `<button type="button" class="qz-chip${mode === k ? ' on' : ''}" data-show="${k}">${t}（${n}）</button>` : '');
   view.innerHTML = `
     <section class="qz-hero result">${owl(mood)}<div class="qz-bubble">
       <span class="qz-big">${p.score}<small>分</small></span>
       <b>${esc(said)}</b>${coinLine ? `<p class="qz-coins">${coinLine}</p>` : ''}
     </div></section>
-    ${needFix.length ? `<section class="qz-panel fixbox"><p>有 <b>${needFix.length}</b> 題可以訂正。全部改對，再拿 5 個時光幣。</p>
+    ${needFix.length ? `<section class="qz-panel fixbox"><p>有 <b>${needFix.length}</b> 題${needFix.length < wrong.length ? '還沒改對' : '可以訂正'}。全部改對，再拿 5 個時光幣。</p>
       <button type="button" class="qz-btn go" data-fix>開始訂正</button></section>`
       : wrong.length ? '<section class="qz-panel fixbox done"><p>✔ 錯的題都訂正好了！</p></section>' : ''}
-    <section class="qz-panel"><h2>每一題的答案和解析</h2><ol class="qz-results">
-      ${p.items.map((x, k) => resultHtml(x, k + 1, { flag: true })).join('')}</ol></section>
+    <section class="qz-panel"><h2>答案和解析</h2>
+      <div class="qz-chips qz-filter">${needFix.length && needFix.length < wrong.length ? tab('fix', '還沒改對', needFix.length) : ''}${tab('wrong', '錯的題', wrong.length)}${tab('all', '全部', p.items.length)}</div>
+      ${list.length > 1 && mode !== 'all' ? `<p class="qz-jump">跳到第 ${list.map((x) => `<a href="#r${x.pos}">${p.items.indexOf(x) + 1}</a>`).join('')} 題</p>` : ''}
+      <ol class="qz-results">${list.map((x) => resultHtml(x, p.items.indexOf(x) + 1, { flag: true }).replace('<li ', `<li id="r${x.pos}" `)).join('')}</ol></section>
     <p class="center"><a class="qz-btn ghost" href="./">回試煉卷列表</a></p>`;
   $('[data-fix]', view)?.addEventListener('click', () => showFix(p, needFix));
+  view.querySelectorAll('[data-show]').forEach((b) => { b.onclick = () => showResult(p, just, b.dataset.show); });
+  view.querySelectorAll('.qz-jump a').forEach((a) => { a.onclick = (e) => { e.preventDefault(); $(a.getAttribute('href'), view).scrollIntoView({ behavior: 'smooth', block: 'start' }); }; });
   view.querySelectorAll('[data-flag]').forEach((b) => { b.onclick = () => askFlag(p.id, +b.dataset.flag, b); });
-  scrollTo({ top: 0 });
+  if (!show) scrollTo({ top: 0 });
 }
 
 function askFlag(paper, pos, btn) {
@@ -170,14 +178,19 @@ function askFlag(paper, pos, btn) {
 
 function showFix(p, items) {
   const resp = {};
-  view.innerHTML = `<section class="qz-panel"><h2>訂正</h2><p class="qz-how">先看一下上一頁的解析，再重新作答。選項的順序和剛才一樣。</p>
+  view.innerHTML = `<section class="qz-panel"><h2>訂正（${items.length} 題）</h2><p class="qz-how">每一題下面有「看提示」，想不起來就打開看看，再重新作答。選項的順序和剛才一樣。</p>
     <ol class="qz-fixlist"></ol>
     <div class="qz-nav"><button type="button" class="qz-btn ghost" data-back>回去看解析</button>
     <button type="button" class="qz-btn go" data-send>送出訂正</button></div></section>`;
   const ol = $('.qz-fixlist', view);
   for (const x of items) {
     const li = document.createElement('li');
+    li.innerHTML = `<p class="qz-fixno">第 ${p.items.indexOf(x) + 1} 題</p>`;
     li.append(renderAsk(x, null, (v) => { resp[x.pos] = v; }));
+    const tip = document.createElement('details');
+    tip.className = 'qz-tip';
+    tip.innerHTML = `<summary>💡 看提示</summary><p class="qz-mine">上次寫的：${esc(say(x.kind, x.show, x.fix ?? x.resp))}（不對）</p>${x.why ? `<p>${esc(x.why)}</p>` : ''}`;
+    li.append(tip);
     ol.append(li);
   }
   $('[data-back]', view).onclick = () => showResult(p);
@@ -187,7 +200,7 @@ function showFix(p, items) {
     e.target.disabled = true;
     try {
       const r = await quiz.fix(p.id, items.map((x) => ({ pos: x.pos, resp: resp[x.pos] })));
-      toast(r.all ? (r.coins ? `全部改對了！拿到 ${r.coins} 個時光幣。` : '全部改對了！') : '還有幾題沒改對，再看一次解析。', 4200);
+      toast(r.all ? (r.coins ? `全部改對了！拿到 ${r.coins} 個時光幣。` : '全部改對了！') : '還有幾題沒改對，下面只列出那幾題，再看一次解析。', 4200);
       showResult(await quiz.open(p.id));
     } catch (err) { e.target.disabled = false; toast(err.message); }
   };

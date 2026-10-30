@@ -130,3 +130,13 @@ main{max-width:760px;margin:0 auto;padding:18px 16px 60px}
   .qz-title{font-size:17px}
   .qz-bar .qz-btn.ghost{display:none}
 }
+
+/* 結果頁：只看錯的題、跳到第幾題；訂正的提示 */
+.qz-filter{margin:0 0 8px}
+.qz-jump{margin:0 0 10px;font-size:15px;color:#7b6a52}
+.qz-jump a{display:inline-grid;place-items:center;min-width:30px;height:30px;margin:0 3px;border-radius:50%;background:#fde3d8;color:var(--no);font-weight:700;text-decoration:none}
+.qz-results>li{scroll-margin-top:70px}
+.qz-fixno{margin:0 0 4px;font-family:var(--f-disp);color:var(--wood)}
+.qz-tip{margin-top:8px;background:#fff8dc;border:2px dashed var(--line);border-radius:12px;padding:6px 12px}
+.qz-tip summary{cursor:pointer;font-weight:700;color:#7a5300}
+.qz-tip p{margin:6px 0 2px;font-size:15px}

@@ -4,6 +4,7 @@
 import { writeFileSync } from 'node:fs';
 import * as soc from './quiz-bank/soc.mjs';
 import * as sci from './quiz-bank/sci.mjs';
+import { WHY } from './quiz-bank/why.mjs';
 
 const kps = [], items = [], errs = [], warns = [];
 const banks = [['soc', soc], ['sci', sci]];
@@ -17,6 +18,8 @@ for (const [, b] of banks) {
   for (const [kp, level, src, { kind, body }] of b.ITEMS) {
     count[kp] = (count[kp] ?? 0) + 1;
     const id = `${kp}-${count[kp]}`;
+    if (WHY[id]) body.why = WHY[id]; else errs.push(`${id}：tools/quiz-bank/why.mjs 沒有這題的解析`);
+    if (body.why.length < 30) errs.push(`${id}：解析太短，要說明為什麼，不能只寫答案`);
     items.push({ id, kp, level, src, kind, body });
     if (!kpIds.has(kp)) errs.push(`${id}：沒有這個知識點`);
     if (!src) errs.push(`${id}：沒寫出處`);
@@ -96,6 +99,13 @@ ${items.map((i) => `  (${q(i.id)}, ${q(i.kp)}, ${q(i.kind)}, ${i.level}, ${j(i.b
 on conflict (id) do update set kp = excluded.kp, kind = excluded.kind, level = excluded.level, body = excluded.body,
   src = excluded.src, updated_at = now()
   where public.quiz_item.status = 'draft';
+
+-- 解析改寫過：審過、上架的題也換上新解析（只換解析，不影響改分；後台改過的題 ver>1 不動）
+update public.quiz_item i set body = jsonb_set(i.body, '{why}', to_jsonb(v.why)), updated_at = now()
+from (values
+${items.map((i) => `  (${q(i.id)}, ${q(i.body.why)})`).join(',\n')}
+) v(id, why)
+where i.id = v.id and i.ver = 1 and i.body->>'why' is distinct from v.why;
 `;
 writeFileSync(new URL('../supabase/park_quiz_bank.sql', import.meta.url), sql);
 console.log('寫好 supabase/park_quiz_bank.sql');
