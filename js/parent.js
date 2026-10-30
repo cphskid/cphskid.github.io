@@ -63,15 +63,16 @@ function next(code) {
   if (!st.linked && code === 'link') return '按上面的「拿給爸媽看」';
   if (!st.linked && code !== 'app') return '和爸媽連起來之後就能做';
   if (code === 'link') return `已經和 ${st.parents.map(esc).join('、')} 連起來了`;
-  if (code === 'view') return '請爸媽打開後台，看看你的冒險';
-  if (code === 'sticker') return '請爸媽在後台送你一張貼紙';
+  const done = st.tasks.find((t) => t.code === code)?.done;
+  if (code === 'view') return done ? '爸媽看過了，拿到 100 時光幣' : '請爸媽打開後台，看看你的冒險';
+  if (code === 'sticker') return done ? '收到貼紙了！親子長椅在寵物島的佈置裡' : '請爸媽在後台送你一張貼紙';
   if (code === 'goal') {
     if (!st.goal) return '請爸媽在後台幫你訂這週的目標';
     const s = st.stats ?? {};
     const now = { days3: `已經 ${s.days ?? 0} 天`, stamp2: `已經 ${s.stamps ?? 0} 個`, min60: `已經 ${s.minutes ?? 0} 分鐘` }[st.goal.code] ?? '';
     return st.goal.met ? `「${esc(st.goal.name)}」達成了！` : `這週目標：${esc(st.goal.name)}（${now}）`;
   }
-  if (code === 'app') return '按這裡看怎麼做';
+  if (code === 'app') return done ? '已經放到桌面了' : '按這裡看怎麼做';
   return '';
 }
 
