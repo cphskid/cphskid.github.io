@@ -287,9 +287,9 @@ async function paintPapers(box) {
   box.innerHTML = `<section class="panel"><div class="tablewrap"><table class="qt-papers"><thead><tr><th>卷</th><th>出卷日</th><th>題數</th><th>寫完</th><th>平均</th><th></th></tr></thead><tbody>
     ${list.map((p) => {
       const done = p.kids.filter((k) => k.done), avg = done.length ? Math.round(done.reduce((s, k) => s + k.score, 0) / done.length) : null;
-      return `<tr><td><b>${esc(p.title)}</b><br><small>${p.kids.map((k) => `${esc(k.nickname)}${k.done ? ` ${k.score}` : k.opened ? ' 寫到一半' : ' 還沒開'}`).join('、')}</small></td>
+      return `<tr${p.readonly ? ' class="qt-ro"' : ''}><td><b>${esc(p.title)}</b>${p.readonly ? `<span class="tag">學校班「${esc(p.from ?? '')}」${esc(p.by ?? '')}出的・只能看</span>` : ''}<br><small>${p.kids.map((k) => `${esc(k.nickname)}${k.done ? ` ${k.score}` : k.opened ? ' 寫到一半' : ' 還沒開'}`).join('、')}</small></td>
         <td>${date(p.at)}</td><td>${p.n}</td><td>${done.length}/${p.kids.length}</td><td>${avg ?? '—'}</td>
-        <td><button class="btn small" data-rep="${p.id}">看報告</button> <button class="ghost small danger" data-hide="${p.id}" title="還沒寫的孩子就看不到了">收回</button></td></tr>`;
+        <td><button class="btn small" data-rep="${p.id}">看報告</button> ${p.readonly ? '' : `<button class="ghost small danger" data-hide="${p.id}" title="還沒寫的孩子就看不到了">收回</button>`}</td></tr>`;
     }).join('')}</tbody></table></div></section>`;
   $$('[data-rep]', box).forEach((b) => { b.onclick = () => { sub = 'report:' + b.dataset.rep; paint(); }; });
   $$('[data-hide]', box).forEach((b) => {
@@ -305,7 +305,7 @@ async function paintPapers(box) {
 // =============================================================================
 let repKid = null;
 async function paintReport(box, paperId) {
-  const [r] = await Promise.all([quiz.report(paperId), load(true)]);
+  const [r] = await Promise.all([quiz.report(paperId, ctx.active), load(true)]);
   const kids = r.kids;
   if (!kids.some((k) => k.id === repKid)) repKid = (kids.find((k) => k.done) ?? kids[0])?.id;
   const k = kids.find((x) => x.id === repKid);

@@ -483,34 +483,56 @@ end;
 $$;
 
 -- 這個班出過的卷，每個孩子做到哪
+-- 出過的卷。家庭班另外列出：自己孩子在學校班寫過的卷（只能看；2026-10-30 Chuck 定：家長看得到老師的卷、老師看不到家長的）
+create or replace function public.quiz_is_home(p_code text)
+returns boolean language sql stable security definer set search_path = public, pg_temp as $$
+  select coalesce((select kind = 'home' from public.park_class_settings where class_code = p_code), false);
+$$;
+
 create or replace function public.park_quiz_papers(p_code text)
 returns jsonb language plpgsql stable security definer set search_path = public, pg_temp as $$
+declare v_home boolean := public.quiz_is_home(p_code);
 begin
   perform public.quiz_require_class(p_code);
   return coalesce((
     select jsonb_agg(jsonb_build_object(
              'id', p.id, 'title', p.title, 'n', p.n, 'by', p.by_name, 'at', p.created_at,
+             'readonly', p.class_code <> p_code,
+             'from', case when p.class_code <> p_code then (select c.name from public.classes c where c.code = p.class_code) end,
              'kids', (select jsonb_agg(jsonb_build_object('id', k.student, 'nickname', st.nickname,
                                                           'opened', t.opened_at, 'done', t.submitted_at, 'score', t.score,
                                                           'coins', coalesce(t.coins, 0), 'fixed', t.fixed_at) order by st.nickname)
-                        from (select distinct s.student from public.quiz_slot s where s.paper = p.id) k
+                        from (select distinct s.student from public.quiz_slot s where s.paper = p.id
+                                and (p.class_code = p_code
+                                     or s.student in (select m.student_id from public.park_class_members m where m.class_code = p_code))) k
                         join public.students st on st.id = k.student
                         left join public.quiz_take t on t.paper = p.id and t.student = k.student))
            order by p.created_at desc)
-      from public.quiz_paper p where p.class_code = p_code and p.hidden_at is null), '[]');
+      from public.quiz_paper p
+     where p.hidden_at is null
+       and (p.class_code = p_code
+            or (v_home and not public.quiz_is_home(p.class_code)
+                and exists (select 1 from public.quiz_slot s join public.park_class_members m on m.student_id = s.student
+                             where s.paper = p.id and m.class_code = p_code)))), '[]');
 end;
 $$;
 
 -- 一張卷的分析：每個孩子每一題怎麼答（含題目、答案、解析）。網頁再對照遊戲紀錄。
-create or replace function public.park_quiz_report(p_paper uuid)
+-- p_via＝從哪個家庭班來看學校班的卷：只看得到這個家庭班裡的孩子
+drop function if exists public.park_quiz_report(uuid);
+create or replace function public.park_quiz_report(p_paper uuid, p_via text default null)
 returns jsonb language plpgsql stable security definer set search_path = public, pg_temp as $$
-declare v_p public.quiz_paper;
+declare v_p public.quiz_paper; v_only text;
 begin
   select * into v_p from public.quiz_paper where id = p_paper;
   if v_p.id is null then raise exception '找不到這張卷'; end if;
-  perform public.quiz_require_class(v_p.class_code);
+  perform public.park_require_staff();
+  if public.is_teacher_of(v_p.class_code) then v_only := null;
+  elsif p_via is not null and public.is_teacher_of(p_via) and public.quiz_is_home(p_via) and not public.quiz_is_home(v_p.class_code) then v_only := p_via;
+  else raise exception '只能看自己的班';
+  end if;
   return jsonb_build_object(
-    'id', v_p.id, 'title', v_p.title, 'n', v_p.n, 'at', v_p.created_at, 'class', v_p.class_code,
+    'id', v_p.id, 'title', v_p.title, 'n', v_p.n, 'at', v_p.created_at, 'class', v_p.class_code, 'readonly', v_only is not null,
     'kids', coalesce((
       select jsonb_agg(jsonb_build_object(
                'id', k.student, 'nickname', st.nickname, 'score', t.score, 'done', t.submitted_at, 'fixed', t.fixed_at,
@@ -526,7 +548,8 @@ begin
                            left join public.quiz_answer f on f.paper = s.paper and f.student = s.student and f.pos = s.pos and f.fix
                           where s.paper = p_paper and s.student = k.student))
              order by st.nickname)
-        from (select distinct s.student from public.quiz_slot s where s.paper = p_paper) k
+        from (select distinct s.student from public.quiz_slot s where s.paper = p_paper
+                and (v_only is null or s.student in (select m.student_id from public.park_class_members m where m.class_code = v_only))) k
         join public.students st on st.id = k.student
         left join public.quiz_take t on t.paper = p_paper and t.student = k.student), '[]'));
 end;
@@ -893,7 +916,7 @@ revoke all on function
   public.quiz_coins(int, int), public.quiz_played(uuid), public.quiz_game(uuid), public.quiz_require_class(text),
   public.quiz_earned_stamps(uuid),
   public.park_quiz_bank(text), public.park_quiz_class(text), public.park_quiz_create(text, text, jsonb),
-  public.park_quiz_add_own(text, text, text, jsonb), public.park_quiz_papers(text), public.park_quiz_report(uuid),
+  public.park_quiz_add_own(text, text, text, jsonb), public.park_quiz_papers(text), public.park_quiz_report(uuid, text),
   public.park_quiz_hide(uuid), public.park_quiz_mark(text, uuid, text, boolean), public.park_quiz_recommend(text, uuid, text, text),
   public.park_quiz_mine(), public.park_quiz_open(uuid), public.park_quiz_submit(uuid, jsonb), public.park_quiz_fix(uuid, jsonb),
   public.park_quiz_flag(uuid, int, text), public.park_quiz_admin_bank(), public.park_quiz_review(text, text, jsonb, text),
@@ -901,10 +924,11 @@ revoke all on function
 from public, anon;
 grant execute on function
   public.park_quiz_bank(text), public.park_quiz_class(text), public.park_quiz_create(text, text, jsonb),
-  public.park_quiz_add_own(text, text, text, jsonb), public.park_quiz_papers(text), public.park_quiz_report(uuid),
+  public.park_quiz_add_own(text, text, text, jsonb), public.park_quiz_papers(text), public.park_quiz_report(uuid, text),
   public.park_quiz_hide(uuid), public.park_quiz_mark(text, uuid, text, boolean), public.park_quiz_recommend(text, uuid, text, text),
   public.park_quiz_mine(), public.park_quiz_open(uuid), public.park_quiz_submit(uuid, jsonb), public.park_quiz_fix(uuid, jsonb),
   public.park_quiz_flag(uuid, int, text), public.park_quiz_admin_bank(), public.park_quiz_review(text, text, jsonb, text),
   public.park_quiz_flag_done(bigint, boolean)
 to authenticated;
 revoke all on function public.quiz_earned_stamps(uuid), public.quiz_played(uuid), public.quiz_game(uuid) from authenticated;
+revoke all on function public.quiz_is_home(text) from public, anon, authenticated;

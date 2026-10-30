@@ -383,7 +383,7 @@ export const quiz = {
   create:    (code, title, plan) => call('park_quiz_create', { p_code: code, p_title: title, p_plan: plan }),
   addOwn:    (code, kp, kind, body) => call('park_quiz_add_own', { p_code: code, p_kp: kp, p_kind: kind, p_body: body }),
   papers:    (code) => call('park_quiz_papers', { p_code: code }),
-  report:    (paper) => call('park_quiz_report', { p_paper: paper }),
+  report:    (paper, via) => call('park_quiz_report', { p_paper: paper, p_via: via ?? null }),
   hide:      (paper) => call('park_quiz_hide', { p_paper: paper }),
   mark:      (code, student, kp, on = true) => call('park_quiz_mark', { p_code: code, p_student: student, p_kp: kp, p_on: on }),
   recommend: (code, student, body, zone) => call('park_quiz_recommend', { p_code: code, p_student: student, p_body: body, p_zone: zone }),

@@ -480,3 +480,4 @@ label.chip input{width:18px;height:18px;margin:0;flex:none;accent-color:var(--wo
 .qt-pl-h{margin:14px 0 6px}
 .qt-places .chip.none{opacity:.5}
 .qt-pl-title{margin:16px 0 4px;font-family:var(--f-disp);color:var(--wood)}
+.qt-papers .tag{margin-left:6px;font-size:12px;background:#e4ecff;color:#3d4a80;border-radius:6px;padding:2px 6px;white-space:normal}
