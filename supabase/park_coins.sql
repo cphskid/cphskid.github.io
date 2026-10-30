@@ -665,6 +665,12 @@ returns jsonb language sql stable security definer set search_path = public, pg_
     from public.park_student_furniture where student_id = public.current_student_id();
 $$;
 
+-- 從桌面捷徑打開樂園（js/install.js 看到是捷徑開的才叫）：第一次送 50 時光幣，之後回 0
+create or replace function public.park_app_home()
+returns int language sql security definer set search_path = public, pg_temp as $$
+  select public.park_coin_grant(public.current_student_id(), 'app:home', 50, null, '把樂園加到桌面');
+$$;
+
 -- -----------------------------------------------------------------------------
 -- 6. 權限
 -- -----------------------------------------------------------------------------
@@ -676,10 +682,10 @@ revoke all on function
   public.park_daily_places(), public.park_daily_can(uuid, text), public.park_daily_island(uuid, text, timestamptz, timestamptz),
   public.park_daily_pick(uuid, date), public.park_daily_week_days(uuid),
   public.park_coins_me(), public.park_coins_seen(), public.park_daily_claim(text), public.park_shop(),
-  public.park_shop_buy(text, text), public.park_my_furniture(), public.park_class_board(text, text)
+  public.park_shop_buy(text, text), public.park_my_furniture(), public.park_class_board(text, text), public.park_app_home()
   from public, anon, authenticated;
 grant execute on function
   public.park_coins_me(), public.park_coins_seen(), public.park_daily_claim(text), public.park_shop(),
-  public.park_shop_buy(text, text), public.park_my_furniture(), public.park_class_board(text, text)
+  public.park_shop_buy(text, text), public.park_my_furniture(), public.park_class_board(text, text), public.park_app_home()
   to authenticated;
 grant execute on function public.park_shop() to anon;

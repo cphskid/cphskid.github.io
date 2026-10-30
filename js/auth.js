@@ -362,6 +362,7 @@ export const coins = {
   buy:       (cat, code) => ccall('park_shop_buy', { p_cat: cat, p_code: code }),
   furniture: () => ccall('park_my_furniture'),
   board:     (code, kind) => ccall('park_class_board', { p_code: code, p_kind: kind }),
+  home:      () => ccall('park_app_home'),
 };
 
 // ---------- 新手冒險手冊（supabase/park_starter.sql） ----------

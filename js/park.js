@@ -8,6 +8,7 @@ import * as shop from './shop.js';
 import * as starter from './starter.js';
 import * as repair from './repair.js';
 import * as news from './news.js';
+import * as install from './install.js';
 import { facilityStatus, db, wish, quiz } from './auth.js';
 import * as snd from './audio.js';
 import * as playlog from './playlog.js';
@@ -186,6 +187,11 @@ shop.init({ me: () => account.current(), toast: (t) => showToast(t, 4200), go: g
 starter.init({
   me: () => account.current(), toast: (t) => showToast(t, 4200), go: goTo,
   isle: (code) => islesLayer.querySelector(`.isle[data-zone="${park.facilities.find((f) => f.code === code)?.zone}"]`),
+});
+// ---------- 加到桌面（js/install.js）：齒輪選單＋第二天起在地圖上提醒一次 ----------
+install.init({
+  me: () => account.current(), toast: (t) => showToast(t, 4200), coins: () => shop.load(account.current()),
+  free: () => !select.hidden && veil.hidden && ['#pass', '#acct', '#petroom', '#shop', '#wardrobe'].every((s) => $(s).hidden),
 });
 let travReady = Promise.resolve();
 let travAsked = false;
@@ -733,6 +739,7 @@ function onAccountChange(w) {
   if (w.kind !== 'student') { traveller.close(); shop.close(); }   // 旅人在 account 讀「我是誰」時一起讀好了
   shop.load(w);
   starter.load(w);
+  install.load(w);
   news.load();
   playlog.active(w.kind === 'student' && !select.hidden);
   if (w.kind === 'guest' && !select.hidden) { history.replaceState(null, '', location.pathname); showTitle(); }
@@ -742,6 +749,7 @@ travReady = meReady;
 await Promise.all([syncFacilities(), pet.load()]);
 shop.load(me);
 starter.load(me);
+install.load(me);
 news.load();
 paintQuiz();
 if (route && me.kind === 'guest') {

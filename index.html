@@ -6,6 +6,14 @@
 <title>時空冒險樂園</title>
 <meta name="description" content="時空冒險樂園：浮在海上的冒險樂園，每座島都是一個遊戲。">
 <link rel="icon" href="img/l-02.webp">
+<!-- 加到桌面（js/install.js）：Android/電腦用 manifest，iPhone 用 apple-touch-icon -->
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="img/app/icon-180.png">
+<meta name="theme-color" content="#2f9fd8">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="時空樂園">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Noto+Sans+TC:wght@500;700;900&display=swap">
@@ -23,6 +31,7 @@
 <link rel="modulepreload" href="js/pet.js">
 <link rel="modulepreload" href="js/traveller.js">
 <link rel="modulepreload" href="js/shop.js">
+<link rel="modulepreload" href="js/install.js">
 <link rel="modulepreload" href="js/repair.js">
 <link rel="modulepreload" href="js/news.js">
 <link rel="modulepreload" href="js/audio.js">
@@ -92,6 +101,7 @@
   <button id="gear-btn" type="button" aria-label="設定" aria-expanded="false"><img src="img/ui/gear.webp" alt=""><i class="dot" hidden></i></button>
   <div id="gear-menu" hidden>
   <button id="snd-btn" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/><path class="w1" d="M16 9.5a3.5 3.5 0 0 1 0 5"/><path class="w2" d="M18.5 7a7 7 0 0 1 0 10"/><path class="mute" d="M16 9l6 6M22 9l-6 6"/></svg><b>聲音全開</b></button>
+  <button id="a2hs-btn" type="button" hidden>📲<b>加到桌面</b></button>
   <button id="fb-btn" type="button" data-pfb aria-label="問題回報">💬<b>問題回報</b><i class="dot" hidden></i></button>
   <button id="out-btn" type="button" hidden>🚪<b>登出</b></button>
   <button id="ver-btn" type="button" data-park-changelog aria-label="版號與更新說明">ℹ️<b data-park-version data-prefix="版本 ">版本</b></button>
