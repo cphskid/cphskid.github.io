@@ -167,7 +167,7 @@ function renderLogin(note = '') {
       : pw.length < 8 ? `密碼至少要 8 個字（現在 ${pw.length} 個）` : !name ? '請填孩子怎麼叫你' : !el.adult.checked ? '請勾選「我是家長，年滿 18 歲」' : '';
     if (bad) { msg.textContent = bad; msg.hidden = false; return; }
     const b = $('button', su); b.disabled = true; b.textContent = '建立中…';
-    try { who = await auth.staffSignUp(email, pw, name, true); await start(); }
+    try { who = await auth.staffSignUp(email, pw, name, true, 'parent'); await start(); }
     catch (err) { msg.textContent = err.message; msg.hidden = false; b.disabled = false; b.textContent = '建立帳號'; }
   });
   const f = $('#login');
