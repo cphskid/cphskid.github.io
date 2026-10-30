@@ -168,6 +168,46 @@ returns boolean language sql stable security definer set search_path = public, p
   );
 $$;
 
+-- 2026-10-30 權限盤點（Chuck 同意）：改「整個帳號」的事（重設密碼、改暱稱、換主要班級）
+-- 只有管理員、監護人、主要班級的老師可以做；其他班的老師只能看、只能管自己的班。
+-- 監護人（park_guardians、park_is_guardian）在 park_parent.sql，要先套那份。
+create or replace function public.park_can_manage_account(p_student uuid)
+returns boolean language sql stable security definer set search_path = public, pg_temp as $$
+  select public.is_admin() or public.park_is_guardian(p_student) or exists (
+    select 1 from public.students s where s.id = p_student and s.class_code is not null and public.is_teacher_of(s.class_code)
+  );
+$$;
+
+-- 監護人看孩子加入的所有班（誰開的、哪一個是主要班級），可以從任何一班移出
+create or replace function public.park_guardian_classes(p_student uuid)
+returns jsonb language plpgsql stable security definer set search_path = public, pg_temp as $$
+begin
+  if not (public.is_admin() or public.park_is_guardian(p_student)) then raise exception '只有綁定的家長可以看'; end if;
+  return coalesce((select jsonb_agg(jsonb_build_object(
+            'code', c.code, 'name', c.name, 'kind', coalesce(st.kind, 'school'),
+            'owner', coalesce(t.display_name, ''), 'mine', c.owner = auth.uid(),
+            'primary', s.class_code = c.code, 'joined_at', m.joined_at) order by m.joined_at)
+     from public.park_class_members m
+     join public.classes c on c.code = m.class_code
+     join public.students s on s.id = m.student_id
+     left join public.park_class_settings st on st.class_code = c.code
+     left join public.teachers t on t.user_id = c.owner
+    where m.student_id = p_student), '[]');
+end;
+$$;
+
+-- 帳號被別人改了，寄一封信給孩子（第一次登入自動打開），孩子才知道
+create or replace function public.park_account_letter(p_student uuid, p_title text, p_body text)
+returns void language plpgsql security definer set search_path = public, pg_temp as $$
+declare v_by text;
+begin
+  select coalesce(nullif(t.display_name, ''), '老師') into v_by from public.teachers t where t.user_id = auth.uid();
+  insert into public.park_news (kinds, title, body, classes, students, sign, important, ends_on, author, author_name)
+  values (array['letter'], left(p_title, 40), left(replace(p_body, '{by}', coalesce(v_by, '管理員')), 400), null, array[p_student],
+          coalesce(v_by, '管理員'), true, public.park_today() + 30, auth.uid(), coalesce(v_by, '管理員'));
+end;
+$$;
+
 -- 寫一筆操作紀錄
 create or replace function public.park_log(p_action text, p_class text, p_target text, p_detail jsonb default '{}')
 returns void language sql security definer set search_path = public, pg_temp as $$
@@ -364,6 +404,8 @@ begin
            'id', s.id, 'login_id', s.login_id, 'nickname', s.nickname,
            'primary', s.class_code = v_code,
            'primary_class', s.class_code,
+           'manage', public.park_can_manage_account(s.id),
+           'guardian', public.park_is_guardian(s.id),
            'joined_at', m.joined_at,
            'last_active', la.last_active,
            'locked', coalesce(s.locked_until > now(), false))
@@ -455,7 +497,9 @@ declare v_login text; v_nick text; v_bad text;
 begin
   select s.login_id, s.nickname into v_login, v_nick from public.students s where s.id = p_student;
   if v_login is null then raise exception '找不到這個學生'; end if;
-  if not public.park_teaches_student(p_student) then raise exception '這不是你班上的學生'; end if;
+  if not public.park_can_manage_account(p_student) then
+    raise exception '只有他主要班級的老師、綁定的家長或管理員可以改密碼';
+  end if;
   v_bad := public.password_problem(p_password, v_login);
   if v_bad is not null then raise exception '%', v_bad; end if;
   update public.students
@@ -463,6 +507,8 @@ begin
          failed_attempts = 0, locked_until = null
    where id = p_student;
   perform public.park_log('reset_password', null, v_nick || '（' || v_login || '）');
+  perform public.park_account_letter(p_student, '你的密碼被改過了',
+    '{by}剛剛幫你重設了密碼，新密碼請問{by}。如果你不知道這件事，請馬上告訴爸媽或老師。');
 end;
 $$;
 
@@ -476,7 +522,9 @@ begin
   select s.nickname, s.login_id, s.class_code into v_old, v_login, v_code
     from public.students s where s.id = p_student;
   if v_login is null then raise exception '找不到這個學生'; end if;
-  if not public.park_teaches_student(p_student) then raise exception '這不是你班上的學生'; end if;
+  if not public.park_can_manage_account(p_student) then
+    raise exception '只有他主要班級的老師、綁定的家長或管理員可以改暱稱';
+  end if;
   if public.nickname_problem(v_nick) is not null then
     raise exception '%', public.nickname_problem(v_nick);
   end if;
@@ -486,6 +534,10 @@ begin
   ) then raise exception '他的主要班級已經有人叫這個暱稱了'; end if;
   update public.students set nickname = v_nick where id = p_student;
   perform public.park_log('set_nickname', null, v_old || ' → ' || v_nick || '（' || v_login || '）');
+  if v_old is distinct from v_nick then
+    perform public.park_account_letter(p_student, '你的暱稱改了',
+      '{by}把你的暱稱從「' || coalesce(v_old, '') || '」改成「' || v_nick || '」。');
+  end if;
   return v_nick;
 end;
 $$;
@@ -498,7 +550,7 @@ declare
   v_code text := upper(btrim(coalesce(p_code, '')));
   v_primary text; v_nick text; v_login text; v_next text;
 begin
-  if not public.is_teacher_of(v_code) then raise exception '這不是你的班'; end if;
+  if not public.is_teacher_of(v_code) and not public.park_is_guardian(p_student) then raise exception '這不是你的班'; end if;   -- 監護人可以把孩子移出任何班
   select s.class_code, s.nickname, s.login_id into v_primary, v_nick, v_login
     from public.students s where s.id = p_student;
   if v_login is null then raise exception '找不到這個學生'; end if;
@@ -534,6 +586,9 @@ declare
   v_r jsonb; v_login text;
 begin
   if not public.is_teacher_of(v_code) then raise exception '這不是你的班'; end if;
+  if not public.park_can_manage_account(p_student) then
+    raise exception '只有他現在主要班級的老師、綁定的家長或管理員可以換主要班級';
+  end if;
   v_r := public.park_move_primary(p_student, v_code);
   select s.login_id into v_login from public.students s where s.id = p_student;
   perform public.park_log('set_primary', v_code, (v_r ->> 'nickname') || '（' || v_login || '）',
@@ -659,3 +714,8 @@ grant execute on function
   public.park_admin_facilities(), public.park_admin_set_facility(text, text, int, int, text[]),
   public.park_admin_classes(), public.park_admin_audit(int)
   to authenticated;
+
+-- 2026-10-30 權限盤點：內部用，只給上面的函式呼叫
+revoke all on function public.park_can_manage_account(uuid), public.park_account_letter(uuid, text, text) from public, anon, authenticated;
+revoke all on function public.park_guardian_classes(uuid) from public, anon;
+grant execute on function public.park_guardian_classes(uuid) to authenticated;

@@ -483,7 +483,8 @@ end;
 $$;
 
 -- 這個班出過的卷，每個孩子做到哪
--- 出過的卷。家庭班另外列出：自己孩子在學校班寫過的卷（只能看；2026-10-30 Chuck 定：家長看得到老師的卷、老師看不到家長的）
+-- 出過的卷。另外列出：這個班裡「我是監護人」的孩子在別的班寫過的卷（只能看；2026-10-30 Chuck 定：家長看得到老師的卷、
+-- 老師看不到家長的；監護人關係見 park_parent.sql，補習班開的家庭班不是監護人就看不到）
 create or replace function public.quiz_is_home(p_code text)
 returns boolean language sql stable security definer set search_path = public, pg_temp as $$
   select coalesce((select kind = 'home' from public.park_class_settings where class_code = p_code), false);
@@ -491,7 +492,6 @@ $$;
 
 create or replace function public.park_quiz_papers(p_code text)
 returns jsonb language plpgsql stable security definer set search_path = public, pg_temp as $$
-declare v_home boolean := public.quiz_is_home(p_code);
 begin
   perform public.quiz_require_class(p_code);
   return coalesce((
@@ -504,21 +504,21 @@ begin
                                                           'coins', coalesce(t.coins, 0), 'fixed', t.fixed_at) order by st.nickname)
                         from (select distinct s.student from public.quiz_slot s where s.paper = p.id
                                 and (p.class_code = p_code
-                                     or s.student in (select m.student_id from public.park_class_members m where m.class_code = p_code))) k
+                                     or (public.park_is_guardian(s.student)
+                                         and s.student in (select m.student_id from public.park_class_members m where m.class_code = p_code)))) k
                         join public.students st on st.id = k.student
                         left join public.quiz_take t on t.paper = p.id and t.student = k.student))
            order by p.created_at desc)
       from public.quiz_paper p
      where p.hidden_at is null
        and (p.class_code = p_code
-            or (v_home and not public.quiz_is_home(p.class_code)
-                and exists (select 1 from public.quiz_slot s join public.park_class_members m on m.student_id = s.student
-                             where s.paper = p.id and m.class_code = p_code)))), '[]');
+            or exists (select 1 from public.quiz_slot s join public.park_class_members m on m.student_id = s.student
+                        where s.paper = p.id and m.class_code = p_code and public.park_is_guardian(s.student)))), '[]');
 end;
 $$;
 
 -- 一張卷的分析：每個孩子每一題怎麼答（含題目、答案、解析）。網頁再對照遊戲紀錄。
--- p_via＝從哪個家庭班來看學校班的卷：只看得到這個家庭班裡的孩子
+-- p_via＝從自己的哪個班來看別班的卷：只看得到那個班裡、自己是監護人的孩子
 drop function if exists public.park_quiz_report(uuid);
 create or replace function public.park_quiz_report(p_paper uuid, p_via text default null)
 returns jsonb language plpgsql stable security definer set search_path = public, pg_temp as $$
@@ -528,7 +528,9 @@ begin
   if v_p.id is null then raise exception '找不到這張卷'; end if;
   perform public.park_require_staff();
   if public.is_teacher_of(v_p.class_code) then v_only := null;
-  elsif p_via is not null and public.is_teacher_of(p_via) and public.quiz_is_home(p_via) and not public.quiz_is_home(v_p.class_code) then v_only := p_via;
+  elsif p_via is not null and public.is_teacher_of(p_via) and exists (
+          select 1 from public.quiz_slot s join public.park_class_members m on m.student_id = s.student
+           where s.paper = p_paper and m.class_code = p_via and public.park_is_guardian(s.student)) then v_only := p_via;
   else raise exception '只能看自己的班';
   end if;
   return jsonb_build_object(
@@ -549,7 +551,8 @@ begin
                           where s.paper = p_paper and s.student = k.student))
              order by st.nickname)
         from (select distinct s.student from public.quiz_slot s where s.paper = p_paper
-                and (v_only is null or s.student in (select m.student_id from public.park_class_members m where m.class_code = v_only))) k
+                and (v_only is null or (public.park_is_guardian(s.student)
+                                        and s.student in (select m.student_id from public.park_class_members m where m.class_code = v_only)))) k
         join public.students st on st.id = k.student
         left join public.quiz_take t on t.paper = p_paper and t.student = k.student), '[]'));
 end;

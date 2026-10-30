@@ -221,7 +221,10 @@ function openStaff(tab = 'login') {
     <form class="form" novalidate>
       <label>email<input name="email" type="email" autocomplete="email" autocapitalize="off" spellcheck="false" placeholder="you@school.edu.tw"></label>
       <label>密碼<input name="pw" type="password" autocomplete="${reg ? 'new-password' : 'current-password'}" placeholder="至少 8 個字"></label>
-      ${reg ? `<label>你的稱呼<input name="name" maxlength="16" autocomplete="off" placeholder="學生會看到，例如 王老師、小明媽媽"></label>
+      ${reg ? `<fieldset class="role"><legend>我是</legend>
+        <label class="check"><input type="radio" name="role" value="teacher">老師（帶一整班）</label>
+        <label class="check"><input type="radio" name="role" value="parent">家長（看自己的孩子）</label></fieldset>
+      <label>你的稱呼<input name="name" maxlength="16" autocomplete="off" placeholder="學生會看到，例如 王老師、小明媽媽"></label>
       <label class="check"><input name="adult" type="checkbox"> 我是老師或家長，年滿 18 歲</label>` : ''}
       <p class="msg" hidden></p>
       <button class="btn go" type="submit">${reg ? '建立開班帳號' : '登入'}</button>
@@ -238,11 +241,12 @@ function openStaff(tab = 'login') {
   onSubmit(f, () => {
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v('email'))) return 'email 看起來不太對，再檢查一下';
     if (f.elements.pw.value.length < 8) return `密碼至少要 8 個字（現在 ${f.elements.pw.value.length} 個）`;
+    if (reg && !f.elements.role.value) return '選一下你是老師還是家長';
     if (reg && !v('name')) return '填一下你的稱呼，學生會看到';
     if (reg && !f.elements.adult.checked) return '請勾選「我是老師或家長，年滿 18 歲」';
     return null;
   }, async () => {
-    if (reg) await auth.staffSignUp(v('email'), f.elements.pw.value, v('name'), true);
+    if (reg) await auth.staffSignUp(v('email'), f.elements.pw.value, v('name'), true, f.elements.role.value);
     else await auth.staffLogin(v('email'), f.elements.pw.value);
     await loggedIn();
     location.href = 'teacher.html';   // 老師登入後直接進後台

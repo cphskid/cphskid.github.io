@@ -145,13 +145,24 @@ export async function staffLogin(email, password) {
 }
 // 不走 auth.signUp（會寄確認信，寄信額度一小時只有兩封）：register_teacher 直接開好帳號，再登入。
 // register_teacher 用匿名身分數「同一台裝置開了幾個帳號」，所以要先有身分。
-export async function staffSignUp(email, password, name, adult) {
+export async function staffSignUp(email, password, name, adult, role = null) {
   await ensureStudentSession();
   const { error } = await db.rpc('register_teacher', {
     p_email: email.trim(), p_password: password, p_display_name: name.trim(), p_adult: adult,
   });
   check(error);
-  return staffLogin(email, password);
+  const r = await staffLogin(email, password);
+  if (role) await db.rpc('park_set_staff_role', { p_role: role });   // 資料庫還沒裝這個函式也不影響註冊
+  return r;
+}
+// 開班帳號的身分（老師／家長）：null＝還沒選過
+export async function staffRole() {
+  const { data, error } = await db.rpc('park_my_role');
+  return error ? null : data;
+}
+export async function setStaffRole(role) {
+  const { error } = await db.rpc('park_set_staff_role', { p_role: role });
+  check(error);
 }
 export async function claimFirstAdmin() {
   const { error } = await db.rpc('claim_first_admin');
@@ -197,6 +208,7 @@ export const teacher = {
   resetPassword:  (id, pw) => call('park_reset_password', { p_student: id, p_password: pw }),
   setNickname:    (id, nick) => call('park_set_student_nickname', { p_student: id, p_nickname: nick }),
   removeStudent:  (code, id) => call('park_remove_from_class', { p_code: code, p_student: id }),
+  guardianClasses: (id) => call('park_guardian_classes', { p_student: id }),
   setPrimary:     (code, id) => call('park_teacher_set_primary', { p_code: code, p_student: id }),
   facilities:     () => call('park_facility_list'),
   // 遊玩紀錄（park_playlog.sql）：全班每個人最後在玩什麼、一位學生的時間軸

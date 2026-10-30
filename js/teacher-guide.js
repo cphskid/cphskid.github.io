@@ -108,7 +108,7 @@ export function renderGuide(view, { onTour }) {
 
   <section class="panel guide">
     <h2><img class="hi" src="img/admin/settings.webp" alt="">常見問題</h2>
-    <details><summary>孩子忘記密碼？</summary><p>我的班級 → 全班總覽 → 那個孩子的「重設密碼」。</p></details>
+    <details><summary>孩子忘記密碼？</summary><p>我的班級 → 全班總覽 → 那個孩子的「重設密碼」。為了安全，只有孩子<b>主要班級</b>的老師、綁定的家長或管理員可以改密碼和暱稱；孩子會收到一封信知道密碼被改過。</p></details>
     <details><summary>孩子已經在試玩班（或別的班）了，還能加入我的班嗎？</summary><p>可以。孩子到樂園「我的資料」輸入你的班級代碼就會多加入一個班，原本的進度都在。建議家長開一個「家庭班」，就看得到自己孩子的總覽和細節頁。</p></details>
     <details><summary>代碼流出去了？</summary><p>班級資料裡「換一組代碼」，班上的人都還在；或把「開放加入」關掉。</p></details>
     <details><summary>某座島孩子點不進去？</summary><p>看「開放哪些島」有沒有勾；還在施工中的島會顯示施工中。</p></details>

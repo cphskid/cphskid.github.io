@@ -163,7 +163,8 @@ async function start() {
   if (who.kind === 'student') return renderLogin('這台裝置現在登入的是學生（' + esc(who.nickname) + '）。要用老師帳號，請直接在下面登入，學生會被登出。');
   if (who.kind !== 'staff') return renderLogin();
   if (who.active === false) return renderLogin('這個帳號已經被管理員停用了。');
-  $('#who').innerHTML = `<span><b>${esc(who.display_name)}</b><small>${who.is_admin ? '管理員' : '老師／家長'}</small></span>`;
+  who.role = await auth.staffRole();   // 註冊時選的老師／家長；舊帳號是 null，照開的班猜
+  $('#who').innerHTML = `<span><b>${esc(who.display_name)}</b><small>${who.is_admin ? '管理員' : who.role === 'parent' ? '家長' : who.role === 'teacher' ? '老師' : '老師／家長'}</small></span>`;
   $('#who').hidden = false;
   paintHero();
   $('#logout').hidden = false;
@@ -184,7 +185,7 @@ $('#help').onclick = async () => {
 }
 // 頁首橫幅：管理員、老師、家長（開的全是家庭班）用不同的頭像
 function paintHero() {
-  const home = classes.length > 0 && classes.every((c) => c.kind === 'home');
+  const home = who.role ? who.role === 'parent' : classes.length > 0 && classes.every((c) => c.kind === 'home');
   const role = who.is_admin ? 'admin' : home ? 'parent' : 'teacher';
   $('#avatar').src = `img/admin/av-${role}.webp`;
   $('#hi').textContent = `${who.display_name}，你好`;
@@ -261,7 +262,7 @@ async function renderClasses() {
 }
 
 function classForm(c = {}) {
-  const kind = c.kind ?? 'school';
+  const kind = c.kind ?? (who.role === 'parent' ? 'home' : 'school');   // 家長開班預設家庭班
   return `<label>班級名稱<input name="name" maxlength="20" value="${esc(c.name ?? '')}" placeholder="例如 五年二班、小明家"></label>
     <label>類型<select name="kind">
       <option value="school" ${kind === 'school' ? 'selected' : ''}>學校班</option>
@@ -539,9 +540,11 @@ async function paintOverview(c) {
           ${s.locked ? `<span class="tag bad">${ico('st-locked')}密碼鎖住了</span>` : ''}</td>
         ${games.map((g) => cell(g, s)).join('')}
         <td class="ops"><button class="ghost small" data-tl="${s.id}">${ico('clock')}遊玩紀錄</button>
+          ${s.manage === false ? `<small class="tip" title="改密碼、改暱稱、換主要班級會影響他整個帳號，只有他主要班級的老師、綁定的家長或管理員可以做">密碼和暱稱由他主要班級的老師或家長管理</small>` : `
           <button class="ghost small" data-pw="${s.id}">${ico('reset-password')}重設密碼</button>
           <button class="ghost small" data-nick="${s.id}">${ico('edit')}改暱稱</button>
-          ${s.primary ? '' : `<button class="ghost small" data-primary="${s.id}">${ico('class')}設成主要班級</button>`}
+          ${s.primary ? '' : `<button class="ghost small" data-primary="${s.id}">${ico('class')}設成主要班級</button>`}`}
+          ${s.guardian ? `<button class="ghost small" data-gcls="${s.id}">${ico('class')}孩子的所有班</button>` : ''}
           <button class="ghost small danger" data-rm="${s.id}">${ico('delete')}移出</button></td></tr>`).join('')}
       </tbody></table></div>
     ${shown.length ? '' : `<div class="empty small"><img src="img/admin/tick-done.webp" alt=""><p>目前沒有需要注意的學生。</p></div>`}`;
@@ -556,6 +559,7 @@ async function paintOverview(c) {
   $$('[data-nick]', p).forEach((b) => { b.onclick = () => renameStudent(c, byId.get(b.dataset.nick)); });
   $$('[data-rm]', p).forEach((b) => { b.onclick = () => removeStudent(c, byId.get(b.dataset.rm)); });
   $$('[data-primary]', p).forEach((b) => { b.onclick = () => setPrimary(c, byId.get(b.dataset.primary)); });
+  $$('[data-gcls]', p).forEach((b) => { b.onclick = () => guardianClasses(byId.get(b.dataset.gcls)); });
 }
 
 // ---------- 遊玩紀錄（park_playlog.sql） ----------
@@ -778,6 +782,32 @@ function removeStudent(c, s) {
       toast(`${s.nickname} 移出了`);
       await renderClasses();
     },
+  });
+}
+// 監護人看孩子加入的每一個班（包括別人開的），可以把孩子移出
+async function guardianClasses(s) {
+  let list;
+  try { list = await auth.teacher.guardianClasses(s.id); } catch (err) { toast(err.message); return; }
+  ask({
+    title: `${s.nickname} 加入的班`,
+    body: `<p class="lead">你是 ${esc(s.nickname)} 綁定的家長，看得到他在每一個班，也可以把他移出不認識的班。</p>
+      <ul class="qt-gcls">${(list ?? []).map((g) => `<li><b>${esc(g.name || g.code)}</b>
+        <small>${g.kind === 'home' ? '家庭班' : '班級'}・${g.mine ? '你開的' : `開班：${esc(g.owner || '其他老師')}`}${g.primary ? '・<span class="tag">主要班級</span>' : ''}</small>
+        <button type="button" class="ghost small danger" data-gout="${esc(g.code)}">${ico('delete')}移出</button></li>`).join('') || '<li>還沒有加入任何班</li>'}</ul>
+      <p class="tip">移出只是離開那個班，帳號和遊戲紀錄都還在。</p>`,
+    ok: '好',
+    onOk: async () => { await renderClasses(); },
+  });
+  $$('[data-gout]', dlg).forEach((b) => {
+    b.onclick = async () => {
+      if (!b.dataset.sure) { b.dataset.sure = '1'; b.textContent = '確定移出？'; return; }
+      b.disabled = true;
+      try {
+        await auth.teacher.removeStudent(b.dataset.gout, s.id);
+        b.closest('li').innerHTML = `<s>${esc(b.closest('li').querySelector('b').textContent)}</s> <small>已移出</small>`;
+        toast(`${s.nickname} 移出了`);
+      } catch (err) { toast(err.message); b.disabled = false; }
+    };
   });
 }
 function exportCsv() {
