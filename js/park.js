@@ -9,6 +9,7 @@ import * as starter from './starter.js';
 import * as repair from './repair.js';
 import * as news from './news.js';
 import * as install from './install.js';
+import * as parent from './parent.js';
 import { facilityStatus, db, wish, quiz } from './auth.js';
 import * as snd from './audio.js';
 import * as playlog from './playlog.js';
@@ -192,6 +193,11 @@ starter.init({
 install.init({
   me: () => account.current(), toast: (t) => showToast(t, 4200), coins: () => shop.load(account.current()),
   free: () => !select.hidden && veil.hidden && ['#pass', '#acct', '#petroom', '#shop', '#wardrobe'].every((s) => $(s).hidden),
+});
+// ---------- 爸媽任務（js/parent.js）：功能列的信封 ----------
+parent.init({
+  me: () => account.current(), toast: (t) => showToast(t, 4200), coins: () => shop.load(account.current()),
+  pets: () => pet.load(),
 });
 let travReady = Promise.resolve();
 let travAsked = false;
@@ -740,6 +746,7 @@ function onAccountChange(w) {
   shop.load(w);
   starter.load(w);
   install.load(w);
+  parent.load(w);
   news.load();
   playlog.active(w.kind === 'student' && !select.hidden);
   if (w.kind === 'guest' && !select.hidden) { history.replaceState(null, '', location.pathname); showTitle(); }
@@ -750,6 +757,7 @@ await Promise.all([syncFacilities(), pet.load()]);
 shop.load(me);
 starter.load(me);
 install.load(me);
+parent.load(me);
 news.load();
 paintQuiz();
 if (route && me.kind === 'guest') {

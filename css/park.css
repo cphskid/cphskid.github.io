@@ -1636,3 +1636,44 @@ button.dt-i:hover,button.dt-i:focus-visible{border-color:var(--wood);outline:non
 #a2hs .a2-hand.tr{right:14px;top:6px;transform:rotate(180deg);animation-name:a2bobup}
 @keyframes a2bob{50%{translate:0 10px}}
 @keyframes a2bobup{50%{translate:0 -10px}}
+
+/* ---------- 爸媽任務（js/parent.js） ---------- */
+.parent-card h2{display:flex;align-items:center;gap:10px}
+.parent-card h2 img{width:48px;height:auto}
+.parent-card .link-box{display:grid;grid-template-columns:64px minmax(0,1fr) auto;gap:12px;align-items:center;margin:0 0 12px;padding:12px 14px;border-radius:18px;background:#fff8e0;border:3px solid var(--gold)}
+.parent-card .link-box img{width:64px}
+.parent-card .link-box b{display:block;font:900 18px/1.3 var(--f-body);color:var(--wood)}
+.parent-card .link-box span{font:500 15px/1.4 var(--f-body)}
+.parent-card .daily li{grid-template-columns:34px minmax(0,1fr) 92px}
+.parent-card .daily li p{margin:0}
+.parent-card .daily li small{display:block;font:500 14px/1.4 var(--f-body);color:#7a5a3a}
+.parent-card .daily li.tap{cursor:pointer;border-color:#9fd3f0}
+.parent-card .gift{display:grid;justify-items:center;gap:2px;text-align:center}
+.parent-card .gift img{width:44px;height:44px;object-fit:contain}
+.parent-card .gift small{font:700 12px/1.2 var(--f-body);color:var(--wood)}
+.parent-card .tk{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:#eadbc0;color:#fff;font:900 18px/1 var(--f-body)}
+.parent-card li.got .tk{background:#3fae5a}
+.parent-card h3{margin:16px 0 6px;font:900 19px/1.2 var(--f-body);color:var(--wood)}
+.parent-card h3 small{font-size:14px;color:#8a6a4a;margin-left:6px}
+.parent-card .week{margin:0;padding:10px 12px;border-radius:14px;background:#fff;border:3px solid var(--cream-2);font:700 16px/1.4 var(--f-body)}
+.parent-card .week.ok{border-color:#9bd6a8;background:#effaf1}
+.parent-card .photo{display:grid;grid-template-columns:56px minmax(0,1fr);gap:10px;align-items:center;margin-top:8px}
+.parent-card .photo img{width:56px}
+.parent-card .photo p{margin:0;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 8px;align-items:center;font:700 15px/1.3 var(--f-body)}
+.parent-card .photo .bar{grid-column:1}
+.parent-card .stks{display:flex;flex-wrap:wrap;gap:6px;margin:0}
+.parent-card .stk img{width:56px;height:56px}
+.parent-card .link{background:none;border:0;padding:0;color:#1d7fbf;font:700 16px/1 var(--f-body);cursor:pointer}
+.parent-card.code{text-align:center}
+.parent-card .qr{width:min(260px,70vw);margin:8px auto;padding:10px;background:#fff;border-radius:18px;border:3px solid var(--cream-2)}
+.parent-card .qr svg{display:block;width:100%;height:auto}
+.parent-card .pcode{margin:8px 0;font:700 17px/1.4 var(--f-body)}
+.parent-card .pcode b{font:700 30px/1 var(--f-disp);letter-spacing:.12em;color:var(--wood);margin-left:6px}
+.parent-card .pcode small{display:block;color:#8a6a4a;font-size:14px}
+.parent-card .row.center{justify-content:center}
+@media (max-width:560px){
+  .parent-card .daily li{grid-template-columns:30px minmax(0,1fr) 70px;padding:9px 10px}
+  .parent-card .link-box{grid-template-columns:48px minmax(0,1fr)}
+  .parent-card .link-box img{width:48px}
+  .parent-card .link-box .btn{grid-column:1/-1}
+}

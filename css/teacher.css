@@ -481,6 +481,45 @@ label.chip input{width:18px;height:18px;margin:0;flex:none;accent-color:var(--wo
 .qt-places .chip.none{opacity:.5}
 .qt-pl-title{margin:16px 0 4px;font-family:var(--f-disp);color:var(--wood)}
 .qt-papers .tag{margin-left:6px;font-size:12px;background:#e4ecff;color:#3d4a80;border-radius:6px;padding:2px 6px;white-space:normal}
+<<<<<<< Updated upstream
 .qt-gcls { list-style: none; padding: 0; margin: .5rem 0; display: grid; gap: .4rem; }
 .qt-gcls li { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; padding: .4rem .6rem; border-radius: 10px; background: rgba(0,0,0,.04); }
 .qt-gcls li small { flex: 1; }
+=======
+
+/* ---------- 爸媽任務（js/teacher-parent.js） ---------- */
+details.first{margin-top:18px;padding:12px 14px;border-radius:16px;background:var(--paper);border:2px solid var(--cream-2)}
+details.first summary{cursor:pointer;font:900 17px/1.3 var(--f-body);color:var(--wood)}
+details.first .form{margin-top:12px}
+.parent .empty-kid{display:grid;grid-template-columns:72px minmax(0,1fr);gap:14px;align-items:center}
+.parent .empty-kid img{width:72px}
+.parent .empty-kid b{display:block;font-size:18px;color:var(--wood);margin-bottom:4px}
+.parent .kid{margin-top:14px;padding:14px 16px;border-radius:18px;background:var(--paper);border:2px solid var(--cream-2)}
+.parent .kid header{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 12px}
+.parent .kid header b{font:900 20px/1.2 var(--f-body);color:var(--wood)}
+.parent .kid header small{color:var(--muted)}
+.parent .kid header .chip{margin-left:auto}
+.parent .chip.warn{background:var(--amber-bg);border-color:#f2c779;color:var(--amber)}
+.parent .chip.ok{background:var(--green-bg);border-color:#a9d99b;color:var(--green)}
+.parent .wk{margin:8px 0 10px;color:#5a3a1e}
+.parent .wk b{font-size:18px;color:var(--wood)}
+.parent .steps{margin:0;padding:0;list-style:none;display:grid;gap:10px;counter-reset:st}
+.parent .steps li{counter-increment:st;display:grid;grid-template-columns:30px minmax(0,1fr);gap:4px 10px;align-items:start;padding:10px 12px;border-radius:14px;background:#fff;border:2px solid var(--cream-2)}
+.parent .steps li::before{content:counter(st);grid-row:span 3;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:var(--gold);color:var(--ink);font:900 16px/1 var(--f-body)}
+.parent .steps li.done{border-color:#a9d99b;background:#f6fcf3}
+.parent .steps li.done::before{content:"✓";background:var(--green);color:#fff}
+.parent .steps span{font:900 17px/1.3 var(--f-body);color:var(--ink)}
+.parent .steps small{color:var(--muted);font-size:14px;line-height:1.5}
+.parent .steps li>button,.parent .steps .stks,.parent .steps .goals{justify-self:start;margin-top:4px}
+.parent .stks{display:flex;flex-wrap:wrap;gap:6px}
+.parent .stks button{display:grid;justify-items:center;gap:2px;width:68px;padding:6px 2px;border-radius:12px;border:2px solid var(--cream-2);background:#fff;cursor:pointer}
+.parent .stks button:hover{border-color:var(--gold)}
+.parent .stks button:disabled{opacity:.45;cursor:default}
+.parent .stks img{width:48px;height:48px}
+.parent .stks small{font:700 12px/1 var(--f-body);color:var(--wood)}
+.parent .goals{display:flex;flex-wrap:wrap;gap:6px}
+.dlg .login-card{display:grid;gap:8px;margin:10px 0;padding:14px;border-radius:14px;background:var(--paper);border:2px dashed var(--wood-2)}
+.dlg .login-card p{margin:0;display:flex;justify-content:space-between;gap:10px;color:var(--muted)}
+.dlg .login-card b{font:900 18px/1.2 var(--f-body);color:var(--ink);word-break:break-all;text-align:right}
+@media (max-width:560px){ .parent .stks button{width:56px} .parent .stks img{width:40px;height:40px} }
+>>>>>>> Stashed changes

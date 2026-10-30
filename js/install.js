@@ -116,3 +116,5 @@ function open(auto) {
   if (a) a.onclick = async () => { const e = ask; ask = null; e.prompt(); const r = await e.userChoice.catch(() => null); if (r?.outcome !== 'accepted') ask = e; close(); };
 }
 function close() { $('#a2hs')?.remove(); }
+// 爸媽任務「把樂園放到桌面」那一格按下去也打開這張
+export const guide = () => { if (!standalone()) open(false); };

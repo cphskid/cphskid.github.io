@@ -377,6 +377,31 @@ export const coins = {
   home:      () => ccall('park_app_home'),
 };
 
+// ---------- 爸媽任務與監護人（supabase/park_parent.sql） ----------
+// 還沒裝這份 SQL 時丟出 missing，畫面就不顯示爸媽任務。
+async function pcall(fn, args) {
+  if (!db) throw new Error('帳號功能載入失敗，重新整理再試一次');
+  const { data, error } = await db.rpc(fn, args);
+  if (error?.code === 'PGRST202') {
+    const e = new Error('爸媽任務的資料庫還沒裝好（缺 ' + fn + '），請管理員套用 park_parent.sql');
+    e.missing = true;
+    throw e;
+  }
+  check(error);
+  return data;
+}
+export const parent = {
+  me:          () => pcall('park_parent_me'),
+  code:        () => pcall('park_parent_code'),
+  redeem:      (code) => pcall('park_parent_redeem', { p_code: code }),
+  createChild: (login, pw, nick) => pcall('park_parent_create_child', { p_login_id: login.trim().toLowerCase(), p_password: pw, p_nickname: nick.trim() }),
+  kids:        () => pcall('park_parent_kids'),
+  view:        (id) => pcall('park_parent_view', { p_student: id }),
+  sticker:     (id, s) => pcall('park_parent_sticker', { p_student: id, p_sticker: s }),
+  goal:        (id, g) => pcall('park_parent_goal', { p_student: id, p_goal: g }),
+  sign:        (id) => pcall('park_parent_sign', { p_student: id }),
+};
+
 // ---------- 新手冒險手冊（supabase/park_starter.sql） ----------
 // 還沒裝這份 SQL 時丟出 missing，畫面就照舊顯示每日任務。
 export const starter = {

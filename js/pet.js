@@ -567,6 +567,8 @@ const PROPS = [
   { id: 'scratcher', x: .36, y: .56 }, { id: 'sandbox', x: .76, y: .86 }, { id: 'trampoline', x: .42, y: .86 },
   { id: 'hammock', x: .9, y: .82 }, { id: 'rabbit-lamp', x: .3, y: .8 },
   { id: 'pumpkin-lamp', x: .62, y: .33 }, { id: 'ghost-house', x: .24, y: .5 }, { id: 'candy-bucket', x: .7, y: .7 }, { id: 'web-swing', x: .84, y: .63 },
+  // 爸媽任務送的（js/parent.js、park_parent.sql）
+  { id: 'family-bench', x: .6, y: .5 }, { id: 'family-photo', x: .4, y: .4 },
 ];
 // 怎麼用：at＝在圖上的哪一點（左上 0,0；右下 1,1），door＝從地上哪裡過去（預設 at 正下方的地面）
 const HOUSE = { kind: 'hide', sleep: true };
@@ -590,6 +592,8 @@ const USE = {
   'ghost-house':  { kind: 'hide', at: [.5, .9], door: [.5, 1.03] },
   'candy-bucket': { kind: 'play', at: [.5, 1.08], poses: ['sniff', 'dig', 'chew', 'cheer'], every: 900, line: '不給糖就搗蛋！' },
   'web-swing':    { kind: 'sit', at: [.5, .7], sway: true },
+  'family-bench': { kind: 'sit', at: [.42, .62] },
+  'family-photo': { kind: 'play', at: [.5, 1.08], poses: ['look', 'cheer', 'look'], every: 1100, line: '這是我們家！' },
   // 小屋：門口在左前方那一面；累了、晚上、下雨會進去睡（一間睡兩隻）
   'house-basic':    { ...HOUSE, at: [.3, .74], door: [.2, .95] },
   'house-mushroom': { ...HOUSE, at: [.4, .8], door: [.28, .97] },
@@ -607,7 +611,7 @@ const FURN_STAMP = { tent: 1, swing: 2, fountain: 4, toybox: 5, bench: 7, tunnel
 const FURN_NAME = { bed: '軟軟小床', tent: '露營帳篷', slide: '溜滑梯', fountain: '噴水池', pool: '小泳池', swing: '盪鞦韆',
                     bench: '野餐桌椅', tunnel: '鑽鑽隧道', toybox: '玩具箱', flowers: '花盆', lantern: '小燈籠',
                     scratcher: '貓抓板', sandbox: '小沙坑', trampoline: '彈跳床', hammock: '吊床', 'rabbit-lamp': '兔子燈',
-                    'pumpkin-lamp': '南瓜燈', 'ghost-house': '小鬼屋', 'candy-bucket': '糖果桶', 'web-swing': '蜘蛛網鞦韆',
+                    'pumpkin-lamp': '南瓜燈', 'ghost-house': '小鬼屋', 'candy-bucket': '糖果桶', 'web-swing': '蜘蛛網鞦韆', 'family-bench': '親子長椅', 'family-photo': '全家福相框',
                     'house-basic': '小木屋', 'house-mushroom': '蘑菇屋', 'house-tree': '樹屋', 'house-igloo': '雪屋',
                     'bowl-food': '飼料盆', 'bowl-water': '水盆',
                     's-fence-white': '白圍籬', 's-fence-wood': '木圍籬', 's-gate': '小門', 's-path-stone': '石磚路', 's-path-wood': '木地板',
@@ -616,6 +620,7 @@ const SHOP_FURN = { scratcher: 120, sandbox: 150, trampoline: 180, hammock: 200,
                     'pumpkin-lamp': 150, 'ghost-house': 250, 'candy-bucket': 180, 'web-swing': 220,
                     'house-mushroom': 250, 'house-tree': 300, 'house-igloo': 280 };   // 商店價（只給清單顯示，真的價錢看資料庫）
 const LIMITED = new Set(['rabbit-lamp', 'pumpkin-lamp', 'ghost-house', 'candy-bucket', 'web-swing', 'house-igloo']);   // 本月限定：沒買到就不放進清單
+const PARENT_FURN = { 'family-bench': '爸媽送貼紙', 'family-photo': '聯絡簿簽 4 次' };   // 爸媽任務送的：還沒拿到時寫怎麼拿
 const HOUSES = ['house-basic', 'house-mushroom', 'house-tree', 'house-igloo'];
 const BUILDS = ['s-fence-white', 's-fence-wood', 's-gate', 's-path-stone', 's-path-wood', 's-path-brick', 's-hedge', 's-flowerbed', 's-veg'];
 // 萬聖節（petsky.js 的 fest）島上自己會有的小南瓜燈：只是裝飾，不能拎、寵物不會用
@@ -838,7 +843,7 @@ function paintDeco() {
   const tile = (id, extra = '') => {
     const n = items.filter((o) => o.id === id).length, max = W.CAT[id].max;
     const have = owns(id);
-    if (!have) return `<span class="dt-i locked"><img src="img/pet/furniture/${id}.webp" alt=""><b>${FURN_NAME[id]}</b><small>🔒 ${SHOP_FURN[id] ? `商店 ${SHOP_FURN[id]}` : `${FURN_STAMP[id]} 個章`}</small></span>`;
+    if (!have) return `<span class="dt-i locked"><img src="img/pet/furniture/${id}.webp" alt=""><b>${FURN_NAME[id]}</b><small>🔒 ${SHOP_FURN[id] ? `商店 ${SHOP_FURN[id]}` : PARENT_FURN[id] ?? `${FURN_STAMP[id]} 個章`}</small></span>`;
     return `<button type="button" class="dt-i${n ? ' out' : ''}" data-add="${id}"${extra}><img src="img/pet/furniture/${id}.webp" alt=""><b>${FURN_NAME[id]}</b><small>${max > 1 ? `${n}/${max}` : n ? '在島上' : '＋ 擺出來'}</small></button>`;
   };
   let body = '';
@@ -1272,7 +1277,8 @@ const WISH_TEXT = { bed: '想去床上躺躺', slide: '想溜滑梯！', pool: '
                     fountain: '想喝水', toybox: '想玩玩具', bench: '想坐下來休息', tunnel: '想鑽隧道', flowers: '想去聞花香',
                     lake: '想去池塘游泳！', ball: '想玩丟球！（點一下地上）',
                     'house-basic': '想回小屋睡一下', 'house-mushroom': '想去蘑菇屋', 'house-tree': '想去樹屋', 'house-igloo': '想去雪屋',
-                    'bowl-food': '想吃飼料', 'bowl-water': '想喝水', 's-flowerbed': '想去花圃聞花', 's-veg': '想去菜園看看' };
+                    'bowl-food': '想吃飼料', 'bowl-water': '想喝水', 's-flowerbed': '想去花圃聞花', 's-veg': '想去菜園看看',
+                    'family-bench': '想坐親子長椅', 'family-photo': '想看全家福' };
 const WISH_KEY = 'park-pet-wish';
 const today = () => new Date().toLocaleDateString('sv');
 function wishBook() {

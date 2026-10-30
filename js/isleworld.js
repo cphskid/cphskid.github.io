@@ -52,6 +52,7 @@ export const CAT = {
   bench: F(61, .705), tunnel: F(55, .815), toybox: F(36, .885), flowers: F(31, 1.081), lantern: F(26, 1.626),
   scratcher: F(34, 1.408), sandbox: F(65, .73), trampoline: F(63, .749), hammock: F(58, .966), 'rabbit-lamp': F(32, 1.176),
   'pumpkin-lamp': F(34, 1.081), 'ghost-house': F(58, 1.227), 'candy-bucket': F(37, 1.111), 'web-swing': F(58, 1.099),
+  'family-bench': F(60, .958), 'family-photo': F(40, 1.307),
   'house-basic': { kind: 'house', w: 185, aspect: .947, base: .736, foot: [2, 2], max: 3 },
   'house-mushroom': { kind: 'house', w: 185, aspect: .993, base: .748, foot: [2, 2], max: 1 },
   'house-tree': { kind: 'house', w: 185, aspect: 1.134, base: .78, foot: [2, 2], max: 1 },

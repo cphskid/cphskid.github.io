@@ -7,6 +7,7 @@ import * as auth from './auth.js';
 import { headHtml } from './traveller.js';
 import { renderGuide, startTour } from './teacher-guide.js';
 import { renderQuiz } from './teacher-quiz.js';
+import { rememberCode, pendingCode, redeemPending, renderParent } from './teacher-parent.js';
 
 const $ = (s, root = document) => root.querySelector(s);
 const $$ = (s, root = document) => [...root.querySelectorAll(s)];
@@ -38,6 +39,8 @@ let byName = false;                           // 全班總覽：預設有在玩�
 let tab = 'classes';
 
 if (IS_DEV) $('#env').hidden = false;
+rememberCode();                                // 孩子給的家長碼（?parent=XXXXXX）先記著，登入後連起來
+const WANT_CHILD = new URLSearchParams(location.search).has('child');   // 家長介紹頁「幫孩子開帳號」
 
 // ---------- 小工具 ----------
 let tt;
@@ -129,6 +132,9 @@ function ask({ title, body = '', fields = [], ok = '確定', danger = false, onO
 
 // ---------- 登入 ----------
 function renderLogin(note = '') {
+  const parentFirst = !!pendingCode() || WANT_CHILD;
+  if (!note && pendingCode()) note = '孩子請你幫忙完成「爸媽任務」！登入，或在下面建立家長帳號，就會自動和孩子連起來。';
+  else if (!note && WANT_CHILD) note = '先建立家長帳號（只要 email 和密碼，不用收確認信），接著就能幫孩子開帳號。已經有帳號的直接登入。';
   $('#tabs').hidden = true;
   $('#hero').hidden = true;
   $('#who').hidden = true;
@@ -142,8 +148,28 @@ function renderLogin(note = '') {
       <p class="msg" hidden></p>
       <button class="btn go" type="submit">登入</button>
     </form>
-    <p class="tip">還沒有開班帳號？<a href="${BASE}?staff=signup">到樂園大門建立一個</a>，不用收確認信。</p>
+    ${parentFirst ? `<details class="first" open><summary>第一次來？建立家長帳號</summary>
+    <form class="form" id="signup" novalidate>
+      <label>email<input name="email" type="email" autocomplete="email" autocapitalize="off" spellcheck="false"></label>
+      <label>密碼（至少 8 個字）<input name="pw" type="password" autocomplete="new-password"></label>
+      <label>孩子怎麼叫你（例如：小安媽媽）<input name="name" maxlength="20"></label>
+      <label class="check"><input name="adult" type="checkbox"> 我是家長，年滿 18 歲</label>
+      <p class="msg" hidden></p>
+      <button class="btn go" type="submit">建立帳號</button>
+    </form></details>` : `<p class="tip">還沒有開班帳號？<a href="${BASE}?staff=signup">到樂園大門建立一個</a>，不用收確認信。</p>`}
   </section>`;
+  const su = $('#signup');
+  su?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const msg = $('.msg', su), el = su.elements;
+    const email = el.email.value.trim(), pw = el.pw.value, name = el.name.value.trim();
+    const bad = !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) ? 'email 看起來不太對，再檢查一下'
+      : pw.length < 8 ? `密碼至少要 8 個字（現在 ${pw.length} 個）` : !name ? '請填孩子怎麼叫你' : !el.adult.checked ? '請勾選「我是家長，年滿 18 歲」' : '';
+    if (bad) { msg.textContent = bad; msg.hidden = false; return; }
+    const b = $('button', su); b.disabled = true; b.textContent = '建立中…';
+    try { who = await auth.staffSignUp(email, pw, name, true); await start(); }
+    catch (err) { msg.textContent = err.message; msg.hidden = false; b.disabled = false; b.textContent = '建立帳號'; }
+  });
   const f = $('#login');
   f.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -175,6 +201,7 @@ async function start() {
   paintTabs();
   paintFeedbackDot();
   $('#help').hidden = false;
+  await redeemPending(toast);
   await show();
   if (tab === 'classes') startTour();   // 第一次進來跑一次導覽，看過就不再自己跳
 }
@@ -238,7 +265,7 @@ async function renderClasses() {
     <div><h3>這個系統還沒有管理員</h3><p class="lead">你是第一個使用者的話，按這個按鈕成為管理員。有了管理員之後，這顆按鈕就沒有作用了。</p>
     <button class="btn" id="claim">我是第一個使用者</button></div></div></section>` : '';
 
-  view.innerHTML = `${claim}
+  view.innerHTML = `${claim}<div id="parent-box"></div>
   <section class="panel">
     <div class="head">${h2('class', '我的班級')}<button class="btn go" id="new">＋ 開新班</button></div>
     <div id="newform" hidden></div>
@@ -257,8 +284,22 @@ async function renderClasses() {
   }));
   $('#new').onclick = () => toggleNewForm();
   $$('.classtabs [data-code]').forEach((b) => { b.onclick = () => { active = b.dataset.code; renderClasses(); }; });
-  if (!classes.length) toggleNewForm(true);
+  if (!classes.length && !WANT_CHILD) toggleNewForm(true);
+  paintParent();
   if (active) await renderClass();
+}
+// 「孩子在等你」（js/teacher-parent.js）：有連起來的孩子，或全是家庭班（家長）才出現
+function paintParent() {
+  const box = $('#parent-box');
+  if (!box) return;
+  const opts = {
+    toast, run, suggestPassword,
+    homeOnly: classes.length ? classes.every((c) => c.kind === 'home') : WANT_CHILD,
+    openPlay: (kid) => openPlay(classes.find((c) => c.kind === 'home')?.code ?? active, kid),
+    refresh: () => renderParent(box, opts),
+    reload: () => renderClasses(),
+  };
+  renderParent(box, opts).catch((e) => { box.innerHTML = `<p class="tip">${esc(e.message)}</p>`; });
 }
 
 function classForm(c = {}) {
@@ -686,6 +727,7 @@ async function paintClassDays(c) {
 }
 
 async function paintKidDays(c, s) {
+  auth.parent.view(s.id).catch(() => {});      // 爸媽看過孩子的冒險（爸媽任務；不是監護人就不算）
   const box = $('#play-body');
   let rows;
   try { rows = mergeStamps(await auth.teacher.activity(s.id, playDays)); }
