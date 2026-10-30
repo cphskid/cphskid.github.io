@@ -15,6 +15,7 @@ let ctx = null;          // { view, classes, active, setActive, toast, admin }
 let sub = 'new';         // new 出新卷／papers 出過的卷／map 學習地圖／bank 題庫審核
 let cache = { code: null, bank: null, klass: null };
 let draft = null;        // 出卷中：{ kids:[id], mode, n, subjects, places, plan:{kid:[{item,bucket}]}, at }
+let stale = false;       // 題庫審核改過題目：回到出卷頁要重讀題庫
 
 export async function renderQuiz(view, c) {
   ctx = { ...c, view };
@@ -32,8 +33,10 @@ async function load(force = false) {
   if (!code) return;
   if (force || cache.code !== code) {
     const [bank, klass] = await Promise.all([quiz.bank(code), quiz.klass(code)]);
+    if (cache.code !== code) draft = null;   // 換班才清掉出到一半的卷；同一班重讀題庫時保留
+    else if (draft) draft.plan = null;      // 題庫變了，之前挑的題可能下架，請重新挑
     cache = { code, bank, klass, kp: new Map(bank.kps.map((k) => [k.id, k])), item: new Map(bank.items.map((i) => [i.id, i])) };
-    draft = null;
+    stale = false;
   }
 }
 
@@ -58,7 +61,7 @@ async function paint() {
   try {
     if (sub === 'bank') return await paintBank(box);
     if (!ctx.active) { box.innerHTML = ''; return; }
-    await load();
+    await load(stale);
     if (sub === 'papers') await paintPapers(box);
     else if (sub === 'map') paintMap(box);
     else if (sub.startsWith('report:')) await paintReport(box, sub.slice(7));
@@ -91,7 +94,7 @@ function paintNew(box) {
   const placeOn = (p) => !draft.places || draft.places.has(p);
   box.innerHTML = `
   <section class="panel">
-    ${live ? '' : '<p class="warn">題庫裡還沒有審核通過的題目，管理員審完才出得了卷。</p>'}
+    ${live ? '' : `<p class="warn">題庫裡還沒有審核通過的題目，管理員審完才出得了卷。<button class="ghost small" id="qt-reload">↻ 重新讀取題庫</button></p>`}
     <div class="qt-form">
       <label>卷名<input id="qt-title" maxlength="30" value="${esc(draft.title)}"></label>
       <div><b>給誰寫</b><div class="chips">${kids.map((k) => `<label class="chip"><input type="checkbox" data-kid="${k.id}" ${draft.kids.includes(k.id) ? 'checked' : ''}>${esc(k.nickname)}</label>`).join('')}</div></div>
@@ -120,6 +123,7 @@ function paintNew(box) {
   };
   $$('[data-subj]', box).forEach((x) => { x.onchange = () => { read(); draft.places = null; paintNew(box); }; });
   $('#qt-title').onchange = read;
+  $('#qt-reload')?.addEventListener('click', async () => { await load(true); paintNew(box); });
   $('#qt-pick').onclick = () => {
     read();
     if (!draft.kids.length) return ctx.toast('至少選一個孩子', true);
@@ -392,6 +396,7 @@ let bankFilter = 'draft';
 let bankData = null;
 async function paintBank(box) {
   bankData = await quiz.adminBank();
+  stale = true;   // 管理員在這裡上架、停用、改題，回到出卷頁就重讀
   const kps = new Map(bankData.kps.map((k) => [k.id, k]));
   const items = bankData.items.filter((i) => bankFilter === 'all' || i.status === bankFilter || (bankFilter === 'flag' && i.flags));
   const n = (s) => bankData.items.filter((i) => i.status === s).length;
