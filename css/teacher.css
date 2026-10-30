@@ -473,3 +473,10 @@ span.qt-kp{cursor:default}
 .qz-key{color:var(--green);font-weight:700;margin:2px 0}
 .qz-why{margin:4px 0 0;font-size:14px;color:var(--muted)}
 label.chip input{width:18px;height:18px;margin:0;flex:none;accent-color:var(--wood)}
+.qt-all{display:inline-flex;gap:6px;margin-left:8px;vertical-align:middle}
+.qt-all .ghost.small,.qt-pl-h+.chips .chip{font-size:14px}
+.qt-all .ghost.small{padding:5px 12px}
+#qt-kidn,.qt-pl-h small{color:var(--muted);font-weight:400}
+.qt-pl-h{margin:14px 0 6px}
+.qt-places .chip.none{opacity:.5}
+.qt-pl-title{margin:16px 0 4px;font-family:var(--f-disp);color:var(--wood)}

@@ -97,7 +97,9 @@ function paintNew(box) {
     ${live ? '' : `<p class="warn">題庫裡還沒有審核通過的題目，管理員審完才出得了卷。<button class="ghost small" id="qt-reload">↻ 重新讀取題庫</button></p>`}
     <div class="qt-form">
       <label>卷名<input id="qt-title" maxlength="30" value="${esc(draft.title)}"></label>
-      <div><b>給誰寫</b><div class="chips">${kids.map((k) => `<label class="chip"><input type="checkbox" data-kid="${k.id}" ${draft.kids.includes(k.id) ? 'checked' : ''}>${esc(k.nickname)}</label>`).join('')}</div></div>
+      <div><b>給誰寫</b> <small id="qt-kidn">選了 ${draft.kids.length}／${kids.length} 人</small>
+        ${kids.length > 1 ? '<span class="qt-all"><button type="button" class="ghost small" data-all="1">全選</button><button type="button" class="ghost small" data-all="0">全部取消</button></span>' : ''}
+        <div class="chips">${kids.map((k) => `<label class="chip"><input type="checkbox" data-kid="${k.id}" ${draft.kids.includes(k.id) ? 'checked' : ''}>${esc(k.nickname)}</label>`).join('')}</div></div>
       <div><b>怎麼挑</b><div class="chips">
         <label class="chip"><input type="radio" name="mode" value="each" ${draft.mode === 'each' ? 'checked' : ''}>每個孩子照自己的錯題挑（建議）</label>
         <label class="chip"><input type="radio" name="mode" value="same" ${draft.mode === 'same' ? 'checked' : ''}>大家同一份</label></div></div>
@@ -123,6 +125,9 @@ function paintNew(box) {
   };
   $$('[data-subj]', box).forEach((x) => { x.onchange = () => { read(); draft.places = null; paintNew(box); }; });
   $('#qt-title').onchange = read;
+  const kidCount = () => { $('#qt-kidn').textContent = `選了 ${$$('[data-kid]:checked', box).length}／${kids.length} 人`; };
+  $$('[data-kid]', box).forEach((x) => { x.onchange = kidCount; });
+  $$('[data-all]', box).forEach((b) => { b.onclick = () => { $$('[data-kid]', box).forEach((x) => { x.checked = b.dataset.all === '1'; }); kidCount(); }; });
   $('#qt-reload')?.addEventListener('click', async () => { await load(true); paintNew(box); });
   $('#qt-pick').onclick = () => {
     read();
@@ -393,12 +398,18 @@ function paintMap(box) {
 // 題庫審核（管理員）
 // =============================================================================
 let bankFilter = 'draft';
+let bankPlace = null;     // 題庫審核看哪一章（null＝還沒選，自動挑第一個有題的章）
 let bankData = null;
 async function paintBank(box) {
   bankData = await quiz.adminBank();
   stale = true;   // 管理員在這裡上架、停用、改題，回到出卷頁就重讀
   const kps = new Map(bankData.kps.map((k) => [k.id, k]));
-  const items = bankData.items.filter((i) => bankFilter === 'all' || i.status === bankFilter || (bankFilter === 'flag' && i.flags));
+  const byStatus = bankData.items.filter((i) => bankFilter === 'all' || i.status === bankFilter || (bankFilter === 'flag' && i.flags));
+  // 章節照課本順序；每章顯示這個篩選下有幾題
+  const places = [...new Set(bankData.kps.map((k) => k.place))];
+  const inPlace = (pl) => byStatus.filter((i) => kps.get(i.kp)?.place === pl);
+  if (!bankPlace) bankPlace = places.find((pl) => inPlace(pl).length) ?? places[0];
+  const items = inPlace(bankPlace);
   const n = (s) => bankData.items.filter((i) => i.status === s).length;
   box.innerHTML = `
   ${bankData.flags.length ? `<section class="panel notice"><h3>孩子回報「這題怪怪的」（${bankData.flags.length}）</h3><ul class="qt-flags">${bankData.flags.map((f) => {
@@ -410,7 +421,10 @@ async function paintBank(box) {
   <section class="panel">
     <p class="lead">題目先是「待審」，審過「上架」才會被抽到。請確認：答案只有一個說得通、錯的選項真的錯、解析和出處對得上、用字五年級看得懂。</p>
     <div class="chips">${[['draft', `待審 ${n('draft')}`], ['live', `上架 ${n('live')}`], ['off', `停用 ${n('off')}`], ['all', '全部']].map(([k, t]) => `<button class="chip${bankFilter === k ? ' on' : ''}" data-bf="${k}">${t}</button>`).join('')}</div>
-    ${bankFilter === 'draft' && items.length ? `<div class="row"><button class="ghost small" id="qt-allok">這一頁沒有格式問題的全部上架（${items.filter((i) => !i.check.length).length} 題）</button></div>` : ''}
+    <p class="qt-pl-h"><b>章節</b><small>（括號是這個篩選下的題數，點一章只看那一章）</small></p>
+    <div class="chips qt-places">${places.map((pl) => { const c = inPlace(pl).length; return `<button class="chip${pl === bankPlace ? ' on' : ''}${c ? '' : ' none'}" data-bp="${pl}">${esc(PLACE_NAME[pl] ?? pl)}（${c}）</button>`; }).join('')}</div>
+    <h3 class="qt-pl-title">${esc(PLACE_NAME[bankPlace] ?? bankPlace)}・${items.length} 題</h3>
+    ${bankFilter === 'draft' && items.length ? `<div class="row"><button class="ghost small" id="qt-allok">這一章沒有格式問題的全部上架（${items.filter((i) => !i.check.length).length} 題）</button></div>` : ''}
     <ol class="qt-bank">${items.map((it) => { const k = kps.get(it.kp); return `<li class="qt-row st-${it.status}">
       <div class="qt-row-h"><b>${esc(it.id)}</b><small>${esc(PLACE_NAME[k?.place] ?? '')}｜${esc(k?.name ?? '')}｜${KIND_NAME[it.kind]}｜第 ${it.ver} 版${it.used ? `｜答過 ${it.used} 次、平均 ${it.right}%` : ''}</small>
         <span class="spacer"></span><span class="tag">${{ draft: '待審', live: '上架', off: '停用' }[it.status]}</span></div>
@@ -421,9 +435,10 @@ async function paintBank(box) {
         ${it.status !== 'draft' ? `<button class="ghost small" data-rv="${it.id}" data-st="draft">改回待審</button>` : ''}
         <button class="ghost small" data-edit="${it.id}">改題目</button></div>
       <div class="qt-edit" id="ed-${it.id}" hidden></div></li>`; }).join('')}</ol>
-    ${items.length ? '' : '<p class="lead">這裡沒有題目。</p>'}
+    ${items.length ? '' : '<p class="lead">這一章在這個篩選下沒有題目，換一章或換上面的篩選看看。</p>'}
   </section>`;
   $$('[data-bf]', box).forEach((b) => { b.onclick = () => { bankFilter = b.dataset.bf; paintBank(box); }; });
+  $$('[data-bp]', box).forEach((b) => { b.onclick = () => { bankPlace = b.dataset.bp; paintBank(box); }; });
   $$('[data-rv]', box).forEach((b) => {
     b.onclick = async () => {
       b.disabled = true;
