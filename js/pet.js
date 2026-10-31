@@ -398,7 +398,7 @@ function openScene({ select, say: first } = {}) {
   actors.forEach((a) => { if (Math.random() < .7) laterWish(a, rnd(2500, 9000)); });
   // 點空地丟球（拖地圖不算）
   $('.ground', layer).addEventListener('click', (e) => {
-    if (deco && !deco.tool && !panned && !e.target.closest('.prop,.deco-sel')) { tapBuild(e); return; }
+    if (deco && !panned && !e.target.closest('.prop,.deco-sel')) { if (deco.tool) tapTool(e); else tapBuild(e); return; }
     if (panned || deco) return;
     if (e.target.closest('.actor,.prop')) return;
     if (bagOpen) { closeBag(); return; }
@@ -519,7 +519,8 @@ function bindCam() {
   v.addEventListener('pointerdown', (e) => {
     if (e.button > 0 || e.target.closest('.actor,.prop.movable,.deco-sel')) return;
     if (pts.size === 0) panned = false;
-    if (pts.size === 0 && paintStart(e)) return;      // 裝扮時選了圍籬小路：一指是畫
+    if (pts.size === 0 && deco?.tool) holdToPaint(e);  // 裝扮時選了圍籬小路：按住不動一下才開始畫，直接拖是移動地圖
+    else clearTimeout(holdT);
     pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (pts.size === 1) pan = { x: e.clientX, y: e.clientY, cx: cam.x, cy: cam.y, moved: false };
     else if (pts.size === 2) {
@@ -529,6 +530,20 @@ function bindCam() {
       panned = true;
     }
   }, sig);
+  let holdT = 0;
+  function holdToPaint(e) {
+    const id = e.pointerId, at = { clientX: e.clientX, clientY: e.clientY };
+    clearTimeout(holdT);
+    holdT = setTimeout(() => {
+      if (!deco?.tool || pts.size !== 1 || !pts.has(id) || pan?.moved) return;
+      pts.delete(id);           // 這一指不再拖地圖，也不算點一下
+      pan = null;
+      panned = true;
+      navigator.vibrate?.(12);
+      paintStart(at);
+      decoMsg('開始畫了：拖過的格子都會擺上去');
+    }, 320);
+  }
   // 手指移動一格畫面只算一次（iPhone 一秒會送 120 次 pointermove）
   let want = 0;
   const frame = () => {
@@ -865,7 +880,7 @@ function paintDeco() {
   const top = $('.deco-top', layer), box = $('.furn', layer);
   top.hidden = false;
   top.innerHTML = `${deco.back ? '<button type="button" class="ghost small" data-back>↶ 全部放回去</button>' : `<button type="button" class="ghost small" data-wipe>${deco.wipe ? '再按一次：全部收起來' : '📦 全部收起來'}</button>`}
-    <p class="msg">${deco.tool === 'erase' ? '擦掉：點或拖過圍籬小路就收起來' : deco.tool ? `${FURN_NAME[deco.tool]}：點空格擺上去，點擺好的收起來；按住拖曳可以畫一整排` : '按住東西拖到格子上；點一下跳出翻面、收起來'}</p>
+    <p class="msg">${deco.tool === 'erase' ? '擦掉：點圍籬小路就收起來；按住不動一下再拖，可以擦一整排' : deco.tool ? `${FURN_NAME[deco.tool]}：點空格擺上去、點擺好的收起來；按住不動一下再拖，可以畫一整排` : '按住東西拖到格子上；點一下跳出翻面、收起來'}</p>
     <span class="cnt">傢俱 ${furnCount()}/${W.FURN_MAX}・圍籬小路 ${buildCount()}/${W.BUILD_MAX}</span>
     <button type="button" class="btn small" data-done>完成</button>`;
   if (deco.back) $('[data-back]', top).onclick = () => {
@@ -906,7 +921,7 @@ function paintDeco() {
   box.hidden = false;
   box.innerHTML = `<div class="dt-tabs">${tabs.map(([k, t]) => `<button type="button" data-tab="${k}" class="${deco.tab === k ? 'on' : ''}">${t}</button>`).join('')}</div>
     ${deco.tab === 'look' ? isle.decorHtml() : `<div class="dt-list">${body}</div>`}
-    ${deco.tab === 'build' ? '<p class="note">選好一種：點空格擺上去、點擺好的收起來，按住拖曳畫一整排；要移動地圖，再點一次選好的那一種取消。寵物不會穿過圍籬，記得留小門。</p>' : ''}`;
+    ${deco.tab === 'build' ? '<p class="note">選好一種：點空格擺上去、點擺好的收起來；按住不動一下再拖，可以畫一整排；直接拖曳是移動地圖。寵物不會穿過圍籬，記得留小門。</p>' : ''}`;
   box.querySelectorAll('[data-tab]').forEach((b) => { b.onclick = () => { deco.tab = b.dataset.tab; deco.tool = null; paintDeco(); }; });
   box.querySelectorAll('[data-add]').forEach((b) => { b.onclick = () => addItem(b.dataset.add); });
   box.querySelectorAll('[data-tool]').forEach((b) => { b.onclick = () => { deco.tool = deco.tool === b.dataset.tool ? null : b.dataset.tool; deco.sel = null; paintSel(); paintDeco(); }; });
@@ -1062,6 +1077,16 @@ function paintStart(e) {
   addEventListener('pointerup', up);
   addEventListener('pointercancel', up);
   return true;
+}
+// 選了工具時點一下：空格擺上去、擺好的同一種收起來（擦掉＝收起來）
+function tapTool(e) {
+  const p = toIsle(e), { i, j } = W.cellOf(p.x, p.y), before = snapshot();
+  const did = deco.tool === 'erase' || buildIdAt(i, j) === deco.tool ? eraseAt(i, j) : buildAt(deco.tool, i, j);
+  if (!did) return;
+  pushUndo(before);
+  rebuildWorld();
+  saveIsle();
+  paintDeco();
 }
 function buildAt(id, i, j) {
   if (W.ground(i, j) !== '1') return false;
