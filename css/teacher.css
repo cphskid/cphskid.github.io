@@ -529,3 +529,22 @@ details.first .form{margin-top:12px}
 .dlg .login-card p{margin:0;display:flex;justify-content:space-between;gap:10px;color:var(--muted)}
 .dlg .login-card b{font:900 18px/1.2 var(--f-body);color:var(--ink);word-break:break-all;text-align:right}
 @media (max-width:560px){ .parent .stks button{width:56px} .parent .stks img{width:40px;height:40px} }
+
+/* 後台信箱（2026-10-31）：右上「信箱」＋未讀紅點；對話框裡一封一封，沒讀的有黃底 */
+.bar .mailbox{position:relative}
+.bar .mailbox .dot{position:absolute;top:-3px;right:-3px;width:14px;height:14px;border-radius:50%;background:var(--red);box-shadow:0 0 0 2px #fff}
+.bar .mailbox .dot[hidden]{display:none}
+.inbox{display:flex;flex-direction:column;gap:10px;max-height:min(60vh,520px);overflow:auto;margin:0;padding:0;list-style:none}
+.inbox li{border:2px solid var(--cream-2);border-radius:16px;background:#fff}
+.inbox details{margin:0;border:0;padding:0}
+.dlg h3 .ico{width:30px;height:30px;vertical-align:-6px}
+.inbox li.new{border-color:var(--gold);background:#fff8e3}
+.inbox summary{display:flex;align-items:center;gap:8px;padding:12px 14px;min-height:44px;cursor:pointer;list-style:none;font:700 16px/1.35 var(--f-body);color:var(--ink)}
+.inbox summary::-webkit-details-marker{display:none}
+.inbox summary .chip{flex:none}
+.inbox summary small{margin-left:auto;color:var(--muted);font-weight:500;font-size:13px;white-space:nowrap}
+.inbox .letter{padding:0 14px 12px;display:flex;flex-direction:column;gap:8px}
+.inbox .letter p{margin:0;white-space:pre-wrap;line-height:1.6}
+.inbox .letter .sign{color:var(--muted);text-align:right;font-size:14px}
+.inbox li.old{opacity:.7}
+.news-aud label.check small{color:var(--muted);font-weight:500;margin-left:8px}

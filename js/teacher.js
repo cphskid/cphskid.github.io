@@ -5,7 +5,7 @@
 // 權限一律由資料庫擋（supabase/park_teacher.sql），這裡只負責畫面不出錯、錯誤講白話。
 import * as auth from './auth.js';
 import { headHtml } from './traveller.js';
-import { renderGuide, startTour } from './teacher-guide.js';
+import { renderGuide, startTour, tourSeen } from './teacher-guide.js';
 import { renderQuiz } from './teacher-quiz.js';
 import { rememberCode, pendingCode, redeemPending, renderParent } from './teacher-parent.js';
 
@@ -205,8 +205,10 @@ async function start() {
   paintTabs();
   paintFeedbackDot();
   $('#help').hidden = false;
+  $('#mailbox').hidden = false;
   await redeemPending(toast);
   await show();
+  loadInbox(true);
   if (tab === 'classes') startTour();   // 第一次進來跑一次導覽，看過就不再自己跳
 }
 // 右上「？」：回到我的班級重看導覽
@@ -1005,6 +1007,14 @@ const NEWS_KINDS = [
   { id: 'letter',  name: '✉️ 信差來信',     tip: '信鴿送到信箱，點了才打開' },
 ];
 const NEWS_LINKS = [['', '不用'], ['shop-month', '商店本月限定'], ['repair', '時光修理站'], ['wear', '換裝間'], ['pet', '寵物島']];
+// 只寄給大人時，按鈕帶去後台的哪一頁
+const STAFF_LINKS = [['', '不用'], ['tab:classes', '後台：我的班級'], ['tab:play', '後台：遊玩紀錄'], ['tab:quiz', '後台：時光試煉島'], ['tab:guide', '後台：使用指南'], ['url:./#map', '樂園地圖']];
+const NEWS_AUD = [
+  { id: 'student', name: '小朋友', tip: '在樂園地圖上看到（下面選出現方式）' },
+  { id: 'teacher', name: '老師', tip: '後台右上「信箱」' },
+  { id: 'parent',  name: '家長', tip: '後台右上「信箱」' },
+];
+const audText = (a = ['student']) => a.map((x) => NEWS_AUD.find((y) => y.id === x)?.name ?? x).join('、');
 const taipeiDay = (plus = 0) => new Date(Date.now() + 8 * 3600e3 + plus * 864e5).toISOString().slice(0, 10);
 
 async function renderNews() {
@@ -1023,18 +1033,22 @@ async function renderNews() {
       ? '一則公告寫一次，勾要用哪幾種方式出現（可以勾好幾種）。全部只在樂園地圖出現，進遊戲不會跳；看過就收起來。'
       : '寄一封信給你班上的小朋友：他們回到樂園地圖時，信鴿會把信送到名牌下面的信箱。'}</p>
     <form class="form news-form" id="nf" novalidate>
-      <fieldset class="news-kinds"><legend>出現方式</legend>
+      ${admin ? `<fieldset class="news-aud"><legend>寄給誰（可以複選）</legend>
+        ${NEWS_AUD.map((a) => `<label class="check"><input type="checkbox" name="aud" value="${a.id}" ${a.id === 'student' ? 'checked' : ''}>${a.name}<small>${a.tip}</small></label>`).join('')}
+      </fieldset>` : ''}
+      <fieldset class="news-kinds" data-aud="student"><legend>小朋友在哪裡看到</legend>
         ${kinds.map((k) => `<label class="check"><input type="checkbox" name="kind" value="${k.id}" ${admin ? '' : 'checked disabled'}>${k.name}<small>${k.tip}</small></label>`).join('')}
         ${admin ? '' : '<p class="tip">布告欄、島嶼布條、熱氣球只有管理員能用。</p>'}
       </fieldset>
       <label>標題<input name="title" maxlength="40" placeholder="${admin ? '例如 萬聖節限定開張囉！' : '例如 第 5 關提前開放囉！'}"></label>
+      <p class="tip" data-aud="staff-only" hidden>只寄給大人：不會出現在樂園地圖，只寄到他們後台右上的「信箱」，有新信會亮紅點。</p>
       <label data-for="flag balloon" hidden>布條上的字（14 字內，沒填用標題）<input name="banner" maxlength="14"></label>
       <label>內文<textarea name="body" maxlength="400" rows="4" placeholder="兩三句就好，小朋友看得懂的話。"></textarea></label>
       <fieldset class="news-zones" data-for="flag" hidden><legend>布條掛在哪座島</legend>
         ${zones.map((z) => `<label class="check"><input type="checkbox" name="zone" value="${esc(z.code)}">${esc(z.name)}</label>`).join('')}</fieldset>
       <label>按鈕帶去哪<select name="link">${links.map(([v, t]) => `<option value="${esc(v)}">${esc(t)}</option>`).join('')}</select></label>
-      <fieldset class="news-to"><legend>給誰看</legend>
-        ${admin ? '<label class="check"><input type="radio" name="to" value="all" checked>全站</label><label class="check"><input type="radio" name="to" value="class">指定班級</label>' : ''}
+      <fieldset class="news-to"><legend>${admin ? '範圍' : '給哪一班'}</legend>
+        ${admin ? '<label class="check"><input type="radio" name="to" value="all" checked>全站</label><label class="check"><input type="radio" name="to" value="class">指定班級（大人＝開這些班的老師、家長）</label>' : ''}
         <div class="news-classes" ${admin ? 'hidden' : ''}>${(classes.length ? classes : []).map((c) => `<label class="check"><input type="checkbox" name="cls" value="${esc(c.code)}" ${classes.length === 1 ? 'checked' : ''}>${esc(c.name || c.code)}</label>`).join('') || '<p class="tip">你還沒有班級。</p>'}</div>
       </fieldset>
       <div class="form grid">
@@ -1049,20 +1063,33 @@ async function renderNews() {
   <section class="panel">
     <div class="head">${h2('mail', admin ? '發過的公告' : '寄過的信')}</div>
     ${rows.length ? `<div class="news-list">${rows.map((n) => `<article class="news-row${n.hidden ? ' gone' : ''}" data-id="${n.id}">
-      <div class="row"><span class="chip">${kindText(n.kinds)}</span><b>${esc(n.title)}</b><span class="spacer"></span>
+      <div class="row">${(n.audience ?? ['student']).includes('student') ? `<span class="chip">${kindText(n.kinds)}</span>` : `<span class="chip">${ico('mail')}信箱</span>`}<b>${esc(n.title)}</b><span class="spacer"></span>
         ${n.hidden ? '<span class="chip">已撤回</span>' : `<button class="ghost small danger" data-hide>${ico('delete')}撤回</button>`}</div>
       ${n.body ? `<p>${esc(n.body)}</p>` : ''}
-      <div class="row tip"><span>${esc(n.starts_on)} ～ ${esc(n.ends_on)}・${n.classes ? esc(n.classes.join('、')) : '全站'}${n.zones?.length ? '・島：' + esc(n.zones.join('、')) : ''}・${esc(n.author_name)}</span>
+      <div class="row tip"><span>${esc(n.starts_on)} ～ ${esc(n.ends_on)}・給${esc(audText(n.audience))}・${n.classes ? esc(n.classes.join('、')) : '全站'}${n.zones?.length ? '・島：' + esc(n.zones.join('、')) : ''}・${esc(n.author_name)}</span>
         <span class="spacer"></span><span>看過 ${n.seen} / ${n.reach} 人</span></div>
     </article>`).join('')}</div>` : '<div class="empty small"><img src="img/admin/tick-empty.webp" alt=""><p>還沒發過。</p></div>'}
   </section>`;
 
   const f = $('#nf');
   // 勾了哪幾種，就只顯示用得到的欄位
+  const audOf = () => (admin ? $$('input[name=aud]', f).filter((i) => i.checked).map((i) => i.value) : ['student']);
+  let linkSet = '';
   const sync = () => {
-    const on = new Set($$('input[name=kind]', f).filter((i) => i.checked).map((i) => i.value));
+    const aud = audOf();
+    const kids = aud.includes('student');
+    const on = new Set(kids ? $$('input[name=kind]', f).filter((i) => i.checked).map((i) => i.value) : ['letter']);
     $$('[data-for]', f).forEach((el) => { el.hidden = !el.dataset.for.split(' ').some((k) => on.has(k)); });
+    $$('[data-aud="student"]', f).forEach((el) => { el.hidden = !kids; });
+    $$('[data-aud="staff-only"]', f).forEach((el) => { el.hidden = kids || !aud.length; });
+    f.elements.body.placeholder = kids ? '兩三句就好，小朋友看得懂的話。' : '兩三句說清楚：多了什麼、在哪裡用。';
     if (admin) $('.news-classes', f).hidden = f.elements.to.value !== 'class';
+    // 有小朋友：按鈕帶去樂園裡；只寄大人：帶去後台某一頁
+    const want = kids ? 'kids' : 'staff';
+    if (linkSet !== want) {
+      linkSet = want;
+      f.elements.link.innerHTML = (kids ? links : STAFF_LINKS).map(([v, t]) => `<option value="${esc(v)}">${esc(t)}</option>`).join('');
+    }
   };
   f.addEventListener('change', sync);
   sync();
@@ -1070,20 +1097,24 @@ async function renderNews() {
     e.preventDefault();
     const msg = $('.msg', f);
     msg.hidden = true;
+    const audience = audOf();
     const v = {
-      kinds: $$('input[name=kind]', f).filter((i) => i.checked).map((i) => i.value),
+      audience,
+      kinds: audience.includes('student') ? $$('input[name=kind]', f).filter((i) => i.checked).map((i) => i.value) : ['letter'],
       title: f.elements.title.value.trim(), body: f.elements.body.value.trim(), banner: f.elements.banner.value.trim(),
       link: f.elements.link.value, zones: $$('input[name=zone]', f).filter((i) => i.checked).map((i) => i.value),
       classes: (!admin || f.elements.to.value === 'class') ? $$('input[name=cls]', f).filter((i) => i.checked).map((i) => i.value) : null,
       starts_on: f.elements.starts.value, ends_on: f.elements.ends.value, sign: f.elements.sign.value.trim(),
       important: f.elements.important.checked,
     };
-    if (!v.kinds.length) { msg.textContent = '至少勾一種出現方式'; msg.hidden = false; return; }
+    if (!audience.length) { msg.textContent = '勾要寄給誰：小朋友、老師、家長'; msg.hidden = false; return; }
+    if (!v.kinds.length) { msg.textContent = '至少勾一種小朋友在哪裡看到'; msg.hidden = false; return; }
     if (v.classes && !v.classes.length) { msg.textContent = '選要給哪一班'; msg.hidden = false; return; }
     run($('button[type=submit]', f), async () => {
       await auth.news.post(v);
       toast(admin ? '公告發出去了' : '信寄出去了，小朋友回到樂園地圖就會收到');
       await renderNews();
+      if (!audience.every((a) => a === 'student')) loadInbox();
     });
   });
   $$('.news-row').forEach((el) => {
@@ -1093,6 +1124,60 @@ async function renderNews() {
       run(b, async () => { await auth.news.hide(Number(el.dataset.id)); toast('撤回了'); await renderNews(); });
     };
   });
+}
+
+// =============================================================================
+// 後台信箱（2026-10-31）：管理員寄給老師／家長的公告。右上「信箱」＋未讀紅點；重要的登入後自動打開一次
+// =============================================================================
+let inbox = [];
+async function loadInbox(first = false) {
+  try { inbox = await auth.news.inbox(); } catch { inbox = []; }
+  const unread = inbox.filter((n) => !n.seen);
+  $('#mail-dot').hidden = !unread.length;
+  $('#mailbox').title = unread.length ? `信箱：${unread.length} 封新信` : '信箱：樂園寄來的消息';
+  // 第一次進後台先跑導覽，信等下次（紅點還是會亮）
+  if (first && !dlg.open && tourSeen() && !document.querySelector('.tour-tip')) {
+    const imp = unread.find((n) => n.important && n.active);
+    if (imp) openInbox(imp.id);
+  }
+}
+$('#mailbox').onclick = () => openInbox();
+function staffLink(link) {
+  if (!link) return '';
+  if (link.startsWith('tab:')) {
+    const t = link.slice(4);
+    const name = STAFF_LINKS.find(([v]) => v === link)?.[1].replace('後台：', '') ?? '看看';
+    return `<button type="button" class="btn small" data-tab="${esc(t)}">去「${esc(name)}」看看</button>`;
+  }
+  if (link.startsWith('url:')) return `<a class="btn small" href="${esc(link.slice(4))}">去樂園看看</a>`;
+  return '';
+}
+function openInbox(openId = null) {
+  const seenNow = (id) => {
+    const n = inbox.find((x) => x.id === id);
+    if (!n || n.seen) return;
+    n.seen = true;
+    auth.news.inboxSeen(id).catch(() => {});
+    $('#mail-dot').hidden = !inbox.some((x) => !x.seen);
+  };
+  dlg.innerHTML = `<div class="dlg">
+    <h3>${ico('mail')} 信箱</h3>
+    <p class="lead">樂園管理員寄來的消息：新功能、活動、要注意的事。點標題打開。</p>
+    ${inbox.length ? `<ul class="inbox">${inbox.map((n) => `<li class="${n.seen ? '' : 'new'}${n.active ? '' : ' old'}" data-id="${n.id}">
+      <details ${n.id === openId ? 'open' : ''}><summary>${n.seen ? '' : '<span class="chip">新</span>'}<span>${esc(n.title)}</span><small>${esc(String(n.starts_on).slice(5).replace('-', '/'))}</small></summary>
+        <div class="letter">${n.body ? `<p>${esc(n.body)}</p>` : ''}${n.sign ? `<p class="sign">— ${esc(n.sign)}</p>` : ''}
+          ${staffLink(n.link) ? `<div class="row">${staffLink(n.link)}</div>` : ''}</div></details></li>`).join('')}</ul>`
+    : '<div class="empty small"><img src="img/admin/tick-empty.webp" alt=""><p>還沒有信。樂園有新功能或活動時，會寄到這裡。</p></div>'}
+    <div class="row end"><button type="button" class="btn" data-close>關起來</button></div></div>`;
+  $('[data-close]', dlg).onclick = () => dlg.close();
+  $$('.inbox details', dlg).forEach((d) => {
+    d.addEventListener('toggle', () => { if (d.open) { const li = d.closest('li'); seenNow(Number(li.dataset.id)); li.classList.remove('new'); $('summary .chip', d)?.remove(); } });
+  });
+  $$('[data-tab]', dlg).forEach((b) => {
+    b.onclick = () => { dlg.close(); tab = b.dataset.tab; history.replaceState(null, '', '#' + tab); paintTabs(); show(); };
+  });
+  if (!dlg.open) dlg.showModal();
+  if (openId != null) seenNow(openId);
 }
 
 // =============================================================================

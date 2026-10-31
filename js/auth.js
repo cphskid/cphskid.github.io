@@ -242,8 +242,12 @@ export const news = {
   post: (v) => call('park_news_post', {
     p_kinds: v.kinds, p_title: v.title, p_body: v.body, p_ends_on: v.ends_on, p_banner: v.banner || null,
     p_link: v.link || null, p_zones: v.zones ?? [], p_classes: v.classes?.length ? v.classes : null,
-    p_sign: v.sign || null, p_important: !!v.important, p_starts_on: v.starts_on || null }),
+    p_sign: v.sign || null, p_important: !!v.important, p_starts_on: v.starts_on || null,
+    p_audience: v.audience?.length ? v.audience : ['student'] }),
   hide: (id) => call('park_news_hide', { p_id: id }),
+  // 後台信箱（2026-10-31）：管理員寄給老師／家長的公告
+  inbox: () => call('park_news_inbox'),
+  inboxSeen: (id) => call('park_news_inbox_seen', { p_id: id }),
 };
 // 問題回報收件匣（守護異世界 schema.sql 的函式，P3 從英文管理員頁搬過來）。
 // 管理員看全部、可以分類／回覆／刪除；老師只看得到自己班學生的回報（伺服器過濾），唯讀。

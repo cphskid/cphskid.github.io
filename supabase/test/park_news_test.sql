@@ -79,4 +79,42 @@ select test_as('e5000000-0000-0000-0000-000000000011', true);
 select test_ok((select count(*) from jsonb_array_elements(public.park_news_mine()) x where (x->>'id')::bigint = :'letter') = 0, '撤回的學生就看不到');
 select test_as('d0000000-0000-0000-0000-000000000004', false, 't2admin@parktest.local');
 select test_ok((select (x->>'seen')::int from jsonb_array_elements(public.park_news_list()) x where (x->>'id')::bigint = :'big') = 1, '管理員看得到幾個人看過');
+
+\echo '── 後台信箱：寄給老師、家長'
+reset role;
+insert into auth.users (id, email) values ('e5000000-0000-0000-0000-000000000003', 'news-p@parktest.local');
+insert into public.teachers (user_id, display_name) values ('e5000000-0000-0000-0000-000000000003', '小信媽媽');
+insert into public.classes (code, name, owner) values ('NEWSH', '小信家', 'e5000000-0000-0000-0000-000000000003');
+insert into public.park_class_settings (class_code, kind) values ('NEWSH', 'home') on conflict (class_code) do update set kind = 'home';
+set role authenticated;
+select test_as('d0000000-0000-0000-0000-000000000004', false, 't2admin@parktest.local');
+select public.park_news_post(array['board'], '試煉卷可以圈範圍了', '出卷多了段考範圍', current_date + 14,
+  null, 'tab:quiz', '{}', null, '樂園管理員', true, null, array['teacher']) as t_only \gset
+select public.park_news_post(array['letter'], '爸媽任務上線', '', current_date + 14,
+  null, null, '{}', null, null, false, null, array['parent']) as p_only \gset
+select public.park_news_post(array['board','balloon'], '大家都看', '', current_date + 14,
+  null, null, '{}', null, null, false, null, array['student','teacher','parent']) as both \gset
+reset role;
+select test_ok((select kinds = array['letter'] from public.park_news where id = :'t_only'), '只寄大人：存成信、不上樂園地圖');
+set role authenticated;
+select test_denied($$select public.park_news_post(array['letter'], '亂寄', '', current_date + 3, null, null, '{}', null, null, false, null, array['dog'])$$, '沒有的對象不行');
+select test_ok(jsonb_array_length(public.park_news_inbox()) = 3, '管理員信箱兩種都收（看自己發的長怎樣）');
+
+select test_as('e5000000-0000-0000-0000-000000000001', false, 'news-t@parktest.local');
+select test_ok((select array_agg((x->>'id')::bigint order by (x->>'id')::bigint) from jsonb_array_elements(public.park_news_inbox()) x) = array[:'t_only'::bigint, :'both'::bigint], '老師收到給老師的、大家的');
+select test_ok(public.park_news_inbox_seen(:'t_only'), '老師看過');
+select test_ok((select (x->>'seen')::boolean from jsonb_array_elements(public.park_news_inbox()) x where (x->>'id')::bigint = :'t_only'), '看過記住了');
+select test_ok(not public.park_news_inbox_seen(:'big'), '給小朋友的不能標在後台信箱');
+select test_denied($$select public.park_news_post(array['letter'], '我寄老師', '', current_date + 3, null, null, '{}', array['NEWS1'], null, false, null, array['teacher'])$$, '老師不能寄給老師');
+
+select test_as('e5000000-0000-0000-0000-000000000003', false, 'news-p@parktest.local');
+select test_ok((select array_agg((x->>'id')::bigint order by (x->>'id')::bigint) from jsonb_array_elements(public.park_news_inbox()) x) = array[:'p_only'::bigint, :'both'::bigint], '家長（全是家庭班）收到給家長的、大家的');
+
+select test_as('e5000000-0000-0000-0000-000000000011', true);
+select test_ok((select count(*) from jsonb_array_elements(public.park_news_mine()) x where (x->>'id')::bigint in (:'t_only', :'p_only')) = 0, '小朋友看不到只寄大人的');
+select test_ok((select count(*) from jsonb_array_elements(public.park_news_mine()) x where (x->>'id')::bigint = :'both') = 1, '大家的小朋友也看得到');
+select test_denied($$select public.park_news_inbox()$$, '學生不能開後台信箱');
+
+select test_as('d0000000-0000-0000-0000-000000000004', false, 't2admin@parktest.local');
+select test_ok((select (x->>'seen')::int from jsonb_array_elements(public.park_news_list()) x where (x->>'id')::bigint = :'t_only') = 1, '後台列表算得到老師看過幾個');
 reset role;

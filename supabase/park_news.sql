@@ -14,6 +14,9 @@
 --   park_news_post(...)              發公告（管理員、老師）
 --   park_news_list()                 後台列表（管理員看全部、老師看自己發的），附幾個人看過
 --   park_news_hide(id)               撤回（發的人或管理員）
+--   park_news_inbox()                後台信箱：寄給老師／家長的公告＋我看過沒（2026-10-31）
+--   park_news_inbox_seen(id)         後台信箱看過了
+-- audience（給誰看）：student 小朋友／teacher 老師／parent 家長，管理員可複選；只寄大人＝只進後台信箱。
 --
 -- 套用順序：schema.sql → park_accounts.sql → park_teacher.sql → 這份（之後重跑都可以）
 
@@ -39,6 +42,13 @@ create table if not exists public.park_news (
 -- 2026-10-29 時光試煉島：信鴿信可以只寄給班上幾個孩子。null＝整班（或全站）。
 alter table public.park_news add column if not exists students uuid[];
 create index if not exists park_news_active on public.park_news (ends_on desc) where hidden_at is null;
+-- 2026-10-31 家長、老師也收得到管理員公告：給誰看（可以複選）。舊公告、老師寄的信都是 student。
+--   student 小朋友（樂園地圖上的四種方式）／teacher 老師、parent 家長（後台右上的信箱）
+alter table public.park_news add column if not exists audience text[] not null default array['student'];
+do $$ begin
+  alter table public.park_news add constraint park_news_audience_ok
+    check (audience <@ array['student', 'teacher', 'parent'] and cardinality(audience) > 0);
+exception when duplicate_object then null; end $$;
 
 create table if not exists public.park_news_seen (
   news_id    bigint not null references public.park_news(id) on delete cascade,
@@ -49,10 +59,37 @@ create table if not exists public.park_news_seen (
 );
 create index if not exists park_news_seen_student on public.park_news_seen (student_id);
 
-alter table public.park_news      enable row level security;
-alter table public.park_news_seen enable row level security;
+-- 後台信箱：老師／家長／管理員看過哪幾封
+create table if not exists public.park_news_staff_seen (
+  news_id    bigint not null references public.park_news(id) on delete cascade,
+  user_id    uuid not null references public.teachers(user_id) on delete cascade,
+  seen_at    timestamptz not null default now(),
+  primary key (news_id, user_id)
+);
+
+alter table public.park_news            enable row level security;
+alter table public.park_news_seen       enable row level security;
+alter table public.park_news_staff_seen enable row level security;
 -- 沒有任何 policy：只能透過下面的函式讀寫
-revoke all on public.park_news, public.park_news_seen from public, anon, authenticated;
+revoke all on public.park_news, public.park_news_seen, public.park_news_staff_seen from public, anon, authenticated;
+
+-- 開班帳號算老師還是家長：註冊時選的（park_roles.sql）；沒選過的照開的班猜，全是家庭班＝家長，其他＝老師
+create or replace function public.park_staff_kind(p_user uuid)
+returns text language plpgsql stable security definer set search_path = public, pg_temp as $$
+declare v_role text;
+begin
+  if to_regclass('public.park_staff_roles') is not null then
+    execute 'select role from public.park_staff_roles where user_id = $1' into v_role using p_user;
+  end if;
+  if v_role is not null then return v_role; end if;
+  if exists (select 1 from public.classes c where c.owner = p_user)
+     and not exists (select 1 from public.classes c left join public.park_class_settings st on st.class_code = c.code
+                      where c.owner = p_user and coalesce(st.kind, 'school') <> 'home') then
+    return 'parent';
+  end if;
+  return 'teacher';
+end;
+$$;
 
 -- 地圖要的。信箱要留著舊信，所以過期 60 天內的也回（active=false），地圖只拿 active 的來畫。
 create or replace function public.park_news_mine()
@@ -80,6 +117,7 @@ begin
        and n.ends_on >= v_today - 60
        and (n.classes is null or n.classes && v_codes)
        and (n.students is null or v_me = any(n.students))
+       and 'student' = any(n.audience)
        -- 沒登入（或老師）只看全站、還沒過期的布告欄
        and (v_me is not null or (n.classes is null and n.ends_on >= v_today and 'board' = any(n.kinds)))
   ), '[]'::jsonb);
@@ -105,11 +143,13 @@ begin
 end;
 $$;
 
+-- 2026-10-31 多了 p_audience（給誰看），舊的那個先拿掉，免得兩個同名函式打架
+drop function if exists public.park_news_post(text[], text, text, date, text, text, text[], text[], text, boolean, date);
 create or replace function public.park_news_post(
   p_kinds text[], p_title text, p_body text, p_ends_on date,
   p_banner text default null, p_link text default null, p_zones text[] default '{}',
   p_classes text[] default null, p_sign text default null, p_important boolean default false,
-  p_starts_on date default null)
+  p_starts_on date default null, p_audience text[] default array['student'])
 returns bigint language plpgsql security definer set search_path = public, pg_temp as $$
 declare
   v_admin boolean := public.is_admin();
@@ -117,10 +157,17 @@ declare
   v_start date := coalesce(p_starts_on, v_today);
   v_kinds text[];
   v_zones text[];
+  v_aud   text[];
   v_name  text;
   v_id    bigint;
 begin
   perform public.park_require_staff();
+  select array_agg(distinct a) into v_aud from unnest(coalesce(p_audience, array['student'])) a;
+  if v_aud is null then raise exception '至少勾一種給誰看'; end if;
+  if not v_aud <@ array['student', 'teacher', 'parent'] then raise exception '給誰看只能選小朋友、老師、家長'; end if;
+  if v_aud <> array['student'] and not v_admin then raise exception '只有管理員能寄給老師、家長'; end if;
+  -- 只寄給大人：不上樂園地圖，只進後台信箱（存成 letter）
+  if not 'student' = any(v_aud) then p_kinds := array['letter']; p_zones := '{}'; end if;
   select array_agg(distinct k) into v_kinds from unnest(coalesce(p_kinds, '{}')) k;
   if v_kinds is null then raise exception '至少勾一種出現方式'; end if;
   if not v_kinds <@ array['board', 'flag', 'balloon', 'letter'] then raise exception '沒有這種公告方式'; end if;
@@ -151,15 +198,15 @@ begin
   end if;
 
   select t.display_name into v_name from public.teachers t where t.user_id = auth.uid();
-  insert into public.park_news (kinds, title, body, banner, link, zones, classes, sign, important, starts_on, ends_on, author, author_name)
-  values (v_kinds, btrim(p_title), coalesce(btrim(p_body), ''), nullif(btrim(coalesce(p_banner, '')), ''),
+  insert into public.park_news (audience, kinds, title, body, banner, link, zones, classes, sign, important, starts_on, ends_on, author, author_name)
+  values (v_aud, v_kinds, btrim(p_title), coalesce(btrim(p_body), ''), nullif(btrim(coalesce(p_banner, '')), ''),
           nullif(btrim(coalesce(p_link, '')), ''), v_zones,
           case when p_classes is null or cardinality(p_classes) = 0 then null else p_classes end,
           nullif(btrim(coalesce(p_sign, '')), ''), coalesce(p_important, false), v_start, p_ends_on,
           auth.uid(), coalesce(v_name, ''))
   returning id into v_id;
   perform public.park_log('news_post', case when p_classes is null then null else array_to_string(p_classes, ',') end,
-                          v_id::text, jsonb_build_object('kinds', v_kinds, 'title', btrim(p_title)));
+                          v_id::text, jsonb_build_object('kinds', v_kinds, 'audience', v_aud, 'title', btrim(p_title)));
   return v_id;
 end;
 $$;
@@ -176,9 +223,16 @@ begin
              'zones', n.zones, 'classes', n.classes, 'sign', n.sign, 'important', n.important,
              'starts_on', n.starts_on, 'ends_on', n.ends_on, 'author_name', n.author_name,
              'mine', n.author = auth.uid(), 'created_at', n.created_at, 'hidden', n.hidden_at is not null,
-             'seen', (select count(*) from public.park_news_seen s where s.news_id = n.id),
-             'reach', case when n.classes is null then (select count(*) from public.students)
-                           else (select count(distinct m.student_id) from public.park_class_members m where m.class_code = any(n.classes)) end)
+             'audience', n.audience,
+             'seen', case when 'student' = any(n.audience) then (select count(*) from public.park_news_seen s where s.news_id = n.id) else 0 end
+                     + (select count(*) from public.park_news_staff_seen s where s.news_id = n.id),
+             'reach', case when not 'student' = any(n.audience) then 0
+                           when n.classes is null then (select count(*) from public.students)
+                           else (select count(distinct m.student_id) from public.park_class_members m where m.class_code = any(n.classes)) end
+                      + (select count(*) from public.teachers t
+                          where t.user_id <> coalesce(n.author, '00000000-0000-0000-0000-000000000000'::uuid)
+                            and public.park_staff_kind(t.user_id) = any(n.audience)
+                            and (n.classes is null or exists (select 1 from public.classes c where c.owner = t.user_id and c.code = any(n.classes)))))
            order by n.created_at desc)
       from public.park_news n
      where (v_admin or n.author = auth.uid())
@@ -199,10 +253,54 @@ begin
 end;
 $$;
 
+-- 後台信箱（2026-10-31）：寄給我這種身分（老師／家長）的管理員公告。管理員兩種都收得到（看自己發的長怎樣）。
+-- 指定班級的，只有開那些班的人收得到。過期 60 天內的舊信也回（active=false）。
+create or replace function public.park_news_inbox()
+returns jsonb language plpgsql stable security definer set search_path = public, pg_temp as $$
+declare
+  v_me    uuid := auth.uid();
+  v_admin boolean := public.is_admin();
+  v_kinds text[];
+  v_today date := (now() at time zone 'Asia/Taipei')::date;
+begin
+  perform public.park_require_staff();
+  v_kinds := case when v_admin then array['teacher', 'parent'] else array[public.park_staff_kind(v_me)] end;
+  return coalesce((
+    select jsonb_agg(jsonb_build_object(
+             'id', n.id, 'title', n.title, 'body', n.body, 'link', n.link, 'sign', n.sign,
+             'important', n.important, 'starts_on', n.starts_on, 'ends_on', n.ends_on,
+             'active', n.ends_on >= v_today, 'audience', n.audience, 'seen', s.news_id is not null)
+           order by n.starts_on desc, n.id desc)
+      from public.park_news n
+      left join public.park_news_staff_seen s on s.news_id = n.id and s.user_id = v_me
+     where n.hidden_at is null
+       and n.starts_on <= v_today
+       and n.ends_on >= v_today - 60
+       and n.audience && v_kinds
+       and (v_admin or n.classes is null
+            or exists (select 1 from public.classes c where c.owner = v_me and c.code = any(n.classes)))
+  ), '[]'::jsonb);
+end;
+$$;
+
+create or replace function public.park_news_inbox_seen(p_id bigint)
+returns boolean language plpgsql security definer set search_path = public, pg_temp as $$
+begin
+  perform public.park_require_staff();
+  if not exists (select 1 from public.park_news n where n.id = p_id and n.hidden_at is null
+                   and n.audience && array['teacher', 'parent']) then return false; end if;
+  insert into public.park_news_staff_seen (news_id, user_id) values (p_id, auth.uid())
+  on conflict do nothing;
+  return true;
+end;
+$$;
+
 revoke all on function public.park_news_mine(), public.park_news_seen(bigint, text[]),
-  public.park_news_post(text[], text, text, date, text, text, text[], text[], text, boolean, date),
-  public.park_news_list(), public.park_news_hide(bigint) from public;
+  public.park_news_post(text[], text, text, date, text, text, text[], text[], text, boolean, date, text[]),
+  public.park_news_list(), public.park_news_hide(bigint), public.park_staff_kind(uuid),
+  public.park_news_inbox(), public.park_news_inbox_seen(bigint) from public, anon;
 grant execute on function public.park_news_mine() to anon, authenticated;
 grant execute on function public.park_news_seen(bigint, text[]),
-  public.park_news_post(text[], text, text, date, text, text, text[], text[], text, boolean, date),
-  public.park_news_list(), public.park_news_hide(bigint) to authenticated;
+  public.park_news_post(text[], text, text, date, text, text, text[], text[], text, boolean, date, text[]),
+  public.park_news_list(), public.park_news_hide(bigint),
+  public.park_news_inbox(), public.park_news_inbox_seen(bigint) to authenticated;
