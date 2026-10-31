@@ -5,6 +5,7 @@
 // 進樂園時，各遊戲新賺到的時光幣跳一次通知（「在島嶼開拓者賺了 130 時光幣！」）。
 // 錢都是伺服器算的，這裡只負責顯示和按按鈕；資料庫還沒裝這份 SQL 時整個藏起來。
 import * as auth from './auth.js';
+import { wrapWallet } from './wallet-scroll.js';
 import * as traveller from './traveller.js';
 import * as passport from './passport.js';
 import { sfx } from './audio.js';
@@ -74,6 +75,7 @@ function announce(list) {
 
 function show(html) {
   layer.innerHTML = html;
+  wrapWallet(layer);
   layer.hidden = false;
   layer.onclick = (e) => { if (e.target === layer) close(); };
   layer.querySelectorAll('[data-close]').forEach((b) => { b.onclick = close; });
