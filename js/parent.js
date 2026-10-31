@@ -142,13 +142,16 @@ async function showCode() {
     qr.addData(url); qr.make();
     svg = qr.createSvgTag({ cellSize: 6, margin: 2, scalable: true });
   } catch { /* QR 載不到就只給代碼 */ }
-  const text = `我在玩「時空冒險樂園」，幫我完成爸媽任務好嗎？打開這個連結就能和我連起來：${url}`;
+  const back = new URL('teacher.html', location.href.split('#')[0]);
+  const backShort = back.host + back.pathname;
+  const text = `我在玩「時空冒險樂園」，幫我完成爸媽任務好嗎？打開這個連結就能和我連起來：${url}\n（或打開 ${backShort} 登入後台，在「我的班級」最上面輸入家長碼 ${c.code}）`;
   show(`<div class="wallet parent-card code" role="dialog" aria-modal="true" aria-label="拿給爸媽看">
     <button class="x" data-close aria-label="關閉"></button>
     <h2>拿給爸媽看</h2>
-    <p class="lead">請爸媽用手機相機掃這個 QR，照著做就能和你連起來。</p>
+    <p class="lead">請爸媽用手機相機掃這個 QR，登入或建立家長帳號後就和你連起來。</p>
     <div class="qr">${svg}</div>
     <p class="pcode">家長碼 <b>${esc(c.code)}</b><small>14 天內有效，用過一次就換新的</small></p>
+    <p class="tip">不能掃？爸媽打開 <b>${esc(backShort)}</b> 登入，在「我的班級」最上面輸入這 6 碼。</p>
     <div class="row center"><button type="button" class="btn small go" data-share>傳給爸媽</button></div>
     <p class="tip">爸媽不在旁邊？按「傳給爸媽」用 LINE 或簡訊傳過去。</p>
     <div class="row end"><button type="button" class="ghost" data-back>回爸媽任務</button></div>
