@@ -210,6 +210,7 @@ export const teacher = {
   removeStudent:  (code, id) => call('park_remove_from_class', { p_code: code, p_student: id }),
   guardianClasses: (id) => call('park_guardian_classes', { p_student: id }),
   setPrimary:     (code, id) => call('park_teacher_set_primary', { p_code: code, p_student: id }),
+  setGrade:       (id, grade) => call('park_set_student_grade', { p_student: id, p_grade: grade }),
   facilities:     () => call('park_facility_list'),
   // 遊玩紀錄（park_playlog.sql）：全班每個人最後在玩什麼、一位學生的時間軸
   lastPlay:       (code) => call('park_class_last_play', { p_code: code }),

@@ -101,8 +101,10 @@ function suggestPassword() {
 function ask({ title, body = '', fields = [], ok = '確定', danger = false, onOk }) {
   dlg.innerHTML = `<form method="dialog" class="dlg">
     <h3>${esc(title)}</h3>${body}
-    ${fields.map((f) => `<label>${esc(f.label)}<input name="${f.name}" value="${esc(f.value ?? '')}"
-      ${f.type ? `type="${f.type}"` : ''} ${f.max ? `maxlength="${f.max}"` : ''} autocomplete="off" spellcheck="false"></label>`).join('')}
+    ${fields.map((f) => `<label>${esc(f.label)}${f.options
+      ? `<select name="${f.name}">${f.options.map(([v, t]) => `<option value="${esc(v)}" ${String(f.value ?? '') === String(v) ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select>`
+      : `<input name="${f.name}" value="${esc(f.value ?? '')}"
+      ${f.type ? `type="${f.type}"` : ''} ${f.max ? `maxlength="${f.max}"` : ''} autocomplete="off" spellcheck="false">`}</label>`).join('')}
     <p class="msg" hidden></p>
     <div class="row end"><button type="button" class="ghost" data-cancel>取消</button>
     <button type="submit" class="btn ${danger ? 'danger' : ''}">${esc(ok)}</button></div></form>`;
@@ -118,7 +120,9 @@ function ask({ title, body = '', fields = [], ok = '確定', danger = false, onO
       const done = await onOk(vals);
       if (done === false) return;
       if (typeof done === 'string') {          // 有結果要給老師看（例如新密碼），對話框留著
-        form.innerHTML = `<h3>${esc(title)}</h3><p class="result">${done}</p><div class="row end"><button class="btn" value="ok">好</button></div>`;
+        // 「知道了」不能是 submit：表單的 submit 已經被上面接走，按了會再跑一次 onOk（以前按了沒反應）
+        form.innerHTML = `<h3>${esc(title)}</h3><p class="result">${done}</p><div class="row end"><button type="button" class="btn" data-done>知道了</button></div>`;
+        $('[data-done]', form).onclick = () => dlg.close();
         return;
       }
       dlg.close();
@@ -221,6 +225,7 @@ function paintHero() {
 }
 function paintTabs() {
   $$('#tabs button').forEach((b) => b.classList.toggle('on', b.dataset.view === tab));
+  $('#tabs button.on')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });   // 手機分頁橫向滑動時，把目前這頁捲進來
 }
 $$('#tabs button').forEach((b) => {
   b.onclick = () => { tab = b.dataset.view; history.replaceState(null, '', '#' + tab); paintTabs(); show(); };
@@ -271,8 +276,8 @@ async function renderClasses() {
     <div id="newform" hidden></div>
     ${classes.length ? `<div class="classtabs" role="tablist">${classes.map((c) => `
       <button role="tab" data-code="${esc(c.code)}" class="${c.code === active ? 'on' : ''}">
-        <b>${esc(c.name || c.code)}</b><small>${c.kind === 'home' ? '家庭班' : gradeText(c.grade, c.grade) || '學校班'}・${c.members} 人</small></button>`).join('')}</div>`
-    : `<div class="empty"><img src="img/admin/tick-empty.webp" alt=""><p>還沒有班級。按「開新班」，取個班名、選年級，就會拿到一組班級代碼給小朋友註冊。</p></div>`}
+        <b>${esc(c.name || c.code)}</b><small>${c.kind === 'home' ? '家庭班' : '學校班'}・${c.members} 人</small></button>`).join('')}</div>`
+    : `<div class="empty"><img src="img/admin/tick-empty.webp" alt=""><p>還沒有班級。按「開新班」，取個班名，就會拿到一組班級代碼給小朋友註冊。</p></div>`}
   </section>
   <div id="cls"></div>`;
 
@@ -308,15 +313,15 @@ function classForm(c = {}) {
     <label>類型<select name="kind">
       <option value="school" ${kind === 'school' ? 'selected' : ''}>學校班</option>
       <option value="home" ${kind === 'home' ? 'selected' : ''}>家庭班</option></select></label>
-    <label>年級<select name="grade"><option value="">${kind === 'home' ? '不指定' : '請選'}</option>
-      ${GRADES.map((g) => `<option value="${g}" ${c.grade === g ? 'selected' : ''}>${g} 年級</option>`).join('')}</select></label>`;
+    <label>新加入孩子的年級（選填）<select name="grade"><option value="">不指定，每個孩子自己設</option>
+      ${GRADES.map((g) => `<option value="${g}" ${c.grade === g ? 'selected' : ''}>${g} 年級</option>`).join('')}</select>
+      <small class="tip">年級記在每個孩子身上，可以在全班總覽改。全班同年級的話選這裡，新加入的孩子就先填這個年級。</small></label>`;
 }
 function readClassForm(f) {
   const name = f.elements.name.value.trim();
   const kind = f.elements.kind.value;
   const grade = f.elements.grade.value ? Number(f.elements.grade.value) : null;
   if (!name) throw new Error('填一下班級名稱');
-  if (kind === 'school' && !grade) throw new Error('學校班請選年級，適合的遊戲會排在前面');
   return { name, kind, grade };
 }
 function toggleNewForm(force) {
@@ -387,7 +392,7 @@ function paintInfo(c) {
   p.innerHTML = `
     <div class="head">${h2('students', esc(c.name || c.code))}
       <div class="chips"><span class="chip">${c.kind === 'home' ? '家庭班' : '學校班'}</span>
-      ${c.grade ? `<span class="chip">${c.grade} 年級</span>` : ''}<span class="chip">${c.members} 人</span></div></div>
+      ${gradesOf(c).length ? `<span class="chip">${gradesOf(c).join('、')} 年級</span>` : ''}<span class="chip">${c.members} 人</span></div></div>
     <div class="codebox">
       <div><small>班級代碼</small><span class="code">${esc(c.code)}</span></div>
       <p>小朋友第一次來，在樂園按 Start Game →「第一次來」，填這組代碼。已經有帳號的，到「我的資料」輸入代碼加入。</p>
@@ -464,19 +469,23 @@ async function paintPetQuiet(c, p) {
 }
 
 // ---------- 開放哪些遊戲 ----------
-function fits(f, grade) {
-  if (!grade || (!f.grade_min && !f.grade_max)) return false;
-  return grade >= (f.grade_min ?? 1) && grade <= (f.grade_max ?? 9);
+// 班上孩子的年級（每個孩子自己的）；還沒有人設就用班級預設
+function gradesOf(c) {
+  return c.grades?.length ? c.grades : c.grade ? [c.grade] : [];
+}
+function fits(f, grades) {
+  if (!grades.length || (!f.grade_min && !f.grade_max)) return false;
+  return grades.some((g) => g >= (f.grade_min ?? 1) && g <= (f.grade_max ?? 9));
 }
 function paintFacilities(c) {
   const p = $('#p-fac');
   const on = new Set(c.facilities);
   const list = facilities
     .filter((f) => f.status !== 'hidden' && f.code !== 'quiz')   // 時光試煉島不用開放，出卷就能寫
-    .map((f) => ({ ...f, fit: fits(f, c.grade) }))
+    .map((f) => ({ ...f, fit: fits(f, gradesOf(c)) }))
     .sort((a, b) => (b.fit - a.fit) || 0);
   p.innerHTML = `<div class="head">${h2('park', '開放的遊戲')}</div>
-    <p class="lead">勾起來的遊戲，班上的小朋友在樂園地圖上才進得去。${c.grade ? `適合 ${c.grade} 年級的排在前面。` : ''}</p>
+    <p class="lead">勾起來的遊戲，班上的小朋友在樂園地圖上才進得去。${gradesOf(c).length ? `適合班上 ${gradesOf(c).join('、')} 年級孩子的排在前面。` : '在全班總覽幫孩子設年級，適合的遊戲就會排在前面。'}</p>
     <ul class="facs">${list.map((f) => {
       const trialMine = f.status === 'trial' && c.trials.includes(f.code);
       const note = f.status === 'construction' ? '還在施工，先勾起來，開幕當天班上就能玩'
@@ -488,7 +497,7 @@ function paintFacilities(c) {
         <img src="${esc(badgeOf(f.code))}" alt="">
         <span><b>${esc(f.name)}</b><small>${[f.subject, gradeText(f.grade_min, f.grade_max)].filter(Boolean).map(esc).join('・')}</small>
         ${note ? `<em>${esc(note)}</em>` : ''}</span>
-        <span class="chips">${f.fit ? '<span class="chip fit">適合這個年級</span>' : ''}<span class="chip st-${f.status}">${STATUS[f.status]}</span></span></label></li>`;
+        <span class="chips">${f.fit ? '<span class="chip fit">適合班上的年級</span>' : ''}<span class="chip st-${f.status}">${STATUS[f.status]}</span></span></label></li>`;
     }).join('')}</ul>`;
   let saving = Promise.resolve();
   $$('[data-fac]', p).forEach((box) => {
@@ -574,6 +583,7 @@ async function paintOverview(c) {
       <thead><tr><th class="stu">學生</th>${head}<th class="ops">學生管理</th></tr></thead>
       <tbody>${shown.map((s) => `<tr>
         <td class="stu">${avCell(avs.get(s.id))}<b>${esc(s.nickname)}</b><small>${esc(s.login_id)}</small>
+          <button class="grade-chip ${s.grade ? '' : 'none'}" data-grade="${s.id}" title="年級記在孩子身上，在每個班都一樣">${s.grade ? `${s.grade} 年級` : '設年級'}</button>
           <small class="seen ${s.last > Date.now() - 7 * 86400000 ? 'on' : ''}" title="在任何遊戲或樂園裡最後一次動作的時間">${s.last ? `最後活動 ${esc(ago(s.last))}` : '還沒玩過'}</small>
           ${plays.get(s.id) ? `<small class="now" title="最近 60 天最後玩的地方">在玩：${esc(playText(plays.get(s.id)))}</small>` : ''}
           ${guides.get(s.id) ? `<small class="now" title="新註冊的孩子前七天照新手手冊走，一天開一頁">${guides.get(s.id).finished ? '新手手冊：七頁都完成了' : `新手手冊：做完 ${guides.get(s.id).pages} / 7 頁`}</small>` : ''}
@@ -601,6 +611,7 @@ async function paintOverview(c) {
   $$('[data-rm]', p).forEach((b) => { b.onclick = () => removeStudent(c, byId.get(b.dataset.rm)); });
   $$('[data-primary]', p).forEach((b) => { b.onclick = () => setPrimary(c, byId.get(b.dataset.primary)); });
   $$('[data-gcls]', p).forEach((b) => { b.onclick = () => guardianClasses(byId.get(b.dataset.gcls)); });
+  $$('[data-grade]', p).forEach((b) => { b.onclick = () => setGrade(c, byId.get(b.dataset.grade)); });
 }
 
 // ---------- 遊玩紀錄（park_playlog.sql） ----------
@@ -784,6 +795,21 @@ function resetPassword(s) {
     },
   });
 }
+function setGrade(c, s) {
+  ask({
+    title: `「${s.nickname}」是幾年級？`,
+    body: '<p class="lead">年級記在孩子身上，在每個班都一樣。開放遊戲時，適合的會排在前面。</p>',
+    fields: [{ name: 'grade', label: '年級', value: s.grade ?? '', options: [['', '先不填'], ...GRADES.map((g) => [g, `${g} 年級`])] }],
+    ok: '存好',
+    onOk: async ({ grade }) => {
+      const g = grade ? Number(grade) : null;
+      if (g === (s.grade ?? null)) return;
+      await auth.teacher.setGrade(s.id, g);
+      toast(g ? `${s.nickname} 設成 ${g} 年級了` : `${s.nickname} 的年級拿掉了`);
+      await renderClasses();
+    },
+  });
+}
 function renameStudent(c, s) {
   ask({
     title: `幫「${s.nickname}」改暱稱`,
@@ -856,10 +882,10 @@ function exportCsv() {
   if (!lastOverview) return;
   const { cls, students, games } = lastOverview;
   const q = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
-  const head = ['暱稱', '帳號', '主要班級', '最後活動', '最後在玩'];
+  const head = ['暱稱', '帳號', '年級', '主要班級', '最後活動', '最後在玩'];
   games.forEach((g) => head.push(`${g.name} 進度%`, `${g.name} 最後遊玩`, `${g.name} 狀態`, `${g.name} 需要注意`));
   const rows = students.map((s) => {
-    const r = [s.nickname, s.login_id, s.primary ? '是' : s.primary_class ?? '', s.last ? new Date(s.last).toLocaleString('zh-TW') : '',
+    const r = [s.nickname, s.login_id, s.grade ?? '', s.primary ? '是' : s.primary_class ?? '', s.last ? new Date(s.last).toLocaleString('zh-TW') : '',
       lastOverview.plays?.get(s.id) ? playText(lastOverview.plays.get(s.id)) : ''];
     games.forEach((g) => {
       const x = g.rows[s.id];

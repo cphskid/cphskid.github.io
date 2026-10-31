@@ -171,6 +171,12 @@ td.stu{min-width:150px}
 td.stu b,td b{font-weight:900}
 td.stu small,td small{display:block;font-size:13px;color:var(--muted)}
 td.stu small.seen.on{color:#2f8a4a;font-weight:700}
+/* 學生年級（記在孩子身上）：點了改 */
+td.stu .grade-chip{display:inline-flex;align-items:center;min-height:32px;margin:4px 0 2px;padding:2px 12px;border:2px solid var(--cream-2);
+  border-radius:999px;background:#fff6d6;font:900 14px/1 var(--f-body);color:var(--wood);cursor:pointer}
+td.stu .grade-chip.none{background:#fff;border-style:dashed;color:var(--muted)}
+td.stu .grade-chip:hover,td.stu .grade-chip:focus-visible{border-color:var(--wood-2);outline:none}
+.form label .tip{display:block;margin-top:4px;font-weight:500}
 td.ops{white-space:nowrap}
 td.ops .ghost{margin:2px 0}
 td.num{white-space:nowrap}
@@ -212,8 +218,10 @@ dialog::backdrop{background:rgba(10,40,70,.5)}
   .hero #avatar{width:80px}
   .hero h1{font-size:24px}
   .hero p{font-size:14px}
-  .tabs{margin-top:-40px;padding:0 12px}
-  .tabs button{min-width:0;padding:13px 18px 11px;font-size:16px}
+  /* 分頁太多放不下：一列橫向滑動，字不換行（以前會變直排又被切掉） */
+  .tabs{margin-top:-40px;padding:0 12px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity}
+  .tabs::-webkit-scrollbar{display:none}
+  .tabs button{flex:none;min-width:0;padding:13px 16px 11px;font-size:16px;white-space:nowrap;scroll-snap-align:start}
   .bar .title{font-size:19px}
   .who small{display:none}
   .panel h2{font-size:22px}

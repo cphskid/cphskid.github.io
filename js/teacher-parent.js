@@ -98,6 +98,8 @@ function createChild({ toast, refresh, suggestPassword }) {
     <label>孩子的暱稱（遊戲裡顯示的名字）<input name="nick" maxlength="16" autocomplete="off" placeholder="例如：小安"></label>
     <label>登入帳號（英文字母、數字、底線，3–16 個字）<input name="login" maxlength="16" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="例如：anan2016"></label>
     <label>密碼（至少 6 個字，有英文也有數字）<input name="pw" value="${esc(pw)}" autocomplete="off" spellcheck="false"></label>
+    <label>年級（適合的遊戲會排在前面）<select name="grade"><option value="">先不填</option>
+      ${[1, 2, 3, 4, 5, 6].map((g) => `<option value="${g}">${g} 年級</option>`).join('')}</select></label>
     <p class="msg" hidden></p>
     <div class="row end"><button type="button" class="ghost" data-cancel>取消</button><button type="submit" class="btn">開帳號</button></div></form>`;
   const form = $('form', dlg);
@@ -107,13 +109,17 @@ function createChild({ toast, refresh, suggestPassword }) {
     const b = $('button[type=submit]', form), msg = $('.msg', form);
     b.disabled = true;
     try {
-      const v = { nick: form.elements.nick.value.trim(), login: form.elements.login.value.trim(), pw: form.elements.pw.value.trim() };
+      const v = { nick: form.elements.nick.value.trim(), login: form.elements.login.value.trim(), pw: form.elements.pw.value.trim(),
+                  grade: form.elements.grade.value ? Number(form.elements.grade.value) : null };
       const r = await auth.parent.createChild(v.login, v.pw, v.nick);
+      if (v.grade) await auth.teacher.setGrade(r.student, v.grade).catch(() => toast('帳號開好了，年級沒存到，可以在全班總覽再設', true));
       const park = new URL('./', location.href).href;
       form.innerHTML = `<h3>${esc(r.nickname)} 的帳號開好了</h3>
         <div class="login-card"><p>樂園網址<b>${esc(park)}</b></p><p>帳號<b>${esc(r.login)}</b></p><p>密碼<b>${esc(v.pw)}</b></p></div>
         <p class="tip">截圖或抄下來給孩子。孩子打開樂園 → 按「登入」→ 輸入帳號密碼。忘記密碼可以回這裡請你重設。</p>
-        <div class="row end"><button type="button" class="ghost" data-copy>複製</button><button class="btn" value="ok">好</button></div>`;
+        <div class="row end"><button type="button" class="ghost" data-copy>複製</button><button type="button" class="btn" data-done>抄好了</button></div>`;
+      // 不能用 submit：表單的 submit 會再開一次帳號（以前按「好」沒反應就是這個）
+      $('[data-done]', form).onclick = () => dlg.close();
       $('[data-copy]', form).onclick = async () => {
         const t = `時空冒險樂園 ${park}\n帳號：${r.login}\n密碼：${v.pw}`;
         try { await navigator.clipboard.writeText(t); toast('複製好了'); } catch { window.prompt('手動複製', t); }
