@@ -338,6 +338,8 @@ let cardOpen = false;       // 左上的狀態卡展開了沒
 let bagOpen = false;        // 餵食的點心列開著沒
 let cam = { x: 0, y: 0, k: 1 };     // 鏡頭：島移到哪、放多大
 let panned = false;         // 這次按下去有拖地圖（放開時不要當成點一下）
+let tryTheme = null;        // 裝扮時試套的風格（還沒拿到的），離開裝扮就換回來
+const curTheme = () => tryTheme ?? isle.theme();
 let deco = null;            // 裝扮模式 { tab, tool, sel, back }（back：按「全部收起來」之前的樣子，可以放回去）
 
 function stopScene() {
@@ -598,7 +600,7 @@ async function revealScene() {
   const t0 = performance.now();
   const pis = $('.pisle', layer);
   const srcs = [...new Set(props.map((o) => `img/pet/furniture/${o.id}.webp`)),
-    ...new Set(W.trees(isle.theme()).map((t) => `img/pet/tree/${t.id}.webp`)),
+    ...new Set(W.trees(curTheme()).map((t) => `img/pet/tree/${t.id}.webp`)),
     ...actors.flatMap((a) => FIRST_POSES.map((pose) => art(a.p.species, a.p.stage, pose)))];
   await Promise.race([Promise.all([...srcs.map(loadImg), landReady]), new Promise((ok) => setTimeout(ok, 2500))]);
   if (pis !== $('.pisle', layer)) return;
@@ -780,7 +782,7 @@ function rebuildWorld() {
   box.querySelectorAll('.prop,.fence,.tree').forEach((el) => el.remove());
   props = [];
   occ = W.occupancy(items);
-  for (const t of W.trees(isle.theme())) {
+  for (const t of W.trees(curTheme())) {
     const el = document.createElement('span');
     el.className = 'tree';
     el.innerHTML = `<img src="img/pet/tree/${t.id}.webp" alt="">`;
@@ -859,6 +861,7 @@ function enterDeco() {
 }
 function exitDeco() {
   deco = null;
+  if (tryTheme) { tryTheme = null; paintLand(W.landSrc(isle.theme())); }
   $('.pisle', layer)?.classList.remove('decorating');
   $('.furn', layer).hidden = true;
   $('.deco-top', layer).hidden = true;
@@ -880,7 +883,7 @@ function paintDeco() {
   const top = $('.deco-top', layer), box = $('.furn', layer);
   top.hidden = false;
   top.innerHTML = `${deco.back ? '<button type="button" class="ghost small" data-back>↶ 全部放回去</button>' : `<button type="button" class="ghost small" data-wipe>${deco.wipe ? '再按一次：全部收起來' : '📦 全部收起來'}</button>`}
-    <p class="msg">${deco.tool === 'erase' ? '擦掉：點圍籬小路就收起來；按住不動一下再拖，可以擦一整排' : deco.tool ? `${FURN_NAME[deco.tool]}：點空格擺上去、點擺好的收起來；按住不動一下再拖，可以畫一整排` : '按住東西拖到格子上；點一下跳出翻面、收起來'}</p>
+    <p class="msg">${deco.tool ? `${FURN_NAME[deco.tool]}：點空格擺上去、點擺好的收起來；按住不動一下再拖可以畫一整排（從擺好的開始拖＝收一整排）` : '按住東西拖到格子上；點一下跳出翻面、收起來'}</p>
     <span class="cnt">傢俱 ${furnCount()}/${W.FURN_MAX}・圍籬小路 ${buildCount()}/${W.BUILD_MAX}</span>
     <button type="button" class="btn small" data-done>完成</button>`;
   if (deco.back) $('[data-back]', top).onclick = () => {
@@ -916,22 +919,31 @@ function paintDeco() {
   if (deco.tab === 'furn') body = PROPS.filter((d) => owns(d.id) || !LIMITED.has(d.id)).map((d) => tile(d.id)).join('');
   else if (deco.tab === 'house') body = [...HOUSES.filter((id) => owns(id) || !LIMITED.has(id)), 'bowl-food', 'bowl-water'].map((id) => tile(id)).join('');
   else if (deco.tab === 'build') {
-    body = [...BUILDS, 'erase'].map((id) => `<button type="button" class="dt-i tool${deco.tool === id ? ' on' : ''}" data-tool="${id}">${toolIcon(id)}<b>${FURN_NAME[id] ?? '擦掉'}</b></button>`).join('');
+    body = BUILDS.map((id) => `<button type="button" class="dt-i tool${deco.tool === id ? ' on' : ''}" data-tool="${id}">${toolIcon(id)}<b>${FURN_NAME[id]}</b></button>`).join('');
   }
   box.hidden = false;
   box.innerHTML = `<div class="dt-tabs">${tabs.map(([k, t]) => `<button type="button" data-tab="${k}" class="${deco.tab === k ? 'on' : ''}">${t}</button>`).join('')}</div>
-    ${deco.tab === 'look' ? isle.decorHtml() : `<div class="dt-list">${body}</div>`}
-    ${deco.tab === 'build' ? '<p class="note">選好一種：點空格擺上去、點擺好的收起來；按住不動一下再拖，可以畫一整排；直接拖曳是移動地圖。寵物不會穿過圍籬，記得留小門。</p>' : ''}`;
+    ${deco.tab === 'look' ? isle.decorHtml(tryTheme) : `<div class="dt-list">${body}</div>`}
+    ${deco.tab === 'build' ? '<p class="note">選好一種：點空格擺上去、點擺好的收起來；按住不動一下再拖可以畫一整排，從擺好的那格開始拖就是收一整排；直接拖曳是移動地圖。寵物不會穿過圍籬，記得留小門。</p>' : ''}`;
   box.querySelectorAll('[data-tab]').forEach((b) => { b.onclick = () => { deco.tab = b.dataset.tab; deco.tool = null; paintDeco(); }; });
   box.querySelectorAll('[data-add]').forEach((b) => { b.onclick = () => addItem(b.dataset.add); });
   box.querySelectorAll('[data-tool]').forEach((b) => { b.onclick = () => { deco.tool = deco.tool === b.dataset.tool ? null : b.dataset.tool; deco.sel = null; paintSel(); paintDeco(); }; });
   if (deco.tab === 'look') {
     isle.bindDecor(box, {
       onTheme: (t) => {
-        const src = W.landSrc(t);
-        paintLand(src);
+        tryTheme = null;
+        paintLand(W.landSrc(t));
         rebuildWorld();
         saveIsle();
+        paintDeco();
+      },
+      // 還沒拿到的風格：先套在島上看看（不存），再點一次或離開裝扮就換回來
+      onTry: (t) => {
+        tryTheme = tryTheme === t ? null : t;
+        paintLand(W.landSrc(curTheme()));
+        rebuildWorld();
+        paintDeco();
+        if (tryTheme) decoMsg(`試套「${isle.THEMES.find((x) => x.id === t).name}」看看：${isle.THEMES.find((x) => x.id === t).how}就能換上`);
       },
       onName: () => { $('.isle-sign', layer).textContent = isle.nameText(isle.name()); },
     });
@@ -1049,7 +1061,7 @@ function dragProp(o, e) {
   addEventListener('pointerup', up);
   addEventListener('pointercancel', up);
 }
-// 圍籬小路用畫的：按下去經過的格子都擺上去（擦掉＝拿掉圍籬小路）
+// 圍籬小路用畫的：按下去經過的格子都擺上去；從擺好的同一種開始畫＝一路收起來
 let painting = false;
 function paintStart(e) {
   if (!deco?.tool || painting) return false;
@@ -1061,7 +1073,7 @@ function paintStart(e) {
     const p = toIsle(ev), { i, j } = W.cellOf(p.x, p.y);
     if (seen.has(j * N + i)) return;
     seen.add(j * N + i);
-    if (deco.tool === 'erase' ? eraseAt(i, j) : buildAt(deco.tool, i, j)) { did = true; rebuildWorld(); paintDeco(); }
+    if (same ? buildIdAt(i, j) === deco.tool && eraseAt(i, j) : buildAt(deco.tool, i, j)) { did = true; rebuildWorld(); paintDeco(); }
   };
   step(e);
   const up = () => {
@@ -1069,8 +1081,6 @@ function paintStart(e) {
     removeEventListener('pointerup', up);
     removeEventListener('pointercancel', up);
     painting = false;
-    const took = !did && same && seen.size === 1 && eraseAt(first.i, first.j);
-    if (took) { did = true; rebuildWorld(); }
     if (did) { pushUndo(before); saveIsle(); paintDeco(); }
   };
   addEventListener('pointermove', step);
@@ -1078,10 +1088,10 @@ function paintStart(e) {
   addEventListener('pointercancel', up);
   return true;
 }
-// 選了工具時點一下：空格擺上去、擺好的同一種收起來（擦掉＝收起來）
+// 選了工具時點一下：空格擺上去、擺好的同一種收起來
 function tapTool(e) {
   const p = toIsle(e), { i, j } = W.cellOf(p.x, p.y), before = snapshot();
-  const did = deco.tool === 'erase' || buildIdAt(i, j) === deco.tool ? eraseAt(i, j) : buildAt(deco.tool, i, j);
+  const did = buildIdAt(i, j) === deco.tool ? eraseAt(i, j) : buildAt(deco.tool, i, j);
   if (!did) return;
   pushUndo(before);
   rebuildWorld();

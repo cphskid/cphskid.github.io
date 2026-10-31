@@ -1507,7 +1507,9 @@ body[data-starter="on"][data-scene="map"] #tick .bubble{display:none}
 .isle-th small{font:800 11px/1.2 var(--f-body);color:#b0603a;text-align:center}
 .isle-th.on{border-color:var(--wood);background:#fff1c9;box-shadow:0 3px 0 var(--wood-2)}
 .isle-th.locked img{filter:grayscale(.9) brightness(.8) opacity(.6)}
-.isle-th.locked{cursor:default}
+.isle-th.locked{cursor:pointer}
+.isle-th.locked:hover img,.isle-th.trying img{filter:none}
+.isle-th.trying{border-color:#e0892b;background:#fff3e0;box-shadow:0 3px 0 #c06a1c}
 .isle-visit{position:absolute;inset:0;z-index:40;background:rgba(40,24,10,.45);display:grid;place-items:center;padding:12px}
 .iv-panel,.iv-view{position:relative;width:min(760px,100%);max-height:calc(100dvh - 24px);overflow-y:auto;overscroll-behavior:contain;background:#fff8e6;border:4px solid var(--wood);border-radius:22px;padding:16px;box-shadow:0 8px 0 var(--wood-2),0 16px 30px rgba(0,0,0,.3);animation:pop .25s ease-out}
 .iv-panel h3{margin:0 0 10px;font:900 22px/1.2 var(--f-body);color:var(--wood)}

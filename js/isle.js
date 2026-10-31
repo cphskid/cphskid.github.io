@@ -87,7 +87,8 @@ export function inboxSeen() {
 }
 
 // ---------- 裝扮面板的上半：島的風格、島名 ----------
-export function decorHtml() {
+// trying：正在試套的風格（還沒拿到的）
+export function decorHtml(trying = null) {
   const own = themes();
   const n = name();
   return `<div class="isle-deco">
@@ -97,11 +98,12 @@ export function decorHtml() {
     <p class="lab">島的風格</p>
     <div class="isle-themes">${THEMES.map((t) => own.includes(t.id)
       ? `<button type="button" class="isle-th${t.id === theme() ? ' on' : ''}" data-theme="${t.id}"><img src="${thumb(t.id)}" alt=""><b>${t.name}</b></button>`
-      : `<span class="isle-th locked"><img src="${thumb(t.id)}" alt=""><b>${t.name}</b><small>🔒 ${t.how}</small></span>`).join('')}</div>
+      : `<button type="button" class="isle-th locked${t.id === trying ? ' trying' : ''}" data-try="${t.id}"><img src="${thumb(t.id)}" alt=""><b>${t.name}</b><small>${t.id === trying ? '試套中・再點換回來' : `👀 點我試套・${t.how}`}</small></button>`).join('')}</div>
   </div>`;
 }
-// onTheme(theme)：換地面圖；onName()：換招牌
-export function bindDecor(box, { onTheme, onName }) {
+// onTheme(theme)：換地面圖；onTry(theme)：試套還沒拿到的；onName()：換招牌
+export function bindDecor(box, { onTheme, onTry, onName }) {
+  box.querySelectorAll('[data-try]').forEach((b) => { b.onclick = () => onTry?.(b.dataset.try); });
   box.querySelectorAll('[data-word]').forEach((s) => {
     s.onchange = () => {
       const n = [...name()];
