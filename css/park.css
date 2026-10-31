@@ -1682,3 +1682,41 @@ button.dt-i:hover,button.dt-i:focus-visible{border-color:var(--wood);outline:non
   .parent-card .link-box img{width:48px}
   .parent-card .link-box .btn{grid-column:1/-1}
 }
+
+/* 2026-10-31 功能列放不下時收進「更多」（js/dock.js）：手機字回到 13px、按鈕至少 44px，圖＋字一起 */
+#dock>button.ovf{display:none!important}
+#dock>button{flex:none}
+#dock{max-width:calc(100vw - 16px);box-sizing:border-box}
+#more-btn .more-ic{width:52px;height:52px;display:flex;align-items:center;justify-content:center;gap:5px}
+#more-btn .more-ic i{width:10px;height:10px;border-radius:50%;background:#8a5a2a;box-shadow:inset 0 -2px 0 #5e3a18}
+#more-btn.on{background:linear-gradient(#ffe7a8,#f6c75e)!important}
+#more-btn.on .more-ic i:nth-child(2){translate:0 -4px}
+#dock-more{position:absolute;right:8px;bottom:126px;z-index:8;display:grid;grid-template-columns:repeat(var(--cols,3),92px);gap:10px;max-width:calc(100vw - 16px);box-sizing:border-box;padding:12px;border-radius:22px;background:linear-gradient(#8a5a2a,#5e3a18);box-shadow:inset 0 0 0 3px #c99a4a,0 8px 18px rgba(0,0,0,.35);animation:dockMore .25s cubic-bezier(.34,1.5,.5,1) both}
+#dock-more[hidden],body:not([data-scene="map"]) #dock-more{display:none}
+#dock-more::after{content:'';position:absolute;right:var(--tip,46px);bottom:-9px;width:18px;height:18px;rotate:45deg;background:#5e3a18;box-shadow:3px 3px 0 0 #c99a4a}
+#dock-more>button{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:2px;width:92px;height:86px;border:0;border-radius:18px;background:linear-gradient(#fff8e6,#f3dcb0);padding:6px 0;cursor:pointer;box-shadow:inset 0 -3px 0 #d9b77a}
+#dock-more>button img{width:52px;height:52px;object-fit:contain;filter:drop-shadow(0 3px 3px rgba(0,0,0,.2))}
+#dock-more>button b{font:900 16px/1.1 var(--f-body);color:#5a3418;white-space:nowrap}
+#dock-more .dot,#dock-more .badge{position:absolute;top:-8px;right:-6px}
+#dock-more .badge{min-width:24px;height:22px;padding:0 5px;border-radius:99px;border:2px solid #fff;font:900 13px/18px var(--f-body);font-style:normal;color:#fff;background:#e2553f;text-align:center}
+#dock-more .badge[hidden],#dock-more .dot[hidden]{display:none}
+#dock-more>button[data-for="task-btn"][data-state=left] .badge,#dock-more>button[data-for="guide-btn"] .badge{background:#f08a24}
+#dock-more>button[data-state=all] .badge{background:#3fae5a}
+#dock-more>button.starter-target{box-shadow:inset 0 -3px 0 #d9b77a,0 0 0 3px #ffd34d,0 0 16px #ffd34d}
+@keyframes dockMore{from{opacity:0;transform:translateY(16px) scale(.96)}}
+@media (prefers-reduced-motion:reduce){#dock-more{animation:none}}
+@media (max-width:760px),(max-height:560px){
+  #dock{bottom:calc(6px + env(safe-area-inset-bottom));gap:4px;padding:6px}
+  #dock>button{width:62px!important;height:64px}
+  #dock>button b{font-size:13px!important}
+  #more-btn .more-ic{width:34px;height:34px;gap:4px}
+  #more-btn .more-ic i{width:8px;height:8px}
+  #dock-more{bottom:calc(86px + env(safe-area-inset-bottom));grid-template-columns:repeat(var(--cols,3),76px);gap:8px;padding:10px;border-radius:18px}
+  #dock-more>button{width:76px;height:72px;border-radius:14px;padding:4px 0}
+  #dock-more>button img{width:40px;height:40px}
+  #dock-more>button b{font-size:14px}
+}
+/* 紅點：功能列裡沒有自己樣式的（爸媽任務、更多）也看得到 */
+#dock .dot,#dock-more .dot{background:#e2553f;color:#fff;border:2px solid #fff;border-radius:99px;font:900 14px/20px var(--f-body);font-style:normal;text-align:center;box-shadow:0 2px 4px rgba(0,0,0,.3);box-sizing:border-box}
+#dock-more .dot{min-width:24px;height:24px}
+#dock .dot:empty,#dock-more .dot:empty{min-width:18px!important;width:18px;height:18px!important;top:-4px!important;right:-2px!important}
