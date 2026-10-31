@@ -14,6 +14,15 @@ export const PLACE_NAME = {
   town: '現在篇・規則小鎮', isles: '現在篇・離島巡航', sky: '現在篇・天空港', post: '現在篇・景點明信片',
   'a-forest': '祕境島・森林', 'a-nest': '祕境島・螞蟻地下城', 'a-harbor': '祕境島・海港工坊', 'a-town': '祕境島・劇場小鎮', 'a-sky': '祕境島・山頂天文台',
 };
+// 依考試圈範圍：照康軒一般教學進度推的預設範圍（各校不同，出卷時可以再加減章節）
+// 五上社會先上地理和法律、期中後才進臺灣史；五上自然前兩單元是動物世界、探索聲光世界
+export const EXAMS = [
+  { id: '5a-1', name: '五上 第一次段考', places: ['pro', 'town', 'isles', 'sky', 'a-forest', 'a-nest', 'a-town'] },
+  { id: '5a-2', name: '五上 第二次段考', places: ['ch1', 'ch2', 'ch3', 'ch4', 'post', 'a-harbor', 'a-sky'] },
+  { id: '5a', name: '五上 整學期', places: ['pro', 'town', 'isles', 'sky', 'ch1', 'ch2', 'ch3', 'ch4', 'post', 'a-forest', 'a-nest', 'a-town', 'a-harbor', 'a-sky'] },
+  { id: '5b-1', name: '五下 第一次段考', places: ['ch5', 'ch6'] },
+  { id: '5b-2', name: '五下 第二次段考', places: ['ch7'] },
+];
 export const placeZone = (place) => (String(place).startsWith('a-') ? 'science' : 'taiwan');
 export const placeGame = (place) => (String(place).startsWith('a-') ? '時光祕境島' : '島嶼開拓者');
 

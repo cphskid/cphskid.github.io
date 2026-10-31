@@ -1,7 +1,7 @@
 // 老師後台「時光試煉島」頁籤：出卷（照錯題自動挑、家長再調）、出過的卷、分析報告、學習地圖；管理員多一個題庫審核。
 // 規則（學會、挑題比例、報告判讀）在 js/quiz-core.js；改分在資料庫（supabase/park_quiz.sql）。
 import { quiz } from './auth.js';
-import { kidStates, pickPaper, readSlot, PLACE_NAME, STATE_NAME, placeZone, placeGame } from './quiz-core.js';
+import { kidStates, pickPaper, readSlot, PLACE_NAME, STATE_NAME, placeZone, placeGame, EXAMS } from './quiz-core.js';
 import { resultHtml, KIND_NAME } from './quiz-items.js';
 import { openEditor } from './quiz-edit.js';
 
@@ -104,6 +104,9 @@ function paintNew(box) {
         <label class="chip"><input type="radio" name="mode" value="each" ${draft.mode === 'each' ? 'checked' : ''}>每個孩子照自己的錯題挑（建議）</label>
         <label class="chip"><input type="radio" name="mode" value="same" ${draft.mode === 'same' ? 'checked' : ''}>大家同一份</label></div></div>
       <div><b>題數</b><div class="chips">${[10, 20, 30].map((n) => `<label class="chip"><input type="radio" name="n" value="${n}" ${draft.n === n ? 'checked' : ''}>${n} 題${n === 30 ? '（可以分兩次寫）' : ''}</label>`).join('')}</div></div>
+      <div><b>依考試圈範圍</b>
+        <select id="qt-exam"><option value="">不限（全部都考）</option>${EXAMS.map((e) => `<option value="${e.id}" ${draft.exam === e.id ? 'selected' : ''}>${esc(e.name)}</option>`).join('')}</select>
+        ${draft.exam ? `<small class="tip">照康軒一般進度先圈好了，各校範圍不太一樣，請對照學校的範圍通知單，在下面加減章節${draft.examEdited ? '（已調整）' : ''}。</small>` : ''}</div>
       <div><b>考哪些遊戲</b><div class="chips">
         <label class="chip"><input type="checkbox" data-subj="soc" ${draft.subjects.has('soc') ? 'checked' : ''}>島嶼開拓者（社會）</label>
         <label class="chip"><input type="checkbox" data-subj="sci" ${draft.subjects.has('sci') ? 'checked' : ''}>時光祕境島（自然）</label></div></div>
@@ -123,7 +126,21 @@ function paintNew(box) {
     const ps = $$('[data-place]', box);
     draft.places = ps.every((x) => x.checked) ? null : new Set(ps.filter((x) => x.checked).map((x) => x.dataset.place));
   };
-  $$('[data-subj]', box).forEach((x) => { x.onchange = () => { read(); draft.places = null; paintNew(box); }; });
+  $$('[data-subj]', box).forEach((x) => { x.onchange = () => { read(); draft.places = null; draft.exam = null; paintNew(box); }; });
+  $('#qt-exam').onchange = (e) => {
+    read();
+    const ex = EXAMS.find((x) => x.id === e.target.value);
+    const autoTitle = !draft.exam ? draft.title.startsWith('試煉卷') : draft.title === `${EXAMS.find((x) => x.id === draft.exam)?.name} 複習`;
+    draft.exam = ex?.id ?? null; draft.examEdited = false;
+    if (ex) {
+      const zones = new Set(ex.places.map((p) => (placeZone(p) === 'science' ? 'sci' : 'soc')));
+      draft.subjects = zones;
+      draft.places = new Set(ex.places);
+      if (autoTitle) draft.title = `${ex.name} 複習`;
+    } else { draft.subjects = new Set(['soc', 'sci']); draft.places = null; }
+    paintNew(box);
+  };
+  $$('[data-place]', box).forEach((x) => { x.addEventListener('change', () => { if (draft.exam && !draft.examEdited) { draft.examEdited = true; const t = $('#qt-exam + .tip'); if (t) t.textContent = t.textContent.replace('。', '（已調整）。').replace(/（已調整）（已調整）/, '（已調整）'); } }); });
   $('#qt-title').onchange = read;
   const kidCount = () => { $('#qt-kidn').textContent = `選了 ${$$('[data-kid]:checked', box).length}／${kids.length} 人`; };
   $$('[data-kid]', box).forEach((x) => { x.onchange = kidCount; });
