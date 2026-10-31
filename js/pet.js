@@ -338,8 +338,7 @@ let cardOpen = false;       // 左上的狀態卡展開了沒
 let bagOpen = false;        // 餵食的點心列開著沒
 let cam = { x: 0, y: 0, k: 1 };     // 鏡頭：島移到哪、放多大
 let panned = false;         // 這次按下去有拖地圖（放開時不要當成點一下）
-let deco = null;            // 裝扮模式 { tab, tool, sel, undo }
-let undoKeep = [];          // 復原紀錄：按「完成」再進來還留著，關掉寵物島才清掉
+let deco = null;            // 裝扮模式 { tab, tool, sel, back }（back：按「全部收起來」之前的樣子，可以放回去）
 
 function stopScene() {
   cancelAnimationFrame(raf);
@@ -388,7 +387,6 @@ function openScene({ select, say: first } = {}) {
   skyM = skyMatrix(`${cs.getPropertyValue('--tod')} ${cs.getPropertyValue('--wx')}`);
   landReady = paintLand(land);
   tintTiles();
-  undoKeep = [];
   sceneAbort = new AbortController();
   const box = $('.actors', layer);
   const fresh = freshFurniture();
@@ -828,17 +826,17 @@ function tapProp(o) {
 // 進來時格子會出現；傢俱按住拖到格子上（綠的放得下、紅的放不下），點一下選起來可以翻面、收起來。
 // 圍籬小路：選一種再在島上點或拖曳就會擺上去（一指是畫，要移動地圖先把工具收起來，或用兩指）。
 const snapshot = () => JSON.stringify(items);
+// 有改動時：「放回去」就不能用了（只救「全部收起來」按錯）
 function pushUndo(before) {
   if (!deco || before === snapshot()) return;
-  deco.undo.push(before);
-  if (deco.undo.length > 40) deco.undo.shift();
+  deco.back = null;
 }
 function toggleFurn() {
   if (deco) exitDeco(); else enterDeco();
 }
 function enterDeco() {
   closeBag();
-  deco = { tab: 'furn', tool: null, sel: null, undo: undoKeep, wipe: 0 };
+  deco = { tab: 'furn', tool: null, sel: null, back: null, wipe: 0 };
   $('.pisle', layer).classList.add('decorating');
   rebuildWorld();
   paintDeco();
@@ -866,31 +864,30 @@ function decoMsg(t) {
 function paintDeco() {
   const top = $('.deco-top', layer), box = $('.furn', layer);
   top.hidden = false;
-  top.innerHTML = `<button type="button" class="ghost small" data-undo ${deco.undo.length ? '' : 'disabled'}>↶ 復原</button>
-    <button type="button" class="ghost small" data-wipe>${deco.wipe ? '再按一次：全部收起來' : '📦 全部收起來'}</button>
-    <p class="msg">${deco.tool ? `${FURN_NAME[deco.tool] ?? '擦掉'}：在島上點或拖曳` : '按住東西拖到格子上；點一下可以翻面、收起來'}</p>
+  top.innerHTML = `${deco.back ? '<button type="button" class="ghost small" data-back>↶ 全部放回去</button>' : `<button type="button" class="ghost small" data-wipe>${deco.wipe ? '再按一次：全部收起來' : '📦 全部收起來'}</button>`}
+    <p class="msg">${deco.tool === 'erase' ? '擦掉：點或拖過圍籬小路就收起來' : deco.tool ? `${FURN_NAME[deco.tool]}：點空格擺上去，點擺好的收起來；按住拖曳可以畫一整排` : '按住東西拖到格子上；點一下跳出翻面、收起來'}</p>
     <span class="cnt">傢俱 ${furnCount()}/${W.FURN_MAX}・圍籬小路 ${buildCount()}/${W.BUILD_MAX}</span>
     <button type="button" class="btn small" data-done>完成</button>`;
-  $('[data-undo]', top).onclick = () => {
-    const prev = deco.undo.pop();
-    if (prev == null) return;
-    items = JSON.parse(prev);
+  if (deco.back) $('[data-back]', top).onclick = () => {
+    items = JSON.parse(deco.back);
+    deco.back = null;
     deco.sel = null;
     rebuildWorld();
     saveIsle();
     paintDeco();
   };
-  $('[data-wipe]', top).onclick = () => {
+  else $('[data-wipe]', top).onclick = () => {
     if (!deco.wipe) { deco.wipe = setTimeout(() => { if (deco) { deco.wipe = 0; paintDeco(); } }, 3000); paintDeco(); return; }
     clearTimeout(deco.wipe);
     deco.wipe = 0;
-    pushUndo(snapshot());
+    const was = snapshot();
     items = [];
     deco.sel = null;
+    deco.back = was;
     rebuildWorld();
     saveIsle();
     paintDeco();
-    decoMsg('全部收進背包了，不小心按到可以按「復原」');
+    decoMsg('全部收進背包了，按錯可以按「全部放回去」');
   };
   $('[data-done]', top).onclick = exitDeco;
   const tabs = [['furn', '🪑 傢俱'], ['house', '🏠 小屋盆子'], ['build', '🧱 圍籬小路'], ['look', '🏝️ 島名風格']];
@@ -909,7 +906,7 @@ function paintDeco() {
   box.hidden = false;
   box.innerHTML = `<div class="dt-tabs">${tabs.map(([k, t]) => `<button type="button" data-tab="${k}" class="${deco.tab === k ? 'on' : ''}">${t}</button>`).join('')}</div>
     ${deco.tab === 'look' ? isle.decorHtml() : `<div class="dt-list">${body}</div>`}
-    ${deco.tab === 'build' ? '<p class="note">選好一種，在島上點一下或拖曳就會擺上去；點一下已經擺好的就收起來。寵物不會穿過圍籬，記得留小門。要移動地圖時，再點一次上面選好的那一種取消。</p>' : ''}`;
+    ${deco.tab === 'build' ? '<p class="note">選好一種：點空格擺上去、點擺好的收起來，按住拖曳畫一整排；要移動地圖，再點一次選好的那一種取消。寵物不會穿過圍籬，記得留小門。</p>' : ''}`;
   box.querySelectorAll('[data-tab]').forEach((b) => { b.onclick = () => { deco.tab = b.dataset.tab; deco.tool = null; paintDeco(); }; });
   box.querySelectorAll('[data-add]').forEach((b) => { b.onclick = () => addItem(b.dataset.add); });
   box.querySelectorAll('[data-tool]').forEach((b) => { b.onclick = () => { deco.tool = deco.tool === b.dataset.tool ? null : b.dataset.tool; deco.sel = null; paintSel(); paintDeco(); }; });
@@ -963,6 +960,7 @@ function paintSel() {
   $('.deco-sel', layer)?.remove();
   const o = deco?.sel && props.find((x) => x.it === deco.sel);
   props.forEach((x) => x.el.classList.toggle('sel', x === o));
+  if (!o && deco?.sel && W.isBuild(deco.sel.id) && items.includes(deco.sel)) { selBuild(deco.sel); return; }
   if (!o) return;
   const c = W.CAT[o.id];
   const bar = document.createElement('div');
@@ -1059,7 +1057,6 @@ function paintStart(e) {
     const took = !did && same && seen.size === 1 && eraseAt(first.i, first.j);
     if (took) { did = true; rebuildWorld(); }
     if (did) { pushUndo(before); saveIsle(); paintDeco(); }
-    if (took) decoMsg('收起來了，按「復原」可以放回去');
   };
   addEventListener('pointermove', step);
   addEventListener('pointerup', up);
@@ -1090,15 +1087,31 @@ function buildIdAt(i, j) {
   }
   return null;
 }
-// 沒選工具時點圍籬小路：收起來
+// 沒選工具時點圍籬小路：跟傢俱一樣跳出「收起來」；點空地就取消選取
 function tapBuild(e) {
-  const p = toIsle(e), { i, j } = W.cellOf(p.x, p.y), before = snapshot();
-  if (!eraseAt(i, j)) return;
-  pushUndo(before);
-  rebuildWorld();
-  saveIsle();
-  paintDeco();
-  decoMsg('收起來了，按「復原」可以放回去');
+  const p = toIsle(e), { i, j } = W.cellOf(p.x, p.y);
+  const id = buildIdAt(i, j);
+  const it = id && items.find((o) => o.i === i && o.j === j && o.id === id);
+  deco.sel = it && deco.sel !== it ? it : null;
+  paintSel();
+}
+function selBuild(it) {
+  const c = W.center(it.i, it.j), kind = W.kindOf(it.id);
+  const bar = document.createElement('div');
+  bar.className = 'deco-sel';
+  bar.style.cssText = `left:${c.x * GW}px;top:${c.y * GH - (kind === 'path' ? 6 : 40)}px`;
+  bar.innerHTML = `<button type="button" data-away>📦 收起來</button>`;
+  $('.actors', layer).appendChild(bar);
+  $('.floor', layer).insertAdjacentHTML('beforeend', W.footSvg(it.id, it.i, it.j, 0, true));
+  $('[data-away]', bar).onclick = () => {
+    const before = snapshot();
+    items = items.filter((x) => x !== it);
+    deco.sel = null;
+    pushUndo(before);
+    rebuildWorld();
+    saveIsle();
+    paintDeco();
+  };
 }
 function eraseAt(i, j) {
   const c = j * N + i;
