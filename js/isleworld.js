@@ -23,6 +23,8 @@ export const ground = (i, j) => (i < 0 || j < 0 || i >= N || j >= N ? '0' : MASK
 // 池塘（給游泳用的橢圓，島上比例）
 export const LAKE = { x: .5012, y: .2164, rx: .1023, ry: .0855 };
 
+// 底圖的原始解析度（畫在 canvas 上，js/pet.js paintLand）
+export const LAND_W = 1980, LAND_H = 1086;
 export const landSrc = (theme) => `img/pet/land2/${theme || 'spring'}.webp`;
 export const landThumb = (theme) => `img/pet/land2/s-${theme || 'spring'}.webp`;
 
@@ -237,12 +239,13 @@ const diamond = (i, j, k = 1) => {
   const c = center(i, j), X = c.x * GW, Y = c.y * GH, w = CW / 2 * k, h = CH / 2 * k;
   return `${X},${Y - h} ${X + w},${Y} ${X},${Y + h} ${X - w},${Y}`;
 };
-// 鋪在地上的那一層：小路地磚＋裝扮時的格子
-export function floorSvg(items, { grid = false } = {}) {
+// 鋪在地上的那一層：小路地磚＋裝扮時的格子；tint：日夜天氣換顏色（'#rrggbb' → '#rrggbb'）
+export function floorSvg(items, { grid = false, tint = null } = {}) {
   let under = '', tiles = '';
   for (const o of items) {
-    const tone = PATH_TONE[CAT[o.id]?.kind === 'path' && CAT[o.id].tone];
+    let tone = PATH_TONE[CAT[o.id]?.kind === 'path' && CAT[o.id].tone];
     if (!tone) continue;
+    if (tint) tone = tone.map(tint);
     under += `<polygon points="${diamond(o.i, o.j, 1.06)}" fill="${tone[0]}" stroke="${tone[0]}" stroke-width="5" stroke-linejoin="round"/>`;
     if (CAT[o.id].tone === 'stone') tiles += `<polygon points="${diamond(o.i, o.j, .78)}" fill="${tone[1]}" stroke="${tone[2]}" stroke-width="3" stroke-linejoin="round"/>`;
     else {

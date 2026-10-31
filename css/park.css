@@ -594,7 +594,8 @@ ul.classes li .row{gap:8px;justify-content:flex-end}
 .actor .bub.talk,.actor .tag,.actor .bub.mark{zoom:max(1,calc(.85 / var(--g,1)))}
 #petroom .pisle>.x{position:absolute;right:calc(env(safe-area-inset-right) + 12px);top:calc(env(safe-area-inset-top) + 10px);width:56px;height:56px;z-index:30;touch-action:manipulation}
 .pisle .ground{touch-action:none;user-select:none;-webkit-user-select:none}
-.pisle .land{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;-webkit-user-drag:none;filter:var(--tod) var(--wx) drop-shadow(0 18px 18px rgba(0,40,80,.35))}
+/* 底圖是 canvas，日夜天氣的顏色和影子在 js/pet.js paintLand 先畫好：這麼大的圖不要掛 filter／mask，手機放大會記憶體爆掉 */
+.pisle .land{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;-webkit-user-drag:none}
 .pisle .actors{position:absolute;inset:0}
 .pisle .hint{position:absolute;left:50%;bottom:auto;top:calc(env(safe-area-inset-top) + 80px);animation:hintout 1s ease-in 7s forwards;transform:translateX(-50%);margin:0;padding:8px 18px;border-radius:99px;background:rgba(255,255,255,.85);font:700 16px/1 var(--f-body);color:var(--wood);white-space:nowrap;pointer-events:none}
 .actor{position:absolute;width:calc(var(--h) * var(--d));height:calc(var(--h) * var(--d));transform:translate(-50%,-92%);border:0;padding:0;background:none;cursor:grab;touch-action:none}
@@ -745,9 +746,10 @@ aside.care .wish span img{width:40px;height:40px}
 .pisle[data-wx=fog]{--wx:saturate(.8) contrast(.9)}
 .pisle[data-wx=rain]:not([data-tod=night]),.pisle[data-wx=fog]:not([data-tod=night]){background:radial-gradient(ellipse at 35% 55%,#9fb8c8,#6f8ea8 55%,#4d6a86)}
 .pisle .sky{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:2100}
-.pisle .haze{position:absolute;inset:0;pointer-events:none;z-index:2050;-webkit-mask:url(../img/pet/island.webp) center/100% 100% no-repeat;mask:url(../img/pet/island.webp) center/100% 100% no-repeat}
+/* 陰天、霧：蓋在整個畫面上（不跟著島縮放，才不會變成一張超大的圖層） */
+.pisle .haze{position:absolute;inset:0;pointer-events:none;z-index:0}
 .pisle[data-wx=cloudy] .haze{background:radial-gradient(ellipse 22% 16% at 30% 40%,rgba(30,50,80,.2),transparent),radial-gradient(ellipse 26% 18% at 75% 70%,rgba(30,50,80,.18),transparent);background-size:200% 100%;animation:clouds 50s linear infinite alternate}
-.pisle[data-wx=fog] .haze{-webkit-mask:none;mask:none;background:radial-gradient(ellipse 40% 22% at 30% 50%,rgba(255,255,255,.55),transparent),radial-gradient(ellipse 45% 25% at 75% 65%,rgba(255,255,255,.5),transparent),rgba(235,242,248,.28);background-size:160% 100%;animation:clouds 30s ease-in-out infinite alternate}
+.pisle[data-wx=fog] .haze{background:radial-gradient(ellipse 40% 22% at 30% 50%,rgba(255,255,255,.55),transparent),radial-gradient(ellipse 45% 25% at 75% 65%,rgba(255,255,255,.5),transparent),rgba(235,242,248,.28);background-size:160% 100%;animation:clouds 30s ease-in-out infinite alternate}
 .pisle[data-season=winter][data-wx=snow] .haze{background:rgba(255,255,255,.14)}
 .pisle:is([data-tod=night],[data-tod=dusk]) .p-lantern::after{content:"";position:absolute;left:50%;top:30%;width:420%;aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle,rgba(255,214,110,.6),rgba(255,214,110,.15) 40%,transparent 68%);pointer-events:none;mix-blend-mode:screen;animation:twinkle 3s ease-in-out infinite}
 .pisle[data-tod=night] .p-lantern img{filter:brightness(1.05) drop-shadow(0 0 10px rgba(255,214,110,.9))}
@@ -1545,7 +1547,7 @@ body[data-starter="on"][data-scene="map"] #tick .bubble{display:none}
 }
 
 /* ---------- 寵物島 2.0：大島、樹、圍籬小路、裝扮模式（js/pet.js、js/isleworld.js） ---------- */
-.pisle .floor{position:absolute;left:0;top:0;pointer-events:none;filter:var(--tod) var(--wx)}
+.pisle .floor{position:absolute;left:0;top:0;pointer-events:none}
 .tree{position:absolute;transform:translate(-50%,var(--base));pointer-events:none}
 .tree img{display:block;width:100%;filter:var(--tod) var(--wx) drop-shadow(0 6px 4px rgba(20,50,30,.25))}
 .fence{position:absolute;pointer-events:none}

@@ -9,7 +9,7 @@
 // 傢俱：寵物會自己去用（床上睡、溜滑梯、盪鞦韆、泡水、鑽帳篷…），把牠拎到傢俱上放開也會直接用；湖也能泡。
 // 天空（js/petsky.js）：日夜跟著真的時間、季節跟著月份、天氣每天換，寵物會跟著反應（下雨躲帳篷、晚上想睡）。
 import * as auth from './auth.js';
-import { readSky, makeSky, SKY_NAME } from './petsky.js';
+import { readSky, makeSky, SKY_NAME, skyMatrix, tintHex, paintTinted } from './petsky.js';
 import { warm } from './warm.js';
 import { span } from './perf.js';
 import * as playlog from './playlog.js';
@@ -366,11 +366,11 @@ function openScene({ select, say: first } = {}) {
   const land = W.landSrc(isle.theme());
   show(`<div class="pisle loading" role="dialog" aria-modal="true" aria-label="寵物島" data-wx="${sky.wx}" data-tod="${sky.tod}" data-season="${sky.season}">
     <div class="view"><section class="ground" style="width:${GW}px;height:${GH}px">
-      <img class="land" src="${land}" alt="">
+      <canvas class="land" width="${W.LAND_W}" height="${W.LAND_H}"></canvas>
       <svg class="floor" viewBox="0 0 ${GW} ${GH}" width="${GW}" height="${GH}" aria-hidden="true"></svg>
       <div class="actors"></div>
-      <div class="haze" aria-hidden="true" style="-webkit-mask-image:url(${land});mask-image:url(${land})"></div>
     </section></div>
+    <div class="haze" aria-hidden="true"></div>
     <aside class="care"></aside>
     <p class="skychip">${SKY_NAME.wx[sky.wx]}・${SKY_NAME.season[sky.season]}・${SKY_NAME.tod[sky.tod]}</p>
     <p class="isle-sign">${esc(isle.nameText(isle.name()))}</p>
@@ -383,6 +383,9 @@ function openScene({ select, say: first } = {}) {
     <div class="furn" hidden></div>
     <div class="veil-load" aria-live="polite"><span class="egg"></span><p>寵物島準備中…</p></div>
     <button class="x" data-close aria-label="關閉，回到地圖"></button></div>`);
+  const cs = getComputedStyle($('.pisle', layer));
+  skyM = skyMatrix(`${cs.getPropertyValue('--tod')} ${cs.getPropertyValue('--wx')}`);
+  landReady = paintLand(land);
   sceneAbort = new AbortController();
   const box = $('.actors', layer);
   const fresh = freshFurniture();
@@ -422,13 +425,28 @@ function openScene({ select, say: first } = {}) {
   if (isle.ready() && (!isle.saved() || !W.unpack(isle.layout()))) saveIsle();     // 第一次打開、舊的擺法：存成新的樣子
 }
 
+// ---------- 島的底圖：畫在固定解析度的 canvas 上，日夜天氣的顏色和影子先算好 ----------
+// 原本是 <img> 掛 CSS filter：放大時 iOS 照放大後的尺寸重畫整張 2640 寬的圖，記憶體爆掉、網頁重新整理
+let skyM = null, landReady = null, landTurn = 0;
+const skyTint = (hex) => tintHex(skyM, hex);
+async function paintLand(src) {
+  const turn = ++landTurn, cv = $('canvas.land', layer);
+  const im = new Image();
+  im.src = src;
+  try { await im.decode(); } catch { return; }
+  if (turn !== landTurn || cv !== $('canvas.land', layer)) return;
+  const k = cv.width / GW;      // 影子跟原本 CSS 的 drop-shadow(0 18px 18px) 一樣大
+  paintTinted(cv, im, skyM, { y: 18 * k, blur: 18 * k, color: 'rgba(0,40,80,.35)' });
+}
+
 // ---------- 鏡頭：拖曳移動、兩指或滾輪縮放、＋－鈕 ----------
 const isTall = (w, h) => w < h * .9;
 const toIsle = (e) => { const g = $('.ground', layer).getBoundingClientRect(); return { x: (e.clientX - g.left) / g.width, y: (e.clientY - g.top) / g.height }; };
 function camBox() {
   const v = $('.view', layer);
   const vw = v.clientWidth, vh = v.clientHeight;
-  return { vw, vh, kMin: Math.min(vw / GW, vh / GH) * .92, kMax: 1.6 };
+  // 最大倍數照螢幕密度限制：iPhone（3 倍密度）放到 1.2 就是原圖的解析度了，再大只是糊、還多吃記憶體
+  return { vw, vh, kMin: Math.min(vw / GW, vh / GH) * .92, kMax: Math.min(1.6, 3.6 / (devicePixelRatio || 1)) };
 }
 function applyCam() {
   const g = $('.ground', layer);
@@ -490,22 +508,30 @@ function bindCam() {
       panned = true;
     }
   }, sig);
-  addEventListener('pointermove', (e) => {
-    if (!pts.has(e.pointerId)) return;
-    pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  // 手指移動一格畫面只算一次（iPhone 一秒會送 120 次 pointermove）
+  let want = 0;
+  const frame = () => {
+    want = 0;
     if (pinch && pts.size >= 2) {
       const [p, q] = [...pts.values()];
       const m = rel({ x: (p.x + q.x) / 2, y: (p.y + q.y) / 2 });
       zoomTo(pinch.k * Math.hypot(p.x - q.x, p.y - q.y) / pinch.d, m.x, m.y);
-    } else if (pan) {
-      const dx = e.clientX - pan.x, dy = e.clientY - pan.y;
-      if (!pan.moved && Math.hypot(dx, dy) < 8) return;
-      pan.moved = true;
-      panned = true;
-      cam.x = pan.cx + dx; cam.y = pan.cy + dy;
+    } else if (pan?.moved && pts.size === 1) {
+      const [p] = pts.values();
+      cam.x = pan.cx + p.x - pan.x; cam.y = pan.cy + p.y - pan.y;
       clampCam();
       applyCam();
     }
+  };
+  addEventListener('pointermove', (e) => {
+    if (!pts.has(e.pointerId)) return;
+    pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (!pinch && pan && !pan.moved) {
+      if (Math.hypot(e.clientX - pan.x, e.clientY - pan.y) < 8) return;
+      pan.moved = true;
+      panned = true;
+    }
+    if ((pinch || pan) && !want) want = requestAnimationFrame(frame);
   }, sig);
   const up = (e) => {
     if (!pts.delete(e.pointerId)) return;
@@ -515,10 +541,15 @@ function bindCam() {
   };
   addEventListener('pointerup', up, sig);
   addEventListener('pointercancel', up, sig);
+  let wheel = null;
   v.addEventListener('wheel', (e) => {
     e.preventDefault();
     const m = rel({ x: e.clientX, y: e.clientY });
-    zoomTo(cam.k * Math.exp(-e.deltaY * .0015), m.x, m.y);
+    if (!wheel) {
+      wheel = { dy: 0 };
+      requestAnimationFrame(() => { const w = wheel; wheel = null; zoomTo(cam.k * Math.exp(-w.dy * .0015), w.x, w.y); });
+    }
+    wheel.dy += e.deltaY; wheel.x = m.x; wheel.y = m.y;
   }, { passive: false, signal: sceneAbort.signal });
   layer.querySelectorAll('[data-zoom]').forEach((b) => {
     b.onclick = () => { const { vw, vh } = camBox(); zoomTo(cam.k * +b.dataset.zoom, vw / 2, vh / 2); };
@@ -530,10 +561,10 @@ const FIRST_POSES = ['idle', 'walk1', 'walk2', 'sit', 'front1', 'front2', 'back1
 async function revealScene() {
   const t0 = performance.now();
   const pis = $('.pisle', layer);
-  const srcs = [W.landSrc(isle.theme()), ...new Set(props.map((o) => `img/pet/furniture/${o.id}.webp`)),
+  const srcs = [...new Set(props.map((o) => `img/pet/furniture/${o.id}.webp`)),
     ...new Set(W.trees(isle.theme()).map((t) => `img/pet/tree/${t.id}.webp`)),
     ...actors.flatMap((a) => FIRST_POSES.map((pose) => art(a.p.species, a.p.stage, pose)))];
-  await Promise.race([Promise.all(srcs.map(loadImg)), new Promise((ok) => setTimeout(ok, 2500))]);
+  await Promise.race([Promise.all([...srcs.map(loadImg), landReady]), new Promise((ok) => setTimeout(ok, 2500))]);
   if (pis !== $('.pisle', layer)) return;
   pis.classList.remove('loading');
   span('寵物島掀開', t0);
@@ -731,7 +762,7 @@ function rebuildWorld() {
       box.appendChild(el);
     } else if (kind !== 'path') addProp(box, it);
   });
-  $('.floor', layer).innerHTML = W.floorSvg(items, { grid: !!deco });
+  $('.floor', layer).innerHTML = W.floorSvg(items, { grid: !!deco, tint: skyTint });
   for (const a of actors) {
     if (a.mode === 'held' || walkable(a.x, a.y)) continue;
     const t = somewhere(a);
@@ -863,8 +894,7 @@ function paintDeco() {
     isle.bindDecor(box, {
       onTheme: (t) => {
         const src = W.landSrc(t);
-        $('.land', layer).src = src;
-        $('.haze', layer).style.cssText = `-webkit-mask-image:url(${src});mask-image:url(${src})`;
+        paintLand(src);
         rebuildWorld();
         saveIsle();
       },
@@ -951,7 +981,7 @@ function dragProp(o, e) {
   const before = snapshot();
   const foot = () => {
     const ok = W.canPlace(occ, it.id, cand.i, cand.j, it.f, k);
-    $('.floor', layer).innerHTML = W.floorSvg(items, { grid: true }) + W.footSvg(it.id, cand.i, cand.j, it.f, ok);
+    $('.floor', layer).innerHTML = W.floorSvg(items, { grid: true, tint: skyTint }) + W.footSvg(it.id, cand.i, cand.j, it.f, ok);
     return ok;
   };
   const move = (ev) => {
