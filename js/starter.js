@@ -16,6 +16,16 @@ const layer = $('#shop');          // 跟錢包、商店共用一個對話框層
 let hooks = { me: () => ({ kind: 'guest' }), toast: () => {}, go: () => {}, isle: () => null };
 let st = null;                      // park_starter_me 的結果；沒有手冊是 null
 
+// 「下一步」條可以按 ✕ 收進功能列的「新手手冊」（2026-10-31 Chuck：一直在會擋到島嶼）。
+// 記住收掉的是哪一步：換下一步、或明天新的一頁，才會再出來一次；收著的時候島上的箭頭還在，
+// 點「新手手冊」打開手冊可以看到這一步，也能按「放回地圖上」叫回來。
+const HIDE_KEY = 'park.starter.hidden';
+const hiddenKey = () => { try { return localStorage.getItem(HIDE_KEY) || ''; } catch { return ''; } };
+const setHidden = (k) => { try { k ? localStorage.setItem(HIDE_KEY, k) : localStorage.removeItem(HIDE_KEY); } catch { /* 私密視窗：只在這次有效 */ } memHidden = k; };
+let memHidden = hiddenKey();
+const stripKey = (s) => (st ? `${st.page}:${s ? s.name : 'wait'}` : '');
+const isHidden = (s) => !!st && memHidden === stripKey(s);
+
 export function init(h) { hooks = { ...hooks, ...h }; }
 export const active = () => !!st && !st.finished;
 
@@ -72,7 +82,8 @@ function paint() {
   const s = on ? current() : null;
   btn.hidden = !on;
   // 今天這頁做完了就把「下一步」條收起來（2026-10-25 Chuck：一直停在下面）；功能列的手冊鈕還在
-  strip.hidden = !s;
+  // 自己按 ✕ 收掉的也不顯示
+  strip.hidden = !s || isHidden(s);
   if (!on) { paintTarget(); return; }
   const done = st.steps.filter((x) => x.done || x.skipped).length;
   $('.badge', btn).textContent = `${st.page}/${st.pages}`;
@@ -81,15 +92,32 @@ function paint() {
   strip.innerHTML = s
     ? `<button type="button" class="gbook" data-book aria-label="打開新手手冊"><img src="img/ui/task.webp" alt=""><small>第 ${st.page} 頁 ${done}/${st.steps.length}</small></button>
        <p><b>${esc(s.name)}</b><span>${esc(s.hint)}</span></p>
-       ${s.go ? '<button type="button" class="btn small go" data-go>去！</button>' : ''}`
+       ${s.go ? '<button type="button" class="btn small go" data-go>去！</button>' : ''}
+       <button type="button" class="x" data-hide aria-label="先收起來（點功能列的新手手冊可以再看）"></button>`
     : `<button type="button" class="gbook" data-book aria-label="打開新手手冊"><img src="img/ui/task.webp" alt=""><small>第 ${st.page} 頁</small></button>
        <p><b>今天的手冊完成了！</b><span>明天再來翻下一頁，送你「${esc(st.gift.name)}」。</span></p>`;
   strip.dataset.state = s ? 'go' : 'wait';
   $('[data-book]', strip).onclick = () => openBook();
   const g = $('[data-go]', strip);
   if (g) g.onclick = () => go(s);
+  const x = $('[data-hide]', strip);
+  if (x) x.onclick = () => hideStrip(s);
   paintTarget();
 }
+// 收起來：條往下縮進功能列的「新手手冊」，那顆按鈕跳一下告訴孩子收到哪裡
+function hideStrip(s) {
+  setHidden(stripKey(s));
+  sfx('SE-01');
+  strip.classList.add('tuck');
+  setTimeout(() => {
+    strip.classList.remove('tuck');
+    paint();
+    btn.classList.remove('caught'); void btn.offsetWidth; btn.classList.add('caught');
+    const more = $('#more-btn');
+    if (btn.classList.contains('ovf') && more) { more.classList.remove('caught'); void more.offsetWidth; more.classList.add('caught'); }
+  }, 260);
+}
+function showStrip() { setHidden(''); paint(); }
 function go(s) {
   close();
   if (s.go === 'shop') hooks.go('shop');
@@ -133,10 +161,12 @@ export function openBook(msg = null) {
       : `<ul class="daily">${rows}</ul><p class="tip">每一步做完會自動拿到時光幣，不用按領。</p>`}
     <div class="present"><img src="${esc(st.gift.art)}" alt=""><b>${esc(st.gift.name)}</b></div>
     <p class="tip">一天開一頁，七頁都做完就從樂園新手畢業。</p>
-    <div class="row end"><button type="button" class="ghost" data-close>關閉</button></div>
+    <div class="row end">${isHidden(s) ? '<button type="button" class="ghost" data-unhide>把提示放回地圖上</button>' : ''}<button type="button" class="ghost" data-close>關閉</button></div>
   </div>`);
   const g = $('[data-go]', layer);
   if (g) g.onclick = () => go(s);
+  const u = $('[data-unhide]', layer);
+  if (u) u.onclick = () => { close(); showStrip(); };
   layer.querySelectorAll('[data-day]').forEach((b) => {
     b.onclick = () => {
       layer.querySelectorAll('[data-day]').forEach((x) => x.classList.toggle('sel', x === b));

@@ -1438,7 +1438,19 @@ body[data-starter="on"][data-scene="map"] #tick .bubble{display:none}
 #dock>button.starter-target{box-shadow:inset 0 -3px 0 #d9b77a,0 0 0 3px #ffd34d,0 0 16px #ffd34d}
 .isle.starter-target .plate b{background:linear-gradient(#ffb23d,#e07a10);border-color:#7a3d06}
 @keyframes starterArrow{0%,100%{transform:translateY(0) rotate(90deg)}50%{transform:translateY(14px) rotate(90deg)}}
-@media (prefers-reduced-motion:reduce){#starter,#starter .btn.go,.starter-target::before{animation:none}}
+/* 2026-10-31 下一步條可以收起來（右上 ✕ → 縮進功能列的「新手手冊」，那顆跳一下）；電腦版也縮小一點少擋島 */
+#starter{width:min(500px,calc(100% - 24px));padding:6px 10px 6px 6px}
+#starter .gbook img{width:40px;height:40px}
+#starter p b{font-size:17px}
+#starter p span{font-size:13px}
+#starter .btn.go{font-size:18px;padding:8px 18px 10px}
+#starter .x{position:absolute;right:-16px;top:-18px;width:44px;height:44px;border:0;padding:0;background:url(../img/ui/close.webp) center/36px no-repeat;cursor:pointer;filter:drop-shadow(0 3px 4px rgba(0,0,0,.3));transition:transform .2s;touch-action:manipulation}
+#starter .x:hover,#starter .x:focus-visible{transform:scale(1.12) rotate(8deg);outline:none}
+#starter.tuck{animation:starterTuck .26s ease-in forwards}
+@keyframes starterTuck{to{opacity:0;transform:translateY(60px) scale(.6)}}
+#guide-btn.caught,#more-btn.caught{animation:starterCaught .6s cubic-bezier(.34,1.7,.5,1)}
+@keyframes starterCaught{40%{transform:translateY(-10px) scale(1.12)}}
+@media (prefers-reduced-motion:reduce){#starter,#starter .btn.go,.starter-target::before,#starter.tuck,#guide-btn.caught,#more-btn.caught{animation:none}}
 /* 手冊對話框 */
 .starter-book .pages{display:flex;gap:6px;justify-content:center;margin:4px 0 10px}
 .starter-book .pages i{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font:900 15px/1 var(--f-body);font-style:normal;background:#eadbc0;color:#8a6a4a}
@@ -1467,6 +1479,8 @@ body[data-starter="on"][data-scene="map"] #tick .bubble{display:none}
   #starter p b{font-size:15px}
   #starter p span{display:none}
   #starter .btn.go{font-size:16px;padding:8px 14px 9px}
+  #starter{right:96px}
+  #starter .x{right:-14px;top:-16px}
   .isle.starter-target::before{width:60px;height:60px;top:-20px}
   #dock>button.starter-target::before{display:none}
   body[data-starter="on"] .env-tag{bottom:150px}
