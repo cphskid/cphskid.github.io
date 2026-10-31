@@ -493,7 +493,7 @@ $('#start').addEventListener('click', async () => {
   const w = await account.requireLogin();
   if (w || !account.available) go();
 });
-$('#back').addEventListener('click', () => { history.replaceState(null, '', location.pathname); showTitle(); });
+$('#back').addEventListener('click', () => { closeGear(); history.replaceState(null, '', location.pathname); showTitle(); });
 
 // ---------- 介紹卡 ----------
 const veil = $('#veil'), toast = $('#toast');

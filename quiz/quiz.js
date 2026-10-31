@@ -62,6 +62,16 @@ function go(paper) {
 }
 
 // ---------- 作答 ----------
+// 寫到一半按「回樂園」：答案本來就會存，先跟孩子說一聲再走，不用怕白寫（介面設計原則第 2 類）
+let writing = null;
+document.querySelector('.park-back')?.addEventListener('click', (e) => {
+  if (!writing) return;
+  e.preventDefault();
+  const go = e.currentTarget.href;
+  writing();
+  toast('答案幫你存好了，回來可以接著寫', 1500);
+  setTimeout(() => { location.href = go; }, 900);
+});
 async function showPaper(paper) {
   const p = await quiz.open(paper);
   if (p.done) return showResult(p);
@@ -75,6 +85,7 @@ async function showPaper(paper) {
     t0 = performance.now();
     saveDraft(paper, d);
   };
+  writing = stop;
   function paint() {
     const it = p.items[i];
     const left = p.items.filter((x) => !answered(x.kind, x.show, d.resp[x.pos])).length;
@@ -128,6 +139,7 @@ async function showPaper(paper) {
 
 // ---------- 結果、訂正 ----------
 function showResult(p, just = null, show = null) {
+  writing = null;   // 交卷了，草稿已經清掉
   const wrong = p.items.filter((x) => Number(x.got) < 1);
   const needFix = wrong.filter((x) => !(Number(x.fix_got) >= 1));
   // 預設只看錯的題，不用整張卷滾下去找
@@ -210,6 +222,7 @@ function showFix(p, items) {
 // ---------- 開門 ----------
 async function route() {
   const m = /^#p=([0-9a-f-]{36})$/.exec(location.hash);
+  writing = null;
   try {
     if (m) await showPaper(m[1]); else await showList();
   } catch (e) { fail(e); }

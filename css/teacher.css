@@ -22,7 +22,7 @@ img{max-width:100%}
 .bar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:12px;flex-wrap:wrap;
   padding:10px max(16px,env(safe-area-inset-left)) 10px max(16px,env(safe-area-inset-right));
   background:linear-gradient(var(--wood-2),var(--wood));border-bottom:4px solid #4a2a12;box-shadow:0 6px 16px rgba(0,0,0,.25)}
-.bar .home img{display:block;height:48px;width:auto;filter:drop-shadow(0 3px 4px rgba(0,0,0,.3))}
+.bar .home{display:block;height:48px;width:auto;filter:drop-shadow(0 3px 4px rgba(0,0,0,.3))}
 .bar .title{font:900 24px/1 var(--f-body);color:var(--cream);text-shadow:0 2px 0 #3b200c;letter-spacing:.04em}
 .bar .env{font:700 13px/1 var(--f-body);color:#fff;background:var(--red);padding:6px 9px;border-radius:8px}
 .bar .spacer{flex:1}
@@ -206,7 +206,7 @@ dialog::backdrop{background:rgba(10,40,70,.5)}
 
 @media (max-width:720px){
   :root{--frame:26px}
-  .bar .home img{height:36px}
+  .bar .home{display:none}
   .bar .ghost{font-size:0;gap:0;padding:4px}
   .hero{height:170px}
   .hero #avatar{width:80px}

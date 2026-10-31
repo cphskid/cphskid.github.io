@@ -74,7 +74,6 @@
 <div id="ui">
   <div id="hud">
     <div class="topbar">
-      <button class="back" id="back">← 回到開場</button>
       <div class="sign"><img src="img/ui/sign.webp" alt=""><div><small>時空冒險樂園</small><b>冒險地圖</b></div></div>
     </div>
     <button class="pan" id="pan-l" aria-label="往左看" hidden></button>
@@ -98,13 +97,14 @@
       <button id="tick-btn" aria-label="導覽員滴答，點一下聽下一個提示"><img id="tick-img" src="img/tick/wave.webp" alt=""></button>
     </div>
   </div>
-  <!-- 左上角的齒輪：聲音、問題回報、登出收在這裡 -->
+  <!-- 左上角的齒輪：聲音、問題回報、回到開場、登出收在這裡（左上第一顆不放出口以外的東西，介面設計原則第 2 類） -->
   <div id="gear">
   <button id="gear-btn" type="button" aria-label="設定" aria-expanded="false"><img src="img/ui/gear.webp" alt=""><i class="dot" hidden></i></button>
   <div id="gear-menu" hidden>
   <button id="snd-btn" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/><path class="w1" d="M16 9.5a3.5 3.5 0 0 1 0 5"/><path class="w2" d="M18.5 7a7 7 0 0 1 0 10"/><path class="mute" d="M16 9l6 6M22 9l-6 6"/></svg><b>聲音全開</b></button>
   <button id="a2hs-btn" type="button" hidden>📲<b>加到桌面</b></button>
   <button id="fb-btn" type="button" data-pfb aria-label="問題回報">💬<b>問題回報</b><i class="dot" hidden></i></button>
+  <button id="back" type="button">🌅<b>回到開場</b></button>
   <button id="out-btn" type="button" hidden>🚪<b>登出</b></button>
   <button id="ver-btn" type="button" data-park-changelog aria-label="版號與更新說明">ℹ️<b data-park-version data-prefix="版本 ">版本</b></button>
   </div>

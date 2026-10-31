@@ -84,8 +84,6 @@ body{margin:0;background:var(--sea-deep);color:var(--ink);font-family:var(--f-bo
 
 /* 地圖 */
 .topbar{position:absolute;left:24px;top:22px;display:flex;align-items:center;gap:16px;z-index:5}
-.back{font:700 20px/1 var(--f-body);color:var(--wood);background:var(--cream);border:3px solid var(--wood);border-radius:14px;padding:10px 16px;box-shadow:0 4px 0 var(--wood);cursor:pointer}
-.back:hover,.back:focus-visible{background:#fff;outline:none;transform:translateY(-2px)}
 .ribbon{width:400px;height:116px;display:grid;place-items:center;padding-bottom:30px;background:url(../img/ui/ribbon.webp) center/100% 100% no-repeat;font:900 30px/1 var(--f-body);color:#fff;text-shadow:0 2px 0 #8e1d14,0 0 6px rgba(120,20,10,.5);filter:drop-shadow(0 6px 8px rgba(0,0,0,.25));margin-top:-14px}
 .hint{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);font:700 18px/1 var(--f-body);color:var(--cream);background:rgba(20,70,110,.5);padding:10px 18px;border-radius:99px;white-space:nowrap;z-index:5;pointer-events:none}
 .pan{position:absolute;top:50%;width:84px;height:84px;margin-top:-42px;border:0;padding:0;background:center/contain no-repeat;cursor:pointer;z-index:5;filter:drop-shadow(0 8px 10px rgba(0,0,0,.3));transition:transform .2s cubic-bezier(.34,1.7,.5,1)}
@@ -833,7 +831,6 @@ body[data-scene="map"] #hud{display:block}
 @media (max-width:760px),(max-height:560px){
   /* 地圖上的按鈕 */
   .topbar{left:10px;top:10px;gap:8px}
-  .back{font-size:16px;padding:8px 12px;border-radius:12px;box-shadow:0 3px 0 var(--wood)}
   .ribbon{display:none}
   #me-chip{right:10px;top:10px;padding:4px 12px 4px 4px;gap:6px}
   #me-chip .av{--av:38px}
@@ -1330,7 +1327,8 @@ button.stamp:hover,button.stamp:focus-visible{transform:translateY(-3px);outline
 .sign.mini b{font-size:24px}
 
 #gear{position:absolute;left:24px;top:20px;z-index:12}
-body[data-scene="map"] #gear{left:186px}
+#gear-menu>#back{display:none!important}
+body[data-scene="map"] #gear-menu>#back{display:flex!important}
 #gear-btn{width:54px;height:54px;border:0;padding:0;background:none;cursor:pointer;position:relative;filter:drop-shadow(0 3px 4px rgba(0,0,0,.3));transition:transform .3s}
 #gear-btn img{width:100%;height:100%;object-fit:contain}
 #gear-btn:hover,#gear-btn:focus-visible,#gear-btn[aria-expanded="true"]{transform:rotate(40deg);outline:none}
@@ -1366,10 +1364,7 @@ body[data-scene="map"] #tick .bubble{margin-bottom:120px}
   .sign small{font-size:10px}
   .sign.mini{width:124px;top:58px}
   .sign.mini b{font-size:15px}
-  #back{font-size:0!important;width:44px;height:44px;padding:0!important;border-radius:50%!important;display:grid;place-items:center}
-  #back::before{content:'🏠';font-size:22px}
   #gear{left:10px;top:10px}
-  body[data-scene="map"] #gear{left:62px}
   #gear-btn{width:44px;height:44px}
   #gear-menu{top:50px}
   #top-right{right:10px;top:10px}

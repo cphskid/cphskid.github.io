@@ -1,0 +1,15 @@
+/* 全樂園共用的「回樂園」按鈕（樂園介面設計原則第 2 類「出口」）。
+   試煉島、老師後台、島嶼開拓者、時光祕境島都連這一份，不要各自再畫一顆：
+   <a class="park-back" href="（樂園）#map/島代碼"><img src="（樂園）img/admin/park.webp" alt="">回樂園</a>
+   規則：放在遊戲最上層畫面的左上第一顆；手機也不收字；點擊高度至少 44px。 */
+.park-back{display:inline-flex;align-items:center;gap:6px;flex:none;box-sizing:border-box;min-height:44px;padding:3px 14px 3px 5px;
+  font:900 16px/1 "Noto Sans TC","Fredoka",system-ui,sans-serif;letter-spacing:.04em;color:#6b3f1f;background:#fff4dc;
+  border:3px solid #6b3f1f;border-radius:999px;box-shadow:0 4px 0 #6b3f1f;text-decoration:none;white-space:nowrap;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.park-back img{width:32px;height:32px;object-fit:contain;flex:none;display:block}
+.park-back:hover,.park-back:focus-visible{background:#fff;color:#6b3f1f;outline:none}
+.park-back:active{transform:translateY(2px);box-shadow:0 2px 0 #6b3f1f}
+@media (max-width:760px),(max-height:560px){
+  .park-back{padding:2px 11px 2px 4px;font-size:14px;box-shadow:0 3px 0 #6b3f1f}
+  .park-back img{width:26px;height:26px}
+}
