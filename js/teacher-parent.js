@@ -21,6 +21,9 @@ export function rememberCode() {
   history.replaceState(null, '', location.pathname + location.hash);
   return code;
 }
+export function setPendingCode(code) {
+  try { sessionStorage.setItem(PENDING, normCode(code)); return true; } catch { return false; }
+}
 export function pendingCode() {
   try { return sessionStorage.getItem(PENDING); } catch { return null; }
 }
@@ -35,20 +38,64 @@ export async function redeemPending(toast) {
   } catch (e) { toast(e.message, true); return null; }
 }
 
-// 「孩子在等你」面板；box 是放面板的位置。沒有孩子也沒有家庭班的老師不顯示
+// 家長碼：6 碼（ABCDEFGHJKLMNPQRSTUVWXYZ23456789），使用者可能打小寫、空白或連字號
+export const normCode = (v) => String(v ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+
+// 輸入家長碼的小表單（我的班級最上面、登入頁共用）
+function codeForm(compact = false) {
+  return `<form class="code-form${compact ? ' compact' : ''}" data-codeform novalidate>
+    <label><span>孩子給的家長碼</span><input name="code" maxlength="9" autocomplete="off" autocapitalize="characters" spellcheck="false" inputmode="text" placeholder="例如 K7QW3M"></label>
+    <button class="btn go" type="submit">和孩子連起來</button>
+    <p class="msg" hidden></p></form>`;
+}
+function bindCodeForm(box, { toast, reload }) {
+  const f = $('[data-codeform]', box);
+  if (!f) return;
+  f.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const msg = $('.msg', f), b = $('button', f), code = normCode(f.elements.code.value);
+    if (code.length !== 6) { msg.textContent = `家長碼是 6 個英文字母和數字（現在 ${code.length} 個），再對一下孩子的畫面`; msg.hidden = false; f.elements.code.focus(); return; }
+    b.disabled = true; msg.hidden = true;
+    try {
+      const r = await auth.parent.redeem(code);
+      toast(`已經和「${r.nickname}」連起來了！孩子下次打開樂園就會拿到神秘蛋`);
+      await reload();
+    } catch (err) { msg.textContent = err.message; msg.hidden = false; b.disabled = false; }
+  });
+}
+const STEPS = `<ol class="how">
+  <li><b>孩子</b>在樂園下方功能列按 <span class="key"><img src="img/parent/letter.webp" alt="">爸媽任務</span><small>（沒看到就先按「更多」）</small></li>
+  <li>再按 <span class="key">拿給爸媽看</span>，畫面出現 QR 和 6 碼家長碼</li>
+  <li>用手機相機掃 QR 會自動連起來；或把 6 碼打在下面</li></ol>`;
+
+// 「孩子在等你」面板；box 是放面板的位置。
+//   家長（或已經連了孩子）：完整面板，最上面就能輸入家長碼
+//   老師、管理員沒有連孩子：一行小條，展開才看到輸入欄（家長用老師帳號也找得到）
 export async function renderParent(box, { toast, run, openPlay, homeOnly, refresh, reload, suggestPassword }) {
   let kids;
   try { kids = await auth.parent.kids(); } catch (e) { if (e.missing) { box.innerHTML = ''; return; } throw e; }
-  if (!kids.length && !homeOnly) { box.innerHTML = ''; return; }
+  const again = reload ?? refresh;
+  if (!kids.length && !homeOnly) {
+    box.innerHTML = `<details class="panel parent-mini"><summary><img src="img/parent/letter.webp" alt="">家長要和孩子連起來？輸入孩子給的家長碼 ›</summary>
+      ${STEPS}${codeForm(true)}</details>`;
+    bindCodeForm(box, { toast, reload: again });
+    return;
+  }
   box.innerHTML = `<section class="panel parent">
-    <div class="head"><h2><img class="hi" src="img/parent/letter.webp" alt="">${kids.length ? '孩子在等你' : '爸媽任務'}</h2>
-      <button class="btn small go" data-child>＋ 幫孩子開帳號</button></div>
-    ${kids.length ? '<p class="lead">每做一項，孩子下次打開樂園就會收到禮物。什麼時候做都可以，不會過期。</p>' : `<div class="empty-kid">
-      <img src="img/parent/egg.webp" alt=""><p><b>還沒有和孩子連起來</b>孩子已經在玩的話，請孩子在樂園按功能列的「爸媽任務」→「拿給爸媽看」，用手機掃 QR 就連起來了。
-      還沒有帳號的話，按右上「幫孩子開帳號」。</p></div>`}
+    <div class="head"><h2><img class="hi" src="img/parent/letter.webp" alt="">${kids.length ? '孩子在等你' : '和孩子連起來'}</h2>
+      ${kids.length ? '<span class="row"><button class="btn small ghost" data-more>＋ 再連一個孩子</button><button class="btn small go" data-child>＋ 幫孩子開帳號</button></span>' : ''}</div>
+    ${kids.length ? `<div class="link-more" hidden>${STEPS}${codeForm(true)}</div>
+      <p class="lead">每做一項，孩子下次打開樂園就會收到禮物。什麼時候做都可以，不會過期。</p>` : `<div class="link-two">
+      <div class="way"><h3><span class="n">A</span>孩子已經在玩</h3>${STEPS}${codeForm()}</div>
+      <div class="way"><h3><span class="n">B</span>孩子還沒有帳號</h3><img src="img/parent/egg.webp" alt="">
+        <p>幫孩子開一個帳號，會自動和你連起來，孩子第一次登入就拿到神秘蛋。</p>
+        <button class="btn go" data-child>幫孩子開帳號</button></div></div>`}
     ${kids.map(kidCard).join('')}
   </section>`;
-  $('[data-child]', box).onclick = () => createChild({ toast, refresh: reload ?? refresh, suggestPassword });
+  box.querySelectorAll('[data-child]').forEach((b) => { b.onclick = () => createChild({ toast, refresh: again, suggestPassword }); });
+  const more = $('[data-more]', box);
+  if (more) more.onclick = () => { const m = $('.link-more', box); m.hidden = !m.hidden; if (!m.hidden) $('input', m).focus(); };
+  bindCodeForm(box, { toast, reload: again });
   for (const k of kids) {
     const card = $(`[data-kid="${k.id}"]`, box);
     $('[data-look]', card).onclick = () => { auth.parent.view(k.id).catch(() => {}); openPlay(k.id); };

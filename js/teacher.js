@@ -7,7 +7,7 @@ import * as auth from './auth.js';
 import { headHtml } from './traveller.js';
 import { renderGuide, startTour, tourSeen } from './teacher-guide.js';
 import { renderQuiz } from './teacher-quiz.js';
-import { rememberCode, pendingCode, redeemPending, renderParent } from './teacher-parent.js';
+import { rememberCode, pendingCode, setPendingCode, normCode, redeemPending, renderParent } from './teacher-parent.js';
 
 const $ = (s, root = document) => root.querySelector(s);
 const $$ = (s, root = document) => [...root.querySelectorAll(s)];
@@ -137,7 +137,7 @@ function ask({ title, body = '', fields = [], ok = '確定', danger = false, onO
 // ---------- 登入 ----------
 function renderLogin(note = '') {
   const parentFirst = !!pendingCode() || WANT_CHILD;
-  if (!note && pendingCode()) note = '孩子請你幫忙完成「爸媽任務」！登入，或在下面建立家長帳號，就會自動和孩子連起來。';
+  if (!note && pendingCode()) note = `收到孩子的家長碼 <b class="pc">${esc(pendingCode())}</b>！已經有帳號就登入；第一次來就在下面建立家長帳號。完成後會自動和孩子連起來。`;
   else if (!note && WANT_CHILD) note = '先建立家長帳號（只要 email 和密碼，不用收確認信），接著就能幫孩子開帳號。已經有帳號的直接登入。';
   $('#tabs').hidden = true;
   $('#hero').hidden = true;
@@ -160,8 +160,23 @@ function renderLogin(note = '') {
       <label class="check"><input name="adult" type="checkbox"> 我是家長，年滿 18 歲</label>
       <p class="msg" hidden></p>
       <button class="btn go" type="submit">建立帳號</button>
-    </form></details>` : `<p class="tip">還沒有開班帳號？<a href="${BASE}?staff=signup">到樂園大門建立一個</a>，不用收確認信。</p>`}
+    </form></details>` : `<details class="first have-code"><summary>孩子給了我家長碼</summary>
+    <form class="form" id="precode" novalidate>
+      <p class="tip">孩子在樂園按「爸媽任務」→「拿給爸媽看」，畫面上的 6 碼就是家長碼。先打在這裡，登入或建立帳號後就自動連起來。</p>
+      <label>家長碼<input name="code" maxlength="9" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="例如 K7QW3M"></label>
+      <p class="msg" hidden></p>
+      <button class="btn go" type="submit">下一步</button>
+    </form></details>
+    <p class="tip">還沒有開班帳號？<a href="${BASE}?staff=signup">到樂園大門建立一個</a>，不用收確認信。</p>`}
   </section>`;
+  const pre = $('#precode');
+  pre?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const code = normCode(pre.elements.code.value), msg = $('.msg', pre);
+    if (code.length !== 6) { msg.textContent = `家長碼是 6 個英文字母和數字（現在 ${code.length} 個），再對一下孩子的畫面`; msg.hidden = false; return; }
+    if (!setPendingCode(code)) { msg.textContent = '這個瀏覽器不能暫存（無痕模式？），請先登入，再到「我的班級」最上面輸入家長碼'; msg.hidden = false; return; }
+    renderLogin();
+  });
   const su = $('#signup');
   su?.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -206,10 +221,12 @@ async function start() {
   paintFeedbackDot();
   $('#help').hidden = false;
   $('#mailbox').hidden = false;
+  const linking = !!pendingCode();      // 拿著孩子的家長碼進來的：先讓他看到連好的孩子，導覽不要擋在前面
   await redeemPending(toast);
   await show();
   loadInbox(true);
-  if (tab === 'classes') startTour();   // 第一次進來跑一次導覽，看過就不再自己跳
+  // 第一次進來跑一次導覽，看過就不再自己跳；家長還沒連孩子時先讓「和孩子連起來」露出來（導覽按「說明」可以再看）
+  if (tab === 'classes' && !linking && !$('.parent .link-two')) startTour();
 }
 // 右上「？」：回到我的班級重看導覽
 $('#help').onclick = async () => {
@@ -291,22 +308,22 @@ async function renderClasses() {
   }));
   $('#new').onclick = () => toggleNewForm();
   $$('.classtabs [data-code]').forEach((b) => { b.onclick = () => { active = b.dataset.code; renderClasses(); }; });
-  if (!classes.length && !WANT_CHILD) toggleNewForm(true);
-  paintParent();
+  if (!classes.length && !WANT_CHILD && who.role !== 'parent') toggleNewForm(true);   // 家長先連孩子，不用一進來就開班
+  await paintParent();
   if (active) await renderClass();
 }
-// 「孩子在等你」（js/teacher-parent.js）：有連起來的孩子，或全是家庭班（家長）才出現
+// 「孩子在等你」（js/teacher-parent.js）：家長、有連起來的孩子、或全是家庭班 → 完整面板；其他老師只有一行「輸入家長碼」小條
 function paintParent() {
   const box = $('#parent-box');
   if (!box) return;
   const opts = {
     toast, run, suggestPassword,
-    homeOnly: classes.length ? classes.every((c) => c.kind === 'home') : WANT_CHILD,
+    homeOnly: who.role === 'parent' || (classes.length ? classes.every((c) => c.kind === 'home') : WANT_CHILD),
     openPlay: (kid) => openPlay(classes.find((c) => c.kind === 'home')?.code ?? active, kid),
     refresh: () => renderParent(box, opts),
     reload: () => renderClasses(),
   };
-  renderParent(box, opts).catch((e) => { box.innerHTML = `<p class="tip">${esc(e.message)}</p>`; });
+  return renderParent(box, opts).catch((e) => { box.innerHTML = `<p class="tip">${esc(e.message)}</p>`; });
 }
 
 function classForm(c = {}) {

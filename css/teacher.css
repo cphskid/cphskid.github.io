@@ -548,3 +548,31 @@ details.first .form{margin-top:12px}
 .inbox .letter .sign{color:var(--muted);text-align:right;font-size:14px}
 .inbox li.old{opacity:.7}
 .news-aud label.check small{color:var(--muted);font-weight:500;margin-left:8px}
+
+/* ---------- 和孩子連起來：輸入家長碼（js/teacher-parent.js） ---------- */
+.parent .head .row{display:flex;flex-wrap:wrap;gap:8px}
+.parent .link-two{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-top:6px}
+.parent .way{padding:14px 16px;border-radius:18px;background:var(--paper);border:2px solid var(--cream-2)}
+.parent .way:first-child{border-color:var(--gold);background:#fff8e6}
+.parent .way h3{margin:0 0 8px;display:flex;align-items:center;gap:8px;font:900 18px/1.2 var(--f-body);color:var(--wood)}
+.parent .way .n{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--gold);color:var(--ink);font:900 15px/1 var(--f-body)}
+.parent .way>img{width:64px;float:right;margin:0 0 6px 8px}
+.parent .way p{margin:0 0 10px;color:#5a3a1e;line-height:1.5}
+.parent .link-more{margin:8px 0 4px;padding:12px 14px;border-radius:16px;background:#fff8e6;border:2px solid var(--gold)}
+.how{margin:0 0 12px;padding:0;list-style:none;counter-reset:hw;display:grid;gap:8px}
+.how li{counter-increment:hw;position:relative;padding-left:32px;line-height:1.55;color:#5a3a1e}
+.how li::before{content:counter(hw);position:absolute;left:0;top:1px;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:var(--wood);color:#fff;font:900 13px/1 var(--f-body)}
+.how small{color:var(--muted)}
+.how .key{display:inline-flex;align-items:center;gap:4px;padding:1px 8px;border-radius:999px;background:#fff;border:2px solid var(--cream-2);font-weight:900;color:var(--wood);white-space:nowrap}
+.how .key img{width:20px;height:20px}
+.code-form{display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px}
+.code-form label{flex:1 1 180px;display:flex;flex-direction:column;gap:6px;font:700 15px/1.2 var(--f-body);color:var(--wood)}
+.code-form input,#precode input[name=code]{font:900 22px/1 var(--f-body);letter-spacing:.18em;text-transform:uppercase}
+.code-form .msg{flex-basis:100%}
+.parent-mini{padding:10px 16px}
+.parent-mini summary{cursor:pointer;display:flex;align-items:center;gap:8px;font:900 16px/1.3 var(--f-body);color:var(--wood);list-style:none}
+.parent-mini summary::-webkit-details-marker{display:none}
+.parent-mini summary img{width:28px;height:28px}
+.parent-mini[open] summary{margin-bottom:10px}
+.lead .pc{letter-spacing:.12em;color:var(--wood)}
+@media (max-width:560px){ .code-form .btn{flex:1 1 100%} }
