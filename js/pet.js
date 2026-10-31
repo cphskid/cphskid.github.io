@@ -339,6 +339,7 @@ let bagOpen = false;        // 餵食的點心列開著沒
 let cam = { x: 0, y: 0, k: 1 };     // 鏡頭：島移到哪、放多大
 let panned = false;         // 這次按下去有拖地圖（放開時不要當成點一下）
 let deco = null;            // 裝扮模式 { tab, tool, sel, undo }
+let undoKeep = [];          // 復原紀錄：按「完成」再進來還留著，關掉寵物島才清掉
 
 function stopScene() {
   cancelAnimationFrame(raf);
@@ -386,6 +387,7 @@ function openScene({ select, say: first } = {}) {
   const cs = getComputedStyle($('.pisle', layer));
   skyM = skyMatrix(`${cs.getPropertyValue('--tod')} ${cs.getPropertyValue('--wx')}`);
   landReady = paintLand(land);
+  undoKeep = [];
   sceneAbort = new AbortController();
   const box = $('.actors', layer);
   const fresh = freshFurniture();
@@ -397,6 +399,7 @@ function openScene({ select, say: first } = {}) {
   actors.forEach((a) => { if (Math.random() < .7) laterWish(a, rnd(2500, 9000)); });
   // 點空地丟球（拖地圖不算）
   $('.ground', layer).addEventListener('click', (e) => {
+    if (deco && !deco.tool && !panned && !e.target.closest('.prop,.deco-sel')) { tapBuild(e); return; }
     if (panned || deco) return;
     if (e.target.closest('.actor,.prop')) return;
     if (bagOpen) { closeBag(); return; }
@@ -815,7 +818,7 @@ function toggleFurn() {
 }
 function enterDeco() {
   closeBag();
-  deco = { tab: 'furn', tool: null, sel: null, undo: [], wipe: 0 };
+  deco = { tab: 'furn', tool: null, sel: null, undo: undoKeep, wipe: 0 };
   $('.pisle', layer).classList.add('decorating');
   rebuildWorld();
   paintDeco();
@@ -886,7 +889,7 @@ function paintDeco() {
   box.hidden = false;
   box.innerHTML = `<div class="dt-tabs">${tabs.map(([k, t]) => `<button type="button" data-tab="${k}" class="${deco.tab === k ? 'on' : ''}">${t}</button>`).join('')}</div>
     ${deco.tab === 'look' ? isle.decorHtml() : `<div class="dt-list">${body}</div>`}
-    ${deco.tab === 'build' ? '<p class="note">選好一種，在島上點一下或拖曳就會擺上去；寵物不會穿過圍籬，記得留小門。再點一次同一個就收起來，可以移動地圖。</p>' : ''}`;
+    ${deco.tab === 'build' ? '<p class="note">選好一種，在島上點一下或拖曳就會擺上去；點一下已經擺好的就收起來。寵物不會穿過圍籬，記得留小門。要移動地圖時，再點一次上面選好的那一種取消。</p>' : ''}`;
   box.querySelectorAll('[data-tab]').forEach((b) => { b.onclick = () => { deco.tab = b.dataset.tab; deco.tool = null; paintDeco(); }; });
   box.querySelectorAll('[data-add]').forEach((b) => { b.onclick = () => addItem(b.dataset.add); });
   box.querySelectorAll('[data-tool]').forEach((b) => { b.onclick = () => { deco.tool = deco.tool === b.dataset.tool ? null : b.dataset.tool; deco.sel = null; paintSel(); paintDeco(); }; });
@@ -1017,9 +1020,12 @@ function dragProp(o, e) {
   addEventListener('pointercancel', up);
 }
 // 圍籬小路用畫的：按下去經過的格子都擺上去（擦掉＝拿掉圍籬小路）
+let painting = false;
 function paintStart(e) {
-  if (!deco?.tool) return false;
-  const before = snapshot(), seen = new Set();
+  if (!deco?.tool || painting) return false;
+  painting = true;
+  const before = snapshot(), seen = new Set(), first = W.cellOf(toIsle(e).x, toIsle(e).y);
+  const same = buildIdAt(first.i, first.j) === deco.tool;     // 點已經擺好的同一種：收起來
   let did = false;
   const step = (ev) => {
     const p = toIsle(ev), { i, j } = W.cellOf(p.x, p.y);
@@ -1032,7 +1038,11 @@ function paintStart(e) {
     removeEventListener('pointermove', step);
     removeEventListener('pointerup', up);
     removeEventListener('pointercancel', up);
+    painting = false;
+    const took = !did && same && seen.size === 1 && eraseAt(first.i, first.j);
+    if (took) { did = true; rebuildWorld(); }
     if (did) { pushUndo(before); saveIsle(); paintDeco(); }
+    if (took) decoMsg('收起來了，按「復原」可以放回去');
   };
   addEventListener('pointermove', step);
   addEventListener('pointerup', up);
@@ -1054,6 +1064,24 @@ function buildAt(id, i, j) {
   items.push({ id, i, j, f: 0 });
   occ = W.occupancy(items);
   return true;
+}
+// 這一格的圍籬小路是哪一種（圍籬、小門優先，再來地上的小路）
+function buildIdAt(i, j) {
+  for (const layerOcc of [occ.obj, occ.floor]) {
+    const k = layerOcc[j * N + i];
+    if (k && W.isBuild(items[k - 1].id)) return items[k - 1].id;
+  }
+  return null;
+}
+// 沒選工具時點圍籬小路：收起來
+function tapBuild(e) {
+  const p = toIsle(e), { i, j } = W.cellOf(p.x, p.y), before = snapshot();
+  if (!eraseAt(i, j)) return;
+  pushUndo(before);
+  rebuildWorld();
+  saveIsle();
+  paintDeco();
+  decoMsg('收起來了，按「復原」可以放回去');
 }
 function eraseAt(i, j) {
   const c = j * N + i;
@@ -1084,17 +1112,21 @@ async function openBowl(o) {
   const pop = $('.bagpop', layer);
   const n = state.bowl ?? 0, have = state.inventory?.kibble ?? 0;
   bagOpen = true;
-  pop.innerHTML = `<p>飼料盆：裡面有 <b>${n}</b> 份（最多 3 份）</p>
+  pop.innerHTML = `<button type="button" class="pop-x" data-pop-x aria-label="關起來">✕</button>
+    <p>飼料盆：裡面有 <b>${n}</b> 份（最多 3 份）</p>
     <div class="bowl-row"><img src="img/pet/furniture/bowl-food.webp" alt="">
       <button type="button" class="btn small" data-fill ${n >= 3 || !have || !api.bowl ? 'disabled' : ''}>放一份時光飼料（還有 ${have} 份）</button></div>
     <p class="note">你不在的時候，照顧中的那隻肚子餓了會自己來吃。</p>`;
   pop.hidden = false;
+  $('[data-pop-x]', pop).onclick = closeBag;
   $('[data-fill]', pop).onclick = async (e) => {
     e.currentTarget.disabled = true;
     try {
       refresh(await api.bowl());
       const home = actors.find((a) => a.p.active);
       if (home) say('碗裡有飼料了！餓了我會自己去吃～', home.p.id);
+      closeBag();             // 放好就關起來，寵物說的話留著
+      return;
     } catch (err) { oops(err.message); }
     if (bagOpen) openBowl(o);
   };

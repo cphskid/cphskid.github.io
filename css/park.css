@@ -688,6 +688,8 @@ aside.care .wish span img{width:40px;height:40px}
 .pisle .bagpop{position:absolute;right:calc(env(safe-area-inset-right) + 12px);bottom:calc(env(safe-area-inset-bottom) + 98px);z-index:25;max-width:calc(100% - 24px);
   background:var(--cream);border:3px solid var(--wood);border-radius:20px;padding:8px 10px 10px;box-shadow:0 5px 0 var(--wood),0 10px 24px rgba(0,0,0,.25);animation:pop .2s ease-out}
 .pisle .bagpop[hidden]{display:none}
+.pisle .bagpop .pop-x+p{padding-right:40px;min-height:34px;line-height:1.3}
+.pisle .bagpop .pop-x{position:absolute;right:8px;top:8px;width:32px;height:32px;border-radius:50%;border:3px solid var(--wood);background:var(--cream);color:var(--wood);font:900 16px/1 var(--f-body);box-shadow:0 2px 0 var(--wood);cursor:pointer;touch-action:manipulation}
 .pisle .bagpop p{margin:0 0 6px;font:800 14px/1 var(--f-body);color:#8a6a4a}
 .pisle .bagpop .bag{display:flex;gap:8px;overflow-x:auto;scrollbar-width:thin;padding-bottom:2px}
 .pisle .bagpop .food{flex:none;width:84px;padding:6px 4px}
