@@ -1000,6 +1000,8 @@ body[data-scene="map"] #hud{display:block}
 #wardrobe .lead{margin:0 0 6px;font:700 18px/1.5 var(--f-body);color:#8a6a4a}
 #wardrobe .row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
 #wardrobe .row.end{justify-content:flex-end;margin-top:16px}
+/* 確定鈕（出發／穿好了）黏在框底，選項再多也一直看得到（2026-10-31 回報 #48） */
+#wardrobe .pane>.row.end{position:sticky;bottom:-1px;z-index:2;margin-top:10px;padding:10px 0 4px;background:linear-gradient(rgba(255,246,226,0),#fff6e2 35%)}
 /* 衣服一多（萬聖套裝）右邊會捲：下面的按鈕黏在底部，不會被擠出畫面 */
 #wardrobe .pane>.row.end{position:sticky;bottom:0;z-index:2;padding:10px 0 2px;background:linear-gradient(rgba(255,244,220,0),#fff4dc 14px)}
 #wardrobe .btn.small{font:900 19px/1 var(--f-body);padding:12px 24px 13px;border-width:3px;box-shadow:inset 0 2px 0 rgba(255,255,255,.9),0 4px 0 var(--wood)}
@@ -1080,8 +1082,9 @@ body[data-scene="map"] #hud{display:block}
 }
 /* 橫拿的手機：左右並排，旅人小一點 */
 @media (max-height:560px) and (min-width:561px){
-  .ward{grid-template-columns:200px minmax(0,1fr);overflow:hidden}
-  .ward .pane{overflow-y:auto}
+  .ward{grid-template-columns:200px minmax(0,1fr);grid-template-rows:minmax(0,1fr);overflow:hidden}
+  /* 列高要鎖住，右邊才會自己捲；不然「出發」「穿好了」會掉到框外按不到（2026-10-31 回報 #48） */
+  .ward .pane{overflow-y:auto;min-height:0}
   .ward .doll.big{--dw:170px}
 }
 /* 寵物島上的旅人 */
@@ -1298,6 +1301,11 @@ button.stamp:hover,button.stamp:focus-visible{transform:translateY(-3px);outline
   .shop .body.with-doll{grid-template-columns:150px minmax(0,1fr)}
   .shop .try{grid-template-columns:none;justify-items:center}
   .shop .try .doll.big{--dw:120px}
+}
+/* 電腦視窗矮、橫拿手機：小對話框（排行、時光幣、爸媽任務…）在畫面中間，叉叉跟著框走，
+   不要飛到畫面右上角蓋住名字和時光幣（2026-10-31 回報 #46） */
+@media (max-height:560px) and (min-width:700px){
+  #shop .wallet>.x{position:absolute;right:-12px;top:-12px;width:56px;height:56px}
 }
 /* 班級排行（本週冒險值） */
 .wallet .wk .ghost.small{font-size:15px;padding:6px 12px;white-space:nowrap}
