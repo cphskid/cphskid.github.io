@@ -145,13 +145,24 @@ export async function staffLogin(email, password) {
 }
 // 不走 auth.signUp（會寄確認信，寄信額度一小時只有兩封）：register_teacher 直接開好帳號，再登入。
 // register_teacher 用匿名身分數「同一台裝置開了幾個帳號」，所以要先有身分。
-export async function staffSignUp(email, password, name, adult) {
+export async function staffSignUp(email, password, name, adult, role = null) {
   await ensureStudentSession();
   const { error } = await db.rpc('register_teacher', {
     p_email: email.trim(), p_password: password, p_display_name: name.trim(), p_adult: adult,
   });
   check(error);
-  return staffLogin(email, password);
+  const r = await staffLogin(email, password);
+  if (role) await db.rpc('park_set_staff_role', { p_role: role });   // 資料庫還沒裝這個函式也不影響註冊
+  return r;
+}
+// 開班帳號的身分（老師／家長）：null＝還沒選過
+export async function staffRole() {
+  const { data, error } = await db.rpc('park_my_role');
+  return error ? null : data;
+}
+export async function setStaffRole(role) {
+  const { error } = await db.rpc('park_set_staff_role', { p_role: role });
+  check(error);
 }
 export async function claimFirstAdmin() {
   const { error } = await db.rpc('claim_first_admin');
@@ -197,7 +208,9 @@ export const teacher = {
   resetPassword:  (id, pw) => call('park_reset_password', { p_student: id, p_password: pw }),
   setNickname:    (id, nick) => call('park_set_student_nickname', { p_student: id, p_nickname: nick }),
   removeStudent:  (code, id) => call('park_remove_from_class', { p_code: code, p_student: id }),
+  guardianClasses: (id) => call('park_guardian_classes', { p_student: id }),
   setPrimary:     (code, id) => call('park_teacher_set_primary', { p_code: code, p_student: id }),
+  setGrade:       (id, grade) => call('park_set_student_grade', { p_student: id, p_grade: grade }),
   facilities:     () => call('park_facility_list'),
   // 遊玩紀錄（park_playlog.sql）：全班每個人最後在玩什麼、一位學生的時間軸
   lastPlay:       (code) => call('park_class_last_play', { p_code: code }),
@@ -229,8 +242,12 @@ export const news = {
   post: (v) => call('park_news_post', {
     p_kinds: v.kinds, p_title: v.title, p_body: v.body, p_ends_on: v.ends_on, p_banner: v.banner || null,
     p_link: v.link || null, p_zones: v.zones ?? [], p_classes: v.classes?.length ? v.classes : null,
-    p_sign: v.sign || null, p_important: !!v.important, p_starts_on: v.starts_on || null }),
+    p_sign: v.sign || null, p_important: !!v.important, p_starts_on: v.starts_on || null,
+    p_audience: v.audience?.length ? v.audience : ['student'] }),
   hide: (id) => call('park_news_hide', { p_id: id }),
+  // 後台信箱（2026-10-31）：管理員寄給老師／家長的公告
+  inbox: () => call('park_news_inbox'),
+  inboxSeen: (id) => call('park_news_inbox_seen', { p_id: id }),
 };
 // 問題回報收件匣（守護異世界 schema.sql 的函式，P3 從英文管理員頁搬過來）。
 // 管理員看全部、可以分類／回覆／刪除；老師只看得到自己班學生的回報（伺服器過濾），唯讀。
@@ -293,8 +310,32 @@ export const pet = {
   pat:           () => petcall('park_pet_pat'),
   play:          (kind) => petcall('park_pet_play', { p_kind: kind }),
   rename:        (name) => petcall('park_pet_rename', { p_name: name }),
+  bowl:          () => petcall('park_pet_bowl_fill'),      // 飼料盆放一份時光飼料（park_pet.sql）
   classQuiet:    (code) => petcall('park_pet_class_quiet', { p_code: code }),
   setClassQuiet: (code, on) => petcall('park_pet_set_class_quiet', { p_code: code, p_quiet: on }),
+};
+
+// ---------- 寵物島裝扮、拜訪、今日精選（supabase/park_isle.sql） ----------
+// 還沒裝這份 SQL 時丟出 missing，寵物島退回只存在這台裝置、沒有拜訪。
+async function icall(fn, args) {
+  if (!db) throw new Error('帳號功能載入失敗，重新整理再試一次');
+  const { data, error } = await db.rpc(fn, args);
+  if (error?.code === 'PGRST202') {
+    const e = new Error('寵物島的資料庫還沒裝好（缺 ' + fn + '），請管理員套用 park_isle.sql');
+    e.missing = true;
+    throw e;
+  }
+  check(error);
+  return data;
+}
+export const isle = {
+  me:       () => icall('park_isle_me'),
+  seen:     () => icall('park_isle_seen'),
+  save:     (theme, name, layout, stored) => icall('park_isle_save', { p_theme: theme, p_name: name, p_layout: layout, p_stored: stored }),
+  mates:    () => icall('park_isle_class'),
+  featured: () => icall('park_isle_featured_today'),
+  view:     (id) => icall('park_isle_view', { p_student: id }),
+  react:    (id, kind) => icall('park_isle_react', { p_student: id, p_kind: kind }),
 };
 
 // ---------- 時空旅人換裝（supabase/park_traveller.sql） ----------
@@ -338,4 +379,59 @@ export const coins = {
   buy:       (cat, code) => ccall('park_shop_buy', { p_cat: cat, p_code: code }),
   furniture: () => ccall('park_my_furniture'),
   board:     (code, kind) => ccall('park_class_board', { p_code: code, p_kind: kind }),
+  home:      () => ccall('park_app_home'),
+};
+
+// ---------- 爸媽任務與監護人（supabase/park_parent.sql） ----------
+// 還沒裝這份 SQL 時丟出 missing，畫面就不顯示爸媽任務。
+async function parentcall(fn, args) {
+  if (!db) throw new Error('帳號功能載入失敗，重新整理再試一次');
+  const { data, error } = await db.rpc(fn, args);
+  if (error?.code === 'PGRST202') {
+    const e = new Error('爸媽任務的資料庫還沒裝好（缺 ' + fn + '），請管理員套用 park_parent.sql');
+    e.missing = true;
+    throw e;
+  }
+  check(error);
+  return data;
+}
+export const parent = {
+  me:          () => parentcall('park_parent_me'),
+  code:        () => parentcall('park_parent_code'),
+  redeem:      (code) => parentcall('park_parent_redeem', { p_code: code }),
+  createChild: (login, pw, nick) => parentcall('park_parent_create_child', { p_login_id: login.trim().toLowerCase(), p_password: pw, p_nickname: nick.trim() }),
+  kids:        () => parentcall('park_parent_kids'),
+  view:        (id) => parentcall('park_parent_view', { p_student: id }),
+  sticker:     (id, s) => parentcall('park_parent_sticker', { p_student: id, p_sticker: s }),
+  goal:        (id, g) => parentcall('park_parent_goal', { p_student: id, p_goal: g }),
+  sign:        (id) => parentcall('park_parent_sign', { p_student: id }),
+};
+
+// ---------- 新手冒險手冊（supabase/park_starter.sql） ----------
+// 還沒裝這份 SQL 時丟出 missing，畫面就照舊顯示每日任務。
+export const starter = {
+  me:    () => ccall('park_starter_me'),
+  class: (code) => ccall('park_starter_class', { p_code: code }),
+};
+
+// ---------- 時光試煉島（supabase/park_quiz.sql） ----------
+// 孩子：我的卷、打開、交卷、訂正、這題怪怪的。老師／家長：題庫、全班狀況、出卷、報告、推薦去玩。管理員：審題。
+export const quiz = {
+  mine:      () => call('park_quiz_mine'),
+  open:      (paper) => call('park_quiz_open', { p_paper: paper }),
+  submit:    (paper, resp) => call('park_quiz_submit', { p_paper: paper, p_resp: resp }),
+  fix:       (paper, resp) => call('park_quiz_fix', { p_paper: paper, p_resp: resp }),
+  flag:      (paper, pos, note) => call('park_quiz_flag', { p_paper: paper, p_pos: pos, p_note: note }),
+  bank:      (code) => call('park_quiz_bank', { p_code: code }),
+  klass:     (code) => call('park_quiz_class', { p_code: code }),
+  create:    (code, title, plan) => call('park_quiz_create', { p_code: code, p_title: title, p_plan: plan }),
+  addOwn:    (code, kp, kind, body) => call('park_quiz_add_own', { p_code: code, p_kp: kp, p_kind: kind, p_body: body }),
+  papers:    (code) => call('park_quiz_papers', { p_code: code }),
+  report:    (paper, via) => call('park_quiz_report', { p_paper: paper, p_via: via ?? null }),
+  hide:      (paper) => call('park_quiz_hide', { p_paper: paper }),
+  mark:      (code, student, kp, on = true) => call('park_quiz_mark', { p_code: code, p_student: student, p_kp: kp, p_on: on }),
+  recommend: (code, student, body, zone) => call('park_quiz_recommend', { p_code: code, p_student: student, p_body: body, p_zone: zone }),
+  adminBank: () => call('park_quiz_admin_bank'),
+  review:    (item, status, body = null, note = null) => call('park_quiz_review', { p_item: item, p_status: status, p_body: body, p_note: note }),
+  flagDone:  (id, wrong) => call('park_quiz_flag_done', { p_id: id, p_wrong: wrong }),
 };

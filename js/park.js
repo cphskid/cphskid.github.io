@@ -5,9 +5,12 @@ import * as account from './account.js';
 import * as pet from './pet.js';
 import * as traveller from './traveller.js';
 import * as shop from './shop.js';
+import * as starter from './starter.js';
 import * as repair from './repair.js';
 import * as news from './news.js';
-import { facilityStatus, db, wish } from './auth.js';
+import * as install from './install.js';
+import * as parent from './parent.js';
+import { facilityStatus, db, wish, quiz } from './auth.js';
 import * as snd from './audio.js';
 import * as playlog from './playlog.js';
 import { settle, warm } from './warm.js';
@@ -148,6 +151,7 @@ news.init({
   mapLayer: () => islesLayer, mapWidth: MAP_W,
   scene: () => document.body.dataset.scene,
   go: (link) => {
+    if (link === 'quiz') { location.href = 'quiz/'; return; }
     if (link === 'repair') return repair.open();
     if (link === 'wear') return traveller.open();
     if (link === 'pet') return pet.open();
@@ -167,18 +171,33 @@ pet.init({ me: () => account.current(), host: () => islesLayer, dragged: () => d
 // ---------- 時空旅人換裝（js/traveller.js） ----------
 // 第一次進地圖還沒有旅人：請他建一個（頭像就是旅人的大頭）。一頁只問一次，按叉叉之後下次再問。
 traveller.init({ me: () => account.current(), changed: () => dispatchEvent(new Event('park:traveller')) });
-shop.init({
-  me: () => account.current(), toast: (t) => showToast(t, 4200),
-  // 每日任務「今天的指定島」按「去」：打開那座島的卡片（再按開始冒險）
-  go: (code) => {
-    if (code === 'pet') return pet.open();
-    if (code === 'wear') return traveller.open();
-    const z = zones.get(park.facilities.find((f) => f.code === code)?.zone);
-    if (!z) return;
-    const s = park.map.slots.find((x) => x.slot === z.slot);
-    if (s) setPan(s.left + s.width / 2 - 800);
-    openCard(z);
-  },
+// 每日任務「今天的指定島」、新手手冊按「去」：打開那座島的卡片（再按開始冒險）
+function goTo(code) {
+  if (code === 'pet') return pet.open();
+  if (code === 'wear') return traveller.open();
+  if (code === 'shop') return shop.openShop(null, 'pet');
+  if (code === 'passport') return account.openPassport();
+  const z = zones.get(park.facilities.find((f) => f.code === code)?.zone);
+  if (!z) return;
+  const s = park.map.slots.find((x) => x.slot === z.slot);
+  if (s) setPan(s.left + s.width / 2 - 800);
+  openCard(z);
+}
+shop.init({ me: () => account.current(), toast: (t) => showToast(t, 4200), go: goTo });
+// ---------- 新手冒險手冊（js/starter.js）：新手期取代每日任務 ----------
+starter.init({
+  me: () => account.current(), toast: (t) => showToast(t, 4200), go: goTo,
+  isle: (code) => islesLayer.querySelector(`.isle[data-zone="${park.facilities.find((f) => f.code === code)?.zone}"]`),
+});
+// ---------- 加到桌面（js/install.js）：齒輪選單＋第二天起在地圖上提醒一次 ----------
+install.init({
+  me: () => account.current(), toast: (t) => showToast(t, 4200), coins: () => shop.load(account.current()),
+  free: () => !select.hidden && veil.hidden && ['#pass', '#acct', '#petroom', '#shop', '#wardrobe'].every((s) => $(s).hidden),
+});
+// ---------- 爸媽任務（js/parent.js）：功能列的信封 ----------
+parent.init({
+  me: () => account.current(), toast: (t) => showToast(t, 4200), coins: () => shop.load(account.current()),
+  pets: () => pet.load(),
 });
 let travReady = Promise.resolve();
 let travAsked = false;
@@ -442,7 +461,7 @@ function showMap({ animate = true } = {}) {
   select.hidden = false;
   setScene('map');
   playlog.active(account.current().kind === 'student');
-  paintPassBtn(); paintDock();
+  paintPassBtn(); paintDock(); paintQuiz();
   snd.music('MU-01'); snd.ambience('SE-16');
   const stamped = account.current().profile?.unseen?.length;
   snd.sfx('SE-15');
@@ -474,7 +493,7 @@ $('#start').addEventListener('click', async () => {
   const w = await account.requireLogin();
   if (w || !account.available) go();
 });
-$('#back').addEventListener('click', () => { history.replaceState(null, '', location.pathname); showTitle(); });
+$('#back').addEventListener('click', () => { closeGear(); history.replaceState(null, '', location.pathname); showTitle(); });
 
 // ---------- 介紹卡 ----------
 const veil = $('#veil'), toast = $('#toast');
@@ -682,6 +701,19 @@ petBtn.addEventListener('click', () => pet.open());
 outBtn.addEventListener('click', async () => { closeGear(); await account.logout(); });
 addEventListener('park:profile', paintDock);
 
+// ---------- 時光試煉島（/quiz/）：有家長或老師出的試煉卷才出現，紅字＝還沒寫的張數 ----------
+const quizBtn = $('#quiz-btn');
+async function paintQuiz() {
+  const w = account.current();
+  if (w.kind !== 'student') { quizBtn.hidden = true; return; }
+  const list = await quiz.mine().catch(() => []);
+  const todo = list.filter((p) => !p.done).length;
+  quizBtn.hidden = !list.length;
+  const b = quizBtn.querySelector('.badge');
+  b.hidden = !todo; b.textContent = todo;
+}
+quizBtn.addEventListener('click', () => { location.href = 'quiz/'; });
+
 // ---------- 左上角的齒輪：點開聲音、問題回報、登出、版號 ----------
 const gearBtn = $('#gear-btn'), gearMenu = $('#gear-menu');
 function closeGear() { gearMenu.hidden = true; gearBtn.setAttribute('aria-expanded', 'false'); }
@@ -712,6 +744,9 @@ function onAccountChange(w) {
   pet.load().then(() => { if (w.kind === 'student') warmStudent(); });
   if (w.kind !== 'student') { traveller.close(); shop.close(); }   // 旅人在 account 讀「我是誰」時一起讀好了
   shop.load(w);
+  starter.load(w);
+  install.load(w);
+  parent.load(w);
   news.load();
   playlog.active(w.kind === 'student' && !select.hidden);
   if (w.kind === 'guest' && !select.hidden) { history.replaceState(null, '', location.pathname); showTitle(); }
@@ -720,7 +755,11 @@ const me = await meReady;
 travReady = meReady;
 await Promise.all([syncFacilities(), pet.load()]);
 shop.load(me);
+starter.load(me);
+install.load(me);
+parent.load(me);
 news.load();
+paintQuiz();
 if (route && me.kind === 'guest') {
   // 從遊戲回來但已經登出（或換人用平板）：先回開場，按 Start 再登入
   history.replaceState(null, '', location.pathname);
@@ -753,6 +792,7 @@ snd.music('MU-01'); snd.ambience('SE-16');
 const loading = $('#loading');
 loading.classList.add('out');
 mark('樂園開門（圖都到了）');
+playlog.ready();
 setTimeout(() => loading.remove(), 400);
 
 // ---------- 背景預熱：下一步會用到的圖先抓好，點開介紹卡、護照、寵物島時不用等 ----------

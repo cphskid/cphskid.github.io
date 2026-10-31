@@ -5,6 +5,9 @@
 // 權限一律由資料庫擋（supabase/park_teacher.sql），這裡只負責畫面不出錯、錯誤講白話。
 import * as auth from './auth.js';
 import { headHtml } from './traveller.js';
+import { renderGuide, startTour, tourSeen } from './teacher-guide.js';
+import { renderQuiz } from './teacher-quiz.js';
+import { rememberCode, pendingCode, redeemPending, renderParent } from './teacher-parent.js';
 
 const $ = (s, root = document) => root.querySelector(s);
 const $$ = (s, root = document) => [...root.querySelectorAll(s)];
@@ -36,6 +39,8 @@ let byName = false;                           // 全班總覽：預設有在玩�
 let tab = 'classes';
 
 if (IS_DEV) $('#env').hidden = false;
+rememberCode();                                // 孩子給的家長碼（?parent=XXXXXX）先記著，登入後連起來
+const WANT_CHILD = new URLSearchParams(location.search).has('child');   // 家長介紹頁「幫孩子開帳號」
 
 // ---------- 小工具 ----------
 let tt;
@@ -96,8 +101,10 @@ function suggestPassword() {
 function ask({ title, body = '', fields = [], ok = '確定', danger = false, onOk }) {
   dlg.innerHTML = `<form method="dialog" class="dlg">
     <h3>${esc(title)}</h3>${body}
-    ${fields.map((f) => `<label>${esc(f.label)}<input name="${f.name}" value="${esc(f.value ?? '')}"
-      ${f.type ? `type="${f.type}"` : ''} ${f.max ? `maxlength="${f.max}"` : ''} autocomplete="off" spellcheck="false"></label>`).join('')}
+    ${fields.map((f) => `<label>${esc(f.label)}${f.options
+      ? `<select name="${f.name}">${f.options.map(([v, t]) => `<option value="${esc(v)}" ${String(f.value ?? '') === String(v) ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select>`
+      : `<input name="${f.name}" value="${esc(f.value ?? '')}"
+      ${f.type ? `type="${f.type}"` : ''} ${f.max ? `maxlength="${f.max}"` : ''} autocomplete="off" spellcheck="false">`}</label>`).join('')}
     <p class="msg" hidden></p>
     <div class="row end"><button type="button" class="ghost" data-cancel>取消</button>
     <button type="submit" class="btn ${danger ? 'danger' : ''}">${esc(ok)}</button></div></form>`;
@@ -113,7 +120,9 @@ function ask({ title, body = '', fields = [], ok = '確定', danger = false, onO
       const done = await onOk(vals);
       if (done === false) return;
       if (typeof done === 'string') {          // 有結果要給老師看（例如新密碼），對話框留著
-        form.innerHTML = `<h3>${esc(title)}</h3><p class="result">${done}</p><div class="row end"><button class="btn" value="ok">好</button></div>`;
+        // 「知道了」不能是 submit：表單的 submit 已經被上面接走，按了會再跑一次 onOk（以前按了沒反應）
+        form.innerHTML = `<h3>${esc(title)}</h3><p class="result">${done}</p><div class="row end"><button type="button" class="btn" data-done>知道了</button></div>`;
+        $('[data-done]', form).onclick = () => dlg.close();
         return;
       }
       dlg.close();
@@ -127,6 +136,9 @@ function ask({ title, body = '', fields = [], ok = '確定', danger = false, onO
 
 // ---------- 登入 ----------
 function renderLogin(note = '') {
+  const parentFirst = !!pendingCode() || WANT_CHILD;
+  if (!note && pendingCode()) note = '孩子請你幫忙完成「爸媽任務」！登入，或在下面建立家長帳號，就會自動和孩子連起來。';
+  else if (!note && WANT_CHILD) note = '先建立家長帳號（只要 email 和密碼，不用收確認信），接著就能幫孩子開帳號。已經有帳號的直接登入。';
   $('#tabs').hidden = true;
   $('#hero').hidden = true;
   $('#who').hidden = true;
@@ -140,8 +152,28 @@ function renderLogin(note = '') {
       <p class="msg" hidden></p>
       <button class="btn go" type="submit">登入</button>
     </form>
-    <p class="tip">還沒有開班帳號？<a href="${BASE}?staff=signup">到樂園大門建立一個</a>，不用收確認信。</p>
+    ${parentFirst ? `<details class="first" open><summary>第一次來？建立家長帳號</summary>
+    <form class="form" id="signup" novalidate>
+      <label>email<input name="email" type="email" autocomplete="email" autocapitalize="off" spellcheck="false"></label>
+      <label>密碼（至少 8 個字）<input name="pw" type="password" autocomplete="new-password"></label>
+      <label>孩子怎麼叫你（例如：小安媽媽）<input name="name" maxlength="20"></label>
+      <label class="check"><input name="adult" type="checkbox"> 我是家長，年滿 18 歲</label>
+      <p class="msg" hidden></p>
+      <button class="btn go" type="submit">建立帳號</button>
+    </form></details>` : `<p class="tip">還沒有開班帳號？<a href="${BASE}?staff=signup">到樂園大門建立一個</a>，不用收確認信。</p>`}
   </section>`;
+  const su = $('#signup');
+  su?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const msg = $('.msg', su), el = su.elements;
+    const email = el.email.value.trim(), pw = el.pw.value, name = el.name.value.trim();
+    const bad = !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) ? 'email 看起來不太對，再檢查一下'
+      : pw.length < 8 ? `密碼至少要 8 個字（現在 ${pw.length} 個）` : !name ? '請填孩子怎麼叫你' : !el.adult.checked ? '請勾選「我是家長，年滿 18 歲」' : '';
+    if (bad) { msg.textContent = bad; msg.hidden = false; return; }
+    const b = $('button', su); b.disabled = true; b.textContent = '建立中…';
+    try { who = await auth.staffSignUp(email, pw, name, true, 'parent'); await start(); }
+    catch (err) { msg.textContent = err.message; msg.hidden = false; b.disabled = false; b.textContent = '建立帳號'; }
+  });
   const f = $('#login');
   f.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -161,21 +193,32 @@ async function start() {
   if (who.kind === 'student') return renderLogin('這台裝置現在登入的是學生（' + esc(who.nickname) + '）。要用老師帳號，請直接在下面登入，學生會被登出。');
   if (who.kind !== 'staff') return renderLogin();
   if (who.active === false) return renderLogin('這個帳號已經被管理員停用了。');
-  $('#who').innerHTML = `<span><b>${esc(who.display_name)}</b><small>${who.is_admin ? '管理員' : '老師／家長'}</small></span>`;
+  who.role = await auth.staffRole();   // 註冊時選的老師／家長；舊帳號是 null，照開的班猜
+  $('#who').innerHTML = `<span><b>${esc(who.display_name)}</b><small>${who.is_admin ? '管理員' : who.role === 'parent' ? '家長' : who.role === 'teacher' ? '老師' : '老師／家長'}</small></span>`;
   $('#who').hidden = false;
   paintHero();
   $('#logout').hidden = false;
   $('#tabs').hidden = false;
   $('#tab-admin').hidden = !who.is_admin;
   const want = location.hash.slice(1);
-  tab = want === 'admin' && who.is_admin ? 'admin' : ['feedback', 'play', 'news'].includes(want) ? want : 'classes';
+  tab = want === 'admin' && who.is_admin ? 'admin' : ['feedback', 'play', 'news', 'guide', 'quiz'].includes(want) ? want : 'classes';
   paintTabs();
   paintFeedbackDot();
+  $('#help').hidden = false;
+  $('#mailbox').hidden = false;
+  await redeemPending(toast);
   await show();
+  loadInbox(true);
+  if (tab === 'classes') startTour();   // 第一次進來跑一次導覽，看過就不再自己跳
+}
+// 右上「？」：回到我的班級重看導覽
+$('#help').onclick = async () => {
+  if (tab !== 'classes') { tab = 'classes'; history.replaceState(null, '', '#classes'); paintTabs(); await show(); }
+  startTour(true);
 }
 // 頁首橫幅：管理員、老師、家長（開的全是家庭班）用不同的頭像
 function paintHero() {
-  const home = classes.length > 0 && classes.every((c) => c.kind === 'home');
+  const home = who.role ? who.role === 'parent' : classes.length > 0 && classes.every((c) => c.kind === 'home');
   const role = who.is_admin ? 'admin' : home ? 'parent' : 'teacher';
   $('#avatar').src = `img/admin/av-${role}.webp`;
   $('#hi').textContent = `${who.display_name}，你好`;
@@ -184,6 +227,7 @@ function paintHero() {
 }
 function paintTabs() {
   $$('#tabs button').forEach((b) => b.classList.toggle('on', b.dataset.view === tab));
+  $('#tabs button.on')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });   // 手機分頁橫向滑動時，把目前這頁捲進來
 }
 $$('#tabs button').forEach((b) => {
   b.onclick = () => { tab = b.dataset.view; history.replaceState(null, '', '#' + tab); paintTabs(); show(); };
@@ -197,6 +241,12 @@ async function show() {
     else if (tab === 'feedback') await renderFeedback();
     else if (tab === 'play') await renderPlay();
     else if (tab === 'news') await renderNews();
+    else if (tab === 'guide') renderGuide(view, { onTour: () => $('#help').click() });
+    else if (tab === 'quiz') {
+      if (!classes.length) classes = await auth.teacher.classes();
+      if (!classes.some((c) => c.code === active)) active = classes[0]?.code ?? null;
+      await renderQuiz(view, { classes, active, admin: !!who.is_admin, setActive: (c) => { active = c; }, toast });
+    }
     else await renderClasses();
   } catch (e) {
     if (e.missing) return renderMissing(e.message);
@@ -222,14 +272,14 @@ async function renderClasses() {
     <div><h3>這個系統還沒有管理員</h3><p class="lead">你是第一個使用者的話，按這個按鈕成為管理員。有了管理員之後，這顆按鈕就沒有作用了。</p>
     <button class="btn" id="claim">我是第一個使用者</button></div></div></section>` : '';
 
-  view.innerHTML = `${claim}
+  view.innerHTML = `${claim}<div id="parent-box"></div>
   <section class="panel">
     <div class="head">${h2('class', '我的班級')}<button class="btn go" id="new">＋ 開新班</button></div>
     <div id="newform" hidden></div>
     ${classes.length ? `<div class="classtabs" role="tablist">${classes.map((c) => `
       <button role="tab" data-code="${esc(c.code)}" class="${c.code === active ? 'on' : ''}">
-        <b>${esc(c.name || c.code)}</b><small>${c.kind === 'home' ? '家庭班' : gradeText(c.grade, c.grade) || '學校班'}・${c.members} 人</small></button>`).join('')}</div>`
-    : `<div class="empty"><img src="img/admin/tick-empty.webp" alt=""><p>還沒有班級。按「開新班」，取個班名、選年級，就會拿到一組班級代碼給小朋友註冊。</p></div>`}
+        <b>${esc(c.name || c.code)}</b><small>${c.kind === 'home' ? '家庭班' : '學校班'}・${c.members} 人</small></button>`).join('')}</div>`
+    : `<div class="empty"><img src="img/admin/tick-empty.webp" alt=""><p>還沒有班級。按「開新班」，取個班名，就會拿到一組班級代碼給小朋友註冊。</p></div>`}
   </section>
   <div id="cls"></div>`;
 
@@ -241,25 +291,39 @@ async function renderClasses() {
   }));
   $('#new').onclick = () => toggleNewForm();
   $$('.classtabs [data-code]').forEach((b) => { b.onclick = () => { active = b.dataset.code; renderClasses(); }; });
-  if (!classes.length) toggleNewForm(true);
+  if (!classes.length && !WANT_CHILD) toggleNewForm(true);
+  paintParent();
   if (active) await renderClass();
+}
+// 「孩子在等你」（js/teacher-parent.js）：有連起來的孩子，或全是家庭班（家長）才出現
+function paintParent() {
+  const box = $('#parent-box');
+  if (!box) return;
+  const opts = {
+    toast, run, suggestPassword,
+    homeOnly: classes.length ? classes.every((c) => c.kind === 'home') : WANT_CHILD,
+    openPlay: (kid) => openPlay(classes.find((c) => c.kind === 'home')?.code ?? active, kid),
+    refresh: () => renderParent(box, opts),
+    reload: () => renderClasses(),
+  };
+  renderParent(box, opts).catch((e) => { box.innerHTML = `<p class="tip">${esc(e.message)}</p>`; });
 }
 
 function classForm(c = {}) {
-  const kind = c.kind ?? 'school';
+  const kind = c.kind ?? (who.role === 'parent' ? 'home' : 'school');   // 家長開班預設家庭班
   return `<label>班級名稱<input name="name" maxlength="20" value="${esc(c.name ?? '')}" placeholder="例如 五年二班、小明家"></label>
     <label>類型<select name="kind">
       <option value="school" ${kind === 'school' ? 'selected' : ''}>學校班</option>
       <option value="home" ${kind === 'home' ? 'selected' : ''}>家庭班</option></select></label>
-    <label>年級<select name="grade"><option value="">${kind === 'home' ? '不指定' : '請選'}</option>
-      ${GRADES.map((g) => `<option value="${g}" ${c.grade === g ? 'selected' : ''}>${g} 年級</option>`).join('')}</select></label>`;
+    <label>新加入孩子的年級（選填）<select name="grade"><option value="">不指定，每個孩子自己設</option>
+      ${GRADES.map((g) => `<option value="${g}" ${c.grade === g ? 'selected' : ''}>${g} 年級</option>`).join('')}</select>
+      <small class="tip">年級記在每個孩子身上，可以在全班總覽改。全班同年級的話選這裡，新加入的孩子就先填這個年級。</small></label>`;
 }
 function readClassForm(f) {
   const name = f.elements.name.value.trim();
   const kind = f.elements.kind.value;
   const grade = f.elements.grade.value ? Number(f.elements.grade.value) : null;
   if (!name) throw new Error('填一下班級名稱');
-  if (kind === 'school' && !grade) throw new Error('學校班請選年級，適合的遊戲會排在前面');
   return { name, kind, grade };
 }
 function toggleNewForm(force) {
@@ -289,12 +353,39 @@ async function renderClass() {
   const c = classes.find((x) => x.code === active);
   const box = $('#cls');
   box.innerHTML = `
+  <section class="panel notice" id="p-week" hidden></section>
   <section class="panel" id="p-info"></section>
   <section class="panel" id="p-fac"></section>
   <section class="panel" id="p-ov"><p class="loading"><img src="img/tick/map.webp" alt="">整理全班進度中…</p></section>`;
   paintInfo(c);
   paintFacilities(c);
   await paintOverview(c);
+  paintWeek(c);
+}
+
+// ---------- 本週該看的三件事：誰好幾天沒來、誰需要注意、下一步做什麼（用全班總覽算好的資料） ----------
+function paintWeek(c) {
+  const p = $('#p-week');
+  const ov = lastOverview;
+  if (!p || !ov?.students?.length || ov.cls?.code !== c.code) return;
+  const day = 86400000;
+  const away = ov.students.filter((s) => !s.last || s.last < Date.now() - 3 * day);
+  const att = ov.students.filter((s) => s.locked || ov.games.some((g) => g.rows[s.id]?.attention));
+  const names = (list) => list.slice(0, 5).map((s) => esc(s.nickname)).join('、') + (list.length > 5 ? ` 等 ${list.length} 位` : '');
+  const items = [
+    away.length
+      ? `<b>${away.length} 位 3 天以上沒來</b>：${names(away)}。可以在「樂園公告」寄封信鴿信提醒。`
+      : '<b>全班最近 3 天都有來</b>，很棒！',
+    att.length
+      ? `<b>${att.length} 位需要注意</b>：${names(att)}。在下面總覽點「只看需要注意」看原因。`
+      : '<b>沒有需要注意的孩子</b>，進度都正常。',
+    ov.games.length
+      ? '<b>看看哪裡常錯</b>：點總覽欄位上的「細節頁」，先看紅色（答對率不到 60%）的章，陪孩子對照課本。'
+      : '<b>還沒開放任何島</b>：在上面「開放哪些島」勾選。',
+  ];
+  p.innerHTML = `<div class="hello"><img src="img/tick/map.webp" alt=""><div><h3>本週該看的三件事</h3>
+    <ol class="week">${items.map((t) => `<li>${t}</li>`).join('')}</ol></div></div>`;
+  p.hidden = false;
 }
 
 // ---------- 班級資料：代碼、分享連結、開放加入 ----------
@@ -303,7 +394,7 @@ function paintInfo(c) {
   p.innerHTML = `
     <div class="head">${h2('students', esc(c.name || c.code))}
       <div class="chips"><span class="chip">${c.kind === 'home' ? '家庭班' : '學校班'}</span>
-      ${c.grade ? `<span class="chip">${c.grade} 年級</span>` : ''}<span class="chip">${c.members} 人</span></div></div>
+      ${gradesOf(c).length ? `<span class="chip">${gradesOf(c).join('、')} 年級</span>` : ''}<span class="chip">${c.members} 人</span></div></div>
     <div class="codebox">
       <div><small>班級代碼</small><span class="code">${esc(c.code)}</span></div>
       <p>小朋友第一次來，在樂園按 Start Game →「第一次來」，填這組代碼。已經有帳號的，到「我的資料」輸入代碼加入。</p>
@@ -380,19 +471,23 @@ async function paintPetQuiet(c, p) {
 }
 
 // ---------- 開放哪些遊戲 ----------
-function fits(f, grade) {
-  if (!grade || (!f.grade_min && !f.grade_max)) return false;
-  return grade >= (f.grade_min ?? 1) && grade <= (f.grade_max ?? 9);
+// 班上孩子的年級（每個孩子自己的）；還沒有人設就用班級預設
+function gradesOf(c) {
+  return c.grades?.length ? c.grades : c.grade ? [c.grade] : [];
+}
+function fits(f, grades) {
+  if (!grades.length || (!f.grade_min && !f.grade_max)) return false;
+  return grades.some((g) => g >= (f.grade_min ?? 1) && g <= (f.grade_max ?? 9));
 }
 function paintFacilities(c) {
   const p = $('#p-fac');
   const on = new Set(c.facilities);
   const list = facilities
-    .filter((f) => f.status !== 'hidden')
-    .map((f) => ({ ...f, fit: fits(f, c.grade) }))
+    .filter((f) => f.status !== 'hidden' && f.code !== 'quiz')   // 時光試煉島不用開放，出卷就能寫
+    .map((f) => ({ ...f, fit: fits(f, gradesOf(c)) }))
     .sort((a, b) => (b.fit - a.fit) || 0);
   p.innerHTML = `<div class="head">${h2('park', '開放的遊戲')}</div>
-    <p class="lead">勾起來的遊戲，班上的小朋友在樂園地圖上才進得去。${c.grade ? `適合 ${c.grade} 年級的排在前面。` : ''}</p>
+    <p class="lead">勾起來的遊戲，班上的小朋友在樂園地圖上才進得去。${gradesOf(c).length ? `適合班上 ${gradesOf(c).join('、')} 年級孩子的排在前面。` : '在全班總覽幫孩子設年級，適合的遊戲就會排在前面。'}</p>
     <ul class="facs">${list.map((f) => {
       const trialMine = f.status === 'trial' && c.trials.includes(f.code);
       const note = f.status === 'construction' ? '還在施工，先勾起來，開幕當天班上就能玩'
@@ -404,7 +499,7 @@ function paintFacilities(c) {
         <img src="${esc(badgeOf(f.code))}" alt="">
         <span><b>${esc(f.name)}</b><small>${[f.subject, gradeText(f.grade_min, f.grade_max)].filter(Boolean).map(esc).join('・')}</small>
         ${note ? `<em>${esc(note)}</em>` : ''}</span>
-        <span class="chips">${f.fit ? '<span class="chip fit">適合這個年級</span>' : ''}<span class="chip st-${f.status}">${STATUS[f.status]}</span></span></label></li>`;
+        <span class="chips">${f.fit ? '<span class="chip fit">適合班上的年級</span>' : ''}<span class="chip st-${f.status}">${STATUS[f.status]}</span></span></label></li>`;
     }).join('')}</ul>`;
   let saving = Promise.resolve();
   $$('[data-fac]', p).forEach((box) => {
@@ -436,6 +531,7 @@ async function paintOverview(c) {
   const avatarsP = auth.passport.classAvatars(c.code).catch(() => null);
   const looksP = auth.traveller.classLooks(c.code).catch(() => null);   // 頭像＝學生的時空旅人大頭
   const playsP = auth.teacher.lastPlay(c.code).catch(() => null);        // 最後在玩什麼：沒裝 park_playlog.sql 就不顯示
+  const starterP = auth.starter.class(c.code).catch(() => null);        // 新手手冊翻到第幾頁：沒裝 park_starter.sql 就不顯示
   try { ov = await auth.teacher.overview(c.code); }
   catch (e) {
     p.innerHTML = `<div class="head">${h2('chart', '全班總覽')}</div><div class="empty"><img src="img/admin/tick-error.webp" alt=""><p>${esc(e.message)}</p></div>`;
@@ -444,6 +540,7 @@ async function paintOverview(c) {
   const looks = new Map((await looksP ?? []).map((a) => [a.student_id, a.look]));
   const avs = new Map((await avatarsP ?? []).map((a) => [a.student_id, { ...a, look: looks.get(a.student_id) }]));
   const plays = new Map((await playsP ?? []).map((r) => [r.student_id, r]));
+  const guides = new Map((await starterP ?? []).map((r) => [r.student_id, r]));
   lastOverview = { cls: c, ...ov, plays };
   const games = ov.games;
   // 最後活動：資料庫有給（park_class_last_active）就用，沒有就拿各遊戲的最後遊玩時間
@@ -488,15 +585,19 @@ async function paintOverview(c) {
       <thead><tr><th class="stu">學生</th>${head}<th class="ops">學生管理</th></tr></thead>
       <tbody>${shown.map((s) => `<tr>
         <td class="stu">${avCell(avs.get(s.id))}<b>${esc(s.nickname)}</b><small>${esc(s.login_id)}</small>
+          <button class="grade-chip ${s.grade ? '' : 'none'}" data-grade="${s.id}" title="年級記在孩子身上，在每個班都一樣">${s.grade ? `${s.grade} 年級` : '設年級'}</button>
           <small class="seen ${s.last > Date.now() - 7 * 86400000 ? 'on' : ''}" title="在任何遊戲或樂園裡最後一次動作的時間">${s.last ? `最後活動 ${esc(ago(s.last))}` : '還沒玩過'}</small>
           ${plays.get(s.id) ? `<small class="now" title="最近 60 天最後玩的地方">在玩：${esc(playText(plays.get(s.id)))}</small>` : ''}
+          ${guides.get(s.id) ? `<small class="now" title="新註冊的孩子前七天照新手手冊走，一天開一頁">${guides.get(s.id).finished ? '新手手冊：七頁都完成了' : `新手手冊：做完 ${guides.get(s.id).pages} / 7 頁`}</small>` : ''}
           ${s.primary ? '' : `<span class="tag" title="這個班不是他的主要班級；守護異世界的排行榜在他的主要班級">${ico('st-info')}另外加入</span>`}
           ${s.locked ? `<span class="tag bad">${ico('st-locked')}密碼鎖住了</span>` : ''}</td>
         ${games.map((g) => cell(g, s)).join('')}
         <td class="ops"><button class="ghost small" data-tl="${s.id}">${ico('clock')}遊玩紀錄</button>
+          ${s.manage === false ? `<small class="tip" title="改密碼、改暱稱、換主要班級會影響他整個帳號，只有他主要班級的老師、綁定的家長或管理員可以做">密碼和暱稱由他主要班級的老師或家長管理</small>` : `
           <button class="ghost small" data-pw="${s.id}">${ico('reset-password')}重設密碼</button>
           <button class="ghost small" data-nick="${s.id}">${ico('edit')}改暱稱</button>
-          ${s.primary ? '' : `<button class="ghost small" data-primary="${s.id}">${ico('class')}設成主要班級</button>`}
+          ${s.primary ? '' : `<button class="ghost small" data-primary="${s.id}">${ico('class')}設成主要班級</button>`}`}
+          ${s.guardian ? `<button class="ghost small" data-gcls="${s.id}">${ico('class')}孩子的所有班</button>` : ''}
           <button class="ghost small danger" data-rm="${s.id}">${ico('delete')}移出</button></td></tr>`).join('')}
       </tbody></table></div>
     ${shown.length ? '' : `<div class="empty small"><img src="img/admin/tick-done.webp" alt=""><p>目前沒有需要注意的學生。</p></div>`}`;
@@ -511,6 +612,8 @@ async function paintOverview(c) {
   $$('[data-nick]', p).forEach((b) => { b.onclick = () => renameStudent(c, byId.get(b.dataset.nick)); });
   $$('[data-rm]', p).forEach((b) => { b.onclick = () => removeStudent(c, byId.get(b.dataset.rm)); });
   $$('[data-primary]', p).forEach((b) => { b.onclick = () => setPrimary(c, byId.get(b.dataset.primary)); });
+  $$('[data-gcls]', p).forEach((b) => { b.onclick = () => guardianClasses(byId.get(b.dataset.gcls)); });
+  $$('[data-grade]', p).forEach((b) => { b.onclick = () => setGrade(c, byId.get(b.dataset.grade)); });
 }
 
 // ---------- 遊玩紀錄（park_playlog.sql） ----------
@@ -637,6 +740,7 @@ async function paintClassDays(c) {
 }
 
 async function paintKidDays(c, s) {
+  auth.parent.view(s.id).catch(() => {});      // 爸媽看過孩子的冒險（爸媽任務；不是監護人就不算）
   const box = $('#play-body');
   let rows;
   try { rows = mergeStamps(await auth.teacher.activity(s.id, playDays)); }
@@ -693,6 +797,21 @@ function resetPassword(s) {
     },
   });
 }
+function setGrade(c, s) {
+  ask({
+    title: `「${s.nickname}」是幾年級？`,
+    body: '<p class="lead">年級記在孩子身上，在每個班都一樣。開放遊戲時，適合的會排在前面。</p>',
+    fields: [{ name: 'grade', label: '年級', value: s.grade ?? '', options: [['', '先不填'], ...GRADES.map((g) => [g, `${g} 年級`])] }],
+    ok: '存好',
+    onOk: async ({ grade }) => {
+      const g = grade ? Number(grade) : null;
+      if (g === (s.grade ?? null)) return;
+      await auth.teacher.setGrade(s.id, g);
+      toast(g ? `${s.nickname} 設成 ${g} 年級了` : `${s.nickname} 的年級拿掉了`);
+      await renderClasses();
+    },
+  });
+}
 function renameStudent(c, s) {
   ask({
     title: `幫「${s.nickname}」改暱稱`,
@@ -735,14 +854,40 @@ function removeStudent(c, s) {
     },
   });
 }
+// 監護人看孩子加入的每一個班（包括別人開的），可以把孩子移出
+async function guardianClasses(s) {
+  let list;
+  try { list = await auth.teacher.guardianClasses(s.id); } catch (err) { toast(err.message); return; }
+  ask({
+    title: `${s.nickname} 加入的班`,
+    body: `<p class="lead">你是 ${esc(s.nickname)} 綁定的家長，看得到他在每一個班，也可以把他移出不認識的班。</p>
+      <ul class="qt-gcls">${(list ?? []).map((g) => `<li><b>${esc(g.name || g.code)}</b>
+        <small>${g.kind === 'home' ? '家庭班' : '班級'}・${g.mine ? '你開的' : `開班：${esc(g.owner || '其他老師')}`}${g.primary ? '・<span class="tag">主要班級</span>' : ''}</small>
+        <button type="button" class="ghost small danger" data-gout="${esc(g.code)}">${ico('delete')}移出</button></li>`).join('') || '<li>還沒有加入任何班</li>'}</ul>
+      <p class="tip">移出只是離開那個班，帳號和遊戲紀錄都還在。</p>`,
+    ok: '好',
+    onOk: async () => { await renderClasses(); },
+  });
+  $$('[data-gout]', dlg).forEach((b) => {
+    b.onclick = async () => {
+      if (!b.dataset.sure) { b.dataset.sure = '1'; b.textContent = '確定移出？'; return; }
+      b.disabled = true;
+      try {
+        await auth.teacher.removeStudent(b.dataset.gout, s.id);
+        b.closest('li').innerHTML = `<s>${esc(b.closest('li').querySelector('b').textContent)}</s> <small>已移出</small>`;
+        toast(`${s.nickname} 移出了`);
+      } catch (err) { toast(err.message); b.disabled = false; }
+    };
+  });
+}
 function exportCsv() {
   if (!lastOverview) return;
   const { cls, students, games } = lastOverview;
   const q = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
-  const head = ['暱稱', '帳號', '主要班級', '最後活動', '最後在玩'];
+  const head = ['暱稱', '帳號', '年級', '主要班級', '最後活動', '最後在玩'];
   games.forEach((g) => head.push(`${g.name} 進度%`, `${g.name} 最後遊玩`, `${g.name} 狀態`, `${g.name} 需要注意`));
   const rows = students.map((s) => {
-    const r = [s.nickname, s.login_id, s.primary ? '是' : s.primary_class ?? '', s.last ? new Date(s.last).toLocaleString('zh-TW') : '',
+    const r = [s.nickname, s.login_id, s.grade ?? '', s.primary ? '是' : s.primary_class ?? '', s.last ? new Date(s.last).toLocaleString('zh-TW') : '',
       lastOverview.plays?.get(s.id) ? playText(lastOverview.plays.get(s.id)) : ''];
     games.forEach((g) => {
       const x = g.rows[s.id];
@@ -862,6 +1007,14 @@ const NEWS_KINDS = [
   { id: 'letter',  name: '✉️ 信差來信',     tip: '信鴿送到信箱，點了才打開' },
 ];
 const NEWS_LINKS = [['', '不用'], ['shop-month', '商店本月限定'], ['repair', '時光修理站'], ['wear', '換裝間'], ['pet', '寵物島']];
+// 只寄給大人時，按鈕帶去後台的哪一頁
+const STAFF_LINKS = [['', '不用'], ['tab:classes', '後台：我的班級'], ['tab:play', '後台：遊玩紀錄'], ['tab:quiz', '後台：時光試煉島'], ['tab:guide', '後台：使用指南'], ['url:./#map', '樂園地圖']];
+const NEWS_AUD = [
+  { id: 'student', name: '小朋友', tip: '在樂園地圖上看到（下面選出現方式）' },
+  { id: 'teacher', name: '老師', tip: '後台右上「信箱」' },
+  { id: 'parent',  name: '家長', tip: '後台右上「信箱」' },
+];
+const audText = (a = ['student']) => a.map((x) => NEWS_AUD.find((y) => y.id === x)?.name ?? x).join('、');
 const taipeiDay = (plus = 0) => new Date(Date.now() + 8 * 3600e3 + plus * 864e5).toISOString().slice(0, 10);
 
 async function renderNews() {
@@ -880,18 +1033,22 @@ async function renderNews() {
       ? '一則公告寫一次，勾要用哪幾種方式出現（可以勾好幾種）。全部只在樂園地圖出現，進遊戲不會跳；看過就收起來。'
       : '寄一封信給你班上的小朋友：他們回到樂園地圖時，信鴿會把信送到名牌下面的信箱。'}</p>
     <form class="form news-form" id="nf" novalidate>
-      <fieldset class="news-kinds"><legend>出現方式</legend>
+      ${admin ? `<fieldset class="news-aud"><legend>寄給誰（可以複選）</legend>
+        ${NEWS_AUD.map((a) => `<label class="check"><input type="checkbox" name="aud" value="${a.id}" ${a.id === 'student' ? 'checked' : ''}>${a.name}<small>${a.tip}</small></label>`).join('')}
+      </fieldset>` : ''}
+      <fieldset class="news-kinds" data-aud="student"><legend>小朋友在哪裡看到</legend>
         ${kinds.map((k) => `<label class="check"><input type="checkbox" name="kind" value="${k.id}" ${admin ? '' : 'checked disabled'}>${k.name}<small>${k.tip}</small></label>`).join('')}
         ${admin ? '' : '<p class="tip">布告欄、島嶼布條、熱氣球只有管理員能用。</p>'}
       </fieldset>
       <label>標題<input name="title" maxlength="40" placeholder="${admin ? '例如 萬聖節限定開張囉！' : '例如 第 5 關提前開放囉！'}"></label>
+      <p class="tip" data-aud="staff-only" hidden>只寄給大人：不會出現在樂園地圖，只寄到他們後台右上的「信箱」，有新信會亮紅點。</p>
       <label data-for="flag balloon" hidden>布條上的字（14 字內，沒填用標題）<input name="banner" maxlength="14"></label>
       <label>內文<textarea name="body" maxlength="400" rows="4" placeholder="兩三句就好，小朋友看得懂的話。"></textarea></label>
       <fieldset class="news-zones" data-for="flag" hidden><legend>布條掛在哪座島</legend>
         ${zones.map((z) => `<label class="check"><input type="checkbox" name="zone" value="${esc(z.code)}">${esc(z.name)}</label>`).join('')}</fieldset>
       <label>按鈕帶去哪<select name="link">${links.map(([v, t]) => `<option value="${esc(v)}">${esc(t)}</option>`).join('')}</select></label>
-      <fieldset class="news-to"><legend>給誰看</legend>
-        ${admin ? '<label class="check"><input type="radio" name="to" value="all" checked>全站</label><label class="check"><input type="radio" name="to" value="class">指定班級</label>' : ''}
+      <fieldset class="news-to"><legend>${admin ? '範圍' : '給哪一班'}</legend>
+        ${admin ? '<label class="check"><input type="radio" name="to" value="all" checked>全站</label><label class="check"><input type="radio" name="to" value="class">指定班級（大人＝開這些班的老師、家長）</label>' : ''}
         <div class="news-classes" ${admin ? 'hidden' : ''}>${(classes.length ? classes : []).map((c) => `<label class="check"><input type="checkbox" name="cls" value="${esc(c.code)}" ${classes.length === 1 ? 'checked' : ''}>${esc(c.name || c.code)}</label>`).join('') || '<p class="tip">你還沒有班級。</p>'}</div>
       </fieldset>
       <div class="form grid">
@@ -906,20 +1063,33 @@ async function renderNews() {
   <section class="panel">
     <div class="head">${h2('mail', admin ? '發過的公告' : '寄過的信')}</div>
     ${rows.length ? `<div class="news-list">${rows.map((n) => `<article class="news-row${n.hidden ? ' gone' : ''}" data-id="${n.id}">
-      <div class="row"><span class="chip">${kindText(n.kinds)}</span><b>${esc(n.title)}</b><span class="spacer"></span>
+      <div class="row">${(n.audience ?? ['student']).includes('student') ? `<span class="chip">${kindText(n.kinds)}</span>` : `<span class="chip">${ico('mail')}信箱</span>`}<b>${esc(n.title)}</b><span class="spacer"></span>
         ${n.hidden ? '<span class="chip">已撤回</span>' : `<button class="ghost small danger" data-hide>${ico('delete')}撤回</button>`}</div>
       ${n.body ? `<p>${esc(n.body)}</p>` : ''}
-      <div class="row tip"><span>${esc(n.starts_on)} ～ ${esc(n.ends_on)}・${n.classes ? esc(n.classes.join('、')) : '全站'}${n.zones?.length ? '・島：' + esc(n.zones.join('、')) : ''}・${esc(n.author_name)}</span>
+      <div class="row tip"><span>${esc(n.starts_on)} ～ ${esc(n.ends_on)}・給${esc(audText(n.audience))}・${n.classes ? esc(n.classes.join('、')) : '全站'}${n.zones?.length ? '・島：' + esc(n.zones.join('、')) : ''}・${esc(n.author_name)}</span>
         <span class="spacer"></span><span>看過 ${n.seen} / ${n.reach} 人</span></div>
     </article>`).join('')}</div>` : '<div class="empty small"><img src="img/admin/tick-empty.webp" alt=""><p>還沒發過。</p></div>'}
   </section>`;
 
   const f = $('#nf');
   // 勾了哪幾種，就只顯示用得到的欄位
+  const audOf = () => (admin ? $$('input[name=aud]', f).filter((i) => i.checked).map((i) => i.value) : ['student']);
+  let linkSet = '';
   const sync = () => {
-    const on = new Set($$('input[name=kind]', f).filter((i) => i.checked).map((i) => i.value));
+    const aud = audOf();
+    const kids = aud.includes('student');
+    const on = new Set(kids ? $$('input[name=kind]', f).filter((i) => i.checked).map((i) => i.value) : ['letter']);
     $$('[data-for]', f).forEach((el) => { el.hidden = !el.dataset.for.split(' ').some((k) => on.has(k)); });
+    $$('[data-aud="student"]', f).forEach((el) => { el.hidden = !kids; });
+    $$('[data-aud="staff-only"]', f).forEach((el) => { el.hidden = kids || !aud.length; });
+    f.elements.body.placeholder = kids ? '兩三句就好，小朋友看得懂的話。' : '兩三句說清楚：多了什麼、在哪裡用。';
     if (admin) $('.news-classes', f).hidden = f.elements.to.value !== 'class';
+    // 有小朋友：按鈕帶去樂園裡；只寄大人：帶去後台某一頁
+    const want = kids ? 'kids' : 'staff';
+    if (linkSet !== want) {
+      linkSet = want;
+      f.elements.link.innerHTML = (kids ? links : STAFF_LINKS).map(([v, t]) => `<option value="${esc(v)}">${esc(t)}</option>`).join('');
+    }
   };
   f.addEventListener('change', sync);
   sync();
@@ -927,20 +1097,24 @@ async function renderNews() {
     e.preventDefault();
     const msg = $('.msg', f);
     msg.hidden = true;
+    const audience = audOf();
     const v = {
-      kinds: $$('input[name=kind]', f).filter((i) => i.checked).map((i) => i.value),
+      audience,
+      kinds: audience.includes('student') ? $$('input[name=kind]', f).filter((i) => i.checked).map((i) => i.value) : ['letter'],
       title: f.elements.title.value.trim(), body: f.elements.body.value.trim(), banner: f.elements.banner.value.trim(),
       link: f.elements.link.value, zones: $$('input[name=zone]', f).filter((i) => i.checked).map((i) => i.value),
       classes: (!admin || f.elements.to.value === 'class') ? $$('input[name=cls]', f).filter((i) => i.checked).map((i) => i.value) : null,
       starts_on: f.elements.starts.value, ends_on: f.elements.ends.value, sign: f.elements.sign.value.trim(),
       important: f.elements.important.checked,
     };
-    if (!v.kinds.length) { msg.textContent = '至少勾一種出現方式'; msg.hidden = false; return; }
+    if (!audience.length) { msg.textContent = '勾要寄給誰：小朋友、老師、家長'; msg.hidden = false; return; }
+    if (!v.kinds.length) { msg.textContent = '至少勾一種小朋友在哪裡看到'; msg.hidden = false; return; }
     if (v.classes && !v.classes.length) { msg.textContent = '選要給哪一班'; msg.hidden = false; return; }
     run($('button[type=submit]', f), async () => {
       await auth.news.post(v);
       toast(admin ? '公告發出去了' : '信寄出去了，小朋友回到樂園地圖就會收到');
       await renderNews();
+      if (!audience.every((a) => a === 'student')) loadInbox();
     });
   });
   $$('.news-row').forEach((el) => {
@@ -950,6 +1124,60 @@ async function renderNews() {
       run(b, async () => { await auth.news.hide(Number(el.dataset.id)); toast('撤回了'); await renderNews(); });
     };
   });
+}
+
+// =============================================================================
+// 後台信箱（2026-10-31）：管理員寄給老師／家長的公告。右上「信箱」＋未讀紅點；重要的登入後自動打開一次
+// =============================================================================
+let inbox = [];
+async function loadInbox(first = false) {
+  try { inbox = await auth.news.inbox(); } catch { inbox = []; }
+  const unread = inbox.filter((n) => !n.seen);
+  $('#mail-dot').hidden = !unread.length;
+  $('#mailbox').title = unread.length ? `信箱：${unread.length} 封新信` : '信箱：樂園寄來的消息';
+  // 第一次進後台先跑導覽，信等下次（紅點還是會亮）
+  if (first && !dlg.open && tourSeen() && !document.querySelector('.tour-tip')) {
+    const imp = unread.find((n) => n.important && n.active);
+    if (imp) openInbox(imp.id);
+  }
+}
+$('#mailbox').onclick = () => openInbox();
+function staffLink(link) {
+  if (!link) return '';
+  if (link.startsWith('tab:')) {
+    const t = link.slice(4);
+    const name = STAFF_LINKS.find(([v]) => v === link)?.[1].replace('後台：', '') ?? '看看';
+    return `<button type="button" class="btn small" data-tab="${esc(t)}">去「${esc(name)}」看看</button>`;
+  }
+  if (link.startsWith('url:')) return `<a class="btn small" href="${esc(link.slice(4))}">去樂園看看</a>`;
+  return '';
+}
+function openInbox(openId = null) {
+  const seenNow = (id) => {
+    const n = inbox.find((x) => x.id === id);
+    if (!n || n.seen) return;
+    n.seen = true;
+    auth.news.inboxSeen(id).catch(() => {});
+    $('#mail-dot').hidden = !inbox.some((x) => !x.seen);
+  };
+  dlg.innerHTML = `<div class="dlg">
+    <h3>${ico('mail')} 信箱</h3>
+    <p class="lead">樂園管理員寄來的消息：新功能、活動、要注意的事。點標題打開。</p>
+    ${inbox.length ? `<ul class="inbox">${inbox.map((n) => `<li class="${n.seen ? '' : 'new'}${n.active ? '' : ' old'}" data-id="${n.id}">
+      <details ${n.id === openId ? 'open' : ''}><summary>${n.seen ? '' : '<span class="chip">新</span>'}<span>${esc(n.title)}</span><small>${esc(String(n.starts_on).slice(5).replace('-', '/'))}</small></summary>
+        <div class="letter">${n.body ? `<p>${esc(n.body)}</p>` : ''}${n.sign ? `<p class="sign">— ${esc(n.sign)}</p>` : ''}
+          ${staffLink(n.link) ? `<div class="row">${staffLink(n.link)}</div>` : ''}</div></details></li>`).join('')}</ul>`
+    : '<div class="empty small"><img src="img/admin/tick-empty.webp" alt=""><p>還沒有信。樂園有新功能或活動時，會寄到這裡。</p></div>'}
+    <div class="row end"><button type="button" class="btn" data-close>關起來</button></div></div>`;
+  $('[data-close]', dlg).onclick = () => dlg.close();
+  $$('.inbox details', dlg).forEach((d) => {
+    d.addEventListener('toggle', () => { if (d.open) { const li = d.closest('li'); seenNow(Number(li.dataset.id)); li.classList.remove('new'); $('summary .chip', d)?.remove(); } });
+  });
+  $$('[data-tab]', dlg).forEach((b) => {
+    b.onclick = () => { dlg.close(); tab = b.dataset.tab; history.replaceState(null, '', '#' + tab); paintTabs(); show(); };
+  });
+  if (!dlg.open) dlg.showModal();
+  if (openId != null) seenNow(openId);
 }
 
 // =============================================================================

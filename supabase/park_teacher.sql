@@ -168,6 +168,46 @@ returns boolean language sql stable security definer set search_path = public, p
   );
 $$;
 
+-- 2026-10-30 權限盤點（Chuck 同意）：改「整個帳號」的事（重設密碼、改暱稱、換主要班級）
+-- 只有管理員、監護人、主要班級的老師可以做；其他班的老師只能看、只能管自己的班。
+-- 監護人（park_guardians、park_is_guardian）在 park_parent.sql，要先套那份。
+create or replace function public.park_can_manage_account(p_student uuid)
+returns boolean language sql stable security definer set search_path = public, pg_temp as $$
+  select public.is_admin() or public.park_is_guardian(p_student) or exists (
+    select 1 from public.students s where s.id = p_student and s.class_code is not null and public.is_teacher_of(s.class_code)
+  );
+$$;
+
+-- 監護人看孩子加入的所有班（誰開的、哪一個是主要班級），可以從任何一班移出
+create or replace function public.park_guardian_classes(p_student uuid)
+returns jsonb language plpgsql stable security definer set search_path = public, pg_temp as $$
+begin
+  if not (public.is_admin() or public.park_is_guardian(p_student)) then raise exception '只有綁定的家長可以看'; end if;
+  return coalesce((select jsonb_agg(jsonb_build_object(
+            'code', c.code, 'name', c.name, 'kind', coalesce(st.kind, 'school'),
+            'owner', coalesce(t.display_name, ''), 'mine', c.owner = auth.uid(),
+            'primary', s.class_code = c.code, 'joined_at', m.joined_at) order by m.joined_at)
+     from public.park_class_members m
+     join public.classes c on c.code = m.class_code
+     join public.students s on s.id = m.student_id
+     left join public.park_class_settings st on st.class_code = c.code
+     left join public.teachers t on t.user_id = c.owner
+    where m.student_id = p_student), '[]');
+end;
+$$;
+
+-- 帳號被別人改了，寄一封信給孩子（第一次登入自動打開），孩子才知道
+create or replace function public.park_account_letter(p_student uuid, p_title text, p_body text)
+returns void language plpgsql security definer set search_path = public, pg_temp as $$
+declare v_by text;
+begin
+  select coalesce(nullif(t.display_name, ''), '老師') into v_by from public.teachers t where t.user_id = auth.uid();
+  insert into public.park_news (kinds, title, body, classes, students, sign, important, ends_on, author, author_name)
+  values (array['letter'], left(p_title, 40), left(replace(p_body, '{by}', coalesce(v_by, '管理員')), 400), null, array[p_student],
+          coalesce(v_by, '管理員'), true, public.park_today() + 30, auth.uid(), coalesce(v_by, '管理員'));
+end;
+$$;
+
 -- 寫一筆操作紀錄
 create or replace function public.park_log(p_action text, p_class text, p_target text, p_detail jsonb default '{}')
 returns void language sql security definer set search_path = public, pg_temp as $$
@@ -258,12 +298,68 @@ end;
 $$;
 
 -- -----------------------------------------------------------------------------
+-- 學生年級（2026-10-31）：年級跟著孩子走，不跟著班級。家庭班、補習班常有不同年級的孩子。
+-- 班級年級變成選填，只當「新加入、還沒填年級的孩子」的預設（下面的觸發器）。
+-- 目前只用在後台：開放遊戲時把適合班上孩子年級的排前面、全班總覽顯示。學生畫面不顯示年級。
+-- -----------------------------------------------------------------------------
+create table if not exists public.park_student_grades (
+  student_id uuid primary key references public.students(id) on delete cascade,
+  grade      smallint not null check (grade between 1 and 6),
+  set_by     uuid,                                     -- null＝跟著班級預設帶進來的
+  updated_at timestamptz not null default now()
+);
+alter table public.park_student_grades enable row level security;   -- 只透過下面的函式讀寫
+
+-- 孩子在我任何一班就能改（年級不像密碼會影響帳號安全，科任老師、家長都可以補）
+create or replace function public.park_set_student_grade(p_student uuid, p_grade int)
+returns smallint language plpgsql security definer set search_path = public, pg_temp as $$
+begin
+  if not public.park_teaches_student(p_student) then raise exception '這個孩子不在你的班上'; end if;
+  if p_grade is null then
+    delete from public.park_student_grades where student_id = p_student;
+  else
+    if p_grade not between 1 and 6 then raise exception '年級要在 1 到 6 之間'; end if;
+    insert into public.park_student_grades (student_id, grade, set_by) values (p_student, p_grade, auth.uid())
+    on conflict (student_id) do update set grade = excluded.grade, set_by = excluded.set_by, updated_at = now();
+  end if;
+  perform public.park_log('set_grade', null, p_student::text, jsonb_build_object('grade', p_grade));
+  return p_grade;
+end;
+$$;
+
+-- 加入有填年級的班、自己還沒有年級 → 先帶班級的年級
+create or replace function public.park_grade_from_class()
+returns trigger language plpgsql security definer set search_path = public, pg_temp as $$
+begin
+  insert into public.park_student_grades (student_id, grade)
+  select new.student_id, st.grade from public.park_class_settings st
+   where st.class_code = new.class_code and st.grade is not null
+  on conflict (student_id) do nothing;
+  return new;
+end;
+$$;
+drop trigger if exists park_grade_from_class on public.park_class_members;
+create trigger park_grade_from_class after insert on public.park_class_members
+  for each row execute function public.park_grade_from_class();
+
+-- 現有的孩子：主要班級有年級就用主要班級的，否則用最早加入、有年級的班
+insert into public.park_student_grades (student_id, grade)
+select distinct on (m.student_id) m.student_id, st.grade
+  from public.park_class_members m
+  join public.park_class_settings st on st.class_code = m.class_code and st.grade is not null
+  join public.students s on s.id = m.student_id
+ order by m.student_id, (s.class_code = m.class_code) desc, m.joined_at
+on conflict (student_id) do nothing;
+
+-- -----------------------------------------------------------------------------
 -- 4. 老師／家長：我的班級
 -- -----------------------------------------------------------------------------
 
+-- grades：班上孩子各自的年級（park_student_grades，去重排序），開放遊戲時拿來排「適合的」
+drop function if exists public.park_teacher_classes();
 create or replace function public.park_teacher_classes()
 returns table (code text, name text, open boolean, grade smallint, kind text,
-               members bigint, created_at timestamptz, facilities text[], trials text[])
+               members bigint, created_at timestamptz, facilities text[], trials text[], grades smallint[])
 language sql stable security definer set search_path = public, pg_temp as $$
   select c.code, c.name, c.open, st.grade, coalesce(st.kind, 'school'),
          (select count(*) from public.park_class_members m where m.class_code = c.code),
@@ -271,7 +367,10 @@ language sql stable security definer set search_path = public, pg_temp as $$
          coalesce((select array_agg(cf.facility order by cf.facility)
                      from public.park_class_facilities cf where cf.class_code = c.code), '{}'),
          coalesce((select array_agg(tc.facility order by tc.facility)
-                     from public.park_trial_classes tc where tc.class_code = c.code), '{}')
+                     from public.park_trial_classes tc where tc.class_code = c.code), '{}'),
+         coalesce((select array_agg(distinct g.grade order by g.grade)
+                     from public.park_class_members m join public.park_student_grades g on g.student_id = m.student_id
+                    where m.class_code = c.code), '{}')
     from public.classes c
     left join public.park_class_settings st on st.class_code = c.code
     join public.teachers t on t.user_id = auth.uid() and t.active
@@ -291,7 +390,6 @@ begin
   if length(v_name) not between 1 and 20 then raise exception '班級名稱要 1 到 20 個字'; end if;
   if v_kind not in ('school', 'home') then raise exception '班級類型不對'; end if;
   if p_grade is not null and p_grade not between 1 and 6 then raise exception '年級要在 1 到 6 之間'; end if;
-  if v_kind = 'school' and p_grade is null then raise exception '學校班請選年級'; end if;
   loop
     v_code := (select string_agg(substr('ABCDEFGHJKLMNPQRSTUVWXYZ23456789',
                                         (random() * 31)::int + 1, 1), '')
@@ -319,7 +417,6 @@ begin
   if length(v_name) not between 1 and 20 then raise exception '班級名稱要 1 到 20 個字'; end if;
   if v_kind not in ('school', 'home') then raise exception '班級類型不對'; end if;
   if p_grade is not null and p_grade not between 1 and 6 then raise exception '年級要在 1 到 6 之間'; end if;
-  if v_kind = 'school' and p_grade is null then raise exception '學校班請選年級'; end if;
   update public.classes set name = v_name where code = v_code;
   insert into public.park_class_settings (class_code, grade, kind)
   values (v_code, p_grade, v_kind)
@@ -362,8 +459,11 @@ begin
   -- 有在玩的排前面：最後活動時間新的在上，沒玩過的照暱稱排在最後
   select coalesce(jsonb_agg(jsonb_build_object(
            'id', s.id, 'login_id', s.login_id, 'nickname', s.nickname,
+           'grade', (select g.grade from public.park_student_grades g where g.student_id = s.id),
            'primary', s.class_code = v_code,
            'primary_class', s.class_code,
+           'manage', public.park_can_manage_account(s.id),
+           'guardian', public.park_is_guardian(s.id),
            'joined_at', m.joined_at,
            'last_active', la.last_active,
            'locked', coalesce(s.locked_until > now(), false))
@@ -455,7 +555,9 @@ declare v_login text; v_nick text; v_bad text;
 begin
   select s.login_id, s.nickname into v_login, v_nick from public.students s where s.id = p_student;
   if v_login is null then raise exception '找不到這個學生'; end if;
-  if not public.park_teaches_student(p_student) then raise exception '這不是你班上的學生'; end if;
+  if not public.park_can_manage_account(p_student) then
+    raise exception '只有他主要班級的老師、綁定的家長或管理員可以改密碼';
+  end if;
   v_bad := public.password_problem(p_password, v_login);
   if v_bad is not null then raise exception '%', v_bad; end if;
   update public.students
@@ -463,6 +565,8 @@ begin
          failed_attempts = 0, locked_until = null
    where id = p_student;
   perform public.park_log('reset_password', null, v_nick || '（' || v_login || '）');
+  perform public.park_account_letter(p_student, '你的密碼被改過了',
+    '{by}剛剛幫你重設了密碼，新密碼請問{by}。如果你不知道這件事，請馬上告訴爸媽或老師。');
 end;
 $$;
 
@@ -476,7 +580,9 @@ begin
   select s.nickname, s.login_id, s.class_code into v_old, v_login, v_code
     from public.students s where s.id = p_student;
   if v_login is null then raise exception '找不到這個學生'; end if;
-  if not public.park_teaches_student(p_student) then raise exception '這不是你班上的學生'; end if;
+  if not public.park_can_manage_account(p_student) then
+    raise exception '只有他主要班級的老師、綁定的家長或管理員可以改暱稱';
+  end if;
   if public.nickname_problem(v_nick) is not null then
     raise exception '%', public.nickname_problem(v_nick);
   end if;
@@ -486,6 +592,10 @@ begin
   ) then raise exception '他的主要班級已經有人叫這個暱稱了'; end if;
   update public.students set nickname = v_nick where id = p_student;
   perform public.park_log('set_nickname', null, v_old || ' → ' || v_nick || '（' || v_login || '）');
+  if v_old is distinct from v_nick then
+    perform public.park_account_letter(p_student, '你的暱稱改了',
+      '{by}把你的暱稱從「' || coalesce(v_old, '') || '」改成「' || v_nick || '」。');
+  end if;
   return v_nick;
 end;
 $$;
@@ -498,7 +608,7 @@ declare
   v_code text := upper(btrim(coalesce(p_code, '')));
   v_primary text; v_nick text; v_login text; v_next text;
 begin
-  if not public.is_teacher_of(v_code) then raise exception '這不是你的班'; end if;
+  if not public.is_teacher_of(v_code) and not public.park_is_guardian(p_student) then raise exception '這不是你的班'; end if;   -- 監護人可以把孩子移出任何班
   select s.class_code, s.nickname, s.login_id into v_primary, v_nick, v_login
     from public.students s where s.id = p_student;
   if v_login is null then raise exception '找不到這個學生'; end if;
@@ -534,6 +644,9 @@ declare
   v_r jsonb; v_login text;
 begin
   if not public.is_teacher_of(v_code) then raise exception '這不是你的班'; end if;
+  if not public.park_can_manage_account(p_student) then
+    raise exception '只有他現在主要班級的老師、綁定的家長或管理員可以換主要班級';
+  end if;
   v_r := public.park_move_primary(p_student, v_code);
   select s.login_id into v_login from public.students s where s.id = p_student;
   perform public.park_log('set_primary', v_code, (v_r ->> 'nickname') || '（' || v_login || '）',
@@ -642,7 +755,7 @@ revoke all on function
   public.park_save_class(text, text, int, text), public.park_set_class_facilities(text, text[]),
   public.park_class_overview(text), public.park_reset_password(uuid, text),
   public.park_set_student_nickname(uuid, text), public.park_remove_from_class(text, uuid),
-  public.park_teacher_set_primary(text, uuid),
+  public.park_teacher_set_primary(text, uuid), public.park_set_student_grade(uuid, int),
   public.park_admin_facilities(), public.park_admin_set_facility(text, text, int, int, text[]),
   public.park_admin_classes(), public.park_admin_audit(int)
   from public, anon, authenticated;
@@ -655,7 +768,13 @@ grant execute on function
   public.park_save_class(text, text, int, text), public.park_set_class_facilities(text, text[]),
   public.park_class_overview(text), public.park_reset_password(uuid, text),
   public.park_set_student_nickname(uuid, text), public.park_remove_from_class(text, uuid),
-  public.park_teacher_set_primary(text, uuid),
+  public.park_teacher_set_primary(text, uuid), public.park_set_student_grade(uuid, int),
   public.park_admin_facilities(), public.park_admin_set_facility(text, text, int, int, text[]),
   public.park_admin_classes(), public.park_admin_audit(int)
   to authenticated;
+
+-- 2026-10-30 權限盤點：內部用，只給上面的函式呼叫
+revoke all on function public.park_can_manage_account(uuid), public.park_account_letter(uuid, text, text) from public, anon, authenticated;
+revoke all on function public.park_grade_from_class() from public, anon, authenticated;
+revoke all on function public.park_guardian_classes(uuid) from public, anon;
+grant execute on function public.park_guardian_classes(uuid) to authenticated;

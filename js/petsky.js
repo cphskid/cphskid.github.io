@@ -110,3 +110,78 @@ export function makeSky(ground, sky, { w, h, lake }) {
   }
   return { step, empty: parts.length === 0 };
 }
+
+// ---------- 日夜天氣的顏色先算好（不用 CSS filter） ----------
+// 島的底圖、地磚有 2640×1448 那麼大；掛 CSS filter 的話，手機放大時 iOS 會照放大後的尺寸重畫整張，
+// 記憶體爆掉、網頁自己重新整理（「無法開啟這個網頁」）。所以把 --tod --wx 換成一個顏色矩陣，畫圖時直接算好。
+// 回傳 3×4 矩陣（每列 r g b 位移，0～1），null＝不用變色
+export function skyMatrix(filter) {
+  const id = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0];
+  let m = id;
+  const mul = (a, b) => {          // a 套在 b 之後
+    const o = [];
+    for (let r = 0; r < 3; r++) for (let c = 0; c < 4; c++) {
+      let s = c === 3 ? a[r * 4 + 3] : 0;
+      for (let k = 0; k < 3; k++) s += a[r * 4 + k] * b[k * 4 + c];
+      o.push(s);
+    }
+    return o;
+  };
+  const sat = (s) => [.213 + .787 * s, .715 - .715 * s, .072 - .072 * s, 0, .213 - .213 * s, .715 + .285 * s, .072 - .072 * s, 0, .213 - .213 * s, .715 - .715 * s, .072 + .928 * s, 0];
+  for (const [, fn, arg] of String(filter).matchAll(/([a-z-]+)\(([^)]*)\)/g)) {
+    let v = parseFloat(arg);
+    if (arg.includes('%')) v /= 100;
+    let f = null;
+    if (fn === 'brightness') f = [v, 0, 0, 0, 0, v, 0, 0, 0, 0, v, 0];
+    else if (fn === 'contrast') { const o = .5 - .5 * v; f = [v, 0, 0, o, 0, v, 0, o, 0, 0, v, o]; }
+    else if (fn === 'saturate') f = sat(v);
+    else if (fn === 'sepia') {
+      const a = 1 - Math.min(1, v);
+      f = [.393 + .607 * a, .769 - .769 * a, .189 - .189 * a, 0, .349 - .349 * a, .686 + .314 * a, .168 - .168 * a, 0, .272 - .272 * a, .534 - .534 * a, .131 + .869 * a, 0];
+    } else if (fn === 'hue-rotate') {
+      const t = (arg.includes('turn') ? v * 360 : arg.includes('rad') ? v * 180 / Math.PI : v) * Math.PI / 180, c = Math.cos(t), s = Math.sin(t);
+      f = [.213 + c * .787 - s * .213, .715 - c * .715 - s * .715, .072 - c * .072 + s * .928, 0,
+        .213 - c * .213 + s * .143, .715 + c * .285 + s * .14, .072 - c * .072 - s * .283, 0,
+        .213 - c * .213 - s * .787, .715 - c * .715 + s * .715, .072 + c * .928 + s * .072, 0];
+    }
+    if (f) m = mul(f, m);
+  }
+  return m.every((x, i) => Math.abs(x - id[i]) < 1e-4) ? null : m;
+}
+// '#rrggbb' 套矩陣
+export function tintHex(m, hex) {
+  if (!m || !/^#[0-9a-f]{6}$/i.test(hex)) return hex;
+  const c = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
+  return '#' + [0, 1, 2].map((r) => {
+    const v = m[r * 4] * c[0] + m[r * 4 + 1] * c[1] + m[r * 4 + 2] * c[2] + m[r * 4 + 3];
+    return Math.round(Math.min(1, Math.max(0, v)) * 255).toString(16).padStart(2, '0');
+  }).join('');
+}
+// 把 img 畫進 canvas（固定解析度，放大縮小不會重畫）：先套顏色矩陣，再加島下面的影子（{ y, blur, color }，單位是 canvas 的像素）
+export function paintTinted(cv, img, m, shadow) {
+  const w = cv.width, h = cv.height, ctx = cv.getContext('2d');
+  let src = img;
+  if (m) {
+    try {
+      const t = document.createElement('canvas');
+      t.width = w; t.height = h;
+      const tc = t.getContext('2d', { willReadFrequently: true });
+      tc.drawImage(img, 0, 0, w, h);
+      const d = tc.getImageData(0, 0, w, h), px = d.data, k = m.map((x, i) => (i % 4 === 3 ? x * 255 : x));
+      for (let i = 0; i < px.length; i += 4) {
+        if (!px[i + 3]) continue;
+        const r = px[i], g = px[i + 1], b = px[i + 2];
+        px[i] = k[0] * r + k[1] * g + k[2] * b + k[3];
+        px[i + 1] = k[4] * r + k[5] * g + k[6] * b + k[7];
+        px[i + 2] = k[8] * r + k[9] * g + k[10] * b + k[11];
+      }
+      tc.putImageData(d, 0, 0);
+      src = t;
+    } catch { src = img; }
+  }
+  ctx.clearRect(0, 0, w, h);
+  if (shadow) { ctx.shadowColor = shadow.color; ctx.shadowOffsetY = shadow.y; ctx.shadowBlur = shadow.blur; }
+  ctx.drawImage(src, 0, 0, w, h);
+  ctx.shadowColor = 'transparent';
+  if (src !== img) { src.width = 0; src.height = 0; }      // 暫用的 canvas 馬上放掉（iOS canvas 記憶體有上限）
+}

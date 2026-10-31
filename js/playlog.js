@@ -9,6 +9,22 @@ let off = false;         // 資料庫還沒裝：之後都不送
 let id = null;
 let cur = { place: 'gate', label: '樂園大廳' };
 let timer = 0;
+let noted = false;       // 這一頁的裝置、讀取時間記過了沒（只記第一筆）
+let loadMs = null;
+
+// 手機／平板／電腦：看手機上是不是比較容易走掉（2026-10-25 補記錄）
+export function device() {
+  const coarse = matchMedia('(pointer:coarse)').matches;
+  if (!coarse) return 'desktop';
+  return Math.min(screen.width, screen.height) < 600 ? 'phone' : 'tablet';
+}
+// 樂園開門（圖都到了）的時間點：從打開網頁到能玩花了多久
+export function ready() { loadMs = Math.round(performance.now()); note(); }
+function note() {
+  if (noted || id == null || loadMs == null) return;
+  noted = true;
+  call('park_play_note', { p_id: id, p_device: device(), p_load_ms: loadMs });
+}
 
 async function call(fn, args) {
   if (!db || off) return null;
@@ -24,6 +40,7 @@ async function start() {
   const want = cur;
   id = await call('park_play_start', { p_facility: 'park', p_place: want.place, p_label: want.label });
   if (!on || cur !== want || id == null) return;
+  note();
   timer = setInterval(() => { if (id != null) call('park_play_beat', { p_id: id }); }, BEAT_MS);
 }
 function stop() {

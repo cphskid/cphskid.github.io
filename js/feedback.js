@@ -279,6 +279,13 @@
       paint();
     }
     async function submit() {
+      // 防連按（2026-10-25：有小朋友一分鐘內連送 8 則「沒事」）：同一台一分鐘只收一則
+      let last = 0;
+      try { last = Number(localStorage.getItem('pfb:last')) || 0; } catch { /* 存不了就不擋 */ }
+      if (Date.now() - last < 60000) {
+        error = '剛剛才送出一則，等一分鐘再送喔！'; paint();
+        return;
+      }
       state = 'sending'; error = ''; paint();
       let extra = {};
       try { extra = (opts.context && opts.context()) || {}; } catch { /* 遊戲給的資料壞了照樣送 */ }
@@ -300,6 +307,7 @@
         });
         state = 'done';
         text = '';
+        try { localStorage.setItem('pfb:last', String(Date.now())); } catch { /* 存不了就算了 */ }
         loadMine();
       } catch (e) {
         state = 'edit'; error = e.message; login = !!e.login;

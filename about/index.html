@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>時空冒險樂園｜給家長的介紹</title>
+<title>時空冒險樂園｜給家長與老師的介紹</title>
 <meta name="description" content="時空冒險樂園：把小五社會和英文 2000 單字做成小遊戲，讓孩子在玩的過程中理解、記住，提升對科目的興趣。是課業的輔助，不是主要教材。">
-<meta property="og:title" content="時空冒險樂園｜給家長的介紹">
+<meta property="og:title" content="時空冒險樂園｜給家長與老師的介紹">
 <meta property="og:description" content="社會怕背？用遊戲來理解。背單字無趣？在遊戲裡記單字。給小五孩子的學習小遊戲，免費試玩。">
 <meta property="og:image" content="https://timepark.ciyulab.com/about/img/park-map.webp">
 <link rel="icon" href="../img/l-02.webp">
@@ -19,7 +19,7 @@
   --sea:#2f9fd8; --sea-deep:#1d7fbf; --cream:#fff8ea; --cream-2:#f6dfb4; --paper:#fffdf7;
   --wood:#6b3f1f; --wood-2:#8a5429; --gold:#ffc23d; --ink:#3a2412; --muted:#6e5640;
   --park:#d9822b; --park-bg:#fff0d8; --social:#2e9b5f; --social-bg:#e6f6ea; --eng:#2f78d0; --eng-bg:#e5f0fc;
-  --kid:#d2508a; --kid-bg:#fde9f2; --safe:#6a5acd; --safe-bg:#eeebfb; --cls:#16857a; --cls-bg:#e1f4f1; --warn:#c8641e; --warn-bg:#fff1dc;
+  --kid:#d2508a; --kid-bg:#fde9f2; --safe:#6a5acd; --safe-bg:#eeebfb; --cls:#16857a; --cls-bg:#e1f4f1; --tch:#2a64b8; --tch-bg:#e5eefb; --warn:#c8641e; --warn-bg:#fff1dc;
 }
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%;scroll-padding-top:70px}
@@ -170,6 +170,15 @@ footer{text-align:center;font-size:14px;color:var(--muted);padding:12px 16px 40p
 .num{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:50%;background:var(--c);color:#fff;font-weight:900;font-size:16px;margin-bottom:6px}
 .block>h3{font-size:clamp(20px,4.8vw,24px);color:var(--wood);margin-bottom:6px}
 .sub{color:var(--muted);margin:0 0 16px}
+.audience{scroll-margin-top:70px;margin-top:40px;padding-top:28px;border-top:3px dashed var(--tch)}
+.aud-jump{margin:0 0 16px;font-size:15px;color:var(--muted)}.aud-jump a{color:var(--tch);font-weight:900}
+.aud-tag{display:inline-block;margin:0 0 14px;font-weight:900;color:var(--tch);background:var(--tch-bg);border-radius:12px;padding:6px 14px}
+.lesson{width:100%;border-collapse:separate;border-spacing:0 8px;font-size:16px}
+.lesson th{text-align:left;color:#fff;background:var(--c);font-weight:900;padding:8px 12px;white-space:nowrap}
+.lesson th:first-child{border-radius:12px 0 0 12px}.lesson th:last-child{border-radius:0 12px 12px 0}
+.lesson td{background:var(--paper);padding:10px 12px;vertical-align:top}
+.lesson td:first-child{border-radius:12px 0 0 12px;font-weight:900;color:var(--c);white-space:nowrap}.lesson td:last-child{border-radius:0 12px 12px 0}
+.lesson td small{display:block;color:var(--muted);font-size:14px}
 .open-steps{list-style:none;counter-reset:s;margin:0 0 22px;padding:0;display:grid;gap:10px}
 .open-steps li{counter-increment:s;background:var(--paper);border:2px solid var(--bg);border-radius:14px;padding:12px 14px 12px 52px;position:relative}
 .open-steps li::before{content:counter(s);position:absolute;left:14px;top:12px;width:26px;height:26px;border-radius:50%;background:var(--c);color:#fff;font-weight:900;display:grid;place-items:center;line-height:1}
@@ -196,7 +205,7 @@ footer{text-align:center;font-size:14px;color:var(--muted);padding:12px 16px 40p
 <header class="hero">
   <div class="wrap">
     <img class="logo" src="../img/logo.webp" alt="Time Adventure Park 時空冒險樂園" width="900" height="452">
-    <h1>給家長的介紹</h1>
+    <h1>給家長與老師的介紹</h1>
     <p class="pitch">把小五社會和英文單字，做成孩子願意自己打開的小遊戲。<br>在玩的過程中理解一點、記住一點，對科目不再那麼排斥。</p>
     <div class="car" aria-roledescription="輪播" aria-label="樂園重點">
       <div class="track" tabindex="0">
@@ -258,7 +267,7 @@ footer{text-align:center;font-size:14px;color:var(--muted);padding:12px 16px 40p
     <button role="tab" id="t-kids" aria-controls="kids" style="--c:var(--kid)">孩子的小天地</button>
     <button role="tab" id="t-safe" aria-controls="safe" style="--c:var(--safe)">安心設計</button>
     <button role="tab" id="t-class" aria-controls="class" style="--c:var(--cls)">開班管理</button>
-    <button role="tab" id="t-parents" aria-controls="parents" style="--c:var(--wood-2)">給家長</button>
+    <button role="tab" id="t-parents" aria-controls="parents" style="--c:var(--wood-2)">給家長・老師</button>
   </div>
 </nav>
 
@@ -462,8 +471,9 @@ footer{text-align:center;font-size:14px;color:var(--muted);padding:12px 16px 40p
       <h2>自己開一個班，孩子玩了什麼一目了然</h2>
       <p class="lead">學校老師可以開全班，家長可以開一個「家庭班」，兄弟姊妹、親戚的孩子都能一起加入。開班免費，只要 email 和密碼，不用收確認信，開好就拿到一組班級代碼。孩子加入之後，下面這些在後台都看得到。</p>
       <div class="open-cta">
-        <a class="go" href="../?staff=signup">免費開班</a>
-        <p class="goalt">已經有開班帳號？<a href="../teacher.html">直接登入後台</a></p>
+        <a class="go" href="../teacher.html?child=1">家長：幫孩子開帳號</a>
+        <a class="go small alt" href="../?staff=signup">免費開班</a>
+        <p class="goalt">家長幫孩子開帳號會自動連起來，孩子第一次登入就拿到神秘蛋・已經有開班帳號？<a href="../teacher.html">直接登入後台</a></p>
       </div>
 
       <div class="block feat">
@@ -545,13 +555,14 @@ footer{text-align:center;font-size:14px;color:var(--muted);padding:12px 16px 40p
         </div>
         <p class="note">這一頁的後台畫面都是示範資料，暱稱和數字不是真的孩子。</p>
       </div>
-      <div class="next"><button type="button" data-go="parents">下一頁：給家長 ›</button></div>
+      <div class="next"><button type="button" data-go="parents">下一頁：給家長・老師 ›</button></div>
     </div>
   </section>
 
   <!-- ========== 給家長 ========== -->
   <section class="panel" id="parents" role="tabpanel" aria-labelledby="t-parents" style="--c:var(--wood-2);--bg:var(--cream-2)">
     <div class="wrap">
+      <p class="aud-jump">這一頁上半給家長，下半給學校老師。<a href="#teacher">老師直接看這裡 ›</a></p>
       <div class="helper">
         <span class="kicker" style="--c:var(--warn)">請先知道</span>
         <h2>這是輔助，不是主要的教材</h2>
@@ -606,7 +617,7 @@ footer{text-align:center;font-size:14px;color:var(--muted);padding:12px 16px 40p
             </ol>
           </div>
           <a class="go" href="../?join=TRYIT">開始冒險</a>
-          <p class="goalt">帳號密碼請幫孩子記下來・<a href="../">已經有帳號了？直接登入</a></p>
+          <p class="goalt">帳號密碼請幫孩子記下來・<a href="../teacher.html?child=1">想看孩子的進度？家長幫孩子開帳號</a>・<a href="../">已經有帳號了？直接登入</a></p>
         </div>
       </div>
 
@@ -617,9 +628,90 @@ footer{text-align:center;font-size:14px;color:var(--muted);padding:12px 16px 40p
         <details><summary>適合幾年級？</summary><p>社會目前是照小五的內容做的；英文從國小常用字開始，一路到國中範圍，三到六年級都可以玩，程度好的孩子可以往後挑戰。</p></details>
         <details><summary>在哪裡玩？要安裝嗎？</summary><p>手機、平板、電腦的瀏覽器都可以，不用安裝 App。畫面比較大的平板或電腦玩起來最舒服。</p></details>
         <details><summary>試玩班會跟陌生人互動嗎？</summary><p>試玩班的排行榜是所有試玩的孩子一起比，只看得到暱稱和自己捏的角色；遊戲裡沒有聊天，也不能互送東西。暱稱不要用真實姓名就好。想完全只看自己孩子的話，可以開一個家庭班。</p></details>
-        <details><summary>學校老師可以拿來在班上用嗎？</summary><p>可以，開班一樣免費。老師開一個學校班、把代碼給全班，就能在後台看到誰有在玩、每個人玩到哪、哪一章大家答錯最多，也能決定班上開放哪些遊戲。詳細看「開班管理」那一頁。</p></details>
+        <details><summary>學校老師可以拿來在班上用嗎？</summary><p>可以，開班一樣免費。老師開一個學校班、把代碼給全班，就能在後台看到誰有在玩、每個人玩到哪、哪一章大家答錯最多，也能決定班上開放哪些遊戲。詳細看「開班管理」那一頁，下面也有給老師的課堂用法。</p></details>
         <details><summary>忘記密碼怎麼辦？</summary><p>請開班的老師或家長在後台幫忙重設。在試玩班的話，可以在遊戲左上角的齒輪按「問題回報」告訴我們。</p></details>
         <details><summary>有建議或發現錯誤，要怎麼告訴你們？</summary><p>遊戲裡左上角的齒輪有「問題回報」，哪裡卡住、哪裡不好玩、內容哪裡不對，或希望之後加什麼，都很歡迎留言。自然科和小四的內容也還在構思，很想聽聽大家的想法。</p></details>
+      </div>
+
+      <div class="audience" id="teacher" style="--c:var(--tch);--bg:var(--tch-bg)">
+        <p class="aud-tag">以下給學校老師</p>
+
+      
+      <h2 style="margin-top:0">把社會和英文，變成全班回家想玩的功課</h2>
+      <p class="lead">時空冒險樂園免費、沒有廣告、沒有付費項目，學生不用 email、不用真名。老師開一個班、把代碼發給學生，就能在後台看到誰有在玩、全班卡在哪一章、哪些字最常錯。</p>
+      <div class="open-cta">
+        <a class="go" href="../?staff=signup">免費開一個學校班</a>
+        <p class="goalt">已經有開班帳號？<a href="../teacher.html">直接登入後台</a></p>
+      </div>
+
+      <div class="block">
+        <span class="kicker">三種用法</span>
+        <h2>課前、課中、課後都用得上</h2>
+        <div class="cards three" style="margin-top:12px">
+          <div class="card"><div class="ic">🏠</div><h3>課後延伸</h3><p>上完一個時代，請學生回家玩對應的那一章（約 20–30 分鐘）。隔天問一句「你在遊戲裡幫誰做了什麼？」就能接著上課。</p></div>
+          <div class="card"><div class="ic">💻</div><h3>電腦課或平板課</h3><p>一節課帶全班開帳號、玩第一章。第一次用最推薦這樣做，之後學生回家就會自己玩。</p></div>
+          <div class="card"><div class="ic">🎯</div><h3>找出要補的地方</h3><p>細節頁用綠黃紅標出全班每章「想一想」的答對率、英文最常錯的字。紅色的先拿來在課堂上講。</p></div>
+        </div>
+      </div>
+
+      <div class="block">
+        <span class="kicker">對應課程</span>
+        <h2>遊戲裡教了什麼</h2>
+        <table class="lesson">
+          <thead><tr><th>遊戲</th><th>範圍</th></tr></thead>
+          <tbody>
+            <tr><td>社會<small>島嶼開拓者</small></td><td>國小五年級臺灣的歷史與地理，依 108 課綱。序章「認識臺灣」，接著史前、原住民族、荷西、鄭氏、清領、清末開港、日治、戰後，再到「現在的臺灣」（地理、生活與公民）。<small>遊戲照時代排，各版本課本的單元順序不太一樣，不一定跟學校進度同步。</small></td></tr>
+            <tr><td>英文<small>守護異世界</small></td><td>教育部公告的國中小 2000 個基本英文字彙，從最常用的 300 字開始，分讀字、聽字、拼字三種練法，一共 85 關。<small>練的是單字；句型、文法和口說仍要靠課堂。</small></td></tr>
+            <tr><td>自然<small>時光祕境島</small></td><td>自然科的觀察與探究，例如森林裡的動物、螞蟻的地下世界、光和影子，用探險的方式認識。<small>目前試營運中，關卡陸續增加。</small></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="block">
+        <span class="kicker">第一節課怎麼帶</span>
+        <h2>40 分鐘的建議流程</h2>
+        <ol class="open-steps">
+          <li><b>課前 5 分鐘：開班</b><span>建立開班帳號、開一個學校班，勾選要開放的遊戲。把 6 碼班級代碼寫在黑板，或投影分享連結。</span></li>
+          <li><b>前 10 分鐘：學生建帳號</b><span>學生在樂園按「第一次來」、填代碼，自己取帳號（英文或數字）、密碼和暱稱。請學生把帳號密碼抄在聯絡簿，忘記時老師可以在後台重設。</span></li>
+          <li><b>中間 20 分鐘：一起玩第一章</b><span>新帳號會有「新手冒險手冊」一步一步帶，老師只要走動看看誰卡住。</span></li>
+          <li><b>最後 5 分鐘：收尾</b><span>問大家「你今天去了哪個時代？」，再說明回家一次玩 20–30 分鐘就好。下課後打開後台，就看得到每個人玩到哪裡。</span></li>
+        </ol>
+        <p class="note">共用平板的話，玩完請學生按 ⚙ 設定裡的「登出」，下一位才不會用到別人的帳號。</p>
+      </div>
+
+      <div class="block">
+        <span class="kicker">老師可以放心的地方</span>
+        <h2>為班級設計的安全規則</h2>
+        <ul class="ticks two">
+          <li><b>不收學生個資</b><span>學生不用 email、不用真名，只有帳號、密碼和暱稱。</span></li>
+          <li><b>沒有聊天、不能互送東西</b><span>學生之間只看得到暱稱和自己捏的角色，沒有任何打字交談的地方。</span></li>
+          <li><b>只看得到自己班</b><span>開班的人只看得到自己班上的學生，看不到別班。</span></li>
+          <li><b>上課時間不分心</b><span>可以設定週一到週五 8:00–16:00 寵物睡覺，也可以只開放想讓學生玩的遊戲。</span></li>
+          <li><b>不用花錢、沒有廣告</b><span>遊戲裡的時光幣只能靠玩出來，買不到。</span></li>
+          <li><b>關起門來的班</b><span>全班加入完就可以關閉加入，代碼外流也沒有關係。</span></li>
+        </ul>
+        <div class="class-teaser" style="margin-top:16px;background:var(--tch-bg)">
+          <p>後台看得到什麼（全班總覽、遊玩紀錄、細節頁、班上的回報），在「開班管理」那一頁有完整畫面。</p>
+          <button type="button" data-go="class" style="background:var(--tch)">看後台畫面 ›</button>
+        </div>
+      </div>
+
+      <div class="block">
+        <span class="kicker">老師常問</span>
+        <h2>還想知道的</h2>
+        <details><summary>可以拿來打成績嗎？</summary><p>不建議。遊戲的目的是提升興趣、讓學生回到課本時覺得「這個我玩過」。後台的答對率比較適合拿來決定課堂上要多講哪一段，而不是評分。</p></details>
+        <details><summary>學生已經在試玩班玩過了，進度會不見嗎？</summary><p>不會。學生到「我的資料」輸入老師的班級代碼就加入了，原本的進度、寵物和勳章都會帶著走。一個學生也可以同時在學校班和家庭班。</p></details>
+        <details><summary>要用什麼裝置？</summary><p>電腦、平板、手機的瀏覽器都可以，不用安裝。電腦或平板畫面大，最適合在課堂上用。</p></details>
+        <details><summary>可以開好幾個班嗎？</summary><p>可以。同一個開班帳號可以開好幾個班，後台切換著看。</p></details>
+        <details><summary>發現內容有錯，或想建議新的單元？</summary><p>很歡迎。在樂園裡按「💬 問題回報」告訴我們，每一則都會有人看、有人回。</p></details>
+      </div>
+
+      <div class="block">
+        <div class="open-cta">
+          <a class="go" href="../?staff=signup">免費開一個學校班</a>
+          <p class="goalt">開好就有班級代碼，五分鐘內學生就能開始玩。</p>
+        </div>
+      </div>
       </div>
     </div>
   </section>
@@ -658,10 +750,14 @@ footer{text-align:center;font-size:14px;color:var(--muted);padding:12px 16px 40p
   [].forEach.call(document.querySelectorAll('[data-go]'), function (b) {
     b.onclick = function () { history.replaceState(null, '', '#' + b.dataset.go); show(b.dataset.go, true); };
   });
-  var h = location.hash.slice(1);
-  show(h === 'try' ? 'parents' : h, false);
-  if (h === 'try') document.getElementById('try').scrollIntoView();
-  addEventListener('hashchange', function () { show(location.hash.slice(1), true); });
+  // #try、#teacher 是「給家長・老師」頁裡的段落
+  function route(scroll) {
+    var h = location.hash.slice(1), sub = h === 'try' || h === 'teacher';
+    show(sub ? 'parents' : h, scroll && !sub);
+    if (sub) document.getElementById(h).scrollIntoView({ behavior: scroll ? 'smooth' : 'auto' });
+  }
+  route(false);
+  addEventListener('hashchange', function () { route(true); });
 })();
 </script>
 <script>

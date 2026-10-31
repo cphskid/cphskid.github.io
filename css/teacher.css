@@ -22,7 +22,7 @@ img{max-width:100%}
 .bar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:12px;flex-wrap:wrap;
   padding:10px max(16px,env(safe-area-inset-left)) 10px max(16px,env(safe-area-inset-right));
   background:linear-gradient(var(--wood-2),var(--wood));border-bottom:4px solid #4a2a12;box-shadow:0 6px 16px rgba(0,0,0,.25)}
-.bar .home img{display:block;height:48px;width:auto;filter:drop-shadow(0 3px 4px rgba(0,0,0,.3))}
+.bar .home{display:block;height:48px;width:auto;filter:drop-shadow(0 3px 4px rgba(0,0,0,.3))}
 .bar .title{font:900 24px/1 var(--f-body);color:var(--cream);text-shadow:0 2px 0 #3b200c;letter-spacing:.04em}
 .bar .env{font:700 13px/1 var(--f-body);color:#fff;background:var(--red);padding:6px 9px;border-radius:8px}
 .bar .spacer{flex:1}
@@ -171,6 +171,12 @@ td.stu{min-width:150px}
 td.stu b,td b{font-weight:900}
 td.stu small,td small{display:block;font-size:13px;color:var(--muted)}
 td.stu small.seen.on{color:#2f8a4a;font-weight:700}
+/* 學生年級（記在孩子身上）：點了改 */
+td.stu .grade-chip{display:inline-flex;align-items:center;min-height:32px;margin:4px 0 2px;padding:2px 12px;border:2px solid var(--cream-2);
+  border-radius:999px;background:#fff6d6;font:900 14px/1 var(--f-body);color:var(--wood);cursor:pointer}
+td.stu .grade-chip.none{background:#fff;border-style:dashed;color:var(--muted)}
+td.stu .grade-chip:hover,td.stu .grade-chip:focus-visible{border-color:var(--wood-2);outline:none}
+.form label .tip{display:block;margin-top:4px;font-weight:500}
 td.ops{white-space:nowrap}
 td.ops .ghost{margin:2px 0}
 td.num{white-space:nowrap}
@@ -206,14 +212,16 @@ dialog::backdrop{background:rgba(10,40,70,.5)}
 
 @media (max-width:720px){
   :root{--frame:26px}
-  .bar .home img{height:36px}
+  .bar .home{display:none}
   .bar .ghost{font-size:0;gap:0;padding:4px}
   .hero{height:170px}
   .hero #avatar{width:80px}
   .hero h1{font-size:24px}
   .hero p{font-size:14px}
-  .tabs{margin-top:-40px;padding:0 12px}
-  .tabs button{min-width:0;padding:13px 18px 11px;font-size:16px}
+  /* 分頁太多放不下：一列橫向滑動，字不換行（以前會變直排又被切掉） */
+  .tabs{margin-top:-40px;padding:0 12px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity}
+  .tabs::-webkit-scrollbar{display:none}
+  .tabs button{flex:none;min-width:0;padding:13px 16px 11px;font-size:16px;white-space:nowrap;scroll-snap-align:start}
   .bar .title{font-size:19px}
   .who small{display:none}
   .panel h2{font-size:22px}
@@ -362,3 +370,181 @@ details.fold.sub>summary{font-weight:700;color:var(--wood)}
 .news-row{padding:10px 14px;border:2px solid var(--cream-2);border-radius:16px;background:#fff}
 .news-row p{margin:6px 0}
 .news-row.gone{opacity:.55}
+
+/* ---------- 新手導覽（teacher-guide.js）：聚光框＋說明卡 ---------- */
+.tour{position:fixed;inset:0;z-index:50}
+.tour-hole{position:fixed;border-radius:18px;box-shadow:0 0 0 9999px rgba(30,18,8,.62),0 0 0 4px var(--gold);transition:all .35s ease;pointer-events:none}
+.tour-tip{position:fixed;background:var(--paper);border:3px solid var(--wood-2);border-radius:18px;padding:16px 18px;box-shadow:0 10px 30px rgba(0,0,0,.35);transition:top .35s ease,left .35s ease}
+.tour-tip small{color:var(--muted);font:700 13px/1 var(--f-body)}
+.tour-tip h3{margin:6px 0;font:900 20px/1.3 var(--f-body);color:var(--wood)}
+.tour-tip p{margin:0 0 12px;font:500 16px/1.6 var(--f-body);color:var(--ink)}
+.tour-tip .row{display:flex;gap:8px;justify-content:flex-end;align-items:center;flex-wrap:wrap}
+.tour-tip [data-skip]{margin-right:auto}
+.bar .help img{width:20px;height:20px;vertical-align:-4px;margin-right:2px}
+/* 使用指南頁籤 */
+.guide .gtab{width:100%;border-collapse:collapse;margin-top:10px}
+.guide .gtab th{width:120px;text-align:left;vertical-align:top;padding:10px 12px 10px 0;font:900 16px/1.5 var(--f-body);color:var(--wood);white-space:nowrap}
+.guide .gtab td{padding:10px 0;font:500 16px/1.6 var(--f-body);color:var(--ink);border-bottom:1px dashed var(--cream-2)}
+.guide .gl{margin:10px 0 0;padding-left:22px;font:500 16px/1.7 var(--f-body)}
+.guide .gl li{margin-bottom:6px}
+.guide details{margin-top:8px;border-bottom:1px dashed var(--cream-2);padding:6px 0}
+.guide summary{cursor:pointer;font:700 16px/1.5 var(--f-body);color:var(--wood)}
+.guide details p{margin:6px 0 4px;font:500 15px/1.6 var(--f-body)}
+@media (max-width:640px){.guide .gtab th{display:block;width:auto;padding-bottom:0}.guide .gtab td{display:block}}
+/* 本週該看的三件事 */
+#p-week .week{margin:4px 0 0;padding-left:22px;font:500 16px/1.7 var(--f-body)}
+#p-week .week li{margin-bottom:4px}
+
+/* ---------- 時光試煉島（js/teacher-quiz.js） ---------- */
+.qt-sub{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.chip.on{background:var(--wood);border-color:var(--wood);color:#fff}
+button.chip{cursor:pointer}
+label.chip{display:inline-flex;align-items:center;gap:6px;cursor:pointer;white-space:normal}
+.qt-form{display:grid;gap:12px;margin:6px 0 10px}
+.qt-form>label,.qt-own label{display:flex;flex-direction:column;gap:4px;font-weight:700}
+.qt-form input:not([type]),.qt-own input:not([type]),.qt-own select,#qt-addkp{font:inherit;padding:8px 10px;border:2px solid var(--cream-2);border-radius:10px;background:#fff;max-width:100%}
+.qt-form details summary{cursor:pointer;margin-bottom:6px}
+.qt-plan,.qt-bank{list-style:none;margin:10px 0;padding:0;display:grid;gap:8px;counter-reset:q}
+.qt-plan>li{counter-increment:q}
+.qt-row{background:#fff;border:2px solid var(--cream-2);border-radius:12px;padding:8px 10px}
+.qt-row-h{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.qt-plan .qt-row-h::before{content:counter(q);font:700 14px/1 var(--f-disp);background:var(--cream);border-radius:6px;padding:3px 7px}
+.qt-row-h small{color:var(--muted)}
+.qt-row-h .spacer{flex:1}
+.qt-row details summary{cursor:pointer;margin-top:4px}
+.qt-b{font:700 12px/1 var(--f-body);padding:4px 7px;border-radius:6px}
+.b-weak{background:var(--red-bg);color:var(--red)} .b-seen{background:var(--amber-bg);color:var(--amber)}
+.b-new{background:#e4ecff;color:#3d4a80} .b-review{background:var(--green-bg);color:var(--green)} .b-pick{background:var(--cream-2);color:var(--wood)}
+.qt-prev{background:var(--paper);border-radius:10px;padding:6px 12px;margin-top:6px;font-size:15px}
+.qt-prev ol,.qt-prev ul{margin:4px 0;padding-left:22px}
+.qt-right{color:var(--green);font-weight:900}
+.qt-why,.qt-src{margin:4px 0;color:var(--muted);font-size:14px}
+.qt-q{font-weight:700;margin:6px 0 0}
+.qt-own{display:grid;gap:8px;background:var(--paper);border-radius:12px;padding:12px;margin-top:10px}
+.qt-mc{display:grid;gap:6px;grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
+.qt-papers td{vertical-align:top}
+.qt-papers small{color:var(--muted)}
+.qt-weak{margin:6px 0 10px;padding-left:20px}
+.qt-weak li{margin:4px 0}
+.qt-read{margin:8px 0 0;padding:6px 10px;border-radius:10px;background:var(--paper);font-size:14px}
+.qt-read small{color:var(--muted)}
+.r-ask,.r-stuck{background:var(--amber-bg)} .r-solid,.r-grew{background:var(--green-bg)}
+.qt-legend{display:flex;gap:6px;flex-wrap:wrap}
+.qt-kps{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.qt-kp{font:700 14px/1.2 var(--f-body);padding:7px 10px;border-radius:10px;border:2px solid transparent;cursor:pointer}
+span.qt-kp{cursor:default}
+.s-learned{background:var(--green-bg);border-color:#a9d79b;color:#2a6b1a}
+.s-weak{background:var(--red-bg);border-color:#f0a99d;color:var(--red)}
+.s-seen{background:var(--amber-bg);border-color:#ecc77a;color:#8a5a00}
+.s-new{background:#eef0f4;border-color:#d4d8e0;color:#68707e}
+.qt-flags{padding-left:18px}
+.qt-flags li{margin-bottom:10px}
+.qt-bank .st-off{opacity:.65}
+/* 改題目的表單（js/quiz-edit.js） */
+.qt-edit{margin-top:10px}
+.qe{display:grid;gap:10px;background:var(--paper);border-radius:12px;padding:12px}
+.qe .tip{margin:0}
+.qe-f{display:flex;flex-direction:column;gap:4px;font-weight:700}
+.qe textarea,.qe input:not([type]),.qe select{font:inherit;font-weight:400;padding:7px 10px;border:2px solid var(--cream-2);border-radius:10px;background:#fff;min-width:0}
+.qe textarea{width:100%;resize:vertical}
+.qe-sec{display:grid;gap:6px;background:#fff;border:2px solid var(--cream-2);border-radius:10px;padding:8px 10px}
+.qe-sec>small{color:var(--muted)}
+.qe-row{display:flex;align-items:center;gap:6px}
+.qe-row input:not([type]){flex:1}
+.qe-row .qe-name{flex:0 0 6.5em}
+.qe-row select{flex:0 0 9em}
+.qe-row .spacer{flex:1}
+.qe-ok{display:inline-flex;align-items:center;gap:4px;font-weight:700}
+.qe-ok input{width:20px;height:20px;margin:0;accent-color:var(--green)}
+.qe-n{flex:none;width:24px;text-align:center;font-weight:700;color:var(--muted)}
+.qe-x{flex:none;border:2px solid var(--cream-2);background:#fff;border-radius:8px;padding:2px 8px;cursor:pointer;color:var(--muted)}
+.qe-x:disabled{opacity:.35;cursor:default}
+.qe-sec>.ghost.small,.qe>.ghost.small{justify-self:start}
+.qe-err{margin:0;padding-left:20px;color:var(--red);font-weight:700}
+.qe-err:empty{display:none}
+.qe-pv summary{cursor:pointer;font-weight:700}
+@media (max-width:560px){.qe-row{flex-wrap:wrap}.qe-row .qe-name,.qe-row select{flex:1 1 100%}}
+/* 報告裡的每一題（樣式跟孩子的結果頁一樣） */
+.qz-results{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.qz-res{background:#fff;border:2px solid var(--cream-2);border-left-width:8px;border-radius:12px;padding:8px 12px}
+.qz-res.ok{border-left-color:var(--green)} .qz-res.no{border-left-color:var(--red)} .qz-res.part{border-left-color:var(--amber)}
+.qz-res-h{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.qz-no{font:700 14px/1 var(--f-disp);background:var(--cream);border-radius:6px;padding:3px 7px}
+.qz-kind{font-size:13px;color:var(--muted)}
+.qz-mark{font-weight:900;font-size:14px}
+.qz-res.ok .qz-mark{color:var(--green)} .qz-res.no .qz-mark{color:var(--red)} .qz-res.part .qz-mark{color:var(--amber)}
+.qz-fixed{font-size:12px;background:var(--red-bg);border-radius:6px;padding:2px 6px}
+.qz-fixed.ok{background:var(--green-bg)}
+.qz-res .qz-q{font-weight:700;margin:4px 0}
+.qz-passage{margin:4px 0;font-size:14px}
+.qz-mine{color:var(--red);margin:2px 0}
+.qz-key{color:var(--green);font-weight:700;margin:2px 0}
+.qz-why{margin:4px 0 0;font-size:14px;color:var(--muted)}
+label.chip input{width:18px;height:18px;margin:0;flex:none;accent-color:var(--wood)}
+.qt-all{display:inline-flex;gap:6px;margin-left:8px;vertical-align:middle}
+.qt-all .ghost.small,.qt-pl-h+.chips .chip{font-size:14px}
+.qt-all .ghost.small{padding:5px 12px}
+#qt-kidn,.qt-pl-h small{color:var(--muted);font-weight:400}
+.qt-pl-h{margin:14px 0 6px}
+.qt-places .chip.none{opacity:.5}
+.qt-pl-title{margin:16px 0 4px;font-family:var(--f-disp);color:var(--wood)}
+.qt-papers .tag{margin-left:6px;font-size:12px;background:#e4ecff;color:#3d4a80;border-radius:6px;padding:2px 6px;white-space:normal}
+.qt-gcls { list-style: none; padding: 0; margin: .5rem 0; display: grid; gap: .4rem; }
+.qt-gcls li { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; padding: .4rem .6rem; border-radius: 10px; background: rgba(0,0,0,.04); }
+.qt-gcls li small { flex: 1; }
+
+
+/* ---------- 爸媽任務（js/teacher-parent.js） ---------- */
+details.first{margin-top:18px;padding:12px 14px;border-radius:16px;background:var(--paper);border:2px solid var(--cream-2)}
+details.first summary{cursor:pointer;font:900 17px/1.3 var(--f-body);color:var(--wood)}
+details.first .form{margin-top:12px}
+.parent .empty-kid{display:grid;grid-template-columns:72px minmax(0,1fr);gap:14px;align-items:center}
+.parent .empty-kid img{width:72px}
+.parent .empty-kid b{display:block;font-size:18px;color:var(--wood);margin-bottom:4px}
+.parent .kid{margin-top:14px;padding:14px 16px;border-radius:18px;background:var(--paper);border:2px solid var(--cream-2)}
+.parent .kid header{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 12px}
+.parent .kid header b{font:900 20px/1.2 var(--f-body);color:var(--wood)}
+.parent .kid header small{color:var(--muted)}
+.parent .kid header .chip{margin-left:auto}
+.parent .chip.warn{background:var(--amber-bg);border-color:#f2c779;color:var(--amber)}
+.parent .chip.ok{background:var(--green-bg);border-color:#a9d99b;color:var(--green)}
+.parent .wk{margin:8px 0 10px;color:#5a3a1e}
+.parent .wk b{font-size:18px;color:var(--wood)}
+.parent .steps{margin:0;padding:0;list-style:none;display:grid;gap:10px;counter-reset:st}
+.parent .steps li{counter-increment:st;display:grid;grid-template-columns:30px minmax(0,1fr);gap:4px 10px;align-items:start;padding:10px 12px;border-radius:14px;background:#fff;border:2px solid var(--cream-2)}
+.parent .steps li::before{content:counter(st);grid-row:span 3;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:var(--gold);color:var(--ink);font:900 16px/1 var(--f-body)}
+.parent .steps li.done{border-color:#a9d99b;background:#f6fcf3}
+.parent .steps li.done::before{content:"✓";background:var(--green);color:#fff}
+.parent .steps span{font:900 17px/1.3 var(--f-body);color:var(--ink)}
+.parent .steps small{color:var(--muted);font-size:14px;line-height:1.5}
+.parent .steps li>button,.parent .steps .stks,.parent .steps .goals{justify-self:start;margin-top:4px}
+.parent .stks{display:flex;flex-wrap:wrap;gap:6px}
+.parent .stks button{display:grid;justify-items:center;gap:2px;width:68px;padding:6px 2px;border-radius:12px;border:2px solid var(--cream-2);background:#fff;cursor:pointer}
+.parent .stks button:hover{border-color:var(--gold)}
+.parent .stks button:disabled{opacity:.45;cursor:default}
+.parent .stks img{width:48px;height:48px}
+.parent .stks small{font:700 12px/1 var(--f-body);color:var(--wood)}
+.parent .goals{display:flex;flex-wrap:wrap;gap:6px}
+.dlg .login-card{display:grid;gap:8px;margin:10px 0;padding:14px;border-radius:14px;background:var(--paper);border:2px dashed var(--wood-2)}
+.dlg .login-card p{margin:0;display:flex;justify-content:space-between;gap:10px;color:var(--muted)}
+.dlg .login-card b{font:900 18px/1.2 var(--f-body);color:var(--ink);word-break:break-all;text-align:right}
+@media (max-width:560px){ .parent .stks button{width:56px} .parent .stks img{width:40px;height:40px} }
+
+/* 後台信箱（2026-10-31）：右上「信箱」＋未讀紅點；對話框裡一封一封，沒讀的有黃底 */
+.bar .mailbox{position:relative}
+.bar .mailbox .dot{position:absolute;top:-3px;right:-3px;width:14px;height:14px;border-radius:50%;background:var(--red);box-shadow:0 0 0 2px #fff}
+.bar .mailbox .dot[hidden]{display:none}
+.inbox{display:flex;flex-direction:column;gap:10px;max-height:min(60vh,520px);overflow:auto;margin:0;padding:0;list-style:none}
+.inbox li{border:2px solid var(--cream-2);border-radius:16px;background:#fff}
+.inbox details{margin:0;border:0;padding:0}
+.dlg h3 .ico{width:30px;height:30px;vertical-align:-6px}
+.inbox li.new{border-color:var(--gold);background:#fff8e3}
+.inbox summary{display:flex;align-items:center;gap:8px;padding:12px 14px;min-height:44px;cursor:pointer;list-style:none;font:700 16px/1.35 var(--f-body);color:var(--ink)}
+.inbox summary::-webkit-details-marker{display:none}
+.inbox summary .chip{flex:none}
+.inbox summary small{margin-left:auto;color:var(--muted);font-weight:500;font-size:13px;white-space:nowrap}
+.inbox .letter{padding:0 14px 12px;display:flex;flex-direction:column;gap:8px}
+.inbox .letter p{margin:0;white-space:pre-wrap;line-height:1.6}
+.inbox .letter .sign{color:var(--muted);text-align:right;font-size:14px}
+.inbox li.old{opacity:.7}
+.news-aud label.check small{color:var(--muted);font-weight:500;margin-left:8px}

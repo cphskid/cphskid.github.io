@@ -69,7 +69,27 @@ const api = {
   play: async (kind) => { const p = S.pets.find((x) => x.active); joy(p, kind === 'wish' ? 4 : 2); p.mood = p.pts >= 13 ? 'happy' : 'normal';
     return { ...clone(), did: 'play', was: p.mood, xp: kind === 'wish' ? 1 : 0 }; },
   rename: async (n) => { S.pets.find((x) => x.active).name = n; return clone(); },
+  bowl: async () => { if (!S.inventory.kibble) throw new Error('背包裡沒有時光飼料了'); if ((S.bowl ?? 0) >= 3) throw new Error('飼料盆滿了');
+    S.inventory.kibble--; S.bowl = (S.bowl ?? 0) + 1; return clone(); },
+  furniture: async () => (q.get('furn') === 'all' ? ['house-mushroom', 'house-tree', 'house-igloo'] : []),
 };
+// ?deco=1：寵物島裝扮、拜訪、今日精選用假的資料（js/isle.js 直接叫 auth.isle，這裡換掉）
+if (q.get('deco')) {
+  const I = { saved: q.get('deco') === '2', theme: q.get('theme') ?? 'spring', name: [3, 0, 3], layout: {}, stored: [],
+    themes: ['spring', 'beach', 'autumn', 'stars'], love: [3, 1, 2, 0, 1, 0], featured: q.get('feat') === '1',
+    inbox: q.get('inbox') ? [{ nickname: '小維', kind: 2 }, { nickname: '阿哲', kind: 0 }, { nickname: 'Mia', kind: 4 }] : [] };
+  const isles = [['芸芸', 'beach', [11, 13, 3]], ['小樹', 'snow', [6, 3, 19]], ['Mia', 'autumn', [7, 4, 6]],
+    ['阿哲', 'candy', [9, 12, 4]], ['小維', 'stars', [0, 5, 7]], ['豆豆', 'spring', [5, 3, 8]]].map(([nick, theme, name], i) => ({
+    id: 'u' + i, nickname: nick, theme, name, placed: 7, love: [5 + i, 3, 8 - i, 1, 2, 4], pet: { species: ['puppy', 'kitten', 'hamster'][i % 3], stage: 1 + (i % 3) },
+    layout: { bed: { x: .78, y: .72 }, slide: { x: .3, y: .7, f: i % 2 }, pool: { x: .26, y: .52 }, swing: { x: .46, y: .64 }, fountain: { x: .62, y: .8 }, tent: { x: .88, y: .62 }, flowers: { x: .4, y: .82 } },
+    pets: [{ species: 'kitten', stage: 2, name: '咪咪' }, { species: 'puppy', stage: 1, name: '豆豆' }], mine: null }));
+  Object.assign(auth.isle, {
+    me: async () => JSON.parse(JSON.stringify(I)), seen: async () => {}, save: async (t, n, l) => { Object.assign(I, { theme: t, name: n, layout: l, saved: true }); return { ok: true }; },
+    featured: async () => isles, mates: async () => isles.slice(0, 4),
+    view: async (id) => ({ ...isles.find((x) => x.id === id) }),
+    react: async (id, k) => { const v = isles.find((x) => x.id === id); v.love[k]++; v.mine = k; return { love: v.love, mine: k }; },
+  });
+}
 const stage = document.getElementById('stage');
 const ui = document.getElementById('ui');
 const fit = () => { stage.style.setProperty('--s', Math.min(innerWidth / 1600, innerHeight / 900)); ui.style.setProperty('--vw', innerWidth); ui.style.setProperty('--vh', innerHeight); };

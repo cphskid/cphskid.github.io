@@ -84,8 +84,6 @@ body{margin:0;background:var(--sea-deep);color:var(--ink);font-family:var(--f-bo
 
 /* 地圖 */
 .topbar{position:absolute;left:24px;top:22px;display:flex;align-items:center;gap:16px;z-index:5}
-.back{font:700 20px/1 var(--f-body);color:var(--wood);background:var(--cream);border:3px solid var(--wood);border-radius:14px;padding:10px 16px;box-shadow:0 4px 0 var(--wood);cursor:pointer}
-.back:hover,.back:focus-visible{background:#fff;outline:none;transform:translateY(-2px)}
 .ribbon{width:400px;height:116px;display:grid;place-items:center;padding-bottom:30px;background:url(../img/ui/ribbon.webp) center/100% 100% no-repeat;font:900 30px/1 var(--f-body);color:#fff;text-shadow:0 2px 0 #8e1d14,0 0 6px rgba(120,20,10,.5);filter:drop-shadow(0 6px 8px rgba(0,0,0,.25));margin-top:-14px}
 .hint{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);font:700 18px/1 var(--f-body);color:var(--cream);background:rgba(20,70,110,.5);padding:10px 18px;border-radius:99px;white-space:nowrap;z-index:5;pointer-events:none}
 .pan{position:absolute;top:50%;width:84px;height:84px;margin-top:-42px;border:0;padding:0;background:center/contain no-repeat;cursor:pointer;z-index:5;filter:drop-shadow(0 8px 10px rgba(0,0,0,.3));transition:transform .2s cubic-bezier(.34,1.7,.5,1)}
@@ -588,16 +586,14 @@ ul.classes li .row{gap:8px;justify-content:flex-end}
   background:radial-gradient(ellipse at 35% 55%,#7fd6f2,#38a9dc 55%,#1f7fb8);animation:fadein .3s ease-out}
 @keyframes fadein{from{opacity:0}}
 @keyframes hintout{to{opacity:0;visibility:hidden}}
-/* 島：.view 可以捲（手機直拿左右滑），.ground 用 --g 縮放（座標照舊） */
-.pisle .view{position:absolute;inset:0;overflow:auto;overscroll-behavior:contain;scrollbar-width:none;display:grid}
-.pisle .view>.ground-box{margin:auto}
-.pisle .view::-webkit-scrollbar{display:none}
-.ground-box{position:relative;flex:none;width:calc(1120px * var(--g,1));height:calc(842px * var(--g,1))}
-.pisle .ground{transform-origin:0 0;scale:var(--g,1)}
+/* 島：.ground 用 transform 移動、縮放（js/pet.js 的 cam），--g＝放大倍數（字跟著反過來放大，才看得清楚） */
+.pisle .view{position:absolute;inset:0;overflow:hidden;touch-action:none}
+.pisle .ground{position:absolute;left:0;top:0;transform-origin:0 0}
 .actor .bub.talk,.actor .tag,.actor .bub.mark{zoom:max(1,calc(.85 / var(--g,1)))}
 #petroom .pisle>.x{position:absolute;right:calc(env(safe-area-inset-right) + 12px);top:calc(env(safe-area-inset-top) + 10px);width:56px;height:56px;z-index:30;touch-action:manipulation}
-.pisle .ground{position:relative;touch-action:pan-x pan-y;user-select:none;-webkit-user-select:none}
-.pisle .land{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;-webkit-user-drag:none;filter:var(--tod) var(--wx) drop-shadow(0 18px 18px rgba(0,40,80,.35))}
+.pisle .ground{touch-action:none;user-select:none;-webkit-user-select:none}
+/* 底圖是 canvas，日夜天氣的顏色和影子在 js/pet.js paintLand 先畫好：這麼大的圖不要掛 filter／mask，手機放大會記憶體爆掉 */
+.pisle .land{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;-webkit-user-drag:none}
 .pisle .actors{position:absolute;inset:0}
 .pisle .hint{position:absolute;left:50%;bottom:auto;top:calc(env(safe-area-inset-top) + 80px);animation:hintout 1s ease-in 7s forwards;transform:translateX(-50%);margin:0;padding:8px 18px;border-radius:99px;background:rgba(255,255,255,.85);font:700 16px/1 var(--f-body);color:var(--wood);white-space:nowrap;pointer-events:none}
 .actor{position:absolute;width:calc(var(--h) * var(--d));height:calc(var(--h) * var(--d));transform:translate(-50%,-92%);border:0;padding:0;background:none;cursor:grab;touch-action:none}
@@ -690,6 +686,8 @@ aside.care .wish span img{width:40px;height:40px}
 .pisle .bagpop{position:absolute;right:calc(env(safe-area-inset-right) + 12px);bottom:calc(env(safe-area-inset-bottom) + 98px);z-index:25;max-width:calc(100% - 24px);
   background:var(--cream);border:3px solid var(--wood);border-radius:20px;padding:8px 10px 10px;box-shadow:0 5px 0 var(--wood),0 10px 24px rgba(0,0,0,.25);animation:pop .2s ease-out}
 .pisle .bagpop[hidden]{display:none}
+.pisle .bagpop .pop-x+p{padding-right:40px;min-height:34px;line-height:1.3}
+.pisle .bagpop .pop-x{position:absolute;right:8px;top:8px;width:32px;height:32px;border-radius:50%;border:3px solid var(--wood);background:var(--cream);color:var(--wood);font:900 16px/1 var(--f-body);box-shadow:0 2px 0 var(--wood);cursor:pointer;touch-action:manipulation}
 .pisle .bagpop p{margin:0 0 6px;font:800 14px/1 var(--f-body);color:#8a6a4a}
 .pisle .bagpop .bag{display:flex;gap:8px;overflow-x:auto;scrollbar-width:thin;padding-bottom:2px}
 .pisle .bagpop .food{flex:none;width:84px;padding:6px 4px}
@@ -716,7 +714,8 @@ aside.care .wish span img{width:40px;height:40px}
 #isle-pets .mini.egg-wait .glint{position:absolute;width:40px;left:-8px;top:-8px;animation:twinkle 1.4s ease-in-out infinite}
 @media (prefers-reduced-motion:reduce){.actor .bub.mark,.actor.egg-nest img{animation:none}}
 /* 寵物島傢俱（可拖曳） */
-.prop{position:absolute;transform:translate(-50%,-88%);border:0;padding:0;background:none;cursor:grab;touch-action:none}
+.prop{position:absolute;transform:translate(-50%,var(--base,-88%));border:0;padding:0;background:none;cursor:pointer;touch-action:none}
+.prop.movable{cursor:grab}
 .prop img{position:relative;display:block;width:100%;height:auto;pointer-events:none;-webkit-user-drag:none;filter:var(--tod) var(--wx) drop-shadow(0 4px 3px rgba(20,50,30,.3));transition:transform .15s}
 .prop .shadow{position:absolute;left:12%;right:12%;bottom:0;height:16%;border-radius:50%;background:rgba(30,60,20,.25);transition:transform .15s,opacity .15s}
 .prop.held{cursor:grabbing}
@@ -747,9 +746,10 @@ aside.care .wish span img{width:40px;height:40px}
 .pisle[data-wx=fog]{--wx:saturate(.8) contrast(.9)}
 .pisle[data-wx=rain]:not([data-tod=night]),.pisle[data-wx=fog]:not([data-tod=night]){background:radial-gradient(ellipse at 35% 55%,#9fb8c8,#6f8ea8 55%,#4d6a86)}
 .pisle .sky{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:2100}
-.pisle .haze{position:absolute;inset:0;pointer-events:none;z-index:2050;-webkit-mask:url(../img/pet/island.webp) center/100% 100% no-repeat;mask:url(../img/pet/island.webp) center/100% 100% no-repeat}
+/* 陰天、霧：蓋在整個畫面上（不跟著島縮放，才不會變成一張超大的圖層） */
+.pisle .haze{position:absolute;inset:0;pointer-events:none;z-index:0}
 .pisle[data-wx=cloudy] .haze{background:radial-gradient(ellipse 22% 16% at 30% 40%,rgba(30,50,80,.2),transparent),radial-gradient(ellipse 26% 18% at 75% 70%,rgba(30,50,80,.18),transparent);background-size:200% 100%;animation:clouds 50s linear infinite alternate}
-.pisle[data-wx=fog] .haze{-webkit-mask:none;mask:none;background:radial-gradient(ellipse 40% 22% at 30% 50%,rgba(255,255,255,.55),transparent),radial-gradient(ellipse 45% 25% at 75% 65%,rgba(255,255,255,.5),transparent),rgba(235,242,248,.28);background-size:160% 100%;animation:clouds 30s ease-in-out infinite alternate}
+.pisle[data-wx=fog] .haze{background:radial-gradient(ellipse 40% 22% at 30% 50%,rgba(255,255,255,.55),transparent),radial-gradient(ellipse 45% 25% at 75% 65%,rgba(255,255,255,.5),transparent),rgba(235,242,248,.28);background-size:160% 100%;animation:clouds 30s ease-in-out infinite alternate}
 .pisle[data-season=winter][data-wx=snow] .haze{background:rgba(255,255,255,.14)}
 .pisle:is([data-tod=night],[data-tod=dusk]) .p-lantern::after{content:"";position:absolute;left:50%;top:30%;width:420%;aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle,rgba(255,214,110,.6),rgba(255,214,110,.15) 40%,transparent 68%);pointer-events:none;mix-blend-mode:screen;animation:twinkle 3s ease-in-out infinite}
 .pisle[data-tod=night] .p-lantern img{filter:brightness(1.05) drop-shadow(0 0 10px rgba(255,214,110,.9))}
@@ -831,7 +831,6 @@ body[data-scene="map"] #hud{display:block}
 @media (max-width:760px),(max-height:560px){
   /* 地圖上的按鈕 */
   .topbar{left:10px;top:10px;gap:8px}
-  .back{font-size:16px;padding:8px 12px;border-radius:12px;box-shadow:0 3px 0 var(--wood)}
   .ribbon{display:none}
   #me-chip{right:10px;top:10px;padding:4px 12px 4px 4px;gap:6px}
   #me-chip .av{--av:38px}
@@ -1328,7 +1327,8 @@ button.stamp:hover,button.stamp:focus-visible{transform:translateY(-3px);outline
 .sign.mini b{font-size:24px}
 
 #gear{position:absolute;left:24px;top:20px;z-index:12}
-body[data-scene="map"] #gear{left:186px}
+#gear-menu>#back{display:none!important}
+body[data-scene="map"] #gear-menu>#back{display:flex!important}
 #gear-btn{width:54px;height:54px;border:0;padding:0;background:none;cursor:pointer;position:relative;filter:drop-shadow(0 3px 4px rgba(0,0,0,.3));transition:transform .3s}
 #gear-btn img{width:100%;height:100%;object-fit:contain}
 #gear-btn:hover,#gear-btn:focus-visible,#gear-btn[aria-expanded="true"]{transform:rotate(40deg);outline:none}
@@ -1364,10 +1364,7 @@ body[data-scene="map"] #tick .bubble{margin-bottom:120px}
   .sign small{font-size:10px}
   .sign.mini{width:124px;top:58px}
   .sign.mini b{font-size:15px}
-  #back{font-size:0!important;width:44px;height:44px;padding:0!important;border-radius:50%!important;display:grid;place-items:center}
-  #back::before{content:'🏠';font-size:22px}
   #gear{left:10px;top:10px}
-  body[data-scene="map"] #gear{left:62px}
   #gear-btn{width:44px;height:44px}
   #gear-menu{top:50px}
   #top-right{right:10px;top:10px}
@@ -1400,6 +1397,7 @@ body[data-scene="map"] #tick .bubble{margin-bottom:120px}
 #task-btn[data-state=claim] .badge{background:#e2553f}
 #task-btn[data-state=left] .badge{background:#f08a24}
 #task-btn[data-state=all] .badge{background:#3fae5a}
+#quiz-btn .badge{background:#e2553f}
 #task-btn[data-state=claim]{animation:taskhop 1.6s ease-in-out infinite;box-shadow:inset 0 -3px 0 #d9b77a,0 0 0 3px #ffd34d,0 0 14px #ffd34d}
 #task-btn[data-state=all] img{opacity:.75}
 @keyframes taskhop{0%,60%,100%{transform:none}70%{transform:translateY(-6px) rotate(-3deg)}80%{transform:translateY(0)}90%{transform:translateY(-3px) rotate(2deg)}}
@@ -1414,3 +1412,330 @@ body[data-scene="map"] #tick .bubble{margin-bottom:120px}
 /* 版號與更新說明（js/changelog.js）：齒輪選單最下面一行小字、測試站標籤點了也打開 */
 #gear-menu>#ver-btn{font:700 13px/1 var(--f-body)!important;color:#8a6a4a;border-style:dashed!important}
 #env-tag{cursor:pointer}
+
+/* 2026-10-25 新手冒險手冊（js/starter.js）：新手期功能列的「每日任務」換成「新手手冊」，上面一條「下一步」 */
+body[data-starter="on"] #task-btn{display:none!important}
+#guide-btn .badge{background:#f08a24}
+#guide-btn[data-state=all] .badge{background:#3fae5a}
+#starter{position:absolute;left:50%;bottom:162px;translate:-50% 0;z-index:7;width:min(580px,calc(100% - 24px));display:flex;align-items:center;gap:12px;padding:8px 10px 8px 8px;border-radius:22px;background:#fffaf0;border:4px solid var(--wood);box-shadow:0 6px 0 #3b200c,0 12px 22px rgba(0,0,0,.3);animation:starterIn .5s cubic-bezier(.34,1.7,.5,1) both}
+#starter[hidden],body:not([data-scene="map"]) #starter{display:none}
+#starter .gbook{flex:none;display:flex;flex-direction:column;align-items:center;gap:0;border:0;background:none;padding:0;cursor:pointer}
+#starter .gbook img{width:46px;height:46px;object-fit:contain}
+#starter .gbook small{font:900 12px/1 var(--f-body);color:#8a5a2a;white-space:nowrap}
+#starter p{flex:1;min-width:0;margin:0;display:flex;flex-direction:column;gap:3px}
+#starter p b{font:900 19px/1.25 var(--f-body);color:var(--ink)}
+#starter p span{font:700 14px/1.3 var(--f-body);color:#8a6a4a}
+#starter .btn.go{flex:none;font-size:20px;padding:10px 20px 12px;animation:taskhop 1.8s ease-in-out infinite}
+#starter[data-state=wait]{background:#eefbe9;border-color:#3f8a3a}
+@keyframes starterIn{from{opacity:0;transform:translateY(20px)}}
+/* 新手期滴答要說的話都在「下一步」那條，泡泡先收起來，免得疊在一起 */
+body[data-starter="on"][data-scene="map"] #tick .bubble{display:none}
+/* 要去的地方：島上、功能列的按鈕跳箭頭 */
+.starter-target{position:relative}
+.isle.starter-target::before,#dock>button.starter-target::before{content:'';position:absolute;left:50%;width:54px;height:54px;translate:-50% 0;background:url(../img/ui/arrow-right.webp) center/contain no-repeat;z-index:3;pointer-events:none;transform:rotate(90deg);animation:starterArrow 1s ease-in-out infinite;filter:drop-shadow(0 3px 3px rgba(0,0,0,.35))}
+.isle.starter-target::before{top:-30px;width:80px;height:80px}
+#dock>button.starter-target::before{top:-50px;width:46px;height:46px}
+#dock>button.starter-target{box-shadow:inset 0 -3px 0 #d9b77a,0 0 0 3px #ffd34d,0 0 16px #ffd34d}
+.isle.starter-target .plate b{background:linear-gradient(#ffb23d,#e07a10);border-color:#7a3d06}
+@keyframes starterArrow{0%,100%{transform:translateY(0) rotate(90deg)}50%{transform:translateY(14px) rotate(90deg)}}
+/* 2026-10-31 下一步條可以收起來（右上 ✕ → 縮進功能列的「新手手冊」，那顆跳一下）；電腦版也縮小一點少擋島 */
+#starter{width:min(500px,calc(100% - 24px));padding:6px 10px 6px 6px}
+#starter .gbook img{width:40px;height:40px}
+#starter p b{font-size:17px}
+#starter p span{font-size:13px}
+#starter .btn.go{font-size:18px;padding:8px 18px 10px}
+#starter .x{position:absolute;right:-16px;top:-18px;width:44px;height:44px;border:0;padding:0;background:url(../img/ui/close.webp) center/36px no-repeat;cursor:pointer;filter:drop-shadow(0 3px 4px rgba(0,0,0,.3));transition:transform .2s;touch-action:manipulation}
+#starter .x:hover,#starter .x:focus-visible{transform:scale(1.12) rotate(8deg);outline:none}
+#starter.tuck{animation:starterTuck .26s ease-in forwards}
+@keyframes starterTuck{to{opacity:0;transform:translateY(60px) scale(.6)}}
+#guide-btn.caught,#more-btn.caught{animation:starterCaught .6s cubic-bezier(.34,1.7,.5,1)}
+@keyframes starterCaught{40%{transform:translateY(-10px) scale(1.12)}}
+@media (prefers-reduced-motion:reduce){#starter,#starter .btn.go,.starter-target::before,#starter.tuck,#guide-btn.caught,#more-btn.caught{animation:none}}
+/* 手冊對話框 */
+.starter-book .pages{display:flex;gap:6px;justify-content:center;margin:4px 0 10px}
+.starter-book .pages i{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font:900 15px/1 var(--f-body);font-style:normal;background:#eadbc0;color:#8a6a4a}
+.starter-book .pages i.on{background:#3fae5a;color:#fff}
+.starter-book .pages i.cur{background:var(--gold);color:var(--ink);box-shadow:0 0 0 3px #fff,0 0 0 5px var(--gold)}
+/* 七天禮物那一排（有 gifts 才是這種）：小卡片＝禮物圖＋第幾天 */
+.starter-book .pages.gifts{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}
+.starter-book .pages.gifts button{cursor:pointer;font:inherit;color:#8a6a4a;width:auto;height:auto;aspect-ratio:auto;border-radius:12px;display:flex;flex-direction:column;align-items:center;gap:1px;padding:4px 2px 3px;background:#f3e6cc;border:2px solid #e2cfa6}
+.starter-book .pages.gifts img{width:100%;max-width:44px;aspect-ratio:1;object-fit:contain;filter:grayscale(.5) opacity(.75)}
+.starter-book .pages.gifts button.sel{border-color:var(--wood);transform:translateY(-2px);box-shadow:0 3px 0 var(--wood)}
+.starter-book .peek{margin:-4px 0 8px;padding:6px 12px;border-radius:12px;background:#fff8e0;font:700 16px/1.4 var(--f-body);color:#8a6a4a;text-align:center}
+.starter-book .peek b{color:var(--ink)}
+.starter-book .pages.gifts span{font:900 11px/1.2 var(--f-body);white-space:nowrap}
+.starter-book .pages.gifts button.on{background:#dff3d9;border-color:#3fae5a;color:#2f7a3c}
+.starter-book .pages.gifts button.on img,.starter-book .pages.gifts button.cur img,.starter-book .pages.gifts button.sel img{filter:none}
+.starter-book .pages.gifts button.cur{background:#fff3c9;border-color:var(--gold);color:var(--ink);box-shadow:0 0 0 2px #fff,0 0 0 4px var(--gold)}
+.starter-book .daily li.now{border-color:var(--gold);background:#fff8e0}
+.starter-book .daily li.skip{opacity:.55}
+.starter-book .present{display:flex;align-items:center;gap:14px;margin:14px 0 4px;padding:10px 14px;border-radius:18px;background:linear-gradient(#fff3c9,#ffe39a);border:3px dashed #d99a1a}
+.starter-book .present img{width:72px;height:72px;object-fit:contain}
+.starter-book .present b{font:900 20px/1.3 var(--f-body);color:var(--ink)}
+.starter-book .note.gift{font-size:18px}
+@media (max-width:760px),(max-height:560px){
+  #starter{bottom:84px;left:8px;right:84px;translate:none;width:auto;gap:8px;padding:6px 8px 6px 6px;border-width:3px;border-radius:16px}
+  #starter .gbook img{width:34px;height:34px}
+  #starter p b{font-size:15px}
+  #starter p span{display:none}
+  #starter .btn.go{font-size:16px;padding:8px 14px 9px}
+  #starter{right:96px}
+  #starter .x{right:-14px;top:-16px}
+  .isle.starter-target::before{width:60px;height:60px;top:-20px}
+  #dock>button.starter-target::before{display:none}
+  body[data-starter="on"] .env-tag{bottom:150px}
+}
+
+/* ---------- 寵物島裝扮、拜訪、今日精選（js/isle.js） ---------- */
+.pisle .isle-sign{position:absolute;left:50%;top:calc(env(safe-area-inset-top) + 18px);transform:translateX(-50%);margin:0;padding:7px 18px;border-radius:12px;background:var(--wood);color:#fff8e6;font:900 18px/1.2 var(--f-body);box-shadow:0 4px 0 var(--wood-2);pointer-events:none;z-index:15;white-space:nowrap}
+.pisle .isle-inbox{position:absolute;left:50%;top:calc(env(safe-area-inset-top) + 64px);transform:translateX(-50%);z-index:26;width:min(340px,calc(100% - 24px));background:#fff8e6;border:4px solid var(--wood);border-radius:18px;padding:12px 14px;box-shadow:0 6px 0 var(--wood-2),0 12px 24px rgba(0,0,0,.25);animation:pop .3s ease-out}
+.isle-inbox h4{margin:0 0 6px;font:900 17px/1.2 var(--f-body);color:var(--wood)}
+.isle-inbox ul{list-style:none;margin:0 0 8px;padding:0;display:grid;gap:4px}
+.isle-inbox li{display:flex;gap:8px;align-items:center;font:700 15px/1.3 var(--f-body);color:var(--ink)}
+.isle-inbox li img{width:30px;height:30px;object-fit:contain;flex:none}
+.isle-inbox small{display:block;margin:-4px 0 8px;color:#8a6a4a;font-weight:700}
+#petroom .furn .lab{margin:12px 0 6px;font:900 15px/1.2 var(--f-body);color:var(--wood)}
+#petroom .furn .lab small{font:700 13px/1 var(--f-body);color:#8a6a4a;margin-left:6px}
+.isle-deco .lab:first-child{margin-top:0}
+.isle-name-pick{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+.isle-name-pick select{font:800 15px/1 var(--f-body);color:var(--ink);background:#fff;border:2px solid #ecd9b8;border-radius:10px;padding:6px 4px}
+.isle-name-pick span{color:var(--wood);font-weight:900}
+.isle-themes{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.isle-th{position:relative;display:grid;justify-items:center;gap:2px;padding:6px 4px;border-radius:14px;background:#fff;border:2px solid #ecd9b8;font:inherit;cursor:pointer}
+.isle-th img{width:100%;aspect-ratio:4/3;object-fit:contain}
+.isle-th b{font:800 13px/1.2 var(--f-body);color:var(--ink)}
+.isle-th small{font:800 11px/1.2 var(--f-body);color:#b0603a;text-align:center}
+.isle-th.on{border-color:var(--wood);background:#fff1c9;box-shadow:0 3px 0 var(--wood-2)}
+.isle-th.locked img{filter:grayscale(.9) brightness(.8) opacity(.6)}
+.isle-th.locked{cursor:pointer}
+.isle-th.locked:hover img,.isle-th.trying img{filter:none}
+.isle-th.trying{border-color:#e0892b;background:#fff3e0;box-shadow:0 3px 0 #c06a1c}
+.isle-visit{position:absolute;inset:0;z-index:40;background:rgba(40,24,10,.45);display:grid;place-items:center;padding:12px}
+.iv-panel,.iv-view{position:relative;width:min(760px,100%);max-height:calc(100dvh - 24px);overflow-y:auto;overscroll-behavior:contain;background:#fff8e6;border:4px solid var(--wood);border-radius:22px;padding:16px;box-shadow:0 8px 0 var(--wood-2),0 16px 30px rgba(0,0,0,.3);animation:pop .25s ease-out}
+.iv-panel h3{margin:0 0 10px;font:900 22px/1.2 var(--f-body);color:var(--wood)}
+.isle-visit .iv-panel>.x{position:absolute;right:8px;top:8px;width:44px;height:44px;transform:none;z-index:2}
+.iv-tabs{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.iv-tabs button{font:900 15px/1 var(--f-body);color:var(--wood);background:#fff;border:3px solid var(--wood);border-radius:99px;padding:8px 14px;cursor:pointer}
+.iv-tabs button.on{background:var(--gold)}
+.iv-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.iv-card{display:grid;gap:3px;text-align:left;padding:8px;border-radius:14px;background:#fff;border:2px solid #ecd9b8;font:inherit;cursor:pointer}
+.iv-card:hover,.iv-card:focus-visible{border-color:var(--wood);outline:none;transform:translateY(-1px)}
+.iv-card .th{position:relative;display:block;background:#cfeafb;border-radius:10px}
+.iv-card .th img{display:block;width:100%;aspect-ratio:4/3;object-fit:contain}
+.iv-card .th img.pet{position:absolute;right:6px;bottom:4px;width:34%;height:auto;aspect-ratio:auto}
+.iv-card b{font:900 14px/1.3 var(--f-body);color:var(--wood)}
+.iv-card small{font:700 12px/1.3 var(--f-body);color:#8a6a4a}
+.isle-visit .tip{font:700 15px/1.5 var(--f-body);color:#8a6a4a}
+.isle-visit .tip.bad{color:#b03a2e}
+.isle-visit .note{margin:10px 0 0;font:700 14px/1.5 var(--f-body);color:#8a6a4a}
+.iv-view{width:min(960px,100%);display:grid;gap:10px}
+.iv-top{display:flex;align-items:center;gap:12px}
+.iv-top p{margin:0;display:grid}
+.iv-top b{font:900 19px/1.2 var(--f-body);color:var(--wood)}
+.iv-top small{font:700 13px/1.2 var(--f-body);color:#8a6a4a}
+.iv-stage{position:relative;height:min(56dvh,560px);border-radius:16px;background:linear-gradient(#bfe3fb,#e3f4ff);overflow:auto;scrollbar-width:thin}
+.iv-stage::before{content:"";display:block;width:var(--w,100%);height:var(--h,100%)}
+.iv-ground{position:absolute;left:max(0px,calc(50% - var(--w,0px) / 2));top:max(0px,calc(50% - var(--h,0px) / 2));transform-origin:0 0}
+.iv-ground .floor,.iv-ground .fence{position:absolute;left:0;top:0;pointer-events:none}
+.iv-ground .fence svg{display:block}
+.iv-ground .land{position:absolute;inset:0;width:100%;height:100%}
+.iv-prop,.iv-pet{position:absolute;transform:translate(-50%,var(--base,-88%));pointer-events:none}
+.iv-prop img,.iv-pet img{display:block;width:100%;height:auto}
+.iv-pet{animation:ivbob 1.6s ease-in-out var(--d) infinite}
+.iv-pet img{transform:scaleX(var(--k))}
+@keyframes ivbob{50%{transform:translate(-50%,-94%)}}
+.iv-react{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.iv-react button{display:flex;align-items:center;gap:6px;font:900 15px/1 var(--f-body);color:var(--wood);background:#fff;border:3px solid var(--wood);border-radius:99px;padding:6px 12px 6px 6px;box-shadow:0 3px 0 var(--wood);cursor:pointer}
+.iv-react button img{width:34px;height:34px;object-fit:contain}
+.iv-react button span{font-variant-numeric:tabular-nums;color:#8a6a4a}
+.iv-react button[disabled]{opacity:.45;cursor:default}
+.iv-react button.mine{opacity:1;background:#fff1c9}
+.iv-view .note{text-align:center}
+.iv-toast{position:absolute;left:50%;bottom:24px;transform:translateX(-50%);margin:0;padding:10px 18px;border-radius:99px;background:var(--wood);color:#fff8e6;font:900 15px/1.3 var(--f-body);box-shadow:0 6px 18px rgba(0,0,0,.25);z-index:5;text-align:center;max-width:calc(100% - 32px)}
+@media (max-width:520px){
+  .pisle .isle-sign{font-size:15px;top:auto;bottom:calc(env(safe-area-inset-bottom) + 156px);max-width:calc(100% - 40px);overflow:hidden;text-overflow:ellipsis}
+  .iv-stage{height:42dvh}
+  .iv-react button{font-size:13px;padding:4px 10px 4px 4px}
+  .iv-react button img{width:28px;height:28px}
+}
+
+/* ---------- 寵物島 2.0：大島、樹、圍籬小路、裝扮模式（js/pet.js、js/isleworld.js） ---------- */
+.pisle .floor{position:absolute;left:0;top:0;pointer-events:none}
+.tree{position:absolute;transform:translate(-50%,var(--base));pointer-events:none}
+.tree img{display:block;width:100%;filter:var(--tod) var(--wx) drop-shadow(0 6px 4px rgba(20,50,30,.25))}
+.fence{position:absolute;pointer-events:none}
+.fence{width:0;height:0}
+.fence img{position:absolute;display:block;max-width:none;filter:var(--tod) var(--wx)}
+.fence img.fj{filter:var(--tod) var(--wx) brightness(.88)}
+.iv-ground .fence img{filter:none}
+.iv-ground .fence img.fj{filter:brightness(.88)}
+.prop.k-house .shadow,.prop.k-tile .shadow,.prop.k-bowl .shadow{display:none}
+.prop.k-house img,.prop.k-tile img{filter:var(--tod) var(--wx) drop-shadow(0 5px 4px rgba(20,50,30,.22))}
+.prop.zz::after{content:"Zz";position:absolute;left:58%;top:6%;font:900 26px/1 var(--f-disp);color:#5a7fd6;text-shadow:0 2px 0 #fff,0 0 6px #fff;animation:zzz 2.4s ease-in-out infinite;pointer-events:none}
+@keyframes zzz{0%{transform:translate(0,6px) scale(.8);opacity:0}30%{opacity:1}100%{transform:translate(14px,-22px) scale(1.15);opacity:0}}
+.prop.new img{animation:petDrop .6s cubic-bezier(.34,1.7,.5,1) 2}
+.pisle.decorating .prop.movable:hover img{filter:var(--tod) var(--wx) brightness(1.08) drop-shadow(0 0 5px #fff7b0)}
+.pisle .prop.sel img{filter:var(--tod) var(--wx) brightness(1.1) drop-shadow(0 0 4px #fff) drop-shadow(0 0 8px #ffd34d)}
+.pisle .prop.held.bad img{filter:sepia(1) saturate(4) hue-rotate(-30deg) brightness(.9);opacity:.85}
+/* 放大縮小鈕 */
+.pisle .zoom{position:absolute;right:calc(env(safe-area-inset-right) + 12px);top:calc(env(safe-area-inset-top) + 76px);z-index:18;display:flex;flex-direction:column;gap:8px}
+.pisle .zoom button{width:46px;height:46px;border-radius:50%;border:3px solid var(--wood);background:var(--cream);color:var(--wood);font:900 26px/1 var(--f-body);box-shadow:0 3px 0 var(--wood);cursor:pointer;touch-action:manipulation}
+.pisle .zoom button:active{transform:translateY(2px);box-shadow:0 1px 0 var(--wood)}
+/* 第一次：手指示範拖曳 */
+.isle-hand{position:absolute;left:50%;top:48%;z-index:24;transform:translate(-50%,-50%);display:grid;justify-items:center;gap:6px;pointer-events:none}
+.isle-hand span{font-size:54px;animation:handdrag 1.8s ease-in-out infinite;filter:drop-shadow(0 4px 4px rgba(0,0,0,.3))}
+.isle-hand p{margin:0;padding:8px 16px;border-radius:99px;background:rgba(255,255,255,.92);font:900 17px/1.2 var(--f-body);color:var(--wood);box-shadow:0 3px 0 rgba(107,63,31,.3)}
+@keyframes handdrag{0%,100%{transform:translateX(-50px)}50%{transform:translateX(50px)}}
+/* 飼料盆 */
+.pisle .bagpop .bowl-row{display:flex;align-items:center;gap:10px}
+.pisle .bagpop .bowl-row img{width:56px;height:auto}
+.pisle .bagpop .note{margin:8px 0 0;font:700 13px/1.4 var(--f-body);color:#8a6a4a}
+/* 裝扮模式：上面一排（復原、全部收起、完成），下面的清單；其他照顧的東西先收起來 */
+.pisle.decorating :is(.dock,aside.care,.skychip,.isle-sign,.hint,.isle-inbox){display:none}
+.pisle .deco-top{position:absolute;left:calc(env(safe-area-inset-left) + 10px);right:calc(env(safe-area-inset-right) + 76px);top:calc(env(safe-area-inset-top) + 10px);z-index:26;
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 10px;border-radius:18px;background:rgba(255,248,230,.95);border:3px solid var(--wood);box-shadow:0 4px 0 var(--wood-2)}
+.pisle .deco-top[hidden]{display:none}
+.pisle .deco-top .ghost.small,.pisle .deco-top .btn.small{font-size:15px;padding:8px 12px;border-width:3px}
+.pisle .deco-top .ghost.small{background:#fff;border:3px solid var(--cream-2);border-radius:99px;color:var(--wood);font-weight:800;cursor:pointer}
+.pisle .deco-top .ghost.small:disabled{opacity:.45;cursor:default}
+.pisle .deco-top .btn.small{margin-left:auto}
+.pisle .deco-top .msg{flex:1 1 220px;margin:0;font:800 14px/1.35 var(--f-body);color:var(--wood)}
+.pisle .deco-top .msg.flash{animation:msgflash .9s ease-out}
+@keyframes msgflash{0%{color:#e2553f;transform:scale(1.04)}100%{color:var(--wood);transform:none}}
+.pisle .deco-top .cnt{font:700 13px/1 var(--f-body);color:#8a6a4a;white-space:nowrap}
+#petroom .pisle .furn{left:calc(env(safe-area-inset-left) + 10px);right:calc(env(safe-area-inset-right) + 10px);bottom:calc(env(safe-area-inset-bottom) + 10px);width:auto;max-width:980px;margin:0 auto;max-height:42dvh;overflow:auto;padding:10px 12px}
+#petroom .pisle .furn[hidden]{display:none}
+.dt-tabs{display:flex;gap:6px;margin-bottom:8px;overflow-x:auto;scrollbar-width:none}
+.dt-tabs button{flex:none;font:900 15px/1 var(--f-body);padding:9px 12px;border-radius:12px;border:3px solid var(--cream-2);background:#fff;color:#8a6a4a;cursor:pointer}
+.dt-tabs button.on{background:var(--gold);border-color:var(--wood);color:var(--wood)}
+.dt-list{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin}
+.dt-i{position:relative;flex:none;width:86px;display:grid;justify-items:center;gap:3px;padding:6px 4px;border-radius:14px;background:#fff;border:2px solid #ecd9b8;font:inherit;cursor:pointer}
+.dt-i img{width:60px;height:50px;object-fit:contain}
+.dt-i .ic{display:grid;place-items:center;width:60px;height:50px;overflow:hidden}
+.dt-i .ic svg{width:60px;height:auto}
+.dt-i .fic{position:relative;display:block}
+.dt-i .fic>.fence{position:absolute;left:50%;top:86%;transform:scale(1.05)}
+.dt-i .fic img,.dt-i .fic img.fj{object-fit:fill;filter:none}
+.dt-i .ic img.tile-ic{width:60px;height:30px}
+.dt-i .ic.erase{font-size:34px}
+.dt-i b{font:800 13px/1.2 var(--f-body);color:var(--ink);text-align:center}
+.dt-i small{font:800 11px/1 var(--f-body);color:#2f7fa8}
+.dt-i.out{background:#f1fbe8;border-color:#9cc97a}
+.dt-i.out small{color:#5a7a3a}
+.dt-i.tool.on{background:#ffe08a;border-color:var(--wood);box-shadow:0 3px 0 var(--wood)}
+.dt-i.locked{cursor:default}
+.dt-i.locked img{filter:grayscale(1) brightness(.75) opacity(.55)}
+.dt-i.locked small{color:#b0603a}
+button.dt-i:hover,button.dt-i:focus-visible{border-color:var(--wood);outline:none}
+#petroom .pisle .furn .note{margin:8px 0 0}
+/* 選起來的那件上面的小按鈕（不跟著島縮放） */
+.deco-sel{position:absolute;z-index:3000;display:flex;gap:6px;transform:translate(-50%,calc(-100% - 8px)) scale(calc(1 / var(--g,1)));transform-origin:50% 100%}
+.deco-sel button{font:900 15px/1 var(--f-body);padding:8px 12px;border-radius:99px;border:3px solid var(--wood);background:#fffaf0;color:var(--wood);box-shadow:0 3px 0 var(--wood);cursor:pointer;white-space:nowrap}
+@media (max-width:640px){
+  .pisle .deco-top{right:calc(env(safe-area-inset-right) + 70px)}
+  .pisle .deco-top .msg{flex-basis:100%;order:5;font-size:13px}
+  .pisle .deco-top .cnt{display:none}
+  .pisle .zoom{top:auto;bottom:calc(env(safe-area-inset-bottom) + 160px)}
+  .pisle.decorating .zoom{bottom:calc(42dvh + 24px)}
+}
+
+/* ---------- 加到桌面（js/install.js） ---------- */
+#a2hs{position:fixed;inset:0;z-index:90;display:grid;place-items:center;padding:16px;background:rgba(10,40,70,.45);animation:fade .25s}
+#a2hs .a2-card{position:relative;width:min(420px,100%);max-height:calc(100% - 40px);overflow:auto;padding:22px 22px 16px;background:var(--cream);border:4px solid var(--wood);border-radius:24px;box-shadow:0 6px 0 var(--wood),0 16px 30px rgba(0,0,0,.3);text-align:center;animation:pop .3s cubic-bezier(.34,1.7,.5,1)}
+#a2hs .a2-icon{width:76px;height:76px;border-radius:18px;box-shadow:0 4px 10px rgba(0,0,0,.2)}
+#a2hs h3{margin:10px 0 6px;font:700 24px/1.2 var(--f-disp);color:var(--wood)}
+#a2hs .a2-why{margin:0 0 12px;font:500 16px/1.5 var(--f-body)}
+#a2hs .a2-why b{display:block;color:#c25b00}
+#a2hs ol{margin:0;padding:12px 14px 12px 36px;text-align:left;background:#fff;border:2px solid var(--cream-2);border-radius:16px;font:700 16px/1.6 var(--f-body)}
+#a2hs li+li{margin-top:6px}
+#a2hs .ic{width:22px;height:22px;vertical-align:-5px;margin-left:4px;fill:none;stroke:#1d7fbf;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+#a2hs .a2-go{margin-top:14px}
+#a2hs .a2-go .btn{font-size:22px;padding:12px 30px 14px}
+#a2hs .a2-foot{margin-top:12px}
+#a2hs .ghost{font:700 17px/1 var(--f-body);background:none;border:3px solid var(--cream-2);border-radius:999px;padding:10px 20px;color:var(--wood);cursor:pointer}
+#a2hs .a2-hand{position:fixed;font-size:46px;filter:drop-shadow(0 3px 4px rgba(0,0,0,.35));animation:a2bob 1s ease-in-out infinite;pointer-events:none}
+#a2hs .a2-hand.bc{left:50%;bottom:6px;margin-left:-23px}
+#a2hs .a2-hand.br{right:14px;bottom:6px}
+#a2hs .a2-hand.tr{right:14px;top:6px;transform:rotate(180deg);animation-name:a2bobup}
+@keyframes a2bob{50%{translate:0 10px}}
+@keyframes a2bobup{50%{translate:0 -10px}}
+
+/* ---------- 爸媽任務（js/parent.js） ---------- */
+.parent-card h2{display:flex;align-items:center;gap:10px}
+.parent-card h2 img{width:48px;height:auto}
+.parent-card .link-box{display:grid;grid-template-columns:64px minmax(0,1fr) auto;gap:12px;align-items:center;margin:0 0 12px;padding:12px 14px;border-radius:18px;background:#fff8e0;border:3px solid var(--gold)}
+.parent-card .link-box img{width:64px}
+.parent-card .link-box b{display:block;font:900 18px/1.3 var(--f-body);color:var(--wood)}
+.parent-card .link-box span{font:500 15px/1.4 var(--f-body)}
+.parent-card .daily li{grid-template-columns:34px minmax(0,1fr) 92px}
+.parent-card .daily li p{margin:0}
+.parent-card .daily li small{display:block;font:500 14px/1.4 var(--f-body);color:#7a5a3a;white-space:normal}
+.parent-card .daily li.tap{cursor:pointer;border-color:#9fd3f0}
+.parent-card .gift{display:grid;justify-items:center;gap:2px;text-align:center}
+.parent-card .gift img{width:44px;height:44px;object-fit:contain}
+.parent-card .gift small{font:700 12px/1.2 var(--f-body);color:var(--wood);white-space:normal}
+.parent-card .daily li>*{min-width:0}
+.parent-card .tk{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:#eadbc0;color:#fff;font:900 18px/1 var(--f-body)}
+.parent-card li.got .tk{background:#3fae5a}
+.parent-card h3{margin:16px 0 6px;font:900 19px/1.2 var(--f-body);color:var(--wood)}
+.parent-card h3 small{font-size:14px;color:#8a6a4a;margin-left:6px}
+.parent-card .week{margin:0;padding:10px 12px;border-radius:14px;background:#fff;border:3px solid var(--cream-2);font:700 16px/1.4 var(--f-body)}
+.parent-card .week.ok{border-color:#9bd6a8;background:#effaf1}
+.parent-card .photo{display:grid;grid-template-columns:56px minmax(0,1fr);gap:10px;align-items:center;margin-top:8px}
+.parent-card .photo img{width:56px}
+.parent-card .photo p{margin:0;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 8px;align-items:center;font:700 15px/1.3 var(--f-body)}
+.parent-card .photo .bar{grid-column:1}
+.parent-card .stks{display:flex;flex-wrap:wrap;gap:6px;margin:0}
+.parent-card .stk img{width:56px;height:56px}
+.parent-card .link{background:none;border:0;padding:0;color:#1d7fbf;font:700 16px/1 var(--f-body);cursor:pointer}
+.parent-card.code{text-align:center}
+.parent-card .qr{width:min(260px,70vw);margin:8px auto;padding:10px;background:#fff;border-radius:18px;border:3px solid var(--cream-2)}
+.parent-card .qr svg{display:block;width:100%;height:auto}
+.parent-card .pcode{margin:8px 0;font:700 17px/1.4 var(--f-body)}
+.parent-card .pcode b{font:700 30px/1 var(--f-disp);letter-spacing:.12em;color:var(--wood);margin-left:6px}
+.parent-card .pcode small{display:block;color:#8a6a4a;font-size:14px}
+.parent-card .row.center{justify-content:center}
+@media (max-width:560px){
+  .parent-card .daily li{grid-template-columns:30px minmax(0,1fr) 70px;padding:9px 10px}
+  .parent-card .link-box{grid-template-columns:48px minmax(0,1fr)}
+  .parent-card .link-box img{width:48px}
+  .parent-card .link-box .btn{grid-column:1/-1}
+}
+
+/* 2026-10-31 功能列放不下時收進「更多」（js/dock.js）：手機字回到 13px、按鈕至少 44px，圖＋字一起 */
+#dock>button.ovf{display:none!important}
+#dock>button{flex:none}
+#dock{max-width:calc(100vw - 16px);box-sizing:border-box}
+#more-btn .more-ic{width:52px;height:52px;display:flex;align-items:center;justify-content:center;gap:5px}
+#more-btn .more-ic i{width:10px;height:10px;border-radius:50%;background:#8a5a2a;box-shadow:inset 0 -2px 0 #5e3a18}
+#more-btn.on{background:linear-gradient(#ffe7a8,#f6c75e)!important}
+#more-btn.on .more-ic i:nth-child(2){translate:0 -4px}
+#dock-more{position:absolute;right:8px;bottom:126px;z-index:8;display:grid;grid-template-columns:repeat(var(--cols,3),92px);gap:10px;max-width:calc(100vw - 16px);box-sizing:border-box;padding:12px;border-radius:22px;background:linear-gradient(#8a5a2a,#5e3a18);box-shadow:inset 0 0 0 3px #c99a4a,0 8px 18px rgba(0,0,0,.35);animation:dockMore .25s cubic-bezier(.34,1.5,.5,1) both}
+#dock-more[hidden],body:not([data-scene="map"]) #dock-more{display:none}
+#dock-more::after{content:'';position:absolute;right:var(--tip,46px);bottom:-9px;width:18px;height:18px;rotate:45deg;background:#5e3a18;box-shadow:3px 3px 0 0 #c99a4a}
+#dock-more>button{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:2px;width:92px;height:86px;border:0;border-radius:18px;background:linear-gradient(#fff8e6,#f3dcb0);padding:6px 0;cursor:pointer;box-shadow:inset 0 -3px 0 #d9b77a}
+#dock-more>button img{width:52px;height:52px;object-fit:contain;filter:drop-shadow(0 3px 3px rgba(0,0,0,.2))}
+#dock-more>button b{font:900 16px/1.1 var(--f-body);color:#5a3418;white-space:nowrap}
+#dock-more .dot,#dock-more .badge{position:absolute;top:-8px;right:-6px}
+#dock-more .badge{min-width:24px;height:22px;padding:0 5px;border-radius:99px;border:2px solid #fff;font:900 13px/18px var(--f-body);font-style:normal;color:#fff;background:#e2553f;text-align:center}
+#dock-more .badge[hidden],#dock-more .dot[hidden]{display:none}
+#dock-more>button[data-for="task-btn"][data-state=left] .badge,#dock-more>button[data-for="guide-btn"] .badge{background:#f08a24}
+#dock-more>button[data-state=all] .badge{background:#3fae5a}
+#dock-more>button.starter-target{box-shadow:inset 0 -3px 0 #d9b77a,0 0 0 3px #ffd34d,0 0 16px #ffd34d}
+@keyframes dockMore{from{opacity:0;transform:translateY(16px) scale(.96)}}
+@media (prefers-reduced-motion:reduce){#dock-more{animation:none}}
+@media (max-width:760px),(max-height:560px){
+  #dock{bottom:calc(6px + env(safe-area-inset-bottom));gap:4px;padding:6px}
+  #dock>button{width:62px!important;height:64px}
+  #dock>button b{font-size:13px!important}
+  #more-btn .more-ic{width:34px;height:34px;gap:4px}
+  #more-btn .more-ic i{width:8px;height:8px}
+  #dock-more{bottom:calc(86px + env(safe-area-inset-bottom));grid-template-columns:repeat(var(--cols,3),76px);gap:8px;padding:10px;border-radius:18px}
+  #dock-more>button{width:76px;height:72px;border-radius:14px;padding:4px 0}
+  #dock-more>button img{width:40px;height:40px}
+  #dock-more>button b{font-size:14px}
+}
+/* 紅點：功能列裡沒有自己樣式的（爸媽任務、更多）也看得到 */
+#dock .dot,#dock-more .dot{background:#e2553f;color:#fff;border:2px solid #fff;border-radius:99px;font:900 14px/20px var(--f-body);font-style:normal;text-align:center;box-shadow:0 2px 4px rgba(0,0,0,.3);box-sizing:border-box}
+#dock-more .dot{min-width:24px;height:24px}
+#dock .dot:empty,#dock-more .dot:empty{min-width:18px!important;width:18px;height:18px!important;top:-4px!important;right:-2px!important}

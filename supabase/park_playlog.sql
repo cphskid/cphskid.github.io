@@ -413,3 +413,28 @@ grant execute on function
   public.park_student_activity(uuid, int), public.park_class_last_play(text), public.park_admin_activity(int),
   public.park_class_days(text, int), public.park_admin_insights(int)
   to authenticated;
+
+-- -----------------------------------------------------------------------------
+-- 2026-10-25 補記錄（「分析數據提升黏著率」串）：
+--   device   手機／平板／電腦（看手機上是不是比較容易走掉）
+--   load_ms  從打開網頁到能玩花了幾毫秒（看是不是等太久就走了）
+--   marks    這一趟裡發生的事，例如守護異世界 'battle:td-01'（開打）、'win:td-01'（打贏）。
+--            答題紀錄要一場打完才送，所以開打就先記一筆，分得出「沒開打」還是「打一半走掉」。
+--   park_play_note(id, device, load_ms, mark)：只能寫自己這一筆；一趟最多 60 個 mark。
+-- -----------------------------------------------------------------------------
+alter table public.park_play_log add column if not exists device  text;
+alter table public.park_play_log add column if not exists load_ms int;
+alter table public.park_play_log add column if not exists marks   text[] not null default '{}';
+
+create or replace function public.park_play_note(p_id bigint, p_device text default null, p_load_ms int default null, p_mark text default null)
+returns void language sql security definer set search_path = public, pg_temp as $$
+  update public.park_play_log l
+     set device  = coalesce(nullif(left(btrim(coalesce(p_device, '')), 20), ''), l.device),
+         load_ms = coalesce(least(greatest(p_load_ms, 0), 600000), l.load_ms),
+         marks   = case when nullif(btrim(coalesce(p_mark, '')), '') is null or cardinality(l.marks) >= 60 then l.marks
+                        else l.marks || left(btrim(p_mark), 40) end,
+         last_seen = now()
+   where l.id = p_id and l.student_id = public.current_student_id();
+$$;
+revoke all on function public.park_play_note(bigint, text, int, text) from public, anon;
+grant execute on function public.park_play_note(bigint, text, int, text) to authenticated;

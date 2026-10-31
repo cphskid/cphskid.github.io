@@ -93,6 +93,15 @@ run -f supabase/park_news.sql 2>&1 | grep -v NOTICE || true
 echo "── 樂園公告測試"
 run -f supabase/test/park_news_test.sql 2>&1 | grep -E "✓|✗|ERROR|──" | sed 's/^psql:[^ ]* NOTICE:  //'
 
+echo "── park_parent.sql"
+run -f supabase/park_parent.sql 2>&1 | grep -v NOTICE || true
+
+echo "── 爸媽任務與監護人測試"
+run -f supabase/test/park_parent_test.sql 2>&1 | grep -E "✓|✗|ERROR|──" | sed 's/^psql:[^ ]* NOTICE:  //'
+
+echo "── 寵物島裝扮、拜訪、今日精選測試（park_isle.sql）"
+run -f supabase/test/park_isle_test.sql 2>&1 | grep -E "✓|✗|ERROR|──" | sed 's/^psql:[^ ]* NOTICE:  //'
+
 # 島嶼開拓者的 SQL（有給 ISLAND_REPO 才跑）：確定它疊在樂園上面套得進去、護照接得到
 if [ -n "${ISLAND_REPO:-}" ]; then
   echo "── 島嶼開拓者 island_pioneer.sql"

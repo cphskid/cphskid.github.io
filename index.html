@@ -6,6 +6,14 @@
 <title>時空冒險樂園</title>
 <meta name="description" content="時空冒險樂園：浮在海上的冒險樂園，每座島都是一個遊戲。">
 <link rel="icon" href="img/l-02.webp">
+<!-- 加到桌面（js/install.js）：Android/電腦用 manifest，iPhone 用 apple-touch-icon -->
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="img/app/icon-180.png">
+<meta name="theme-color" content="#2f9fd8">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="時空樂園">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Noto+Sans+TC:wght@500;700;900&display=swap">
@@ -23,6 +31,8 @@
 <link rel="modulepreload" href="js/pet.js">
 <link rel="modulepreload" href="js/traveller.js">
 <link rel="modulepreload" href="js/shop.js">
+<link rel="modulepreload" href="js/install.js">
+<link rel="modulepreload" href="js/parent.js">
 <link rel="modulepreload" href="js/repair.js">
 <link rel="modulepreload" href="js/news.js">
 <link rel="modulepreload" href="js/audio.js">
@@ -64,7 +74,6 @@
 <div id="ui">
   <div id="hud">
     <div class="topbar">
-      <button class="back" id="back">← 回到開場</button>
       <div class="sign"><img src="img/ui/sign.webp" alt=""><div><small>時空冒險樂園</small><b>冒險地圖</b></div></div>
     </div>
     <button class="pan" id="pan-l" aria-label="往左看" hidden></button>
@@ -72,23 +81,30 @@
     <!-- 底部功能列：「我的東西」都在這裡（島上只放去哪裡玩）。學生才有，沒登入整條藏起來 -->
     <nav id="dock" aria-label="我的東西">
       <button id="pass-btn" hidden aria-label="打開樂園護照"><img src="img/ui/passport.webp" alt=""><b>護照</b><i class="dot" hidden></i></button>
+      <button id="guide-btn" hidden aria-label="新手手冊"><img src="img/ui/task.webp" alt=""><b>新手手冊</b><i class="badge"></i></button>
       <button id="task-btn" hidden aria-label="每日任務"><img src="img/ui/task.webp" alt=""><b>每日任務</b><i class="badge" hidden></i></button>
+      <button id="parent-btn" hidden aria-label="爸媽任務"><img src="img/parent/letter.webp" alt=""><b>爸媽任務</b><i class="dot" hidden></i></button>
       <button id="rank-btn" hidden aria-label="班級排行"><img src="img/ui/rank.webp" alt=""><b>排行</b></button>
       <button id="shop-btn" hidden aria-label="打開時空商店"><img src="img/ui/shop.webp" alt=""><b>商店</b></button>
       <button id="wear-btn" hidden aria-label="我的時空旅人"><img src="img/ui/wear.webp" alt=""><b>我的旅人</b></button>
       <button id="pet-btn" hidden aria-label="我的桌寵"><img src="img/ui/pet.webp" alt=""><b>桌寵</b></button>
+      <button id="quiz-btn" hidden aria-label="時光試煉島：試煉卷"><img src="img/ui/quiz.webp" alt=""><b>試煉島</b><i class="badge" hidden></i></button>
     </nav>
+    <!-- 新手手冊的「下一步」（js/starter.js）：功能列上面一條，註冊 14 天內才有 -->
+    <div id="starter" hidden></div>
     <div id="tick">
       <div class="bubble" id="tick-say" role="status" aria-live="polite" hidden></div>
       <button id="tick-btn" aria-label="導覽員滴答，點一下聽下一個提示"><img id="tick-img" src="img/tick/wave.webp" alt=""></button>
     </div>
   </div>
-  <!-- 左上角的齒輪：聲音、問題回報、登出收在這裡 -->
+  <!-- 左上角的齒輪：聲音、問題回報、回到開場、登出收在這裡（左上第一顆不放出口以外的東西，介面設計原則第 2 類） -->
   <div id="gear">
   <button id="gear-btn" type="button" aria-label="設定" aria-expanded="false"><img src="img/ui/gear.webp" alt=""><i class="dot" hidden></i></button>
   <div id="gear-menu" hidden>
   <button id="snd-btn" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/><path class="w1" d="M16 9.5a3.5 3.5 0 0 1 0 5"/><path class="w2" d="M18.5 7a7 7 0 0 1 0 10"/><path class="mute" d="M16 9l6 6M22 9l-6 6"/></svg><b>聲音全開</b></button>
+  <button id="a2hs-btn" type="button" hidden>📲<b>加到桌面</b></button>
   <button id="fb-btn" type="button" data-pfb aria-label="問題回報">💬<b>問題回報</b><i class="dot" hidden></i></button>
+  <button id="back" type="button">🌅<b>回到開場</b></button>
   <button id="out-btn" type="button" hidden>🚪<b>登出</b></button>
   <button id="ver-btn" type="button" data-park-changelog aria-label="版號與更新說明">ℹ️<b data-park-version data-prefix="版本 ">版本</b></button>
   </div>
@@ -113,6 +129,7 @@
 <script src="js/vendor/supabase.js"></script>
 <script src="js/feedback.js"></script>
 <script src="js/changelog.js"></script>
+<script src="js/dock.js" defer></script>
 <script type="module" src="js/park.js"></script>
 </body>
 </html>

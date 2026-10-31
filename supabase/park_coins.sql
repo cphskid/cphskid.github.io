@@ -70,6 +70,7 @@ create table if not exists public.park_daily (
 
 -- 商店（主角的衣飾直接用 park_wear_items 的價錢，不在這張表）
 --   cat：pet 寵物點心（ref＝park_pet_items 的 code，可以一直買）／furn 寵物島傢俱（ref＝傢俱 id，買一次）
+--        theme 寵物島的風格（ref＝'theme-<code>'，買一次，也記在 park_student_furniture；上架在 park_isle.sql）
 --        frame 頭像框（ref＝park_rewards 的 code，買一次，記在 park_student_rewards）
 --   months：本月限定，只在那幾個月上架（1～12，null＝常駐）
 create table if not exists public.park_shop_items (
@@ -85,7 +86,7 @@ create table if not exists public.park_shop_items (
   sort   int  not null default 0
 );
 alter table public.park_shop_items drop constraint if exists park_shop_items_cat_check;
-alter table public.park_shop_items add constraint park_shop_items_cat_check check (cat in ('pet', 'furn', 'frame'));
+alter table public.park_shop_items add constraint park_shop_items_cat_check check (cat in ('pet', 'furn', 'frame', 'theme'));
 
 -- 買到的傢俱（點心直接放進桌寵背包）
 create table if not exists public.park_student_furniture (
@@ -529,7 +530,7 @@ begin
       union all
       select jsonb_build_object('cat', case when si.months is not null then 'month' else si.cat end, 'kind', si.cat,
                'code', si.code, 'ref', si.ref, 'name', si.name, 'art', si.art, 'blurb', si.blurb, 'price', si.price, 'sort', si.sort,
-               'owned', (si.cat = 'furn' and exists (select 1 from public.park_student_furniture f
+               'owned', (si.cat in ('furn', 'theme') and exists (select 1 from public.park_student_furniture f
                                                       where f.student_id = v_me and f.item = si.ref))
                      or (si.cat = 'frame' and exists (select 1 from public.park_student_rewards b
                                                        where b.student_id = v_me and b.reward = si.ref)),
@@ -565,7 +566,7 @@ begin
      where si.code = p_code and si.active and (si.months is null or v_month = any(si.months));
     if v_si.code is null then raise exception '商店沒有賣這個（可能下架了）'; end if;
     v_name := v_si.name;
-    if v_si.cat = 'furn' and exists (select 1 from public.park_student_furniture f where f.student_id = v_me and f.item = v_si.ref) then
+    if v_si.cat in ('furn', 'theme') and exists (select 1 from public.park_student_furniture f where f.student_id = v_me and f.item = v_si.ref) then
       raise exception '你已經有「%」了', v_name;
     end if;
     if v_si.cat = 'frame' and exists (select 1 from public.park_student_rewards b where b.student_id = v_me and b.reward = v_si.ref) then
@@ -578,7 +579,7 @@ begin
     select count(*) + 1 into v_n from public.park_coin_ledger where student_id = v_me and source like 'buy:' || p_code || ':%';
     insert into public.park_coin_ledger (student_id, source, amount, note)
     values (v_me, 'buy:' || p_code || ':' || v_n, -v_si.price, '買了「' || v_name || '」');
-    if v_si.cat = 'furn' then
+    if v_si.cat in ('furn', 'theme') then   -- theme：寵物島的風格（park_isle.sql）
       insert into public.park_student_furniture (student_id, item) values (v_me, v_si.ref);
     elsif v_si.cat = 'frame' then
       insert into public.park_student_rewards (student_id, reward) values (v_me, v_si.ref);
@@ -664,6 +665,12 @@ returns jsonb language sql stable security definer set search_path = public, pg_
     from public.park_student_furniture where student_id = public.current_student_id();
 $$;
 
+-- 從桌面捷徑打開樂園（js/install.js 看到是捷徑開的才叫）：第一次送 50 時光幣，之後回 0
+create or replace function public.park_app_home()
+returns int language sql security definer set search_path = public, pg_temp as $$
+  select public.park_coin_grant(public.current_student_id(), 'app:home', 50, null, '把樂園加到桌面');
+$$;
+
 -- -----------------------------------------------------------------------------
 -- 6. 權限
 -- -----------------------------------------------------------------------------
@@ -675,10 +682,10 @@ revoke all on function
   public.park_daily_places(), public.park_daily_can(uuid, text), public.park_daily_island(uuid, text, timestamptz, timestamptz),
   public.park_daily_pick(uuid, date), public.park_daily_week_days(uuid),
   public.park_coins_me(), public.park_coins_seen(), public.park_daily_claim(text), public.park_shop(),
-  public.park_shop_buy(text, text), public.park_my_furniture(), public.park_class_board(text, text)
+  public.park_shop_buy(text, text), public.park_my_furniture(), public.park_class_board(text, text), public.park_app_home()
   from public, anon, authenticated;
 grant execute on function
   public.park_coins_me(), public.park_coins_seen(), public.park_daily_claim(text), public.park_shop(),
-  public.park_shop_buy(text, text), public.park_my_furniture(), public.park_class_board(text, text)
+  public.park_shop_buy(text, text), public.park_my_furniture(), public.park_class_board(text, text), public.park_app_home()
   to authenticated;
 grant execute on function public.park_shop() to anon;
