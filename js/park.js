@@ -731,7 +731,8 @@ addEventListener('keydown', (e) => { if (e.key === 'Escape') closeGear(); });
 // ---------- 從網址決定一開始的畫面 ----------
 // 遊戲裡的「回樂園」按鈕連到 /#map，直接回到島嶼地圖、不用再看一次開場；
 // 就算連結沒帶 #map，這個分頁從開場進過樂園也會直接回地圖（按「回到開場」或登出就重來）
-const [, route, zoneCode] = location.hash.match(/^#(map)(?:\/([\w-]+))?/) ?? [];
+// #passport/<設施>：遊戲裡的「我的勳章」直接翻到護照的那一頁（守護異世界 2026-10-31 拿掉自己的徽章牆後連過來）
+const [, route, zoneCode] = location.hash.match(/^#(map|passport)(?:\/([\w-]+))?/) ?? [];
 function enteredThisTab() {
   if (me.kind === 'guest') return false;
   try { return sessionStorage.getItem('park:entered') === '1'; } catch { return false; }
@@ -769,7 +770,11 @@ if (route && me.kind === 'guest') {
   // 這個分頁已經從開場進過樂園（例如從遊戲按「回樂園」回來），就直接回地圖，不再看一次開場
   if (!route) history.replaceState(null, '', '#map');
   showMap({ animate: false });
-  const z = zones.get(zoneCode);
+  if (route === 'passport') {
+    history.replaceState(null, '', '#map');
+    account.openPassport({ facility: zoneCode });
+  }
+  const z = route === 'map' && zones.get(zoneCode);
   if (z) {
     const s = park.map.slots.find((x) => x.slot === z.slot);
     if (s) setPan(s.left + s.width / 2 - 800);
