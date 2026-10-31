@@ -5,6 +5,7 @@
 // 一次只給一步；做沒做到是伺服器看紀錄判斷的，做完當下發時光幣，一頁做完再送那頁的禮物。
 // 一頁一天：今天這頁做完了，就預告明天的禮物。
 import * as auth from './auth.js';
+import { wrapWallet } from './wallet-scroll.js';
 import { sfx } from './audio.js';
 
 const $ = (s, root = document) => root.querySelector(s);
@@ -178,6 +179,7 @@ export function openBook(msg = null) {
 }
 function show(html) {
   layer.innerHTML = html;
+  wrapWallet(layer);
   layer.hidden = false;
   layer.onclick = (e) => { if (e.target === layer) close(); };
   layer.querySelectorAll('[data-close]').forEach((b) => { b.onclick = close; });

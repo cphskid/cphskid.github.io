@@ -4,6 +4,7 @@
 // 功能列的「爸媽任務」打開卡片：5 項一次性任務＋每週的週末聯絡簿；還沒連起來的，按「拿給爸媽看」
 // 秀 QR（帶一次性家長碼），爸媽掃了在後台註冊就連起來。做沒做到是伺服器判斷的，打開卡片時自動發獎。
 import * as auth from './auth.js';
+import { wrapWallet } from './wallet-scroll.js';
 import { guide as installGuide } from './install.js';
 import { sfx } from './audio.js';
 
@@ -79,6 +80,7 @@ function next(code) {
 function close() { layer.hidden = true; layer.innerHTML = ''; }
 function show(html) {
   layer.innerHTML = html;
+  wrapWallet(layer);
   layer.hidden = false;
   layer.onclick = (e) => { if (e.target === layer) close(); };
   layer.querySelectorAll('[data-close]').forEach((b) => { b.onclick = close; });
