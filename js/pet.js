@@ -387,6 +387,7 @@ function openScene({ select, say: first } = {}) {
   const cs = getComputedStyle($('.pisle', layer));
   skyM = skyMatrix(`${cs.getPropertyValue('--tod')} ${cs.getPropertyValue('--wx')}`);
   landReady = paintLand(land);
+  tintTiles();
   undoKeep = [];
   sceneAbort = new AbortController();
   const box = $('.actors', layer);
@@ -432,6 +433,25 @@ function openScene({ select, say: first } = {}) {
 // 原本是 <img> 掛 CSS filter：放大時 iOS 照放大後的尺寸重畫整張 2640 寬的圖，記憶體爆掉、網頁重新整理
 let skyM = null, landReady = null, landTurn = 0;
 const skyTint = (hex) => tintHex(skyM, hex);
+// 小路地磚的圖也先套好日夜天氣的顏色（小圖，做成 data URL 給地上那張 SVG 用）
+let tileUrl = {};
+const skyTile = (tone) => tileUrl[tone] ?? W.tileSrc(tone);
+async function tintTiles() {
+  tileUrl = {};
+  if (!skyM) return;
+  const m = skyM;
+  await Promise.all(['stone', 'wood', 'brick'].map(async (tone) => {
+    const im = new Image();
+    im.src = W.tileSrc(tone);
+    try { await im.decode(); } catch { return; }
+    if (m !== skyM) return;
+    const cv = document.createElement('canvas');
+    cv.width = im.naturalWidth; cv.height = im.naturalHeight;
+    paintTinted(cv, im, m);
+    try { tileUrl[tone] = cv.toDataURL('image/webp', .9); } catch { /* 用原本的圖 */ }
+  }));
+  if (m === skyM && $('.floor', layer)) $('.floor', layer).innerHTML = W.floorSvg(items, { grid: !!deco, tint: skyTint, tile: skyTile });
+}
 async function paintLand(src) {
   const turn = ++landTurn, cv = $('canvas.land', layer);
   const im = new Image();
@@ -571,7 +591,7 @@ async function revealScene() {
   if (pis !== $('.pisle', layer)) return;
   pis.classList.remove('loading');
   span('寵物島掀開', t0);
-  warm(...new Set(actors.map((a) => `img/pet/${a.p.species}/${a.p.stage}-`)), 'img/pet/food/', 'img/pet/furniture/', 'img/pet/land2/');
+  warm(...new Set(actors.map((a) => `img/pet/${a.p.species}/${a.p.stage}-`)), 'img/pet/food/', 'img/pet/furniture/', 'img/pet/build/', 'img/pet/land2/');
   guideFirst();
 }
 
@@ -765,7 +785,7 @@ function rebuildWorld() {
       box.appendChild(el);
     } else if (kind !== 'path') addProp(box, it);
   });
-  $('.floor', layer).innerHTML = W.floorSvg(items, { grid: !!deco, tint: skyTint });
+  $('.floor', layer).innerHTML = W.floorSvg(items, { grid: !!deco, tint: skyTint, tile: skyTile });
   for (const a of actors) {
     if (a.mode === 'held' || walkable(a.x, a.y)) continue;
     const t = somewhere(a);
@@ -909,13 +929,10 @@ function toolIcon(id) {
   const kind = W.kindOf(id);
   if (kind === 'tile') return `<img src="img/pet/furniture/${id}.webp" alt="">`;
   if (kind === 'fence' || kind === 'gate') {
-    const f = W.fenceEl(id, 0, 0, kind === 'gate' ? { pi: true, ni: true } : { pi: true, ni: true });
-    return `<span class="ic">${f.html}</span>`;
+    const f = W.fenceEl(id, 0, 0, { pi: true, ni: true });
+    return `<span class="ic fic"><span class="fence">${f.html}</span></span>`;
   }
-  if (kind === 'path') {
-    const color = { 's-path-stone': ['#b9af9f', '#e4ddcf'], 's-path-wood': ['#8a5a30', '#c99560'], 's-path-brick': ['#9a4a35', '#d9775a'] }[id];
-    return `<span class="ic"><svg viewBox="0 0 60 34" width="60" height="34"><polygon points="30,2 58,17 30,32 2,17" fill="${color[0]}"/><polygon points="30,6 50,17 30,28 10,17" fill="${color[1]}"/></svg></span>`;
-  }
+  if (kind === 'path') return `<span class="ic"><img class="tile-ic" src="${W.tileSrc(W.CAT[id].tone)}" alt=""></span>`;
   return '<span class="ic erase">🧽</span>';
 }
 // 從清單擺一件出來：放在畫面中間附近的空格
@@ -984,7 +1001,7 @@ function dragProp(o, e) {
   const before = snapshot();
   const foot = () => {
     const ok = W.canPlace(occ, it.id, cand.i, cand.j, it.f, k);
-    $('.floor', layer).innerHTML = W.floorSvg(items, { grid: true, tint: skyTint }) + W.footSvg(it.id, cand.i, cand.j, it.f, ok);
+    $('.floor', layer).innerHTML = W.floorSvg(items, { grid: true, tint: skyTint, tile: skyTile }) + W.footSvg(it.id, cand.i, cand.j, it.f, ok);
     return ok;
   };
   const move = (ev) => {

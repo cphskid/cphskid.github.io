@@ -192,67 +192,54 @@ export function reachable(solid, from) {
   return out;
 }
 
-// ---------- 畫：圍籬（每格一張小 SVG，跟寵物一起排前後）、小路（一張鋪在地上的 SVG）、裝扮時的格子 ----------
-const FENCE_TONE = { white: ['#fffdf6', '#b8ab95', '#e9e1d2'], wood: ['#d39a5c', '#7a4a22', '#b77c40'] };
-// nb：四個方向有沒有接著圍籬或小門 { pi, ni, pj, nj }；回傳 { html, left, top, z }（left/top 是島上的點）
+// ---------- 畫：圍籬（每格幾張小圖，跟寵物一起排前後）、小路（一張鋪在地上的 SVG）、裝扮時的格子 ----------
+// 圍籬的圖是正面看的（img/pet/build/），用 CSS 斜切（skewY 對到 2:1 的格線）接到隔壁格；每格畫一根柱子＋往有鄰居的方向各半段
+const RAIL_W = 22.5, RAIL_H = 32, POST_H = 34, POST_W = { white: 8.3, wood: 11.3 }, GATE_W = 48, GATE_H = 41.3;
+const FENCE_DIR = { pi: [1, .5], ni: [-1, .5], pj: [-1, -.5], nj: [1, -.5] };     // [往右或往左, 斜率]
+// nb：四個方向有沒有接著圍籬或小門 { pi, ni, pj, nj }；回傳 { html, left, top, z }（left/top 是格子中心在島上的點）
 export function fenceEl(id, i, j, nb) {
   const c = center(i, j), X = c.x * GW, Y = c.y * GH;
-  const W = 100, H = 90, ox = 50, oy = 66;            // SVG 裡格子中心的位置
-  const E = { pi: [22.5, 11.25], ni: [-22.5, -11.25], pj: [-22.5, 11.25], nj: [22.5, -11.25] };
-  let svg = '';
+  let html = '';
   if (kindOf(id) === 'gate') {
-    const along = (nb.pj || nb.nj) && !(nb.pi || nb.ni) ? ['pj', 'nj'] : ['pi', 'ni'];
-    const [p1, p2] = along.map((k) => [ox + E[k][0] * .92, oy + E[k][1] * .92]).sort((a, b) => a[1] - b[1]);
-    const post = ([x, y]) => `<rect x="${x - 5}" y="${y - 44}" width="10" height="44" rx="3" fill="#c98a4b" stroke="#6b3f1f" stroke-width="1.6"/>
-      <circle cx="${x}" cy="${y - 46}" r="5.5" fill="#ffd36b" stroke="#6b3f1f" stroke-width="1.4"/>`;
-    svg = `<path d="M${p1[0]} ${p1[1] - 38} Q${(p1[0] + p2[0]) / 2} ${Math.min(p1[1], p2[1]) - 62} ${p2[0]} ${p2[1] - 38}" fill="none" stroke="#6b3f1f" stroke-width="7" stroke-linecap="round"/>
-      <path d="M${p1[0]} ${p1[1] - 38} Q${(p1[0] + p2[0]) / 2} ${Math.min(p1[1], p2[1]) - 62} ${p2[0]} ${p2[1] - 38}" fill="none" stroke="#c98a4b" stroke-width="4" stroke-linecap="round"/>
-      ${post(p1)}${post(p2)}`;
+    const s = (nb.pj || nb.nj) && !(nb.pi || nb.ni) ? -.5 : .5;
+    html = `<img class="gate${s < 0 ? ' fj' : ''}" src="img/pet/build/gate.webp" alt="" style="left:${-GATE_W / 2}px;top:${-GATE_H + 1}px;width:${GATE_W}px;height:${GATE_H}px;transform:matrix(1,${s},0,1,0,0)">`;
   } else {
-    const [fill, line, shade] = FENCE_TONE[CAT[id].tone];
-    let dirs = Object.keys(E).filter((k) => nb[k]);
+    const tone = CAT[id].tone;
+    let dirs = Object.keys(FENCE_DIR).filter((k) => nb[k]);
     if (!dirs.length) dirs = ['pi', 'ni'];
-    const seg = (k) => {
-      const [ex, ey] = E[k];
-      let s = `<path d="M${ox} ${oy} L${ox + ex} ${oy + ey}" stroke="rgba(30,60,20,.18)" stroke-width="6" stroke-linecap="round"/>`;
-      for (const h of [12, 25]) s += `<path d="M${ox} ${oy - h} L${ox + ex} ${oy + ey - h}" stroke="${line}" stroke-width="5" stroke-linecap="round"/><path d="M${ox} ${oy - h} L${ox + ex} ${oy + ey - h}" stroke="${fill}" stroke-width="3" stroke-linecap="round"/>`;
-      for (const t of [.42, .84]) {
-        const x = ox + ex * t, y = oy + ey * t;
-        s += `<path d="M${x - 3.5} ${y} L${x - 3.5} ${y - 27} L${x} ${y - 32} L${x + 3.5} ${y - 27} L${x + 3.5} ${y} Z" fill="${fill}" stroke="${line}" stroke-width="1.3" stroke-linejoin="round"/>
-          <path d="M${x + 1.5} ${y - 2} L${x + 1.5} ${y - 26}" stroke="${shade}" stroke-width="1.6"/>`;
-      }
-      return s;
+    const rail = (k) => {
+      const [dx, sl] = FENCE_DIR[k];
+      return `<img class="rail${sl < 0 ? ' fj' : ''}" src="img/pet/build/rail-${tone}.webp" alt="" style="left:${dx > 0 ? 0 : -RAIL_W}px;top:${-RAIL_H}px;width:${RAIL_W}px;height:${RAIL_H}px;transform-origin:${dx > 0 ? 0 : 100}% 100%;transform:matrix(1,${sl},0,1,0,0)">`;
     };
-    const back = dirs.filter((k) => E[k][1] < 0), front = dirs.filter((k) => E[k][1] > 0);
-    svg = back.map(seg).join('') + `<rect x="${ox - 5}" y="${oy - 36}" width="10" height="36" rx="2.5" fill="${fill}" stroke="${line}" stroke-width="1.5"/>
-      <path d="M${ox - 6} ${oy - 36} L${ox} ${oy - 42} L${ox + 6} ${oy - 36} Z" fill="${fill}" stroke="${line}" stroke-width="1.4" stroke-linejoin="round"/>` + front.map(seg).join('');
+    const back = dirs.filter((k) => FENCE_DIR[k][0] * FENCE_DIR[k][1] < 0), front = dirs.filter((k) => FENCE_DIR[k][0] * FENCE_DIR[k][1] > 0);
+    const w = POST_W[tone] ?? 9;
+    html = back.map(rail).join('') + `<img class="post" src="img/pet/build/post-${tone}.webp" alt="" style="left:${-w / 2}px;top:${-POST_H + 1}px;width:${w}px;height:${POST_H}px">` + front.map(rail).join('');
   }
-  return { html: `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" aria-hidden="true">${svg}</svg>`, left: X - ox, top: Y - oy, z: Math.round(c.y * 1000) };
+  return { html, left: X, top: Y, z: Math.round(c.y * 1000) };
 }
 // 四個方向的鄰居有沒有圍籬／小門
 export function fenceNb(items, occ, i, j) {
   const at = (a, b) => { if (a < 0 || b < 0 || a >= N || b >= N) return false; const k = occ.obj[b * N + a]; return k > 0 && ['fence', 'gate'].includes(kindOf(items[k - 1].id)); };
   return { pi: at(i + 1, j), ni: at(i - 1, j), pj: at(i, j + 1), nj: at(i, j - 1) };
 }
-const PATH_TONE = { stone: ['#b9af9f', '#e4ddcf', '#cfc6b6'], wood: ['#8a5a30', '#c99560', '#b07a45'], brick: ['#9a4a35', '#d9775a', '#c2603f'] };
+const PATH_TONE = { stone: ['#a39a8c'], wood: ['#8a5a30'], brick: ['#c9b8a0'] };     // 地磚底下的縫（邊框）顏色
 const diamond = (i, j, k = 1) => {
   const c = center(i, j), X = c.x * GW, Y = c.y * GH, w = CW / 2 * k, h = CH / 2 * k;
   return `${X},${Y - h} ${X + w},${Y} ${X},${Y + h} ${X - w},${Y}`;
 };
 // 鋪在地上的那一層：小路地磚＋裝扮時的格子；tint：日夜天氣換顏色（'#rrggbb' → '#rrggbb'）
-export function floorSvg(items, { grid = false, tint = null } = {}) {
+// tile：地磚圖的網址（寵物島傳先套好日夜顏色的圖；預設 img/pet/build/path-<tone>.webp）
+export const tileSrc = (tone) => `img/pet/build/path-${tone}.webp`;
+export function floorSvg(items, { grid = false, tint = null, tile = tileSrc } = {}) {
   let under = '', tiles = '';
   for (const o of items) {
-    let tone = PATH_TONE[CAT[o.id]?.kind === 'path' && CAT[o.id].tone];
+    const name = CAT[o.id]?.kind === 'path' && CAT[o.id].tone;
+    let tone = PATH_TONE[name];
     if (!tone) continue;
     if (tint) tone = tone.map(tint);
-    under += `<polygon points="${diamond(o.i, o.j, 1.06)}" fill="${tone[0]}" stroke="${tone[0]}" stroke-width="5" stroke-linejoin="round"/>`;
-    if (CAT[o.id].tone === 'stone') tiles += `<polygon points="${diamond(o.i, o.j, .78)}" fill="${tone[1]}" stroke="${tone[2]}" stroke-width="3" stroke-linejoin="round"/>`;
-    else {
-      const c = center(o.i, o.j), X = c.x * GW, Y = c.y * GH;
-      tiles += `<polygon points="${diamond(o.i, o.j, .94)}" fill="${tone[1]}" stroke="${tone[2]}" stroke-width="2" stroke-linejoin="round"/>
-        <path d="M${X - 11} ${Y - 16} L${X + 22} ${Y + .5} M${X - 22} ${Y - .5} L${X + 11} ${Y + 16}" stroke="${tone[2]}" stroke-width="2.4"/>`;
-    }
+    under += `<polygon points="${diamond(o.i, o.j, 1.04)}" fill="${tone[0]}" stroke="${tone[0]}" stroke-width="4" stroke-linejoin="round"/>`;
+    const c = center(o.i, o.j), X = c.x * GW, Y = c.y * GH, k = .98;
+    tiles += `<image href="${tile(name)}" x="${X - CW / 2 * k}" y="${Y - CH / 2 * k}" width="${CW * k}" height="${CH * k}" preserveAspectRatio="none"/>`;
   }
   let lines = '';
   if (grid) {

@@ -1553,7 +1553,11 @@ body[data-starter="on"][data-scene="map"] #tick .bubble{display:none}
 .tree{position:absolute;transform:translate(-50%,var(--base));pointer-events:none}
 .tree img{display:block;width:100%;filter:var(--tod) var(--wx) drop-shadow(0 6px 4px rgba(20,50,30,.25))}
 .fence{position:absolute;pointer-events:none}
-.fence svg{display:block;filter:var(--tod) var(--wx)}
+.fence{width:0;height:0}
+.fence img{position:absolute;display:block;max-width:none;filter:var(--tod) var(--wx)}
+.fence img.fj{filter:var(--tod) var(--wx) brightness(.88)}
+.iv-ground .fence img{filter:none}
+.iv-ground .fence img.fj{filter:brightness(.88)}
 .prop.k-house .shadow,.prop.k-tile .shadow,.prop.k-bowl .shadow{display:none}
 .prop.k-house img,.prop.k-tile img{filter:var(--tod) var(--wx) drop-shadow(0 5px 4px rgba(20,50,30,.22))}
 .prop.zz::after{content:"Zz";position:absolute;left:58%;top:6%;font:900 26px/1 var(--f-disp);color:#5a7fd6;text-shadow:0 2px 0 #fff,0 0 6px #fff;animation:zzz 2.4s ease-in-out infinite;pointer-events:none}
@@ -1598,6 +1602,10 @@ body[data-starter="on"][data-scene="map"] #tick .bubble{display:none}
 .dt-i img{width:60px;height:50px;object-fit:contain}
 .dt-i .ic{display:grid;place-items:center;width:60px;height:50px;overflow:hidden}
 .dt-i .ic svg{width:60px;height:auto}
+.dt-i .fic{position:relative;display:block}
+.dt-i .fic>.fence{position:absolute;left:50%;top:86%;transform:scale(1.05)}
+.dt-i .fic img,.dt-i .fic img.fj{object-fit:fill;filter:none}
+.dt-i .ic img.tile-ic{width:60px;height:30px}
 .dt-i .ic.erase{font-size:34px}
 .dt-i b{font:800 13px/1.2 var(--f-body);color:var(--ink);text-align:center}
 .dt-i small{font:800 11px/1 var(--f-body);color:#2f7fa8}
