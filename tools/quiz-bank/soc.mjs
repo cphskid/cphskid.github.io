@@ -89,6 +89,29 @@ export const KPS = [
   ['post-local', 'post', '在地產業和文化', '家鄉與臺灣的觀光'],
 ];
 
+// 知識點 → 考點（tools/curriculum/soc-5a.mjs）。2026-11-01 Chuck 規則：每個知識點都要標。
+// 空陣列＝還沒有對應的考點清單：五上第二～五單元教材還沒上傳（序章自然環境、一～四章、明信片），
+// 五下（五～七章）和戰後（終章）不在五上這本。教材進來寫好清單後要回來補。
+export const KP_PTS = {
+  'pro-where': ['h5a-1-1-01'],
+  'sky-neighbors': ['h5a-1-1-01', 'h5a-1-1-02'],
+  'sky-hub': ['h5a-1-1-04'],
+  'sky-world': ['h5a-1-1-03'],
+  'isles-pacific': ['h5a-1-1-07'],
+  'isles-strait': ['h5a-1-1-07'],
+  'isles-near': ['h5a-1-1-07'],
+  'town-law': ['h5a-1-2-01'],
+  'town-moral': ['h5a-1-2-01', 'h5a-1-2-02'],
+  'town-custom': ['h5a-1-2-01', 'h5a-1-2-02'],
+  'town-religion': ['h5a-1-2-01', 'h5a-1-2-02'],
+  'town-kids': ['h5a-1-3-03', 'h5a-1-3-04'],
+  'town-work': ['h5a-1-3-05'],
+  'town-fraud': ['h5a-1-3-06'],
+  'town-privacy': ['h5a-1-3-07'],
+  'town-copy': ['h5a-1-3-07'],
+};
+for (const [id] of KPS) KP_PTS[id] ??= [];
+
 export const ITEMS = [
   // ---------- 序章：臺灣的位置與自然環境 ----------
   ['pro-where', 1, K.where, mc('隔著臺灣海峽，在臺灣西邊的是哪裡？', ['中國大陸', '菲律賓', '日本'], 0, '臺灣西邊隔著臺灣海峽是中國大陸；菲律賓在南邊，日本在東北邊。')],

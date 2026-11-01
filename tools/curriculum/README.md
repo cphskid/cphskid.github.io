@@ -14,6 +14,6 @@
 |---|---|---|---|
 | 康軒五上自然 講義式評量「學習重點」四單元 | /mnt/project-files/{1,7,13,19}_PDFsam_小五自然.pdf | 2026-10-24 | 已盤點 → sci-5a.mjs（2026-11-01） |
 | 康軒五上自然〈動物世界〉評量 6 頁 | 2026-11-01 對話附圖 | 2026-11-01 | 已盤點 → sci-5a.mjs 單元一 |
-| 康軒五上社會 第一單元評量 11 張 | /mnt/project-files/uploads/hearth/（2026-10-29 13:23 那批） | 2026-10-29 | 已盤點（doc https://claude.ai/artifact/P7fLDUvSwoHRhSpyVf4jUX），清單檔待寫 soc-5a.mjs |
+| 康軒五上社會 第一單元評量 11 張 | /mnt/project-files/uploads/hearth/（2026-10-29 13:23 那批） | 2026-10-29 | 已盤點 → soc-5a.mjs 單元一（2026-11-01；doc https://claude.ai/artifact/P7fLDUvSwoHRhSpyVf4jUX） |
 | 康軒五上社會 二～五單元 | — | 未上傳 | — |
 | 康軒五下自然、社會 | — | 未上傳 | — |
