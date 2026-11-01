@@ -1,7 +1,7 @@
 // 老師後台「時光試煉島」頁籤：出卷（照錯題自動挑、家長再調）、出過的卷、分析報告、學習地圖；管理員多一個題庫審核。
 // 規則（學會、挑題比例、報告判讀）在 js/quiz-core.js；改分在資料庫（supabase/park_quiz.sql）。
 import { quiz } from './auth.js';
-import { kidStates, pickPaper, readSlot, PLACE_NAME, STATE_NAME, placeZone, placeGame, EXAMS, SUBJECTS } from './quiz-core.js';
+import { kidStates, pickPaper, readSlot, PLACE_NAME, STATE_NAME, placeZone, placeGame, EXAMS, SUBJECTS, noGame } from './quiz-core.js';
 import { resultHtml, KIND_NAME } from './quiz-items.js';
 import { openEditor } from './quiz-edit.js';
 
@@ -343,7 +343,7 @@ async function paintReport(box, paperId) {
     return wire();
   }
   const slots = k.slots.map((s) => ({ ...s, place: cache.kp.get(s.kp)?.place, kpName: cache.kp.get(s.kp)?.name, book: cache.kp.get(s.kp)?.book,
-                                      read: readSlot(s, game.has(s.kp) ? game.get(s.kp) : null, played.has(cache.kp.get(s.kp)?.place)) }));
+                                      read: readSlot(s, game.has(s.kp) ? game.get(s.kp) : null, played.has(cache.kp.get(s.kp)?.place), noGame(cache.kp.get(s.kp)?.place)) }));
   // 哪幾章比較弱
   const byPlace = new Map();
   for (const s of slots) { const p = byPlace.get(s.place) ?? { n: 0, got: 0, wrong: [] }; p.n++; p.got += Number(s.got); if (Number(s.got) < 1) p.wrong.push(s); byPlace.set(s.place, p); }
@@ -356,8 +356,8 @@ async function paintReport(box, paperId) {
     <div class="kpis"><div class="kpi"><b>${k.score}</b><small>分數</small></div><div class="kpi"><b>${slots.filter((s) => Number(s.got) >= 1).length}/${slots.length}</b><small>全對的題</small></div>
       <div class="kpi"><b>${Math.max(1, Math.round(total / 60000))}</b><small>分鐘</small></div><div class="kpi"><b>${k.coins}</b><small>時光幣</small></div></div>
     ${weak.length ? `<h3>比較弱的地方</h3><ul class="qt-weak">${weak.map(([pl, p]) => `<li><b>${esc(PLACE_NAME[pl] ?? pl)}</b>：對 ${Math.round(100 * p.got / p.n)}%（錯 ${p.wrong.length} 題：${[...new Set(p.wrong.map((s) => s.kpName))].map(esc).join('、')}）
-        <br><small>課本：${[...new Set(p.wrong.map((s) => s.book))].map(esc).join('、')}${played.has(pl) ? '' : '・還沒玩到這一關'}</small></li>`).join('')}</ul>
-      <div class="row"><button class="btn small go" data-rec>✉ 寄信推薦去玩這幾關</button></div>` : '<p class="lead">全部答對，這些知識點離「學會」又近一步。</p>'}
+        <br><small>課本：${[...new Set(p.wrong.map((s) => s.book))].map(esc).join('、')}${noGame(pl) ? '・遊戲裡還沒有這段，要看課本' : played.has(pl) ? '' : '・還沒玩到這一關'}</small></li>`).join('')}</ul>
+      ${weak.some(([pl]) => !noGame(pl)) ? '<div class="row"><button class="btn small go" data-rec>✉ 寄信推薦去玩這幾關</button></div>' : ''}` : '<p class="lead">全部答對，這些知識點離「學會」又近一步。</p>'}
     ${ask.length ? `<h3>可以問問孩子</h3><p class="tip">下面這些題，遊戲裡第一次就答對、卷上卻錯了。可能當時是猜的，也可能忘了。不用責備，問他「你那時候怎麼想的？」</p>
       <ul>${ask.map((s) => `<li>${esc(s.kpName)}：${esc(s.body.q)}</li>`).join('')}</ul>` : ''}
     ${guess.length ? `<p class="tip">有 ${guess.length} 題不到 3 秒就答錯，可能沒看完題目就按了。</p>` : ''}
@@ -367,12 +367,13 @@ async function paintReport(box, paperId) {
       .replace('</li>', `<p class="qt-read r-${s.read.code}"><small>${esc(PLACE_NAME[s.place] ?? '')}｜${esc(s.kpName)}｜課本：${esc(s.book)}${s.ms ? `｜${Math.round(s.ms / 1000)} 秒` : ''}</small><br>${esc(s.read.text)}${s.read.fast ? '（答得很快，可能是猜的）' : ''}</p></li>`)}`).join('')}</ol></section>`;
   wire();
   $('[data-rec]', box)?.addEventListener('click', async (e) => {
-    const names = weak.slice(0, 3).map(([pl]) => PLACE_NAME[pl] ?? pl);
+    const inGame = weak.filter(([pl]) => !noGame(pl));
+    const names = inGame.slice(0, 3).map(([pl]) => PLACE_NAME[pl] ?? pl);
     const books = [...new Set(weak.slice(0, 3).flatMap(([, p]) => p.wrong.map((s) => s.book)))].slice(0, 3);
     const body = `${k.nickname}，考官看了你的試煉卷，建議你回去玩：${names.join('、')}。玩的時候注意圖鑑卡和「想一想」，玩完再翻課本：${books.join('、')}。下一張卷會再考這些喔！`;
     e.target.disabled = true;
     try {
-      await quiz.recommend(ctx.active, k.id, body, placeZone(weak[0][0]));
+      await quiz.recommend(ctx.active, k.id, body, placeZone(inGame[0][0]));
       e.target.textContent = '✔ 已寄出';
       ctx.toast(`寄給 ${k.nickname} 了，他打開樂園就會收到。`);
     } catch (err) { e.target.disabled = false; ctx.toast(err.message, true); }

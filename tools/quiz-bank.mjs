@@ -18,7 +18,7 @@ for (const [, b] of banks) {
   for (const [kp, level, src, { kind, body }] of b.ITEMS) {
     count[kp] = (count[kp] ?? 0) + 1;
     const id = `${kp}-${count[kp]}`;
-    if (WHY[id]) body.why = WHY[id]; else errs.push(`${id}：tools/quiz-bank/why.mjs 沒有這題的解析`);
+    if (WHY[id]) body.why = WHY[id]; else if (!(body.why?.length >= 30)) errs.push(`${id}：tools/quiz-bank/why.mjs 沒有這題的解析（題目裡的解析要 30 字以上才可以不寫在 why.mjs）`);
     if (body.why.length < 30) errs.push(`${id}：解析太短，要說明為什麼，不能只寫答案`);
     items.push({ id, kp, level, src, kind, body });
     if (!kpIds.has(kp)) errs.push(`${id}：沒有這個知識點`);
