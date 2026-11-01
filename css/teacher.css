@@ -576,3 +576,10 @@ details.first .form{margin-top:12px}
 .parent-mini[open] summary{margin-bottom:10px}
 .lead .pc{letter-spacing:.12em;color:var(--wood)}
 @media (max-width:560px){ .code-form .btn{flex:1 1 100%} }
+/* 題庫審核：審題燈號 */
+.qt-review{margin:6px 0;padding:8px 12px;border-radius:10px;border-left:5px solid #9aa8b8;background:#f6f8fa;font-size:14px}
+.qt-review ul{margin:4px 0 2px 18px;padding:0}
+.qt-review.l-red{border-color:#d9534f;background:#fdf0ef}
+.qt-review.l-yellow{border-color:#e2a92a;background:#fff8e5}
+.qt-review.l-green{border-color:#4caf50;background:#eef8ee}
+.qt-bad input{flex:1;min-width:0}

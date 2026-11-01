@@ -58,6 +58,9 @@ create table if not exists public.quiz_item (
   check ((status = 'own') = (owner_class is not null))
 );
 create index if not exists quiz_item_kp on public.quiz_item (kp);
+-- 2026-11-01 審題燈號（tools/quiz-bank/review.json → park_quiz_bank.sql 寫進來）：
+--   { light: green|yellow|red, notes: [..], sample: true＝要管理員抽查, fixed: [..] Claude 已修的地方, at }
+alter table public.quiz_item add column if not exists review jsonb not null default '{}'::jsonb;
 
 create table if not exists public.quiz_paper (
   id          uuid primary key default gen_random_uuid(),
@@ -797,7 +800,7 @@ begin
     'kps', coalesce((select jsonb_agg(to_jsonb(k) order by k.sort, k.id) from public.quiz_kp k), '[]'),
     'items', coalesce((select jsonb_agg(jsonb_build_object(
                          'id', i.id, 'kp', i.kp, 'kind', i.kind, 'level', i.level, 'body', i.body, 'src', i.src, 'ver', i.ver,
-                         'status', i.status, 'note', i.note, 'reviewed_at', i.reviewed_at,
+                         'status', i.status, 'note', i.note, 'reviewed_at', i.reviewed_at, 'review', i.review,
                          'check', public.quiz_check(i.kind, i.body),
                          'used', (select count(*) from public.quiz_answer a where a.item = i.id and not a.fix),
                          'right', (select round(100 * avg(a.got))::int from public.quiz_answer a where a.item = i.id and not a.fix),

@@ -1,10 +1,13 @@
 // 時光試煉島題庫：把 tools/quiz-bank/*.mjs 檢查過後寫成 supabase/park_quiz_bank.sql。
 //   node tools/quiz-bank.mjs          檢查＋產生 SQL
+//   node tools/quiz-bank.mjs --lint   另外列出每一題的審題燈號（紅／黃，規則見 tools/quiz-bank/lint.mjs）
+//   node tools/quiz-bank.mjs --lint-json=檔名   燈號寫成 JSON（給 Claude 交叉檢查用）
 // 匯進資料庫時，已經審過（不是 draft）的題目不會被蓋掉；要改審過的題，到後台題庫審核改。
-import { writeFileSync, readdirSync } from 'node:fs';
+import { writeFileSync, readdirSync, readFileSync } from 'node:fs';
 import * as soc from './quiz-bank/soc.mjs';
 import * as sci from './quiz-bank/sci.mjs';
 import { WHY } from './quiz-bank/why.mjs';
+import { lint } from './quiz-bank/lint.mjs';
 
 const kps = [], items = [], errs = [], warns = [];
 const banks = [['soc', soc], ['sci', sci]];
@@ -108,6 +111,16 @@ for (const c of books) {
   }
 }
 
+// 審題的程式檢核點（tools/quiz-bank/lint.mjs）：只標燈號，不擋 SQL
+const srcDir = new URL('./curriculum/src/', import.meta.url);
+const srcText = readdirSync(srcDir).filter((f) => f.endsWith('.md')).map((f) => readFileSync(new URL(f, srcDir), 'utf8')).join('\n');
+const kpPts = Object.assign({}, ...banks.map(([, b]) => b.KP_PTS ?? {}));
+const flags = lint(items, { kpPts, pts, srcText });
+const lintJson = process.argv.find((a) => a.startsWith('--lint-json='));
+if (lintJson) writeFileSync(lintJson.slice(12), JSON.stringify(flags, null, 1));
+const tfs = items.filter((i) => i.kind === 'tf'), tfTrue = tfs.filter((i) => i.body.a).length;
+const lintSum = `\n審題程式檢核：紅 ${new Set(flags.filter((f) => f.level === 'red').map((f) => f.id)).size} 題、黃 ${new Set(flags.filter((f) => f.level === 'yellow').map((f) => f.id)).size} 題（--lint 看明細）｜是非題 ${tfs.length} 題、答「對」${tfTrue}（${Math.round(100 * tfTrue / (tfs.length || 1))}%）`;
+
 // 單選的答案原本在第幾個（網頁會洗牌，這裡只是看寫題時有沒有偏）
 const pos = {};
 for (const i of items) if (i.kind === 'mc') pos[i.body.a] = (pos[i.body.a] ?? 0) + 1;
@@ -118,10 +131,24 @@ console.log(`知識點 ${kps.length}、題目 ${items.length}（社會 ${items.f
 console.log('題型', kinds, '單選答案原本的位置（會洗牌）', pos);
 for (const w of warns) console.log('注意', w);
 for (const l of coverage) console.log(l);
+console.log(lintSum);
+if (process.argv.includes('--lint')) for (const f of flags) console.log(f.level === 'red' ? '紅' : '黃', f.id, f.code, f.note);
 if (errs.length) { for (const e of errs) console.error('錯誤', e); process.exit(1); }
 
 const q = (s) => `'${String(s).replaceAll("'", "''")}'`;
 const j = (o) => (o == null ? 'null' : `${q(JSON.stringify(o))}::jsonb`);
+// 審題燈號（tools/quiz-bank/review.json，Claude 交叉檢查的結果）：只寫進還在待審的題
+let review = {};
+try { review = JSON.parse(readFileSync(new URL('./quiz-bank/review.json', import.meta.url), 'utf8')); } catch { /* 還沒審過 */ }
+const revRows = Object.entries(review).filter(([id]) => items.some((i) => i.id === id));
+const reviewSql = revRows.length ? `
+-- 審題燈號（tools/quiz-bank/review.json）：管理員在題庫審核看紅黃綠、抽查哪幾題
+update public.quiz_item i set review = v.r
+from (values
+${revRows.map(([id, r]) => `  (${q(id)}, ${j(r)})`).join(',\n')}
+) v(id, r)
+where i.id = v.id and i.status = 'draft';
+` : '';
 const sql = `-- 時光試煉島題庫（tools/quiz-bank.mjs 產生，不要手改）。知識點 ${kps.length}、題目 ${items.length}。
 -- 題目一律先 draft（待審），管理員在老師後台「題庫審核」看過才會被抽到。
 -- 重跑時：知識點會更新；題目只更新還是 draft 的（審過的不蓋掉）。
@@ -142,6 +169,6 @@ from (values
 ${items.map((i) => `  (${q(i.id)}, ${q(i.body.why)})`).join(',\n')}
 ) v(id, why)
 where i.id = v.id and i.ver = 1 and i.body->>'why' is distinct from v.why;
-`;
+${reviewSql}`;
 writeFileSync(new URL('../supabase/park_quiz_bank.sql', import.meta.url), sql);
 console.log('寫好 supabase/park_quiz_bank.sql');

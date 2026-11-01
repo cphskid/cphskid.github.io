@@ -8,6 +8,13 @@
 - 題庫 `tools/quiz-bank/<科>.mjs` 匯出 `KP_PTS`：每個知識點對到哪幾個考點。
 - `node tools/quiz-bank.mjs` 會印出每單元：考點數、遊戲有幾個、有題幾個，列出還沒題的考點。做新關或題庫上線前，把這段貼給 Chuck。
 
+## 審題（2026-11-01 Chuck 定案）
+
+- `src/` 放教材原文（文字的才放得進來），`node tools/quiz-bank.mjs --lint` 會拿它和考點清單檢查題目裡的數字。
+- 新題流程：程式檢核（`tools/quiz-bank/lint.mjs`）→ 另開一個沒看答案的 Claude 只拿教材盲答、查證解析 → 修好的標黃、修不了的標紅 → 寫進 `tools/quiz-bank/review.json`（燈號、意見、每章抽 2 題）→ 重產 SQL。
+- Chuck 只看「要你看」（紅燈＋抽查題）；抽查都沒問題就整章上架。題幹和答案只能用教材，解析可補一句公部門來源的教材外知識。
+- 詳細原則：https://claude.ai/artifact/SZmXurQ8KfNA5DrG7Qb7dh
+
 ## 教材紀錄
 
 | 教材 | 位置 | 上傳 | 狀態 |
@@ -15,6 +22,6 @@
 | 康軒五上自然 講義式評量「學習重點」四單元 | /mnt/project-files/{1,7,13,19}_PDFsam_小五自然.pdf | 2026-10-24 | 已盤點 → sci-5a.mjs（2026-11-01） |
 | 康軒五上自然〈動物世界〉評量 6 頁 | 2026-11-01 對話附圖 | 2026-11-01 | 已盤點 → sci-5a.mjs 單元一 |
 | 康軒五上社會 第一單元評量 11 張 | /mnt/project-files/uploads/hearth/（2026-10-29 13:23 那批） | 2026-10-29 | 已盤點 → soc-5a.mjs 單元一（2026-11-01；doc https://claude.ai/artifact/P7fLDUvSwoHRhSpyVf4jUX） |
-| 康軒五上社會 評量本重點摘要（整本一～五單元，Chuck 整理的文字） | 「康軒課綱融入討論」串第一則（cmsg_01VZ2GoR3rZ7hhhHZZN7jXaVBBJ196YrZ1Ffz3ry1nvByC） | 2026-10-03 | 已盤點 → soc-5a.mjs 二～五單元（2026-11-01；10/3 只做了提案盤點、沒寫成清單，這次補上） |
+| 康軒五上社會 評量本重點摘要（整本一～五單元，Chuck 整理的文字） | 原文存在 `src/soc-5a-summary.md`（「康軒課綱融入討論」串第一則 cmsg_01VZ2GoR3rZ7hhhHZZN7jXaVBBJ196YrZ1Ffz3ry1nvByC） | 2026-10-03 | 已盤點 → soc-5a.mjs 二～五單元（2026-11-01；10/3 只做了提案盤點、沒寫成清單，這次補上） |
 | 康軒五上社會 二～五單元評量（總評量、進階題照片） | — | 未上傳 | Chuck 說會拍 |
 | 康軒五下自然、社會 | — | 未上傳 | — |
