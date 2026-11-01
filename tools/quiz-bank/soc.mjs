@@ -106,15 +106,35 @@ export const KPS = [
 ];
 
 // 知識點 → 考點（tools/curriculum/soc-5a.mjs）。2026-11-01 Chuck 規則：每個知識點都要標。
-// 空陣列＝還沒有對應的考點清單：五上第二～五單元教材還沒上傳（序章自然環境、一～四章、明信片），
-// 五下（五～七章）和戰後（終章）不在五上這本。教材進來寫好清單後要回來補。
+// 空陣列＝課本考點清單裡沒有這一點（例如北回歸線、帆船看季風、鄭氏水埤、煎鹽曬鹽是遊戲多教的），
+// 或是不在五上這本：五下（五～七章）和戰後（終章）等五下教材進來再寫 soc-5b.mjs。
 export const KP_PTS = {
+  'pro-wind': ['h5a-2-2-02'],
+  'pro-land': ['h5a-2-1-02', 'h5a-2-1-03', 'h5a-2-1-04'],
+  'pro-rain': ['h5a-2-2-02'],
+  'ch1-tools': ['h5a-3-1-02', 'h5a-3-1-03'],
+  'ch1-pottery': ['h5a-3-1-03'],
+  'ch1-strata': ['h5a-3-1-01'],
+  'ch1-cultures': ['h5a-3-1-02', 'h5a-3-1-04', 'h5a-3-1-05'],
+  'ch2-fallow': ['h5a-3-2-03'],
+  'ch2-hunt': ['h5a-3-2-03'],
+  'ch2-norms': ['h5a-3-2-03'],
+  'ch2-peoples': ['h5a-3-2-01', 'h5a-3-2-02'],
+  'ch3-entrepot': ['h5a-4-1-02'],
+  'ch3-sinkan': ['h5a-4-3-01'],
+  'ch3-timeline': ['h5a-4-2-01', 'h5a-4-2-03'],
+  'ch3-goods': ['h5a-4-2-02', 'h5a-4-3-01'],
+  'ch4-tuntian': ['h5a-4-3-03'],
+  'ch4-school': ['h5a-4-3-04'],
+  'ch4-people': ['h5a-4-2-04', 'h5a-4-3-04'],
+  'post-care': ['h5a-5-1-03', 'h5a-5-1-04'],
+  'post-local': ['h5a-5-1-01'],
   'pro-where': ['h5a-1-1-01'],
   'sky-neighbors': ['h5a-1-1-01', 'h5a-1-1-02'],
   'sky-hub': ['h5a-1-1-04'],
   'sky-world': ['h5a-1-1-03'],
   'isles-pacific': ['h5a-1-1-07'],
-  'isles-strait': ['h5a-1-1-07'],
+  'isles-strait': ['h5a-1-1-07', 'h5a-2-2-07'],
   'isles-near': ['h5a-1-1-07'],
   'town-law': ['h5a-1-2-01'],
   'town-moral': ['h5a-1-2-01', 'h5a-1-2-02'],
