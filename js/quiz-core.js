@@ -11,7 +11,8 @@ const dayOf = (t) => new Date(new Date(t).getTime() + 8 * 3600e3).toISOString().
 export const PLACE_NAME = {
   pro: '序章 認識臺灣', ch1: '第一章 史前', ch2: '第二章 原住民族', ch3: '第三章 大航海時代', ch4: '第四章 鄭氏時期',
   ch5: '第五章 八堡圳', ch6: '第六章 開港與鐵路', ch7: '第七章 日治時期', end: '終章 今天的島嶼',
-  town: '現在篇・規則小鎮', isles: '現在篇・離島巡航', sky: '現在篇・天空港', post: '現在篇・景點明信片',
+  town: '現在篇・規則小鎮', isles: '現在篇・離島巡航', sky: '現在篇・天空港', post: '現在篇・景點明信片', village: '現在篇・風與海的漁村',
+  'h-book-home': '課本・臺灣是我的家鄉（遊戲裡還沒有）',
   'a-forest': '祕境島・森林', 'a-nest': '祕境島・螞蟻地下城', 'a-harbor': '祕境島・海港工坊', 'a-town': '祕境島・劇場小鎮', 'a-sky': '祕境島・山頂天文台',
   'a-pond': '祕境島・池塘', 'a-beacon': '祕境島・海港燈塔', 'a-stage': '祕境島・光的魔術舞台',
   'a-book-animal': '課本・動物世界（遊戲裡還沒有）', 'a-book-sky': '課本・神祕的天空（遊戲裡還沒有）',
@@ -26,9 +27,9 @@ export const SUBJECTS = [
 // 依考試圈範圍：照康軒一般教學進度推的預設範圍，按科目分開（各校不同，出卷時可以再加減章節）
 // 五上社會先上地理和法律、期中後才進臺灣史；五上自然前兩單元是動物世界、探索聲光世界
 export const EXAMS = [
-  { id: '5a-1', name: '五上 第一次段考', by: { soc: ['pro', 'town', 'isles', 'sky'], sci: ['a-forest', 'a-nest', 'a-book-animal', 'a-town', 'a-stage'] } },
+  { id: '5a-1', name: '五上 第一次段考', by: { soc: ['pro', 'town', 'isles', 'sky', 'village', 'h-book-home'], sci: ['a-forest', 'a-nest', 'a-book-animal', 'a-town', 'a-stage'] } },
   { id: '5a-2', name: '五上 第二次段考', by: { soc: ['ch1', 'ch2', 'ch3', 'ch4', 'post'], sci: ['a-sky', 'a-book-sky', 'a-harbor', 'a-beacon'] } },
-  { id: '5a', name: '五上 整學期', by: { soc: ['pro', 'town', 'isles', 'sky', 'ch1', 'ch2', 'ch3', 'ch4', 'post'], sci: ['a-forest', 'a-nest', 'a-book-animal', 'a-town', 'a-stage', 'a-sky', 'a-book-sky', 'a-harbor', 'a-beacon'] } },
+  { id: '5a', name: '五上 整學期', by: { soc: ['pro', 'town', 'isles', 'sky', 'village', 'h-book-home', 'ch1', 'ch2', 'ch3', 'ch4', 'post'], sci: ['a-forest', 'a-nest', 'a-book-animal', 'a-town', 'a-stage', 'a-sky', 'a-book-sky', 'a-harbor', 'a-beacon'] } },
   { id: '4a', name: '四上 整學期', by: { sci: ['a-pond'] } },
   { id: '5b-1', name: '五下 第一次段考', by: { soc: ['ch5', 'ch6'] } },
   { id: '5b-2', name: '五下 第二次段考', by: { soc: ['ch7'] } },
