@@ -1,7 +1,7 @@
 // 時光試煉島題庫：把 tools/quiz-bank/*.mjs 檢查過後寫成 supabase/park_quiz_bank.sql。
 //   node tools/quiz-bank.mjs          檢查＋產生 SQL
 // 匯進資料庫時，已經審過（不是 draft）的題目不會被蓋掉；要改審過的題，到後台題庫審核改。
-import { writeFileSync } from 'node:fs';
+import { writeFileSync, readdirSync } from 'node:fs';
 import * as soc from './quiz-bank/soc.mjs';
 import * as sci from './quiz-bank/sci.mjs';
 import { WHY } from './quiz-bank/why.mjs';
@@ -73,6 +73,41 @@ function check(kind, b) {
   return e;
 }
 
+// 考點覆蓋率（2026-11-01 Chuck 規則）：tools/curriculum/*.mjs 是考點清單，KP_PTS 標知識點對到哪些考點
+const curDir = new URL('./curriculum/', import.meta.url);
+const pts = new Map();   // 考點 id → { unit, text, game, part, items }
+const books = [];
+for (const f of readdirSync(curDir).filter((x) => x.endsWith('.mjs')).sort()) {
+  const c = await import(new URL(f, curDir));
+  books.push(c);
+  for (const u of c.UNITS) for (const a of u.acts) for (const [id, text, game, part] of a.pts) {
+    if (pts.has(id)) errs.push(`考點 ${id} 重複`);
+    pts.set(id, { book: c.BOOK, unit: u, act: a.name, text, game, part: part === 'part', items: 0 });
+  }
+}
+for (const [subject, b] of banks) {
+  if (!b.KP_PTS) { warns.push(`${subject}：還沒有考點清單（tools/curriculum/）和 KP_PTS，看不出覆蓋率`); continue; }
+  const map = b.KP_PTS;
+  for (const k of kps.filter((x) => x.subject === subject)) {
+    const list = map[k.id];
+    if (!list) { warns.push(`${k.id}：還沒標對到哪個考點（KP_PTS）`); continue; }
+    for (const id of list) {
+      const p = pts.get(id);
+      if (!p) errs.push(`${k.id}：KP_PTS 寫了不存在的考點 ${id}`); else p.items += count[k.id] ?? 0;
+    }
+  }
+}
+const coverage = [];
+for (const c of books) {
+  coverage.push(`\n考點覆蓋率：${c.BOOK.name}（有題＝對到的知識點至少 2 題）`);
+  for (const u of c.UNITS) {
+    const list = u.acts.flatMap((a) => a.pts.map(([id]) => pts.get(id)));
+    const g = list.filter((p) => p.game && !p.part).length, gp = list.filter((p) => p.part).length, q = list.filter((p) => p.items >= 2).length;
+    coverage.push(`  ${u.name}：${list.length} 考點｜遊戲有 ${g}、一點 ${gp}｜有題 ${q}（${Math.round(100 * q / list.length)}%）`);
+    for (const a of u.acts) for (const [id, text] of a.pts) if (pts.get(id).items < 2) coverage.push(`    沒題  ${id} ${text}`);
+  }
+}
+
 // 單選的答案原本在第幾個（網頁會洗牌，這裡只是看寫題時有沒有偏）
 const pos = {};
 for (const i of items) if (i.kind === 'mc') pos[i.body.a] = (pos[i.body.a] ?? 0) + 1;
@@ -82,6 +117,7 @@ for (const i of items) kinds[i.kind] = (kinds[i.kind] ?? 0) + 1;
 console.log(`知識點 ${kps.length}、題目 ${items.length}（社會 ${items.filter((i) => !i.kp.startsWith('sci-')).length}、自然 ${items.filter((i) => i.kp.startsWith('sci-')).length}）`);
 console.log('題型', kinds, '單選答案原本的位置（會洗牌）', pos);
 for (const w of warns) console.log('注意', w);
+for (const l of coverage) console.log(l);
 if (errs.length) { for (const e of errs) console.error('錯誤', e); process.exit(1); }
 
 const q = (s) => `'${String(s).replaceAll("'", "''")}'`;
