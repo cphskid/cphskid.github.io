@@ -469,7 +469,7 @@ async function paintBank(box) {
   stale = true;   // 管理員在這裡上架、停用、改題，回到出卷頁就重讀
   const kps = new Map(bankData.kps.map((k) => [k.id, k]));
   // 審題燈號（2026-11-01 Chuck 定的審題原則）：紅＝Claude 修不了、要管理員看；sample＝綠燈抽查題
-  const mustSee = (i) => i.status === 'draft' && (i.review?.light === 'red' || (i.review?.sample && !i.note.startsWith(BAD)));
+  const mustSee = (i) => i.status === 'draft' && ((i.review?.light === 'red' && !i.review.wait) || (i.review?.sample && !i.note.startsWith(BAD)));
   if (bankFirst) { bankFirst = false; if (bankData.items.some(mustSee)) bankFilter = 'check'; }
   const byStatus = bankData.items.filter((i) => bankFilter === 'all' || i.status === bankFilter || (bankFilter === 'flag' && i.flags) || (bankFilter === 'check' && mustSee(i)));
   // 章節照課本順序；每章顯示這個篩選下有幾題
