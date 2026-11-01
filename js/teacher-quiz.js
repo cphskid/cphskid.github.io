@@ -479,7 +479,7 @@ async function paintBank(box) {
   const items = inPlace(bankPlace);
   const n = (s) => bankData.items.filter((i) => i.status === s).length;
   // 這一章整批上架：抽查題都上架了、沒有人標「有問題」→ 綠燈和黃燈（沒有格式問題的）全部上架，紅燈留著
-  const all = inPlace(bankPlace).length ? bankData.items.filter((i) => kps.get(i.kp)?.place === bankPlace) : [];
+  const all = bankData.items.filter((i) => kps.get(i.kp)?.place === bankPlace);
   const drafts = all.filter((i) => i.status === 'draft');
   const hasLights = drafts.some((i) => i.review?.light);
   const samples = all.filter((i) => i.review?.sample);
