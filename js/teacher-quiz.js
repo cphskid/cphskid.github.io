@@ -1,6 +1,7 @@
 // 老師後台「時光試煉島」頁籤：出卷（照錯題自動挑、家長再調）、出過的卷、分析報告、學習地圖；管理員多一個題庫審核。
 // 規則（學會、挑題比例、報告判讀）在 js/quiz-core.js；改分在資料庫（supabase/park_quiz.sql）。
 import { quiz } from './auth.js';
+import { printPaper } from './quiz-print.js';
 import { kidStates, pickPaper, readSlot, PLACE_NAME, STATE_NAME, placeZone, placeGame, EXAMS, SUBJECTS, noGame } from './quiz-core.js';
 import { resultHtml, KIND_NAME } from './quiz-items.js';
 import { openEditor } from './quiz-edit.js';
@@ -314,8 +315,31 @@ async function paintPapers(box) {
       const done = p.kids.filter((k) => k.done), avg = done.length ? Math.round(done.reduce((s, k) => s + k.score, 0) / done.length) : null;
       return `<tr${p.readonly ? ' class="qt-ro"' : ''}><td><b>${esc(p.title)}</b>${p.readonly ? `<span class="tag">學校班「${esc(p.from ?? '')}」${esc(p.by ?? '')}出的・只能看</span>` : ''}<br><small>${p.kids.map((k) => `${esc(k.nickname)}${k.done ? ` ${k.score}` : k.opened ? ' 寫到一半' : ' 還沒開'}`).join('、')}</small></td>
         <td>${date(p.at)}</td><td>${p.n}</td><td>${done.length}/${p.kids.length}</td><td>${avg ?? '—'}</td>
-        <td><button class="btn small" data-rep="${p.id}">看報告</button> ${p.readonly ? '' : `<button class="ghost small danger" data-hide="${p.id}" title="還沒寫的孩子就看不到了">收回</button>`}</td></tr>`;
-    }).join('')}</tbody></table></div></section>`;
+        <td><button class="btn small" data-rep="${p.id}">看報告</button> <button class="ghost small" data-print="${p.id}">🖨 列印</button> ${p.readonly ? '' : `<button class="ghost small danger" data-hide="${p.id}" title="還沒寫的孩子就看不到了">收回</button>`}</td></tr>`;
+    }).join('')}</tbody></table></div></section><div id="qt-print"></div>`;
+  // 列印：先讀卷，選好孩子再按列印（列印視窗要在按鈕當下開，才不會被瀏覽器擋）
+  $$('[data-print]', box).forEach((b) => {
+    b.onclick = async () => {
+      b.disabled = true;
+      let r;
+      try { r = await quiz.report(b.dataset.print, ctx.active); } catch (err) { ctx.toast(err.message, true); return; } finally { b.disabled = false; }
+      const pb = $('#qt-print', box);
+      pb.innerHTML = `<section class="panel"><div class="head"><h2>🖨 列印「${esc(r.title)}」</h2><button class="ghost small" data-pclose>關閉</button></div>
+        <p class="lead">每個孩子印一份，題目和選項順序跟他在網頁上看到的一樣。寫完可以照答案頁對答案；要孩子在網頁上交卷才會算進報告。</p>
+        <div><b>印誰的</b> ${r.kids.length > 1 ? '<span class="qt-all"><button type="button" class="ghost small" data-pall="1">全選</button><button type="button" class="ghost small" data-pall="0">全部取消</button></span>' : ''}
+          <div class="chips">${r.kids.map((k) => `<label class="chip"><input type="checkbox" data-pkid="${k.id}" checked>${esc(k.nickname)}</label>`).join('')}</div></div>
+        <label class="chip"><input type="checkbox" id="qt-pkey" checked>附答案與解析（印在最後幾頁，方便抽出來）</label>
+        <div class="row"><button class="btn go" data-pgo>列印</button></div></section>`;
+      pb.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      $('[data-pclose]', pb).onclick = () => { pb.innerHTML = ''; };
+      $$('[data-pall]', pb).forEach((x) => { x.onclick = () => $$('[data-pkid]', pb).forEach((c) => { c.checked = x.dataset.pall === '1'; }); });
+      $('[data-pgo]', pb).onclick = () => {
+        const ids = $$('[data-pkid]', pb).filter((c) => c.checked).map((c) => c.dataset.pkid);
+        if (!ids.length) return ctx.toast('至少選一個孩子', true);
+        if (!printPaper(r, ids, { key: $('#qt-pkey', pb).checked })) ctx.toast('列印視窗被瀏覽器擋住了，請允許這個網站開新視窗', true);
+      };
+    };
+  });
   $$('[data-rep]', box).forEach((b) => { b.onclick = () => { sub = 'report:' + b.dataset.rep; paint(); }; });
   $$('[data-hide]', box).forEach((b) => {
     b.onclick = async () => {
