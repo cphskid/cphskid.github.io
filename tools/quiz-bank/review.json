@@ -1,0 +1,1460 @@
+{
+ "town-moral-4": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "把「孝順父母、友愛同學」換成「公車上讓座」，對上 kp 的讓座",
+   "解析改用教材的定義，並說明法律為什麼不同"
+  ]
+ },
+ "town-custom-4": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "解析補上為什麼不是倫理道德"
+  ]
+ },
+ "town-religion-3": {
+  "light": "green",
+  "at": "2026-11-01",
+  "by": "claude"
+ },
+ "town-religion-4": {
+  "light": "green",
+  "at": "2026-11-01",
+  "by": "claude",
+  "sample": true
+ },
+ "town-kids-4": {
+  "light": "green",
+  "at": "2026-11-01",
+  "by": "claude",
+  "sample": true
+ },
+ "town-kids-5": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "「遊戲要分級」改成「電視節目要分級」，對齊教材",
+   "「賣酒」改成教材的「未滿 18 歲不能喝酒」",
+   "荒謬選項「送手機」換成看起來可能的錯誤說法（家長同意就能吸菸）"
+  ]
+ },
+ "town-kids-6": {
+  "light": "green",
+  "at": "2026-11-01",
+  "by": "claude",
+  "notes": [
+   "解析補了教材外的一句，來源：全國法規資料庫《電視節目分級處理辦法》（普遍、保護、輔12、輔15、限制五級）"
+  ]
+ },
+ "town-kids-7": {
+  "light": "green",
+  "at": "2026-11-01",
+  "by": "claude"
+ },
+ "town-work-3": {
+  "light": "green",
+  "at": "2026-11-01",
+  "by": "claude"
+ },
+ "town-work-4": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "原題問規定的「目的」，教材沒寫，正確答案無來源；改成考規定本身的情境題",
+   "換掉明顯不合理的選項"
+  ],
+  "notes": [
+   "解析補了教材外的一句，來源：全國法規資料庫《勞動基準法》第45條（未滿15歲之人原則上不得僱用，例外須主管機關認可）"
+  ]
+ },
+ "town-fraud-4": {
+  "light": "green",
+  "at": "2026-11-01",
+  "by": "claude"
+ },
+ "town-fraud-5": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "題幹改成「照口訣的順序」，避免 3C 被當成嚴格步驟的疑義"
+  ]
+ },
+ "town-fraud-6": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "錯誤選項改成小孩真的可能會有的想法，不再一眼看穿"
+  ]
+ },
+ "town-copy-3": {
+  "light": "green",
+  "at": "2026-11-01",
+  "by": "claude"
+ },
+ "isles-pacific-4": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "「走路過去」太荒謬，換成評量本的「開車走海底隧道」"
+  ],
+  "sample": true
+ },
+ "isles-strait-4": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "照協調者指示整題改寫：從澎湖菜宅、竹籠茨（第二單元氣候考點）改成考臺灣海峽上的離島本身",
+   "建議同步把這題的 points 拿掉 h5a-2-2-07"
+  ],
+  "notes": [
+   "題目改考臺灣海峽上的離島本身；知識點還掛著第二單元菜宅竹籠茨的考點，之後整理 KP_PTS"
+  ],
+  "sample": true
+ },
+ "sky-neighbors-3": {
+  "light": "green",
+  "at": "2026-11-01",
+  "by": "claude",
+  "sample": true
+ },
+ "sky-neighbors-4": {
+  "light": "green",
+  "at": "2026-11-01",
+  "by": "claude"
+ },
+ "sky-neighbors-5": {
+  "light": "green",
+  "at": "2026-11-01",
+  "by": "claude",
+  "sample": true
+ },
+ "sky-hub-3": {
+  "light": "green",
+  "at": "2026-11-01",
+  "by": "claude"
+ },
+ "sky-hub-4": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "解析補上北極海為什麼不對"
+  ]
+ },
+ "sky-world-4": {
+  "light": "green",
+  "at": "2026-11-01",
+  "by": "claude"
+ },
+ "sky-fee-1": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "是非題「對」太多，改成同一知識點的錯誤敘述（答案改 false）",
+   "刪掉解析裡教材沒有的「臺北飛航情報區」"
+  ]
+ },
+ "sky-fee-2": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "原正確答案「導航、維護飛行安全」教材沒有；改成考教材有的「飛過不降落也要付」"
+  ],
+  "notes": [
+   "複審後再改：正確選項太長、像定義，三個選項改成一樣短"
+  ]
+ },
+ "sky-fee-3": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "題幹改成問「為什麼臺灣能收到很多過境費」，避免和「付費原因」混淆",
+   "荒謬選項（飛機都是臺灣的）換成評量本出現過的錯誤說法"
+  ]
+ },
+ "sky-fee-4": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "解析的「亞洲東南邊」改成教材的「亞洲的東部」",
+   "「飛機都不能飛過臺灣」換成不帶「都」、比較像真的錯誤說法"
+  ]
+ },
+ "vil-ama-1": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "解析刪掉教材沒有的石花菜、東北角",
+   "「在漁港賣魚」和教材「販售貼補家用」沾邊，換成清楚錯誤的選項；正確選項補上岸邊撿拾"
+  ]
+ },
+ "vil-ama-2": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "解析改用教材的說法（家務、協助處理漁獲）"
+  ]
+ },
+ "vil-ama-3": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "荒謬選項「都在高山上工作」換成看起來可能的錯誤說法",
+   "解析刪掉教材沒有的「年紀偏大」"
+  ]
+ },
+ "vil-ama-4": {
+  "light": "green",
+  "at": "2026-11-01",
+  "by": "claude"
+ },
+ "vil-net-1": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "解析刪掉教材沒有的「全村都會參加」，改成教材的互助共享"
+  ]
+ },
+ "vil-net-2": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "去掉送分字眼「一定」，改寫成同為錯誤、但看起來可能的敘述"
+  ]
+ },
+ "vil-net-3": {
+  "light": "green",
+  "at": "2026-11-01",
+  "by": "claude"
+ },
+ "vil-net-4": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "荒謬選項（臺灣沒有山）換成看起來可能的錯誤原因",
+   "解析跟著改"
+  ]
+ },
+ "vil-faith-1": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "把概括整個族群的卡片（蓋廟宇、信仰祖靈和自然神靈）換成教材裡具體的例子，避免刻板化"
+  ]
+ },
+ "vil-faith-2": {
+  "light": "green",
+  "at": "2026-11-01",
+  "by": "claude",
+  "notes": [
+   "解析補了教材外的一句，來源：文化部臺灣大百科全書「土地公（福德正神）」「文昌帝君」條目"
+  ],
+  "sample": true
+ },
+ "vil-faith-3": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "是非題「對」太多，改成錯誤敘述（答案改 false）",
+   "刪掉教材沒有的「全村一起」"
+  ]
+ },
+ "vil-faith-4": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "錯誤選項去掉「只有、都」，也不再說「原住民族不信神靈」這種不尊重的話，改成看起來可能的錯誤"
+  ]
+ },
+ "home-land-1": {
+  "light": "green",
+  "at": "2026-11-01",
+  "by": "claude"
+ },
+ "home-land-2": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "刪掉解析裡教材外的「比印度還大」"
+  ]
+ },
+ "home-land-3": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "去掉送分字眼「只有」，改成同為錯誤、要真的知道範圍才答得出的敘述"
+  ]
+ },
+ "home-land-4": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "解析刪掉教材沒寫的「屏東東港外海」，補上錯的方位為什麼錯"
+  ]
+ },
+ "home-newcomer-1": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "解析補上錯的日期不是移民節"
+  ],
+  "notes": [
+   "解析補了教材外的一句，來源：內政部移民署：移民節訂於每年12月18日，與聯合國國際移民日同日"
+  ]
+ },
+ "home-newcomer-2": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "是非題「對」太多，改成錯誤敘述（答案改 false）",
+   "去掉「外籍」"
+  ]
+ },
+ "home-newcomer-3": {
+  "light": "green",
+  "at": "2026-11-01",
+  "by": "claude"
+ },
+ "home-newcomer-4": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "「學習中文」教材沒有，改成「交流的平台和學習的機會」",
+   "解析的「禁止說母語」對齊選項"
+  ]
+ },
+ "home-rites-1": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "送分選項「每天上學」換成「過年」，要分清楚生命禮俗和節慶"
+  ]
+ },
+ "home-rites-2": {
+  "light": "green",
+  "at": "2026-11-01",
+  "by": "claude"
+ },
+ "home-rites-3": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "「迎娶、拜別父母」「舉行告別式」改成五年級較好懂的說法"
+  ],
+  "notes": [
+   "複審：「臺南做十六歲」講義照片和重點摘要沒寫，只在考點清單（盤點評量時記下）；可以接受，抽到再看"
+  ]
+ },
+ "home-rites-4": {
+  "light": "green",
+  "at": "2026-11-01",
+  "by": "claude",
+  "sample": true
+ },
+ "home-change-1": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "去掉送分字眼「一旦…永遠」，改成同為錯誤、但需要理解的敘述"
+  ]
+ },
+ "home-change-2": {
+  "light": "green",
+  "at": "2026-11-01",
+  "by": "claude"
+ },
+ "home-change-3": {
+  "light": "green",
+  "at": "2026-11-01",
+  "by": "claude"
+ },
+ "home-change-4": {
+  "light": "green",
+  "at": "2026-11-01",
+  "by": "claude"
+ },
+ "home-rule-1": {
+  "light": "green",
+  "at": "2026-11-01",
+  "by": "claude"
+ },
+ "home-rule-2": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "「立法機關」教材沒有，五年級沒教，改成教材的「政府」"
+  ]
+ },
+ "home-rule-3": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "送分選項「讓政府可以不守規則」換成看起來可能的錯誤說法"
+  ]
+ },
+ "home-rule-4": {
+  "light": "green",
+  "at": "2026-11-01",
+  "by": "claude"
+ },
+ "home-group-1": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "是非題「對」太多，改成錯誤敘述（答案改 false）"
+  ]
+ },
+ "home-group-2": {
+  "light": "green",
+  "at": "2026-11-01",
+  "by": "claude"
+ },
+ "home-group-3": {
+  "light": "green",
+  "at": "2026-11-01",
+  "by": "claude"
+ },
+ "home-group-4": {
+  "light": "green",
+  "at": "2026-11-01",
+  "by": "claude"
+ },
+ "home-rumor-1": {
+  "light": "green",
+  "at": "2026-11-01",
+  "by": "claude"
+ },
+ "home-rumor-2": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "荒謬選項（稱讚、獎金）換成學生真的可能會有的錯誤想法"
+  ]
+ },
+ "home-rumor-3": {
+  "light": "green",
+  "at": "2026-11-01",
+  "by": "claude"
+ },
+ "home-rumor-4": {
+  "light": "green",
+  "at": "2026-11-01",
+  "by": "claude"
+ },
+ "home-redress-1": {
+  "light": "green",
+  "at": "2026-11-01",
+  "by": "claude"
+ },
+ "home-redress-2": {
+  "light": "green",
+  "at": "2026-11-01",
+  "by": "claude"
+ },
+ "home-redress-3": {
+  "light": "green",
+  "at": "2026-11-01",
+  "by": "claude"
+ },
+ "home-redress-4": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "送分選項「政府永遠不會出錯」換成看起來可能的錯誤觀念"
+  ]
+ },
+ "home-crime-1": {
+  "light": "green",
+  "at": "2026-11-01",
+  "by": "claude"
+ },
+ "home-crime-2": {
+  "light": "green",
+  "at": "2026-11-01",
+  "by": "claude"
+ },
+ "home-crime-3": {
+  "light": "green",
+  "at": "2026-11-01",
+  "by": "claude"
+ },
+ "home-crime-4": {
+  "light": "green",
+  "at": "2026-11-01",
+  "by": "claude",
+  "sample": true
+ },
+ "home-inquiry-1": {
+  "light": "green",
+  "at": "2026-11-01",
+  "by": "claude"
+ },
+ "home-inquiry-2": {
+  "light": "green",
+  "at": "2026-11-01",
+  "by": "claude"
+ },
+ "home-inquiry-3": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "荒謬選項（遊樂場、百貨公司）換成看起來可能、但不可靠的資料來源"
+  ]
+ },
+ "home-inquiry-4": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "送分選項「自己隨便猜的答案」換成「沒有出處的網路傳言」"
+  ]
+ },
+ "geo-plate-1": {
+  "light": "green",
+  "at": "2026-11-01",
+  "by": "claude",
+  "sample": true
+ },
+ "geo-plate-2": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "把敘述改成錯的（很少發生地震），降低是非題答「對」的比例",
+   "解析刪掉教材沒有的「1999 年」"
+  ]
+ },
+ "geo-plate-3": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "解析補上錯的板塊為什麼錯"
+  ]
+ },
+ "geo-plate-4": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "原題要靠教材沒有的「板塊從東西兩邊推擠」才能答，改成考教材有的：板塊交界、推擠隆起、地震頻繁",
+   "錯的說法改成看起來可能、但和教材不符（火山形成、位在板塊中央）"
+  ]
+ },
+ "geo-landform-1": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "卡片不再把地形定義寫在括號裡（原本等於送答案）",
+   "「嘉南平原」教材沒有，改成教材有的例子：臺北盆地、桃園台地、竹東丘陵；類別平原改成丘陵"
+  ]
+ },
+ "geo-landform-2": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "把「西部」改成「東部」，答案改為錯，降低是非題答「對」的比例"
+  ]
+ },
+ "geo-landform-3": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "刪掉教材沒有的「南北長約 390 多公里」「中央山脈」",
+   "荒謬選項「圓圓的」改成容易混淆的組合（南北長但山脈東西走向）"
+  ]
+ },
+ "geo-landform-4": {
+  "light": "green",
+  "at": "2026-11-01",
+  "by": "claude"
+ },
+ "geo-pond-1": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "錯的選項改成看起來可能、但查教材就知道錯（曬鹽在西部沙岸、發電是上游水庫）"
+  ]
+ },
+ "geo-pond-2": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "刪掉「一個都沒有」這個絕對字眼的送分線索"
+  ]
+ },
+ "geo-pond-3": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "荒謬選項（天天下大雨、在海中間）改成看起來可能、但和教材不符的理由"
+  ]
+ },
+ "geo-pond-4": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "「選兩個以上」改成「選三個」，避免孩子只選兩個",
+   "錯的選項刪掉「全部」字眼"
+  ]
+ },
+ "geo-hill-1": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "解析刪掉教材沒有的「排水好」，錯的選項用教材內容說明"
+  ]
+ },
+ "geo-hill-2": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "原本卡片「新竹科學園區一帶」就是答案、又和竹東重複；改成分「早期利用／近代轉型」，四張卡都來自教材"
+  ]
+ },
+ "geo-hill-3": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "改寫成錯的敘述（平原比丘陵山地多），降低是非題答「對」的比例"
+  ]
+ },
+ "geo-hill-4": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "荒謬選項（砍更多木頭、不會下雨）改成看起來可能但和教材不符的說法"
+  ]
+ },
+ "geo-river-1": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "荒謬選項「很適合大船航行」改成和教材相反的「水量穩定、很少缺水」"
+  ]
+ },
+ "geo-river-2": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "荒謬選項（結冰、船開到山上）改成看起來可能但和教材不符的說法"
+  ]
+ },
+ "geo-river-3": {
+  "light": "green",
+  "at": "2026-11-01",
+  "by": "claude"
+ },
+ "geo-river-4": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "「建橋梁和住家」上游也可能有，第二答案說得通；改成教材明確分上下游的內容"
+  ]
+ },
+ "geo-coast-1": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "解析刪掉教材沒有的「墾丁」「山直接臨海」"
+  ]
+ },
+ "geo-coast-2": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "解析刪掉教材沒有的「潮間帶寬」「斷崖海很深」，改用教材說明錯的選項"
+  ]
+ },
+ "geo-coast-3": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "解析刪掉教材沒有的「海灣可以擋風浪」，改用教材說明"
+  ]
+ },
+ "geo-coast-4": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "解析補上大理石、沙子為什麼錯"
+  ]
+ },
+ "geo-typhoon-1": {
+  "light": "green",
+  "at": "2026-11-01",
+  "by": "claude"
+ },
+ "geo-typhoon-2": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "刪掉「只會」「一點好處都沒有」送分字眼，改寫成正面敘述（答案改為對）"
+  ]
+ },
+ "geo-typhoon-3": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "原題考防颱準備，摘要沒有；改成考摘要有的颱風影響（強風豪雨、影響農業、替水庫蓄水）",
+   "錯的說法改成容易混淆的季節和寒害"
+  ]
+ },
+ "geo-typhoon-4": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "解析刪掉教材沒有的「寒流」"
+  ]
+ },
+ "geo-flood-1": {
+  "light": "green",
+  "at": "2026-11-01",
+  "by": "claude"
+ },
+ "geo-flood-2": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "刪掉教材沒有的「高雄」"
+  ]
+ },
+ "geo-flood-3": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "原本四張卡是兩件事各講兩次；改成教材的四個不同說法（含莫拉克颱風小林村）"
+  ]
+ },
+ "geo-flood-4": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "原題考山區撤離，摘要沒有；改成考摘要有的「土石流發生在山區」",
+   "錯的說法改成容易混淆的災害（淹水、寒害）"
+  ]
+ },
+ "geo-house-1": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "荒謬選項（看起來比較高、讓鳥停）改成容易混淆的綠屋頂和擋強風"
+  ]
+ },
+ "geo-house-2": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "「在屋頂鋪雪板」詞不常見又荒謬，改成教材有、但不是為了多雨炎熱的「風力發電機」"
+  ]
+ },
+ "geo-house-3": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "刪掉教材沒有的「在屋頂種植物」，題幹只用教材的「吸水隔熱」"
+  ]
+ },
+ "geo-house-4": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "荒謬選項（球場比較貴、冬天下大雪）改成看起來可能但不合理的說法"
+  ]
+ },
+ "geo-industry-1": {
+  "light": "green",
+  "at": "2026-11-01",
+  "by": "claude",
+  "sample": true
+ },
+ "geo-industry-2": {
+  "light": "green",
+  "at": "2026-11-01",
+  "by": "claude"
+ },
+ "geo-industry-3": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "題幹改成教材的「依季風轉向」，避免「依季風方向設置」兩種解讀",
+   "解析刪掉教材沒有的「風力強又穩定」"
+  ],
+  "notes": [
+   "這題標了 h5a-2-2-04（氣候與產業），實際只考到 h5a-2-2-02 的風力發電，請 Chuck 決定是否調整標記"
+  ]
+ },
+ "geo-industry-4": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "荒謬選項（全部變水庫、滑雪場）改成教材其他地方的產業，看起來可能但不對",
+   "解析刪掉教材沒有的「保留鹽山」"
+  ]
+ },
+ "geo-cold-1": {
+  "light": "green",
+  "at": "2026-11-01",
+  "by": "claude"
+ },
+ "geo-cold-2": {
+  "light": "green",
+  "at": "2026-11-01",
+  "by": "claude",
+  "sample": true
+ },
+ "geo-cold-3": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "錯的選項刪掉「全部」字眼，改成看起來可能但不對的做法",
+   "解析刪掉教材沒有說的「耐旱」"
+  ]
+ },
+ "geo-cold-4": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "原題考虱目魚防寒做法，摘要沒有；改成考摘要有的「寒害是 10°C 以下低溫讓虱目魚凍死」",
+   "錯的說法改成容易混淆的水災、旱災"
+  ]
+ },
+ "ch1-cultures-4": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "解析原本寫「石板屋是卑南遺址」，教材是「石板棺」，已更正",
+   "錯的選項「石板蓋的大房子」改成十三行的「架高的房屋」，容易混淆但查得到"
+  ],
+  "sample": true
+ },
+ "ch1-cultures-5": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "解析刪掉教材沒有的「地層判斷」",
+   "錯的說法「現代人掉的」改成看起來可能的說法"
+  ],
+  "sample": true
+ },
+ "abo-day-1": {
+  "light": "green",
+  "at": "2026-11-01",
+  "by": "claude"
+ },
+ "abo-day-2": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "解析舉例的族名改成教材出現過的（阿美族、達悟族、魯凱族、賽德克族），刪掉教材沒提的泰雅、排灣、布農"
+  ]
+ },
+ "abo-day-3": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "布農族的分布教材沒有，改成教材的兩種描述卡；保留達悟族（蘭嶼）"
+  ],
+  "notes": [
+   "複審後再改：題目原本問「族群分布在哪」但卡片有特徵描述，改成問「這些說法講的是哪一群」"
+  ]
+ },
+ "abo-day-4": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "刪掉不妥的錯誤選項「因為他們不喜歡自己的文化」和「人比較少」，改成和教材分布、歷史不符的說法",
+   "解析「受影響最深」改回教材的「較深」"
+  ]
+ },
+ "abo-wisdom-1": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "解析刪掉教材沒有的做法細節（竹子樹枝堆疊、取一些留一些）"
+  ]
+ },
+ "abo-wisdom-2": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "題幹原本的理由「讓動物能繁殖」教材沒有明寫，改成教材的「與自然共存的生態智慧」"
+  ]
+ },
+ "abo-wisdom-3": {
+  "light": "green",
+  "at": "2026-11-01",
+  "by": "claude",
+  "sample": true
+ },
+ "abo-wisdom-4": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "刪掉輕視傳說的錯誤選項「只是嚇小孩的故事」，改成和保護環境相反的說法"
+  ]
+ },
+ "sea-why-1": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "解析刪掉教材外的「石油、煤礦很後來才重要」，改用教材說明"
+  ]
+ },
+ "sea-why-2": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "把「葡萄牙人」改成「荷蘭人」，答案改為錯，降低是非題答「對」的比例"
+  ]
+ },
+ "sea-why-3": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "荒謬選項「臺灣離歐洲最近」改成容易混淆的「出產瓷器和絲綢」",
+   "解析刪掉教材沒有的「臺灣不產香料」"
+  ]
+ },
+ "sea-why-4": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "解析刪掉教材沒有的「隔年荷蘭人離開」"
+  ],
+  "notes": [
+   "這題標的考點是 h5a-4-1-01～03，內容其實對到 h5a-4-2-01、h5a-4-2-04，請 Chuck 決定是否調整標記"
+  ]
+ },
+ "sea-dutch-1": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "錯的選項「億載金城」教材沒有，改成容易混淆的「安平古堡」（教材：熱蘭遮城）"
+  ]
+ },
+ "sea-dutch-2": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "把「荷蘭人」改成「西班牙人」，答案改為錯，降低是非題答「對」的比例",
+   "解析刪掉教材沒有的「收重稅」「被鎮壓」"
+  ]
+ },
+ "sea-dutch-3": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "荒謬選項「鳳梨酥」改成看起來可能的作物「百香果」（教材出現在埔里，沒說是荷蘭人引進）",
+   "解析刪掉教材沒有的「黃牛幫忙耕田」"
+  ]
+ },
+ "sea-dutch-4": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "解析刪掉教材沒有的「漢人稱荷蘭人為紅毛」和「紅毛城」（教材的紅毛城是西班牙人蓋的，容易混淆）"
+  ],
+  "notes": [
+   "教材另寫西班牙人的聖多明哥城「今紅毛城」，讀熟的孩子可能把「紅毛」連到西班牙人；本題選項沒有西班牙人所以答案唯一，但請 Chuck 留意兩處說法並存"
+  ]
+ },
+ "sea-spain-1": {
+  "light": "green",
+  "at": "2026-11-01",
+  "by": "claude"
+ },
+ "sea-spain-2": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "刪掉「一直」這個絕對語氣的提示"
+  ]
+ },
+ "sea-spain-3": {
+  "light": "green",
+  "at": "2026-11-01",
+  "by": "claude",
+  "sample": true
+ },
+ "sea-spain-4": {
+  "light": "green",
+  "at": "2026-11-01",
+  "by": "claude"
+ },
+ "inq-steps-1": {
+  "light": "green",
+  "at": "2026-11-01",
+  "by": "claude",
+  "sample": true
+ },
+ "inq-steps-2": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "荒謬選項（卡通人物、同學電話）改成看起來可能、但不在教材表格項目裡的資訊"
+  ]
+ },
+ "inq-steps-3": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "刪掉否定說法「不用提出」，避免雙重否定"
+  ],
+  "sample": true
+ },
+ "inq-steps-4": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "極端選項（全鋪水泥、關掉國家公園）改成看起來可能但沒解決問題的做法"
+  ]
+ },
+ "sci-burn-need-1": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "題幹拿掉「一定」",
+   "錯誤選項「很多水」改成講義有教的「氮氣」，比較像真的",
+   "解析補上氮氣為什麼不對"
+  ]
+ },
+ "sci-burn-need-2": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "換成講義的廣口瓶蓋蠟燭實驗，拿掉不合常理的「燈室關窗火就熄」和難懂的「燈室」",
+   "錯誤選項改成實驗裡的控制變因，查講義就知道錯"
+  ]
+ },
+ "sci-burn-need-3": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "兩個荒謬說法改成看起來合理的迷思（鏡片發熱、光變亮但不會變熱）",
+   "正解加上「燃點」，對到燃燒三要素考點"
+  ],
+  "notes": [
+   "複審：講義只寫光點變亮、照到會燒傷，「溫度升高」要推論"
+  ]
+ },
+ "sci-burn-out-1": {
+  "light": "green",
+  "at": "2026-11-01",
+  "by": "claude",
+  "sample": true
+ },
+ "sci-burn-out-2": {
+  "light": "green",
+  "at": "2026-11-01",
+  "by": "claude"
+ },
+ "sci-burn-out-3": {
+  "light": "green",
+  "at": "2026-11-01",
+  "by": "claude",
+  "sample": true
+ },
+ "sci-burn-out-4": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "解析刪掉講義查不到的「倒水會讓燈破裂」「吹火焰會竄出來」，改用講義的「隔絕助燃物」說明"
+  ]
+ },
+ "sci-light-line-1": {
+  "light": "green",
+  "at": "2026-11-01",
+  "by": "claude",
+  "sample": true
+ },
+ "sci-light-line-2": {
+  "light": "red",
+  "at": "2026-11-01",
+  "by": "claude",
+  "notes": [
+   "講義和考點清單只有「光直線前進、影子」，沒有教影子大小和距離的關係；要請 Chuck 決定：補課本頁面當依據，或停用這題",
+   "2026-11-01 Chuck：留在待審，等教材來再對（先不放在「要你看」）"
+  ],
+  "wait": true
+ },
+ "sci-light-line-3": {
+  "light": "red",
+  "at": "2026-11-01",
+  "by": "claude",
+  "notes": [
+   "講義沒有影子大小和距離的關係（同 sci-light-line-2），要補教材或停用",
+   "另外題幹只有「影子的大小。」，第二格由第一格決定，和 sci-light-line-2 重複；如果保留要重寫題幹",
+   "2026-11-01 Chuck：留在待審，等教材來再對（先不放在「要你看」）"
+  ],
+  "wait": true
+ },
+ "sci-refract-1": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "是非題改成錯誤敘述（答案改 false），平衡是非題答案",
+   "解析照講義說明折射，拿掉遊戲情境"
+  ]
+ },
+ "sci-refract-2": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "解析補上兩個錯誤選項為什麼錯"
+  ]
+ },
+ "sci-refract-3": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "換掉「水底的石頭會變大」（從水面看水中東西確實可能看起來較大，不算錯）和荒謬的「水會把光吃掉」，改成常見迷思"
+  ]
+ },
+ "sci-lens-1": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "解析補上錯誤選項為什麼錯（用講義「光射入一般玻璃」的對照）"
+  ]
+ },
+ "sci-lens-2": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "照講義改正解：拉遠後是「倒立」，不是「糊掉」",
+   "錯誤選項改成看起來合理的迷思，三個選項長度接近"
+  ]
+ },
+ "sci-lens-3": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "「讓聲音變大」太容易排除，改成容易和三稜鏡搞混的「分散成彩虹色光」",
+   "解析拿掉「絕對」，補上錯誤選項說明"
+  ]
+ },
+ "sci-prism-1": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "正解「七種顏色」改成講義的「不同顏色的色光」",
+   "錯誤選項改成較合理的迷思",
+   "解析拿掉講義沒有的七色列舉"
+  ]
+ },
+ "sci-prism-2": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "解析改成講義的「折射和反射」，拿掉講義沒有的「七種顏色」「像小三稜鏡」"
+  ],
+  "sample": true
+ },
+ "sci-prism-3": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "錯誤選項「直直看著太陽」太好排除，改成「面對太陽」「看頭頂正上方」這種看起來可能的說法"
+  ],
+  "notes": [
+   "複審：講義只寫噴霧器要背對陽光，看天上彩虹要背對太陽是類推"
+  ]
+ },
+ "sci-pond-plant-1": {
+  "light": "red",
+  "at": "2026-11-01",
+  "by": "claude",
+  "notes": [
+   "四上內容，沒有教材可以對；要等四上講義或決定先停用",
+   "另外四張卡對四類一對一，最後一張不用想",
+   "2026-11-01 Chuck：留在待審，等教材來再對（先不放在「要你看」）"
+  ],
+  "wait": true
+ },
+ "sci-pond-plant-2": {
+  "light": "red",
+  "at": "2026-11-01",
+  "by": "claude",
+  "notes": [
+   "四上內容，沒有教材可以對；要等四上講義或決定先停用",
+   "另外錯誤選項「葉子是塑膠做的」太荒謬",
+   "2026-11-01 Chuck：留在待審，等教材來再對（先不放在「要你看」）"
+  ],
+  "wait": true
+ },
+ "sci-pond-plant-3": {
+  "light": "red",
+  "at": "2026-11-01",
+  "by": "claude",
+  "notes": [
+   "四上內容，沒有教材可以對；要等四上講義或決定先停用",
+   "2026-11-01 Chuck：留在待審，等教材來再對（先不放在「要你看」）"
+  ],
+  "wait": true
+ },
+ "sci-pond-plant-4": {
+  "light": "red",
+  "at": "2026-11-01",
+  "by": "claude",
+  "notes": [
+   "四上內容，沒有教材可以對；要等四上講義或決定先停用",
+   "另外錯誤選項「越深越好」「種在岸上」太好排除，正解最長",
+   "2026-11-01 Chuck：留在待審，等教材來再對（先不放在「要你看」）"
+  ],
+  "wait": true
+ },
+ "sci-fish-1": {
+  "light": "red",
+  "at": "2026-11-01",
+  "by": "claude",
+  "notes": [
+   "四上內容，沒有教材可以對；要等四上講義或決定先停用",
+   "2026-11-01 Chuck：留在待審，等教材來再對（先不放在「要你看」）"
+  ],
+  "wait": true
+ },
+ "sci-fish-2": {
+  "light": "red",
+  "at": "2026-11-01",
+  "by": "claude",
+  "notes": [
+   "四上內容，沒有教材可以對；要等四上講義或決定先停用",
+   "另外三張卡對三類一對一，「鰓」對「呼吸」直接送分；鰭也有平衡、前進作用，分類偏簡化",
+   "2026-11-01 Chuck：留在待審，等教材來再對（先不放在「要你看」）"
+  ],
+  "wait": true
+ },
+ "sci-fish-3": {
+  "light": "red",
+  "at": "2026-11-01",
+  "by": "claude",
+  "notes": [
+   "四上內容，沒有教材可以對；要等四上講義或決定先停用",
+   "另外「水草會產生氧氣」是光合作用概念，題幹沒說出因果，孩子可能誤解",
+   "2026-11-01 Chuck：留在待審，等教材來再對（先不放在「要你看」）"
+  ],
+  "wait": true
+ },
+ "sci-survive-1": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "兔子、刺河豚講義沒有，改用講義的龜縮殼、刺蝟捲球、臭鼬噴臭液、壁虎斷尾，加上考點清單的烏賊噴墨",
+   "類別改成不混在一起的三類，卡片 5 張不再一對一"
+  ],
+  "notes": [
+   "複審：「烏賊噴墨」評量只寫「能噴出黑色墨汁」沒寫烏賊，靠常識"
+  ]
+ },
+ "sci-survive-2": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "題幹拿掉講義查不到的「秋天從北方飛到臺灣過冬」，改用講義原意",
+   "錯誤選項「冬眠」改成講義用詞「休眠」",
+   "解析拿掉講義沒有的七股、春天飛回北方，補上錯誤選項說明"
+  ],
+  "sample": true
+ },
+ "sci-survive-3": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "「有些青蛙」改成講義的箭毒蛙",
+   "兩個荒謬說法改成容易混淆的保護色、模仿",
+   "解析拿掉講義沒有的「很難吃」"
+  ]
+ },
+ "sci-baby-1": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "講義沒有鯨魚，改成講義和考點清單的海豚",
+   "加入考點清單點名容易錯的蜘蛛",
+   "海龜改成講義用詞「龜」"
+  ]
+ },
+ "sci-baby-2": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "「擋太陽」「飛得更高」太好排除，改成「嚇走敵人」「散熱」這種看起來可能的說法",
+   "解析拿掉講義沒有的螢火蟲閃光找伴侶"
+  ],
+  "sample": true
+ },
+ "sci-baby-3": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "是非題改成錯誤敘述（答案改 false），拿掉送分的「有些動物會…」句型"
+  ]
+ },
+ "sci-planets-1": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "解析拿掉講義沒有的「剛好有液態的水」，改用講義的「唯一擁有生命」，並說明錯誤選項"
+  ]
+ },
+ "sci-planets-2": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "解析拿掉講義沒有的「裝得下一千多個地球」，補上錯誤選項說明"
+  ]
+ },
+ "sci-planets-3": {
+  "light": "green",
+  "at": "2026-11-01",
+  "by": "claude",
+  "sample": true
+ },
+ "sci-stars-1": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "照講義改：原句「晚上的星星都東升西落」和講義「只有北極星幾乎固定不動」衝突，改成考北極星幾乎不動的錯誤敘述（答案 false）",
+   "解析改用講義原文"
+  ]
+ },
+ "sci-stars-2": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "解析補上錯誤選項為什麼錯，找北極星的方法照講義寫第1、2顆星"
+  ],
+  "sample": true
+ },
+ "sci-stars-3": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "題幹問「哪個季節最好看」和類別「夏季／冬季大三角」對不上，改問屬於哪個大三角"
+  ]
+ },
+ "sci-stars-4": {
+  "light": "yellow",
+  "at": "2026-11-01",
+  "by": "claude",
+  "fixed": [
+   "講義沒有星座盤「對準日期時間」的操作，改考講義有寫的星座盤特性（面向北方好辨識、透明片標方位和高度角）",
+   "錯誤說法改成講義查得到是錯的敘述"
+  ]
+ }
+}

@@ -11,9 +11,14 @@ const dayOf = (t) => new Date(new Date(t).getTime() + 8 * 3600e3).toISOString().
 export const PLACE_NAME = {
   pro: '序章 認識臺灣', ch1: '第一章 史前', ch2: '第二章 原住民族', ch3: '第三章 大航海時代', ch4: '第四章 鄭氏時期',
   ch5: '第五章 八堡圳', ch6: '第六章 開港與鐵路', ch7: '第七章 日治時期', end: '終章 今天的島嶼',
-  town: '現在篇・規則小鎮', isles: '現在篇・離島巡航', sky: '現在篇・天空港', post: '現在篇・景點明信片',
+  town: '現在篇・規則小鎮', isles: '現在篇・離島巡航', sky: '現在篇・天空港', post: '現在篇・景點明信片', village: '現在篇・風與海的漁村',
+  'h-book-home': '課本・臺灣是我的家鄉（遊戲裡還沒有）', 'h-book-geo': '課本・臺灣的地理特色（遊戲裡還沒有）', 'h-book-his': '課本・史前到大航海（遊戲裡還沒有）',
   'a-forest': '祕境島・森林', 'a-nest': '祕境島・螞蟻地下城', 'a-harbor': '祕境島・海港工坊', 'a-town': '祕境島・劇場小鎮', 'a-sky': '祕境島・山頂天文台',
+  'a-pond': '祕境島・池塘', 'a-beacon': '祕境島・海港燈塔', 'a-stage': '祕境島・光的魔術舞台',
+  'a-book-animal': '課本・動物世界（遊戲裡還沒有）', 'a-book-sky': '課本・神祕的天空（遊戲裡還沒有）',
 };
+// 課本有、遊戲裡還沒有關卡的地方（地方 id 有 -book-）：報告不叫孩子「回去玩」
+export const noGame = (place) => String(place).includes('-book-');
 // 出卷的科目（老師後台才看得到科目名）；新增科目時在這裡加一筆，EXAMS 的 by 也加同一個 key
 export const SUBJECTS = [
   { id: 'soc', name: '社會', game: '島嶼開拓者' },
@@ -22,14 +27,15 @@ export const SUBJECTS = [
 // 依考試圈範圍：照康軒一般教學進度推的預設範圍，按科目分開（各校不同，出卷時可以再加減章節）
 // 五上社會先上地理和法律、期中後才進臺灣史；五上自然前兩單元是動物世界、探索聲光世界
 export const EXAMS = [
-  { id: '5a-1', name: '五上 第一次段考', by: { soc: ['pro', 'town', 'isles', 'sky'], sci: ['a-forest', 'a-nest', 'a-town'] } },
-  { id: '5a-2', name: '五上 第二次段考', by: { soc: ['ch1', 'ch2', 'ch3', 'ch4', 'post'], sci: ['a-harbor', 'a-sky'] } },
-  { id: '5a', name: '五上 整學期', by: { soc: ['pro', 'town', 'isles', 'sky', 'ch1', 'ch2', 'ch3', 'ch4', 'post'], sci: ['a-forest', 'a-nest', 'a-town', 'a-harbor', 'a-sky'] } },
+  { id: '5a-1', name: '五上 第一次段考', by: { soc: ['pro', 'town', 'isles', 'sky', 'village', 'h-book-home', 'h-book-geo'], sci: ['a-forest', 'a-nest', 'a-book-animal', 'a-town', 'a-stage'] } },
+  { id: '5a-2', name: '五上 第二次段考', by: { soc: ['ch1', 'ch2', 'ch3', 'ch4', 'h-book-his', 'post'], sci: ['a-sky', 'a-book-sky', 'a-harbor', 'a-beacon'] } },
+  { id: '5a', name: '五上 整學期', by: { soc: ['pro', 'town', 'isles', 'sky', 'village', 'h-book-home', 'h-book-geo', 'ch1', 'ch2', 'ch3', 'ch4', 'h-book-his', 'post'], sci: ['a-forest', 'a-nest', 'a-book-animal', 'a-town', 'a-stage', 'a-sky', 'a-book-sky', 'a-harbor', 'a-beacon'] } },
+  { id: '4a', name: '四上 整學期', by: { sci: ['a-pond'] } },
   { id: '5b-1', name: '五下 第一次段考', by: { soc: ['ch5', 'ch6'] } },
   { id: '5b-2', name: '五下 第二次段考', by: { soc: ['ch7'] } },
 ];
 export const placeZone = (place) => (String(place).startsWith('a-') ? 'science' : 'taiwan');
-export const placeGame = (place) => (String(place).startsWith('a-') ? '時光祕境島' : '島嶼開拓者');
+export const placeGame = (place) => (noGame(place) ? '遊戲裡還沒有，課本題' : String(place).startsWith('a-') ? '時光祕境島' : '島嶼開拓者');
 
 export const STATE_NAME = { learned: '學會了', weak: '待加強', seen: '玩過還沒學會', new: '還沒玩過' };
 
@@ -120,7 +126,7 @@ export function pickPaper(bank, states, { n = 20, subjects = new Set(['soc', 'sc
 }
 
 // 報告：一題的判讀。gameOk＝遊戲裡第一次對不對（null＝遊戲裡沒有這題）；played＝那一關玩過沒
-export function readSlot({ got, ms, kind }, gameOk, played) {
+export function readSlot({ got, ms, kind }, gameOk, played, bookOnly = false) {
   const ok = Number(got) >= 1;
   const fast = !ok && ms != null && ms > 0 && ms < (kind === 'tf' ? 2000 : 3000);
   let code, text;
@@ -128,6 +134,7 @@ export function readSlot({ got, ms, kind }, gameOk, played) {
   else if (gameOk === true && !ok) { code = 'ask'; text = '遊戲裡對、卷上錯：可能當時是猜對的，或是忘了。問問孩子「你怎麼想的？」'; }
   else if (gameOk === false && ok) { code = 'grew'; text = '遊戲裡錯過、現在答對：後來學會了。'; }
   else if (gameOk === false && !ok) { code = 'stuck'; text = '遊戲和卷上都錯：還沒弄懂。陪孩子看課本這一段，再回遊戲玩一次。'; }
+  else if (bookOnly) { code = ok ? 'ok' : 'notyet'; text = ok ? '答對了（這段遊戲裡還沒有，是課本學的）。' : '這段遊戲裡還沒有，要陪孩子看課本這一段。'; }
   else if (ok) { code = played ? 'ok' : 'ahead'; text = played ? '答對了。' : '還沒玩到這裡就答對了，可能課本學過。'; }
   else { code = played ? 'miss' : 'notyet'; text = played ? '玩過這一關，卷上答錯：可以回去再玩一次，搭配課本複習。' : '還沒玩到這一關。可以推薦孩子去玩，也搭配課本複習。'; }
   return { code, text, fast };

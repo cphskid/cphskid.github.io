@@ -2,7 +2,7 @@
 // 規則（學會、挑題比例、報告判讀）在 js/quiz-core.js；改分在資料庫（supabase/park_quiz.sql）。
 import { quiz } from './auth.js';
 import { printPaper } from './quiz-print.js';
-import { kidStates, pickPaper, readSlot, PLACE_NAME, STATE_NAME, placeZone, placeGame, EXAMS, SUBJECTS } from './quiz-core.js';
+import { kidStates, pickPaper, readSlot, PLACE_NAME, STATE_NAME, placeZone, placeGame, EXAMS, SUBJECTS, noGame } from './quiz-core.js';
 import { resultHtml, KIND_NAME } from './quiz-items.js';
 import { openEditor } from './quiz-edit.js';
 
@@ -259,6 +259,17 @@ function planRow(x, i) {
 }
 
 // 老師看的題目（原本的順序，標出答案）
+// 題庫審核：審題燈號和 Claude 的意見（review 由 tools/quiz-bank/review.json 寫進來）
+function reviewBox(it) {
+  const r = it.review;
+  if (!r?.light) return '';
+  const [dot, name] = LIGHT[r.light] ?? ['', r.light];
+  const bad = it.note.startsWith(BAD) ? `<p class="warn">${esc(it.note)}</p>` : '';
+  return `<div class="qt-review l-${r.light}"><b>${dot} ${name}${r.sample ? '・抽查題' : ''}</b>
+    ${r.notes?.length ? `<ul>${r.notes.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
+    ${r.fixed?.length ? `<small>Claude 已修：${r.fixed.map(esc).join('；')}</small>` : ''}</div>${bad}`;
+}
+
 export function preview(it) {
   const b = it.body, ok = (on) => (on ? ' class="qt-right"' : '');
   let s = '';
@@ -367,7 +378,7 @@ async function paintReport(box, paperId) {
     return wire();
   }
   const slots = k.slots.map((s) => ({ ...s, place: cache.kp.get(s.kp)?.place, kpName: cache.kp.get(s.kp)?.name, book: cache.kp.get(s.kp)?.book,
-                                      read: readSlot(s, game.has(s.kp) ? game.get(s.kp) : null, played.has(cache.kp.get(s.kp)?.place)) }));
+                                      read: readSlot(s, game.has(s.kp) ? game.get(s.kp) : null, played.has(cache.kp.get(s.kp)?.place), noGame(cache.kp.get(s.kp)?.place)) }));
   // 哪幾章比較弱
   const byPlace = new Map();
   for (const s of slots) { const p = byPlace.get(s.place) ?? { n: 0, got: 0, wrong: [] }; p.n++; p.got += Number(s.got); if (Number(s.got) < 1) p.wrong.push(s); byPlace.set(s.place, p); }
@@ -380,8 +391,8 @@ async function paintReport(box, paperId) {
     <div class="kpis"><div class="kpi"><b>${k.score}</b><small>分數</small></div><div class="kpi"><b>${slots.filter((s) => Number(s.got) >= 1).length}/${slots.length}</b><small>全對的題</small></div>
       <div class="kpi"><b>${Math.max(1, Math.round(total / 60000))}</b><small>分鐘</small></div><div class="kpi"><b>${k.coins}</b><small>時光幣</small></div></div>
     ${weak.length ? `<h3>比較弱的地方</h3><ul class="qt-weak">${weak.map(([pl, p]) => `<li><b>${esc(PLACE_NAME[pl] ?? pl)}</b>：對 ${Math.round(100 * p.got / p.n)}%（錯 ${p.wrong.length} 題：${[...new Set(p.wrong.map((s) => s.kpName))].map(esc).join('、')}）
-        <br><small>課本：${[...new Set(p.wrong.map((s) => s.book))].map(esc).join('、')}${played.has(pl) ? '' : '・還沒玩到這一關'}</small></li>`).join('')}</ul>
-      <div class="row"><button class="btn small go" data-rec>✉ 寄信推薦去玩這幾關</button></div>` : '<p class="lead">全部答對，這些知識點離「學會」又近一步。</p>'}
+        <br><small>課本：${[...new Set(p.wrong.map((s) => s.book))].map(esc).join('、')}${noGame(pl) ? '・遊戲裡還沒有這段，要看課本' : played.has(pl) ? '' : '・還沒玩到這一關'}</small></li>`).join('')}</ul>
+      ${weak.some(([pl]) => !noGame(pl)) ? '<div class="row"><button class="btn small go" data-rec>✉ 寄信推薦去玩這幾關</button></div>' : ''}` : '<p class="lead">全部答對，這些知識點離「學會」又近一步。</p>'}
     ${ask.length ? `<h3>可以問問孩子</h3><p class="tip">下面這些題，遊戲裡第一次就答對、卷上卻錯了。可能當時是猜的，也可能忘了。不用責備，問他「你那時候怎麼想的？」</p>
       <ul>${ask.map((s) => `<li>${esc(s.kpName)}：${esc(s.body.q)}</li>`).join('')}</ul>` : ''}
     ${guess.length ? `<p class="tip">有 ${guess.length} 題不到 3 秒就答錯，可能沒看完題目就按了。</p>` : ''}
@@ -391,12 +402,13 @@ async function paintReport(box, paperId) {
       .replace('</li>', `<p class="qt-read r-${s.read.code}"><small>${esc(PLACE_NAME[s.place] ?? '')}｜${esc(s.kpName)}｜課本：${esc(s.book)}${s.ms ? `｜${Math.round(s.ms / 1000)} 秒` : ''}</small><br>${esc(s.read.text)}${s.read.fast ? '（答得很快，可能是猜的）' : ''}</p></li>`)}`).join('')}</ol></section>`;
   wire();
   $('[data-rec]', box)?.addEventListener('click', async (e) => {
-    const names = weak.slice(0, 3).map(([pl]) => PLACE_NAME[pl] ?? pl);
+    const inGame = weak.filter(([pl]) => !noGame(pl));
+    const names = inGame.slice(0, 3).map(([pl]) => PLACE_NAME[pl] ?? pl);
     const books = [...new Set(weak.slice(0, 3).flatMap(([, p]) => p.wrong.map((s) => s.book)))].slice(0, 3);
     const body = `${k.nickname}，考官看了你的試煉卷，建議你回去玩：${names.join('、')}。玩的時候注意圖鑑卡和「想一想」，玩完再翻課本：${books.join('、')}。下一張卷會再考這些喔！`;
     e.target.disabled = true;
     try {
-      await quiz.recommend(ctx.active, k.id, body, placeZone(weak[0][0]));
+      await quiz.recommend(ctx.active, k.id, body, placeZone(inGame[0][0]));
       e.target.textContent = '✔ 已寄出';
       ctx.toast(`寄給 ${k.nickname} 了，他打開樂園就會收到。`);
     } catch (err) { e.target.disabled = false; ctx.toast(err.message, true); }
@@ -447,19 +459,41 @@ function paintMap(box) {
 // 題庫審核（管理員）
 // =============================================================================
 let bankFilter = 'draft';
+let bankFirst = true;     // 第一次打開：有要看的題就先停在「要你看」
+const BAD = '抽查有問題：';
+const LIGHT = { red: ['🔴', '紅燈'], yellow: ['🟡', '黃燈（Claude 已修）'], green: ['🟢', '綠燈'] };
 let bankPlace = null;     // 題庫審核看哪一章（null＝還沒選，自動挑第一個有題的章）
 let bankData = null;
 async function paintBank(box) {
   bankData = await quiz.adminBank();
   stale = true;   // 管理員在這裡上架、停用、改題，回到出卷頁就重讀
   const kps = new Map(bankData.kps.map((k) => [k.id, k]));
-  const byStatus = bankData.items.filter((i) => bankFilter === 'all' || i.status === bankFilter || (bankFilter === 'flag' && i.flags));
+  // 審題燈號（2026-11-01 Chuck 定的審題原則）：紅＝Claude 修不了、要管理員看；sample＝綠燈抽查題
+  const mustSee = (i) => i.status === 'draft' && ((i.review?.light === 'red' && !i.review.wait) || (i.review?.sample && !i.note.startsWith(BAD)));
+  if (bankFirst) { bankFirst = false; if (bankData.items.some(mustSee)) bankFilter = 'check'; }
+  const byStatus = bankData.items.filter((i) => bankFilter === 'all' || i.status === bankFilter || (bankFilter === 'flag' && i.flags) || (bankFilter === 'check' && mustSee(i)));
   // 章節照課本順序；每章顯示這個篩選下有幾題
   const places = [...new Set(bankData.kps.map((k) => k.place))];
   const inPlace = (pl) => byStatus.filter((i) => kps.get(i.kp)?.place === pl);
   if (!bankPlace) bankPlace = places.find((pl) => inPlace(pl).length) ?? places[0];
   const items = inPlace(bankPlace);
   const n = (s) => bankData.items.filter((i) => i.status === s).length;
+  // 這一章整批上架：抽查題都上架了、沒有人標「有問題」→ 綠燈和黃燈（沒有格式問題的）全部上架，紅燈留著
+  const all = bankData.items.filter((i) => kps.get(i.kp)?.place === bankPlace);
+  const drafts = all.filter((i) => i.status === 'draft');
+  const hasLights = drafts.some((i) => i.review?.light);
+  const samples = all.filter((i) => i.review?.sample);
+  const badOnes = samples.filter((i) => i.note.startsWith(BAD));
+  const waiting = samples.filter((i) => i.status === 'draft' && !i.note.startsWith(BAD));
+  const batchItems = () => drafts.filter((i) => !i.check.length && (hasLights ? ['green', 'yellow'].includes(i.review?.light) && !i.note.startsWith(BAD) : true));
+  const batchBar = () => {
+    if (!['draft', 'check'].includes(bankFilter) || !drafts.length) return '';
+    if (!hasLights) return `<div class="row"><button class="ghost small" id="qt-allok">這一章沒有格式問題的全部上架（${batchItems().length} 題）</button></div>`;
+    const red = drafts.filter((i) => i.review?.light === 'red').length;
+    if (badOnes.length) return `<p class="warn">這一章抽查有 ${badOnes.length} 題有問題，先不整批上架；Claude 會把同類問題整章重查一次，再給你抽查。</p>`;
+    if (waiting.length) return `<p class="tip">這一章還有 ${waiting.length} 題抽查題沒看（在「要你看」），看完就能整批上架。</p>`;
+    return `<div class="row"><button class="btn small go" id="qt-allok">✔ 抽查都沒問題：這一章綠燈、黃燈整批上架（${batchItems().length} 題）</button>${red ? `<small>紅燈 ${red} 題不會上架，要一題一題看</small>` : ''}</div>`;
+  };
   box.innerHTML = `
   ${bankData.flags.length ? `<section class="panel notice"><h3>孩子回報「這題怪怪的」（${bankData.flags.length}）</h3><ul class="qt-flags">${bankData.flags.map((f) => {
       const it = bankData.items.find((i) => i.id === f.item);
@@ -468,18 +502,20 @@ async function paintBank(box) {
         <div class="row"><button class="ghost small" data-flag="${f.id}" data-wrong="0">題目沒問題</button>
         <button class="ghost small danger" data-flag="${f.id}" data-wrong="1">真的有錯：停用、這一版答錯的全部算對並補幣</button></div></li>`; }).join('')}</ul></section>` : ''}
   <section class="panel">
-    <p class="lead">題目先是「待審」，審過「上架」才會被抽到。請確認：答案只有一個說得通、錯的選項真的錯、解析和出處對得上、用字五年級看得懂。</p>
-    <div class="chips">${[['draft', `待審 ${n('draft')}`], ['live', `上架 ${n('live')}`], ['off', `停用 ${n('off')}`], ['all', '全部']].map(([k, t]) => `<button class="chip${bankFilter === k ? ' on' : ''}" data-bf="${k}">${t}</button>`).join('')}</div>
+    <p class="lead">題目先是「待審」，審過「上架」才會被抽到。新題會先經過程式檢查和另一個 Claude 對照教材作答，標上紅黃綠燈；你只要看「要你看」：紅燈題，和每章抽出來的 2 題綠燈。抽查都沒問題，就按「這一章整批上架」。</p>
+    <div class="chips">${[...(bankData.items.some(mustSee) ? [['check', `要你看 ${bankData.items.filter(mustSee).length}`]] : []), ['draft', `待審 ${n('draft')}`], ['live', `上架 ${n('live')}`], ['off', `停用 ${n('off')}`], ['all', '全部']].map(([k, t]) => `<button class="chip${bankFilter === k ? ' on' : ''}" data-bf="${k}">${t}</button>`).join('')}</div>
     <p class="qt-pl-h"><b>章節</b><small>（括號是這個篩選下的題數，點一章只看那一章）</small></p>
     <div class="chips qt-places">${places.map((pl) => { const c = inPlace(pl).length; return `<button class="chip${pl === bankPlace ? ' on' : ''}${c ? '' : ' none'}" data-bp="${pl}">${esc(PLACE_NAME[pl] ?? pl)}（${c}）</button>`; }).join('')}</div>
     <h3 class="qt-pl-title">${esc(PLACE_NAME[bankPlace] ?? bankPlace)}・${items.length} 題</h3>
-    ${bankFilter === 'draft' && items.length ? `<div class="row"><button class="ghost small" id="qt-allok">這一章沒有格式問題的全部上架（${items.filter((i) => !i.check.length).length} 題）</button></div>` : ''}
+    ${batchBar()}
     <ol class="qt-bank">${items.map((it) => { const k = kps.get(it.kp); return `<li class="qt-row st-${it.status}">
       <div class="qt-row-h"><b>${esc(it.id)}</b><small>${esc(PLACE_NAME[k?.place] ?? '')}｜${esc(k?.name ?? '')}｜${KIND_NAME[it.kind]}｜第 ${it.ver} 版${it.used ? `｜答過 ${it.used} 次、平均 ${it.right}%` : ''}</small>
         <span class="spacer"></span><span class="tag">${{ draft: '待審', live: '上架', off: '停用' }[it.status]}</span></div>
       <p class="qt-q">${esc(it.body.q)}</p>${preview(it)}
       ${it.check.length ? `<p class="warn">格式問題：${it.check.map(esc).join('、')}</p>` : ''}
-      <div class="row">${it.status !== 'live' ? `<button class="btn small go" data-rv="${it.id}" data-st="live">✔ 上架</button>` : ''}
+      ${reviewBox(it)}
+      <div class="row">${it.status !== 'live' ? `<button class="btn small go" data-rv="${it.id}" data-st="live">✔ ${it.review?.sample && it.status === 'draft' ? '沒問題，上架' : '上架'}</button>` : ''}
+        ${it.review?.sample && it.status === 'draft' ? `<button class="ghost small danger" data-bad="${it.id}">有問題</button>` : ''}
         ${it.status !== 'off' ? `<button class="ghost small danger" data-rv="${it.id}" data-st="off">停用</button>` : ''}
         ${it.status !== 'draft' ? `<button class="ghost small" data-rv="${it.id}" data-st="draft">改回待審</button>` : ''}
         <button class="ghost small" data-edit="${it.id}">改題目</button></div>
@@ -497,8 +533,22 @@ async function paintBank(box) {
   $('#qt-allok')?.addEventListener('click', async (e) => {
     e.target.disabled = true;
     let ok = 0;
-    for (const it of items.filter((i) => !i.check.length)) { try { await quiz.review(it.id, 'live'); ok++; } catch { /* 有問題的留著 */ } }
+    for (const it of batchItems()) { try { await quiz.review(it.id, 'live'); ok++; } catch { /* 有問題的留著 */ } }
     ctx.toast(`上架了 ${ok} 題`); paintBank(box);
+  });
+  $$('[data-bad]', box).forEach((b) => {
+    b.onclick = () => {
+      const row = b.closest('.row');
+      if (row.querySelector('.qt-bad')) return;
+      row.insertAdjacentHTML('afterend', `<div class="row qt-bad"><input type="text" maxlength="150" placeholder="哪裡有問題？一句話就好"><button class="btn small">送出</button></div>`);
+      const bar = row.nextElementSibling, inp = bar.querySelector('input');
+      inp.focus();
+      bar.querySelector('button').onclick = async () => {
+        if (!inp.value.trim()) { inp.focus(); return; }
+        try { await quiz.review(b.dataset.bad, 'draft', null, BAD + inp.value.trim()); ctx.toast('記下來了，這一章先不整批上架'); paintBank(box); }
+        catch (e) { ctx.toast(e.message, true); }
+      };
+    };
   });
   $$('[data-edit]', box).forEach((b) => {
     b.onclick = () => {
