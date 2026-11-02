@@ -744,7 +744,7 @@ async function paintClassDays(c) {
           return `<td class="hx${heat(x.sec, x.plays)}" title="${esc(tip)}">${x.sec ? minText(x.sec) : '✓'}</td>`; }).join('')}
         <td class="sum">${tot(k.id) ? `${Math.max(1, Math.round(tot(k.id) / 60))} 分` : cnt(k.id) ? `${cnt(k.id)} 天` : '沒來'}</td></tr>`;
   box.innerHTML = `
-    <p class="lead">最近 ${playDays} 天有 <b>${came}</b> / ${kids.length} 人來玩。每一格是那天玩了幾分鐘，顏色越深玩越久；「✓」是有玩但沒記到時間（2026-10-23 以前的紀錄）。點名字看那個孩子每天玩了什麼。</p>
+    <p class="lead">最近 ${playDays} 天有 <b>${came}</b> / ${kids.length} 人來玩。每一格是那天在遊戲裡玩了幾分鐘（只待在樂園大廳、寵物島不算），顏色越深玩越久；「✓」是有玩但沒記到時間（2026-10-23 以前的紀錄）。點名字看那個孩子每天玩了什麼。</p>
     <p class="heat-legend"><span class="hx1">1–14</span><span class="hx2">15–29</span><span class="hx3">30–59</span><span class="hx4">60+ 分鐘</span></p>
     <div class="tablewrap"><table class="heat ${playDays > 14 ? 'many' : ''}">
       <thead><tr><th>暱稱</th>${days.map((d) => `<th>${dayHead(d)}</th>`).join('')}<th>合計</th></tr></thead>
@@ -760,7 +760,11 @@ async function paintKidDays(c, s) {
   auth.parent.view(s.id).catch(() => {});      // 爸媽看過孩子的冒險（爸媽任務；不是監護人就不算）
   const box = $('#play-body');
   let rows;
-  try { rows = mergeStamps(await auth.teacher.activity(s.id, playDays)); }
+  // 跟全班表用同一段日子（今天往回 N 個日曆天）。資料庫是「現在往回 N×24 小時」，會多帶到第 N+1 天的下午，
+  // 明細就多出全班表沒有的那一天（2026-11-02 小奎：明細有上週一，全班表沒有）
+  const from = dayList(playDays)[0];
+  const dkey = (t) => { const d = new Date(t); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+  try { rows = mergeStamps((await auth.teacher.activity(s.id, playDays + 1)).filter((r) => dkey(r.started_at) >= from)); }
   catch (e) { box.innerHTML = `<div class="empty"><img src="img/admin/tick-error.webp" alt=""><p>${esc(e.message)}</p></div>`; return; }
   const byDay = new Map();
   for (const r of rows) {
@@ -779,8 +783,11 @@ async function paintKidDays(c, s) {
       if (r.kind !== 'play' || r.place !== 'enter') g.n += 1;
     }
     const stamps = list.filter((r) => r.kind === 'stamp').reduce((a, r) => a + (r.names?.length ?? 1), 0);
+    // 樂園大廳（地圖、寵物島）不算進遊戲時間，另外用灰字標，免得看起來那天沒來（2026-11-02 小奎）
+    const lobby = list.filter((r) => r.kind === 'play' && r.facility === 'park').reduce((a, r) => a + (r.seconds ?? 0), 0);
     return `${[...games].map(([f, g]) => `<span class="g"><img src="${esc(badgeOf(f))}" alt="">${esc(g.game.replace(/^穿越吧！/, ''))}<small>${esc(g.sec ? mins(g.sec) : `${g.n} 次`)}</small></span>`).join('')}
-      ${stamps ? `<span class="g st">${ico('passport')}${stamps} 個勳章</span>` : ''}`;
+      ${stamps ? `<span class="g st">${ico('passport')}${stamps} 個勳章</span>` : ''}
+      ${lobby ? `<span class="g lobby">只在樂園大廳<small>${esc(mins(lobby))}</small></span>` : ''}`;
   };
   box.innerHTML = `
     <div class="row"><button class="linkish" data-back>‹ 回全班</button></div>
@@ -790,7 +797,7 @@ async function paintKidDays(c, s) {
       return `<details><summary><b class="d">${esc(d)}</b><span class="m">${sec ? esc(mins(sec)) : ''}</span><span class="gs">${summary(list)}</span></summary>
         <div class="tl-list"><ul>${tlItems(list)}</ul></div></details>`; }).join('')}</div>`
       : `<div class="empty small"><img src="img/admin/tick-empty.webp" alt=""><p>最近 ${playDays} 天沒有遊玩紀錄。</p></div>`}
-    <p class="hint">每天一列，點開看那天的每一筆。玩多久從 2026-10-23 開始記；更早的只有守護異世界每一場的答題，和島嶼開拓者每章的最後存檔時間。</p>`;
+    <p class="hint">每天一列，點開看那天的每一筆。綠色分鐘數只算遊戲裡的時間；「樂園大廳」是待在地圖、寵物島，不算進去，畫面放著超過 5 分鐘沒動也不再繼續算（2026-11-02 起）。玩多久從 2026-10-23 開始記；更早的只有守護異世界每一場的答題，和島嶼開拓者每章的最後存檔時間。</p>`;
   $('[data-back]', box).onclick = () => { playKid = null; renderPlay(); };
 }
 
