@@ -4,6 +4,10 @@
 import { db } from './auth.js';
 
 const BEAT_MS = 30000;
+// 放著不動多久就收尾：畫面開著但沒人在（2026-11-02 小奎大廳一筆 22:18–02:18 剛好 4 小時、一筆 2 小時 29 分）
+const IDLE_MS = 5 * 60000;
+let lastInput = Date.now();
+let idle = false;        // 因為放著不動收尾了，下次碰畫面再開新的一筆
 let on = false;          // 學生在大廳裡
 let off = false;         // 資料庫還沒裝：之後都不送
 let id = null;
@@ -37,11 +41,16 @@ async function call(fn, args) {
 async function start() {
   clearInterval(timer);
   if (!on || document.hidden) return;
+  idle = false; lastInput = Date.now();
   const want = cur;
   id = await call('park_play_start', { p_facility: 'park', p_place: want.place, p_label: want.label });
   if (!on || cur !== want || id == null) return;
   note();
-  timer = setInterval(() => { if (id != null) call('park_play_beat', { p_id: id }); }, BEAT_MS);
+  timer = setInterval(() => {
+    if (id == null) return;
+    if (Date.now() - lastInput > IDLE_MS) { idle = true; stop(); return; }
+    call('park_play_beat', { p_id: id });
+  }, BEAT_MS);
 }
 function stop() {
   clearInterval(timer);
@@ -50,6 +59,11 @@ function stop() {
 }
 document.addEventListener('visibilitychange', () => (document.hidden ? stop() : start()));
 addEventListener('pagehide', stop);
+const touched = () => {
+  lastInput = Date.now();
+  if (idle) { idle = false; start(); }
+};
+for (const ev of ['pointerdown', 'keydown', 'wheel', 'touchstart']) addEventListener(ev, touched, { passive: true, capture: true });
 
 // 學生進到地圖（true）／回到開場、登出（false）
 export function active(yes) {

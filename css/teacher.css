@@ -340,6 +340,7 @@ table.heat.many th,table.heat.many td{padding:5px 3px}
 .kid-days .g{display:inline-flex;align-items:center;gap:4px;padding:2px 8px 2px 4px;border-radius:999px;background:var(--cream);font-size:13px;font-weight:700}
 .kid-days .g img{width:22px;height:22px;object-fit:contain}
 .kid-days .g small{color:var(--muted);font-weight:700;margin-left:2px}
+.kid-days .g.lobby{background:transparent;border:1px dashed var(--line,#d9c9a8);color:var(--muted);font-weight:600;padding-left:8px}
 .kid-days details[open] summary{margin-bottom:8px}
 .kid-days .tl-list{max-height:none}
 tbody[hidden]{display:none}
