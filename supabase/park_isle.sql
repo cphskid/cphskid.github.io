@@ -6,7 +6,7 @@
 -- 島的風格：spring 春日花園大家都有；beach 夕陽海灘、autumn 楓葉、snow 雪夜（冬天才上架）在商店用時光幣買；
 --   stars 星空要拿到臺灣島終章的章（今天的島嶼）；candy 糖果樂園是之後週末活動的獎勵。
 --   買到的記在 park_student_furniture（item＝'theme-<code>'），跟傢俱同一張表。
--- 拜訪：同班同學的島隨時可以去看（試玩班 TRYIT 人太多、互相不認識，不列同學，只看精選）；
+-- 拜訪：同班同學的島隨時可以去看（試玩班 TRYIT 原本不列，2026-11-02 Chuck 改成也列，同班可以自己找來看）；
 --   每座島每天可以留一個正面圖示（6 種），只能看、不能搬、不能打字。
 -- 今日精選島：每天（臺灣時間）第一個人來看時選出 6 座：擺了 5 件以上的東西，
 --   最近 7 天收到的圖示越多越容易選到，最近 14 天上過的先讓給別人。所有班級（含試玩班）一起選，只顯示暱稱和島名。
@@ -82,10 +82,11 @@ on conflict (code) do update
 -- -----------------------------------------------------------------------------
 -- 3. 誰可以看誰的島
 -- -----------------------------------------------------------------------------
--- 試玩班這種大家互不認識的大班，不算「同班」
+-- 不算「同班」的班（看不到同學的島）。原本是試玩班 TRYIT；2026-11-02 Chuck：試玩班也開放同班互看，現在沒有班被排除。
+-- 之後要再關掉某個班，把代碼寫回這裡就好。
 create or replace function public.park_isle_open_class(p_code text)
 returns boolean language sql immutable set search_path = public, pg_temp as $$
-  select p_code = 'TRYIT';
+  select false;
 $$;
 
 create or replace function public.park_isle_classmate(p_me uuid, p_other uuid)
@@ -199,7 +200,7 @@ $$;
 -- -----------------------------------------------------------------------------
 -- 5. 拜訪
 -- -----------------------------------------------------------------------------
--- 同班同學的島（試玩班不列、還沒打開過寵物島的不列）：[{卡片}]，最近改過的排前面
+-- 同班同學的島（還沒打開過寵物島的不列）：[{卡片}]，最近改過的排前面，最多 120 座
 create or replace function public.park_isle_class()
 returns jsonb language plpgsql stable security definer set search_path = public, pg_temp as $$
 declare v_me uuid := public.current_student_id();
@@ -211,7 +212,8 @@ begin
       join public.park_class_members b on b.class_code = a.class_code and b.student_id <> v_me
       join public.park_isle i on i.student_id = b.student_id   -- 打開過寵物島的才列
      where a.student_id = v_me and not public.park_isle_open_class(a.class_code)
-     limit 80) x), '[]'::jsonb);
+     order by up desc nulls last
+     limit 120) x), '[]'::jsonb);
 end;
 $$;
 

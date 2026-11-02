@@ -1,7 +1,7 @@
 // 寵物島裝扮、拜訪、今日精選島（資料庫在 supabase/park_isle.sql；規劃 doc「寵物島 2.0 規劃」第 1 期）。
 //
 // 裝扮：島的風格（主題地面）、島名（三組字各挑一個，不能自己打字），傢俱擺在哪由 js/pet.js 管，這裡負責存到伺服器。
-// 拜訪：「今日精選」（全部班級一起選 6 座）和「我們班的島」（試玩班不列）。別人的島只能看，
+// 拜訪：「今日精選」（全部班級一起選 6 座）和「我們班的島」（試玩班也列，人多時可以打暱稱找）。別人的島只能看，
 //   每座島每天可以留一個正面圖示，對方下次打開寵物島會看到。
 // 資料庫還沒裝（missing）時：裝扮照舊存在這台裝置，拜訪鈕不出現。
 import * as auth from './auth.js';
@@ -155,7 +155,16 @@ async function paintList(box) {
       <span class="th"><img src="${thumb(r.theme)}" alt="">${r.pet ? `<img class="pet" src="${ctx.art(r.pet.species, r.pet.stage, 'idle')}" alt="">` : ''}</span>
       <b>${esc(nameText(r.name))}</b><small>${esc(r.nickname)} 的島・收到 ${sum(r.love)} 個圖示</small></button>`).join('')}</div>`
     : `<p class="tip">${tab === 'feat' ? '今天還沒有精選島。把自己的島擺上 5 件以上的東西，就有機會被選上！'
-      : '班上還沒有其他同學。試玩班的同學互相不認識，所以只看得到「今日精選」。'}</p>`;
+      : '班上的同學還沒有人打開寵物島。先去「今日精選」逛逛吧！'}</p>`;
+  // 同學很多（像試玩班）時，上面多一格打暱稱或島名找
+  if (tab === 'mates' && rows.length > 8) {
+    list.insertAdjacentHTML('afterbegin', `<input type="search" class="iv-find" placeholder="🔍 打同學的暱稱或島名找找看" aria-label="找同學的島">`);
+    const cards = [...list.querySelectorAll('.iv-card')];
+    $('.iv-find', list).oninput = (e) => {
+      const k = e.target.value.trim().toLowerCase();
+      cards.forEach((c) => { c.hidden = !!k && !c.textContent.toLowerCase().includes(k); });
+    };
+  }
   if (tab === 'feat') list.insertAdjacentHTML('beforeend', '<p class="note">每天早上換一批。島上擺 5 件以上、收到的圖示越多，越有機會上精選。</p>');
   list.querySelectorAll('[data-iv-go]').forEach((b) => { b.onclick = () => paintVisit(box, b.dataset.ivGo); });
 }
