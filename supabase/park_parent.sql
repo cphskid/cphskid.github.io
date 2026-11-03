@@ -414,6 +414,32 @@ end;
 $$;
 
 -- -----------------------------------------------------------------------------
+-- 4b. 管理員：誰綁了誰（2026-11-03 Chuck：管理員要有地方看哪個學生綁了哪個家長）
+--     一列＝一組孩子＋家長（一個孩子最多兩位）。last_view＝這位家長最近一次打開孩子的細節頁。
+-- -----------------------------------------------------------------------------
+create or replace function public.park_admin_guardians()
+returns table (student_id uuid, nickname text, login text, class_code text, class_name text,
+               guardian uuid, guardian_name text, guardian_email text, guardian_active boolean,
+               via text, linked_at timestamptz, last_view timestamptz)
+language plpgsql stable security definer set search_path = public, pg_temp as $$
+begin
+  if not public.is_admin() then raise exception '只有管理員可以看'; end if;
+  return query
+    select s.id, s.nickname, s.login_id, s.class_code, c.name,
+           g.guardian, t.display_name, u.email::text, t.active,
+           g.via, g.created_at,
+           (select max(e.at) from public.park_parent_events e
+             where e.student_id = g.student_id and e.guardian = g.guardian and e.kind = 'view')
+      from public.park_guardians g
+      join public.students s on s.id = g.student_id
+      left join public.classes c on c.code = s.class_code
+      left join public.teachers t on t.user_id = g.guardian
+      left join auth.users u on u.id = g.guardian
+     order by g.created_at desc;
+end;
+$$;
+
+-- -----------------------------------------------------------------------------
 -- 5. 權限
 -- -----------------------------------------------------------------------------
 revoke all on function
@@ -422,10 +448,12 @@ revoke all on function
   public.park_parent_bind(uuid, text), public.park_parent_award(uuid, text, date), public.park_parent_need(uuid),
   public.park_parent_code(), public.park_parent_me(), public.park_parent_redeem(text),
   public.park_parent_create_child(text, text, text), public.park_parent_kids(), public.park_parent_view(uuid),
-  public.park_parent_sticker(uuid, text), public.park_parent_goal(uuid, text), public.park_parent_sign(uuid)
+  public.park_parent_sticker(uuid, text), public.park_parent_goal(uuid, text), public.park_parent_sign(uuid),
+  public.park_admin_guardians()
   from public, anon, authenticated;
 grant execute on function
   public.park_parent_code(), public.park_parent_me(), public.park_parent_redeem(text),
   public.park_parent_create_child(text, text, text), public.park_parent_kids(), public.park_parent_view(uuid),
-  public.park_parent_sticker(uuid, text), public.park_parent_goal(uuid, text), public.park_parent_sign(uuid)
+  public.park_parent_sticker(uuid, text), public.park_parent_goal(uuid, text), public.park_parent_sign(uuid),
+  public.park_admin_guardians()
   to authenticated;
