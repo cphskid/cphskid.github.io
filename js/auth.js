@@ -233,6 +233,7 @@ export const admin = {
   addBannedWord:  (word, whole) => call('admin_add_banned_word', { p_word: word, p_whole: whole }),
   removeBannedWord: (word) => call('admin_remove_banned_word', { p_word: word }),
   flaggedNicknames: () => call('admin_flagged_nicknames'),
+  guardians:      () => call('park_admin_guardians'),                       // 哪個孩子綁了哪個家長
   activity:       (days = 7) => call('park_admin_activity', { p_days: days }),   // 全站動態
   insights:       (days = 14) => call('park_admin_insights', { p_days: days }),  // 要改善的地方
 };

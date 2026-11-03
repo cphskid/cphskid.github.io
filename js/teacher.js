@@ -1326,11 +1326,47 @@ function wireAct(p) {
   if (r) r.onclick = (e) => run(e.currentTarget, () => paintActivity(actDays));
 }
 
+// ---------- 管理員：家長綁定（park_admin_guardians）：哪個孩子綁了哪個家長 ----------
+const VIA = { create: '家長幫孩子開帳號', code: '孩子給家長碼' };
+function guardianPanel(links) {
+  const head = `<div class="head">${h2('home', `家長綁定${Array.isArray(links) ? `（${new Set(links.map((l) => l.student_id)).size} 個孩子）` : ''}`)}</div>`;
+  if (!Array.isArray(links)) {
+    return `<section class="panel" id="p-guard">${head}<div class="empty small"><img src="img/admin/tick-error.webp" alt=""><p>${esc(/park_admin_guardians|schema cache/.test(links.error) ? '家長綁定的查詢還沒裝到資料庫（park_parent.sql）。' : links.error)}</p></div></section>`;
+  }
+  // 同一個孩子的家長（最多兩位）排在一起，孩子那兩格合併
+  const kids = new Map();
+  links.forEach((l) => {
+    if (!kids.has(l.student_id)) kids.set(l.student_id, { ...l, parents: [] });
+    kids.get(l.student_id).parents.push(l);
+  });
+  const rows = [...kids.values()];
+  const findText = (k) => [k.nickname, k.login, k.class_code, k.class_name, ...k.parents.flatMap((p) => [p.guardian_name, p.guardian_email])]
+    .filter(Boolean).join(' ').toLowerCase();
+  return `<section class="panel" id="p-guard">${head}
+    <p class="lead">孩子和爸媽連起來之後（家長幫孩子開帳號，或孩子把家長碼給爸媽），這位家長就是孩子的監護人，可以重設密碼、改暱稱、看孩子在哪些班。一個孩子最多兩位。「最近看報告」是那位家長最後一次打開孩子的冒險紀錄。</p>
+    ${rows.length ? `<form class="form grid" onsubmit="return false"><label>找人<input id="gq" type="search" autocomplete="off" spellcheck="false" placeholder="孩子暱稱、帳號、班級代碼、家長稱呼或 email"></label></form>
+    <div class="tablewrap"><table class="adm">
+      <thead><tr><th>孩子</th><th>主要班級</th><th>家長</th><th>怎麼連的</th><th>連起來</th><th>最近看報告</th></tr></thead>
+      <tbody>${rows.map((k) => k.parents.map((p, i) => `<tr data-find="${esc(findText(k))}">
+        ${i ? '' : `<td rowspan="${k.parents.length}"><b>${esc(k.nickname)}</b><small class="mono">${esc(k.login)}</small></td>
+        <td rowspan="${k.parents.length}">${esc(k.class_name || k.class_code || '沒有班級')}${k.class_code ? `<small class="mono">${esc(k.class_code)}</small>` : ''}</td>`}
+        <td><b>${esc(p.guardian_name ?? '')}</b>${p.guardian_active === false ? '<span class="tag bad">已停用</span>' : ''}<small class="mono">${esc(p.guardian_email ?? '')}</small></td>
+        <td>${esc(VIA[p.via] ?? p.via)}</td>
+        <td class="nowrap">${esc(when(p.linked_at))}</td>
+        <td class="nowrap">${p.last_view ? esc(ago(p.last_view)) : '<span class="tip">還沒看過</span>'}</td></tr>`).join('')).join('')}</tbody></table></div>
+    <p class="tip" id="gq-none" hidden>找不到符合的人。</p>`
+    : '<div class="empty small"><img src="img/admin/tick-empty.webp" alt=""><p>還沒有孩子和爸媽連起來。</p></div>'}
+  </section>`;
+}
+
 async function renderAdmin() {
-  const [facs, teachers, all, log, words, flagged] = await Promise.all([
+  const [facs, teachers, all, log, words, flagged, links] = await Promise.all([
     auth.admin.facilities(), auth.admin.teachers(), auth.admin.classes(), auth.admin.audit(80),
     auth.admin.bannedWords(), auth.admin.flaggedNicknames(),
+    auth.admin.guardians().catch((e) => ({ error: e.message })),
   ]);
+  const kidsOf = new Map();   // 家長 → 綁了幾個孩子（開班帳號表用）
+  if (Array.isArray(links)) links.forEach((l) => kidsOf.set(l.guardian, (kidsOf.get(l.guardian) ?? 0) + 1));
   const activeT = teachers.filter((t) => t.active);
   const fresh = (t) => t.self_signup && Date.now() - new Date(t.created_at).getTime() < 7 * 86400e3;
   const gradeOpts = (v) => `<option value="">—</option>${[1, 2, 3, 4, 5, 6, 7, 8, 9].map((g) => `<option ${v === g ? 'selected' : ''}>${g}</option>`).join('')}`;
@@ -1361,7 +1397,7 @@ async function renderAdmin() {
       <tbody>${teachers.map((t) => `<tr data-t="${t.user_id}">
         <td><b>${esc(t.display_name)}</b>${fresh(t) ? `<span class="tag">${ico('st-new')}新</span>` : ''}${t.is_admin ? '<span class="tag gold">管理員</span>' : ''}</td>
         <td class="mono">${esc(t.email ?? '')}</td>
-        <td class="num">${t.classes} 班・${t.students} 人</td>
+        <td class="num">${t.classes} 班・${t.students} 人${kidsOf.get(t.user_id) ? `<small>綁了 ${kidsOf.get(t.user_id)} 個孩子</small>` : ''}</td>
         <td class="num">${t.is_admin ? '不限' : `${t.max_classes} 班・每班 ${t.max_students} 人`}</td>
         <td>${t.active ? '啟用中' : '<span class="tag bad">已停用</span>'}</td>
         <td class="nowrap">${t.is_admin ? '' : `<button class="ghost small" data-limit>上限</button>
@@ -1391,6 +1427,8 @@ async function renderAdmin() {
           ${activeT.some((t) => t.user_id === c.owner) ? '' : `<option value="${c.owner}" selected>${esc(c.owner_name ?? '')}（已停用）</option>`}
         </select></td></tr>`).join('')}</tbody></table></div>
   </section>
+
+  ${guardianPanel(links)}
 
   <section class="panel">
     <div class="head">${h2('calendar', '操作紀錄')}</div>
@@ -1424,6 +1462,15 @@ async function renderAdmin() {
   </section>`;
   paintActivity(actDays);
   paintInsights();
+
+  // 家長綁定：打字篩選
+  const gq = $('#gq');
+  if (gq) gq.oninput = () => {
+    const k = gq.value.trim().toLowerCase();
+    let n = 0;
+    $$('#p-guard tr[data-find]').forEach((tr) => { const hit = !k || tr.dataset.find.includes(k); tr.hidden = !hit; n += hit; });
+    $('#gq-none').hidden = n > 0;
+  };
 
   // 暱稱禁用字
   $$('tr[data-flag]').forEach((tr) => {
