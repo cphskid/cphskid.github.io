@@ -1789,3 +1789,9 @@ button.dt-i:hover,button.dt-i:focus-visible{border-color:var(--wood);outline:non
 .iv-leaf{position:absolute;width:62px;padding:0;border:0;background:none;transform:translate(-50%,-50%) rotate(-18deg);cursor:pointer;pointer-events:auto}
 .iv-leaf img{display:block;width:100%;height:auto}
 .iv-leaf.found{width:90px;transform:translate(-50%,-60%);animation:hatchPop .6s cubic-bezier(.34,1.7,.5,1)}
+
+/* 聯繫園長（齒輪選單 #contact-btn） */
+.card.contact .mail{font:900 26px/1.3 var(--f-body);color:var(--wood);margin:10px 0 14px;word-break:break-all}
+.card.contact .row{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.card.contact .hint{font-size:15px;color:#7a5a3a;margin-top:14px;line-height:1.6}
+@media (max-width:700px){.card.contact{grid-template-columns:1fr}.card.contact .art{display:none}.card.contact .mail{font-size:20px}}

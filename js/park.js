@@ -724,6 +724,28 @@ gearBtn.addEventListener('click', (e) => {
   paintDock();
 });
 fbBtn.addEventListener('click', closeGear);
+// 聯繫園長：大人小孩都看得到樂園的信箱，可以直接寫信（timepark@ciyulab.com 轉到園長的 Gmail）
+const CONTACT = 'timepark@ciyulab.com';
+$('#contact-btn').addEventListener('click', () => {
+  closeGear();
+  veil.innerHTML = `<div class="card contact" role="dialog" aria-modal="true" aria-label="聯繫園長">
+    <button class="x" id="close" aria-label="關閉"></button>
+    <div class="art"><img src="img/news/mailbox.webp" alt=""></div>
+    <div><h2>聯繫園長</h2>
+    <p class="lead">有想說的話、想要的新功能，或遇到問題，都可以寫信給園長，園長會親自回信。</p>
+    <p class="mail"><b>${CONTACT}</b></p>
+    <div class="row"><a class="btn go" href="mailto:${CONTACT}?subject=${encodeURIComponent('給時空冒險樂園園長')}">寫信給園長</a>
+    <button type="button" class="btn small" id="copy-mail">複製信箱</button></div>
+    <p class="hint">遊戲裡卡住或壞掉，用齒輪裡的「💬 問題回報」最快，會自動附上你在哪一關。小朋友寫信前，可以請爸爸媽媽幫忙。</p></div></div>`;
+  veil.hidden = false;
+  snd.sfx('SE-03');
+  $('#close').onclick = closeCard;
+  $('#copy-mail').onclick = async (e) => {
+    try { await navigator.clipboard.writeText(CONTACT); e.currentTarget.textContent = '複製好了！'; }
+    catch { showToast(CONTACT); }
+  };
+  veil.querySelector('a.btn.go').focus();
+});
 $('#ver-btn').addEventListener('click', closeGear); // 打開更新說明交給 js/changelog.js
 addEventListener('click', (e) => { if (!gearMenu.hidden && !e.target.closest('#gear')) closeGear(); });
 addEventListener('keydown', (e) => { if (e.key === 'Escape') closeGear(); });
