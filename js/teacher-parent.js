@@ -41,7 +41,7 @@ export async function redeemPending(toast) {
 // 家長碼：6 碼（ABCDEFGHJKLMNPQRSTUVWXYZ23456789），使用者可能打小寫、空白或連字號
 export const normCode = (v) => String(v ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '');
 
-// 輸入家長碼的小表單（我的班級最上面、登入頁共用）
+// 輸入家長碼的小表單（首頁最上面、登入頁共用）
 function codeForm(compact = false) {
   return `<form class="code-form${compact ? ' compact' : ''}" data-codeform novalidate>
     <label><span>孩子給的家長碼</span><input name="code" maxlength="9" autocomplete="off" autocapitalize="characters" spellcheck="false" inputmode="text" placeholder="例如 K7QW3M"></label>
@@ -159,7 +159,7 @@ function createChild({ toast, refresh, suggestPassword }) {
       const v = { nick: form.elements.nick.value.trim(), login: form.elements.login.value.trim(), pw: form.elements.pw.value.trim(),
                   grade: form.elements.grade.value ? Number(form.elements.grade.value) : null };
       const r = await auth.parent.createChild(v.login, v.pw, v.nick);
-      if (v.grade) await auth.teacher.setGrade(r.student, v.grade).catch(() => toast('帳號開好了，年級沒存到，可以在全班總覽再設', true));
+      if (v.grade) await auth.teacher.setGrade(r.student, v.grade).catch(() => toast('帳號開好了，年級沒存到，可以在「孩子」頁再設', true));
       const park = new URL('./', location.href).href;
       form.innerHTML = `<h3>${esc(r.nickname)} 的帳號開好了</h3>
         <div class="login-card"><p>樂園網址<b>${esc(park)}</b></p><p>帳號<b>${esc(r.login)}</b></p><p>密碼<b>${esc(v.pw)}</b></p></div>

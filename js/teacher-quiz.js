@@ -1,4 +1,4 @@
-// 老師後台「時光試煉島」頁籤：出卷（照錯題自動挑、家長再調）、出過的卷、分析報告、學習地圖；管理員多一個題庫審核。
+// 老師後台「測驗卷」頁籤（孩子端叫時光試煉島）：出卷（照錯題自動挑、家長再調）、出過的卷、分析報告、學習地圖；管理員多一個題庫審核。
 // 規則（學會、挑題比例、報告判讀）在 js/quiz-core.js；改分在資料庫（supabase/park_quiz.sql）。
 import { quiz } from './auth.js';
 import { printPaper } from './quiz-print.js';
@@ -49,7 +49,7 @@ export async function renderQuiz(view, c) {
   ctx = { ...c, view };
   if (!ctx.classes.length && !ctx.admin) {
     view.innerHTML = `<section class="panel"><div class="empty"><img src="img/admin/tick-empty.webp" alt="">
-      <p>先到「我的班級」開一個班，孩子加入以後就可以出試煉卷。</p></div></section>`;
+      <p>先到「首頁」開一個班，孩子加入以後就可以出測驗卷。</p></div></section>`;
     return;
   }
   if (sub === 'bank' && !ctx.admin) sub = 'new';
@@ -73,8 +73,8 @@ async function paint() {
   const tabs = [['new', '出新卷'], ['papers', '出過的卷'], ['map', '學習地圖'], ...(ctx.admin ? [['bank', '題庫審核（管理員）']] : [])];
   view.innerHTML = `
   <section class="panel">
-    <div class="head"><h2><img class="hi" src="img/admin/quiz.webp" alt="">時光試煉島</h2></div>
-    <p class="lead">依孩子在遊戲和試煉卷裡的對錯自動挑題，你再調整。孩子會收到信鴿信，到樂園外的「時光試煉島」作答；
+    <div class="head"><h2><img class="hi" src="img/admin/quiz.webp" alt="">測驗卷</h2></div>
+    <p class="lead">依孩子在遊戲和之前的卷裡的對錯自動挑題，你再調整。孩子會收到信鴿信，到樂園外的「時光試煉島」作答；
       交卷後這裡看得到每一題的對錯、和遊戲裡的比較、該翻課本哪一段。</p>
     ${classes.length ? `<div class="classtabs" role="tablist">${classes.map((c) => `
       <button role="tab" data-code="${esc(c.code)}" class="${c.code === ctx.active ? 'on' : ''}"><b>${esc(c.name || c.code)}</b>
@@ -233,7 +233,7 @@ function paintPlan(box) {
     </div>
     <div id="qt-ownform"></div>
     <p class="tip">${each ? '每個孩子的卷題數要一樣。' : '大家拿到一樣的題目，選項順序每個人不同。'}孩子交卷前看不到答案；交卷後看得到正確答案和解析。</p>
-    <div class="row"><button class="btn go" id="qt-send">寄出試煉卷</button></div>
+    <div class="row"><button class="btn go" id="qt-send">寄出測驗卷</button></div>
   </section>`;
   $$('[data-at]', box).forEach((b) => { b.onclick = () => { draft.at = b.dataset.at; paintPlan(box); }; });
   const targets = () => (each ? [draft.at] : kids.map((k) => k.id));
@@ -348,7 +348,7 @@ function ownForm(box, done) {
 async function paintPapers(box) {
   const list = await quiz.papers(ctx.active);
   if (!list.length) {
-    box.innerHTML = '<section class="panel"><div class="empty"><img src="img/admin/tick-empty.webp" alt=""><p>還沒出過試煉卷。到「出新卷」挑題寄出。</p></div></section>';
+    box.innerHTML = '<section class="panel"><div class="empty"><img src="img/admin/tick-empty.webp" alt=""><p>還沒出過測驗卷。到「出新卷」挑題寄出。</p></div></section>';
     return;
   }
   box.innerHTML = `<section class="panel"><div class="tablewrap"><table class="qt-papers"><thead><tr><th>卷</th><th>出卷日</th><th>題數</th><th>寫完</th><th>平均</th><th></th></tr></thead><tbody>
