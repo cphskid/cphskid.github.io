@@ -258,3 +258,50 @@ revoke all on function public.park_lounge_assign(uuid), public.park_lounge_ring(
 grant execute on function public.park_lounge_me(), public.park_lounge_admin(), public.park_lounge_set_kid(uuid, boolean),
   public.park_lounge_kid(uuid), public.park_class_set_circle(text, boolean) to authenticated;
 revoke all on function public.park_lounge_on(uuid) from public, anon, authenticated;
+
+-- -----------------------------------------------------------------------------
+-- 5. 守護異世界的排行榜也看同伴圈（2026-11-05 14:43Z Chuck）
+-- -----------------------------------------------------------------------------
+-- 守護異世界的排行（class_leaderboard、本週之星 class_weekly_stars、wk_ok）照主要班級算。主要班級是交誼廳的孩子
+-- 原本跟整個交誼廳（上千人）一起比，改成只跟這週同伴圈的人比。老師、管理員看交誼廳還是看全部。
+-- 這幾支在守護異世界 repo 的 schema.sql，這裡直接改資料庫裡的定義（重套 schema.sql 之後要再套這份）。
+-- 同伴圈是孩子打開樂園時分的（park_lounge_me）；這週還沒分到的孩子先只看到自己。
+create or replace function public.park_peers(p_code text)
+returns setof uuid language plpgsql stable security definer set search_path = public, pg_temp as $$
+declare v_me uuid := public.current_student_id();
+begin
+  if p_code = 'TRYIT' and v_me is not null
+     and exists (select 1 from public.students s where s.id = v_me and s.class_code = 'TRYIT') then
+    return query select r from public.park_lounge_ring(v_me) r
+                 union select v_me;
+  else
+    return query select s.id from public.students s where s.class_code = p_code;
+  end if;
+end;
+$$;
+revoke all on function public.park_peers(text) from public, anon, authenticated;
+
+do $$
+declare r record; v_def text; v_new text;
+begin
+  for r in select p.oid, p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+            where n.nspname = 'public' and p.prokind = 'f'
+              and p.proname in ('wk_ok', 'class_weekly_stars', 'class_leaderboard') loop
+    v_def := pg_get_functiondef(r.oid);
+    v_new := v_def;
+    v_new := replace(v_new, 'where s.class_code = p_code and ae.correct',
+                            'where s.id in (select public.park_peers(p_code)) and ae.correct');
+    v_new := replace(v_new, 'on s.id = sa.student_id and s.class_code = v_code',
+                            'on s.id = sa.student_id and s.id in (select public.park_peers(v_code))');
+    v_new := replace(v_new, 'on os.id = o.student_id and os.class_code = v_code',
+                            'on os.id = o.student_id and os.id in (select public.park_peers(v_code))');
+    v_new := replace(v_new, 'on s.id = rs.student_id and s.class_code = v_code',
+                            'on s.id = rs.student_id and s.id in (select public.park_peers(v_code))');
+    v_new := replace(v_new, 'join target t on t.code = s.class_code',
+                            'join target t on s.id in (select public.park_peers(t.code))');
+    if v_new <> v_def then
+      execute v_new;
+      raise notice '同伴圈：改了 %', r.proname;
+    end if;
+  end loop;
+end $$;
