@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>時空冒險樂園｜給家長與老師的介紹</title>
-<meta name="description" content="時空冒險樂園：把小五社會和英文 2000 單字做成小遊戲，讓孩子在玩的過程中理解、記住，提升對科目的興趣。是課業的輔助，不是主要教材。">
+<meta name="description" content="時空冒險樂園：把小五社會、英文 2000 單字和自然做成小遊戲，讓孩子在玩的過程中理解、記住，提升對科目的興趣。是課業的輔助，不是主要教材。">
 <meta property="og:title" content="時空冒險樂園｜給家長與老師的介紹">
-<meta property="og:description" content="社會怕背？用遊戲來理解。背單字無趣？在遊戲裡記單字。給小五孩子的學習小遊戲，免費試玩。">
+<meta property="og:description" content="社會怕背？用遊戲來理解。背單字無趣？在遊戲裡記單字。還能從錯題自動出測驗卷。給小五孩子的學習小遊戲，免費試玩。">
 <meta property="og:image" content="https://timepark.ciyulab.com/about/img/park-map.webp">
 <link rel="icon" href="../img/l-02.webp">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -20,6 +20,7 @@
   --wood:#6b3f1f; --wood-2:#8a5429; --gold:#ffc23d; --ink:#3a2412; --muted:#6e5640;
   --park:#d9822b; --park-bg:#fff0d8; --social:#2e9b5f; --social-bg:#e6f6ea; --eng:#2f78d0; --eng-bg:#e5f0fc;
   --kid:#d2508a; --kid-bg:#fde9f2; --safe:#6a5acd; --safe-bg:#eeebfb; --cls:#16857a; --cls-bg:#e1f4f1; --tch:#2a64b8; --tch-bg:#e5eefb; --warn:#c8641e; --warn-bg:#fff1dc;
+  --sci:#3f8f3a; --sci-bg:#e8f4e0; --quiz:#4a4fa8; --quiz-bg:#eceefa;
 }
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%;scroll-padding-top:70px}
@@ -45,35 +46,43 @@ p{margin:0 0 12px}
 .hero .shot{margin:0 auto;max-width:min(760px,100%)}
 .hero-go{margin-top:22px}
 
-/* ---- 開頭輪播：自動換、可滑、圓點；文字放圖下面，手機也看得清楚 ---- */
-.car{position:relative;max-width:760px;margin:0 auto;text-align:left;color:var(--ink)}
-.track{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;border-radius:18px;
-  box-shadow:0 4px 0 var(--cream-2),0 12px 28px #0a325a44;background:var(--paper);overscroll-behavior-x:contain}
-.track::-webkit-scrollbar{display:none}
-.track:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
-.slide{flex:0 0 100%;scroll-snap-align:start;scroll-snap-stop:always;margin:0;display:flex;flex-direction:column}
-.pic{position:relative;aspect-ratio:16/9;background:linear-gradient(#bfe6fa,#e9f6ee);display:grid;place-items:center;overflow:hidden}
-.pic.fill img,.pic.fit img{position:absolute;inset:0;width:100%;height:100%;max-width:none}
+/* ---- 開頭：六張摘要重點卡，點了跳到那一頁 ---- */
+.pic{position:relative;aspect-ratio:16/10;background:linear-gradient(#bfe6fa,#e9f6ee);overflow:hidden}
+.pic img{position:absolute;inset:0;width:100%;height:100%;max-width:none}
 .pic.fill img{object-fit:cover}
-.pic.fit img{inset:8px;width:calc(100% - 16px);height:calc(100% - 16px);object-fit:contain;filter:drop-shadow(0 4px 8px #6b3f1f33)}
-.pic.end{background:linear-gradient(#5bc0ff,#8fe07a 75%,#f7d774);gap:6px;padding:12px;text-align:center;align-content:center}
-.pic.end img{width:min(300px,62%);height:auto;filter:drop-shadow(0 6px 10px #0004)}
-.pic.end p{margin:0;font-weight:900;color:#16324f;font-size:clamp(15px,3.8vw,18px)}
-.end-go{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
-.go.small{font-size:18px;padding:6px 20px;border-width:3px;box-shadow:inset 0 2px 0 #fffe,0 4px 0 var(--wood)}
-.go.alt{background:linear-gradient(#f2fffc,#c9efe8 60%,#93d9cc)}
-.slide figcaption{flex:1;padding:12px 16px 16px;display:flex;flex-direction:column;gap:2px;border-top:3px solid var(--cream-2)}
-.slide .stag{align-self:flex-start;font-size:12px;font-weight:900;letter-spacing:.08em;color:#fff;background:var(--wood-2);border-radius:99px;padding:1px 10px;margin-bottom:4px}
-.slide b{font-size:clamp(18px,4.6vw,22px);line-height:1.4;color:var(--wood)}
-.slide figcaption span:not(.stag){font-size:15px;color:var(--muted);line-height:1.6}
-.slide figcaption button{align-self:flex-start;margin-top:6px;font:inherit;font-size:15px;font-weight:900;color:var(--sea-deep);background:none;border:0;padding:0;cursor:pointer}
-.arrow{position:absolute;top:calc((min(760px,100vw - 32px)) * 9 / 32 - 20px);width:40px;height:40px;border-radius:50%;border:3px solid #fff;
-  background:#3a2412aa;color:#fff;font:900 24px/1 inherit;cursor:pointer;display:none;place-items:center;padding:0 0 3px}
-.arrow.prev{left:8px}.arrow.next2{right:8px}
-.dots{display:flex;justify-content:center;gap:8px;margin-top:12px}
-.dots button{width:10px;height:10px;border-radius:99px;border:0;padding:0;background:#ffffff99;cursor:pointer;transition:width .3s,background .3s;box-shadow:0 1px 3px #0a3c6455}
-.dots button[aria-selected=true]{width:26px;background:#fff}
-@media (hover:hover) and (pointer:fine){.arrow{display:grid}}
+.pic.fit img{inset:6px;width:calc(100% - 12px);height:calc(100% - 12px);object-fit:contain;object-position:top;filter:drop-shadow(0 3px 6px #6b3f1f33)}
+.sums-h{margin:0 0 12px;font-size:15px;font-weight:900;letter-spacing:.1em;text-shadow:0 1px 4px #0a3c64cc}
+.sums{display:grid;gap:12px;grid-template-columns:1fr 1fr;max-width:820px;margin:0 auto;text-align:left}
+.sum{font:inherit;color:var(--ink);background:var(--paper);border:3px solid #fff;border-radius:18px;padding:0;overflow:hidden;cursor:pointer;
+  display:flex;flex-direction:column;box-shadow:0 4px 0 var(--cream-2),0 10px 22px #0a325a33;text-align:left;transition:transform .2s;min-width:0}
+.sum:hover,.sum:focus-visible{transform:translateY(-3px);outline:none}
+.sum:focus-visible{border-color:var(--gold)}
+.sum .txt{padding:10px 12px 12px;display:flex;flex-direction:column;gap:3px;flex:1}
+.sum .stag{align-self:flex-start;font-size:12px;font-weight:900;letter-spacing:.06em;color:#fff;background:var(--c);border-radius:99px;padding:1px 10px}
+.sum b{font-size:clamp(16px,4.2vw,19px);line-height:1.35;color:var(--wood)}
+.sum .d{font-size:14px;color:var(--muted);line-height:1.55}
+.sum .more{margin-top:auto;padding-top:4px;font-size:14px;font-weight:900;color:var(--c)}
+
+/* ---- 三座島：上面三顆跳到各島，各島一段 ---- */
+.isle-jump{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:0 0 8px}
+.isle-jump button{font:inherit;font-size:15px;font-weight:900;color:#fff;background:var(--c);border:0;border-radius:14px;padding:10px 6px;cursor:pointer;line-height:1.3}
+.isle-jump button small{display:block;font-size:12px;font-weight:700;opacity:.9}
+.isle-sec{scroll-margin-top:70px;margin-top:40px;padding-top:28px;border-top:3px dashed var(--bg)}
+
+/* ---- 看更多：長說明收起來 ---- */
+details.more{background:transparent;border:2px dashed var(--cream-2);margin-top:20px}
+details.more>summary{color:var(--c,var(--wood));font-weight:900}
+details.more>.inner{padding:4px 16px 18px}
+details.more p{padding:0;margin:0 0 12px;color:inherit;font-size:inherit}
+details.more .how-item p{color:var(--muted);font-size:16px;margin:2px 0 0}
+details.more .ticks span{font-size:15px}
+
+/* ---- 寵物夥伴一排 ---- */
+.pals{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:0 0 16px;padding:0;list-style:none}
+.pals li{background:var(--paper);border:2px solid var(--bg);border-radius:12px;text-align:center;padding:6px 2px 4px;font-size:12px;font-weight:700;color:var(--muted);line-height:1.3}
+.pals img{height:58px;width:auto;margin:0 auto 2px;object-fit:contain}
+.pals li.start{border-color:var(--c)}
+@media (min-width:680px){.sums{grid-template-columns:repeat(3,1fr)}.pals{grid-template-columns:repeat(6,1fr)}}
 
 /* ---- 頁籤 ---- */
 .tabbar{position:sticky;top:0;z-index:10;background:var(--cream);border-bottom:2px solid var(--cream-2);box-shadow:0 4px 12px #6b3f1f14}
@@ -150,7 +159,8 @@ p{margin:0 0 12px}
 .go:hover,.go:focus-visible{transform:translateY(-2px) scale(1.03);outline:none}
 .goalt{font-size:14px;color:#1f3c5c;margin:14px 0 0}
 .goalt a{color:inherit;font-weight:700}
-.hero .goalt{color:#fff;text-shadow:0 1px 4px #0a3c64cc}
+.hero .goalt{color:var(--muted)}
+.hero .goalt a{color:var(--sea-deep)}
 
 /* ---- 常問 ---- */
 details{background:var(--paper);border:2px solid var(--cream-2);border-radius:14px;margin-bottom:10px}
@@ -197,7 +207,6 @@ footer{text-align:center;font-size:14px;color:var(--muted);padding:12px 16px 40p
   .time{grid-template-columns:repeat(4,1fr)}
   .ticks.two{grid-template-columns:1fr 1fr}
 }
-@media (prefers-reduced-motion:reduce){.go{transition:none}.track{scroll-behavior:auto}}
 </style>
 </head>
 <body>
@@ -206,189 +215,177 @@ footer{text-align:center;font-size:14px;color:var(--muted);padding:12px 16px 40p
   <div class="wrap">
     <img class="logo" src="../img/logo.webp" alt="Time Adventure Park 時空冒險樂園" width="900" height="452">
     <h1>給家長與老師的介紹</h1>
-    <p class="pitch">把小五社會和英文單字，做成孩子願意自己打開的小遊戲。<br>在玩的過程中理解一點、記住一點，對科目不再那麼排斥。</p>
-    <div class="car" aria-roledescription="輪播" aria-label="樂園重點">
-      <div class="track" tabindex="0">
-        <figure class="slide" role="group" aria-roledescription="投影片" aria-label="1 / 9：樂園地圖">
-          <div class="pic fill"><img src="img/park-map.webp" alt="" width="960" height="540"></div>
-          <figcaption><span class="stag">樂園地圖</span><b>一個帳號，社會和英文都在這座樂園</b><span>每座島是一個遊戲，孩子自己挑想去哪裡玩。</span><button type="button" data-go="park">看更多 ›</button></figcaption>
-        </figure>
-        <figure class="slide" role="group" aria-roledescription="投影片" aria-label="2 / 9：社會">
-          <div class="pic fill"><img src="img/island-ch5.webp" alt="" width="960" height="462" loading="lazy"></div>
-          <figcaption><span class="stag">社會</span><b>不用死背，親手蓋八堡圳就懂為什麼要修水圳</b><span>從史前玩到今天的臺灣，先懂「為什麼」，名詞自然記得住。</span><button type="button" data-go="social">看更多 ›</button></figcaption>
-        </figure>
-        <figure class="slide" role="group" aria-roledescription="投影片" aria-label="3 / 9：英文">
-          <div class="pic fill"><img src="img/guardian-td.webp" alt="" width="960" height="540" loading="lazy"></div>
-          <figcaption><span class="stag">英文</span><b>點對英文字，箭塔才會發射</b><span>2000 個單字變成守城的魔力，認字、聽音、拼字輪著來。</span><button type="button" data-go="english">看更多 ›</button></figcaption>
-        </figure>
-        <figure class="slide" role="group" aria-roledescription="投影片" aria-label="4 / 9：孩子的小天地">
-          <div class="pic fill"><img src="img/pet.webp" alt="" width="960" height="540" loading="lazy"></div>
-          <figcaption><span class="stag">孩子的小天地</span><b>每天想回來看看自己的寵物</b><span>衣服、傢俱、點心都用玩出來的時光幣換，不花一毛錢。</span><button type="button" data-go="kids">看更多 ›</button></figcaption>
-        </figure>
-        <figure class="slide" role="group" aria-roledescription="投影片" aria-label="5 / 9：安心設計">
-          <div class="pic fill"><img src="img/wear.webp" alt="" width="960" height="540" loading="lazy"></div>
-          <figcaption><span class="stag">安心設計</span><b>不收 email 和真名、沒有聊天室</b><span>頭像是自己捏的角色，東西不能互送，排行榜只有同班看得到。</span><button type="button" data-go="safe">看更多 ›</button></figcaption>
-        </figure>
-        <figure class="slide" role="group" aria-roledescription="投影片" aria-label="6 / 9：開班管理">
-          <div class="pic fit"><img src="img/class-board.webp" alt="" width="960" height="807" loading="lazy"></div>
-          <figcaption><span class="stag">開班管理</span><b>誰有在玩、玩到哪，打開後台就看到</b><span>有在玩的排前面，最後活動時間、各遊戲進度和要注意的孩子一目了然。</span><button type="button" data-go="class">看更多 ›</button></figcaption>
-        </figure>
-        <figure class="slide" role="group" aria-roledescription="投影片" aria-label="7 / 9：遊玩紀錄">
-          <div class="pic fit"><img src="img/class-play.webp" alt="" width="960" height="410" loading="lazy"></div>
-          <figcaption><span class="stag">遊玩紀錄</span><b>每天玩了幾分鐘，太久、太晚都看得出來</b><span>一張表看全班這週每天玩多久，點名字看孩子每天去了哪裡。</span><button type="button" data-go="class">看更多 ›</button></figcaption>
-        </figure>
-        <figure class="slide" role="group" aria-roledescription="投影片" aria-label="8 / 9：細節頁">
-          <div class="pic fit"><img src="img/class-english.webp" alt="" width="720" height="853" loading="lazy"></div>
-          <figcaption><span class="stag">細節頁</span><b>哪裡不會？一眼標出來</b><span>英文分認字、拼字、聽音看哪個弱，社會看每章哪一題錯最多。</span><button type="button" data-go="class">看更多 ›</button></figcaption>
-        </figure>
-        <figure class="slide last" role="group" aria-roledescription="投影片" aria-label="9 / 9：免費試玩">
-          <div class="pic end"><img src="../img/logo.webp" alt="" width="900" height="452" loading="lazy">
-            <p>完全免費、沒有廣告、不用安裝</p>
-            <div class="end-go"><a class="go small" href="../?join=TRYIT">免費試玩</a><a class="go small alt" href="../?staff=signup">免費開班</a></div></div>
-          <figcaption><span class="stag">開始吧</span><b>先讓孩子玩玩看</b><span>不用班級代碼，按「免費試玩」註冊就能玩，還能和同年級的小夥伴一起比排行、互訪寵物島；想看孩子進度就自己開一個班。</span></figcaption>
-        </figure>
-      </div>
-      <button type="button" class="arrow prev" aria-label="上一張">‹</button>
-      <button type="button" class="arrow next2" aria-label="下一張">›</button>
-      <div class="dots" role="tablist" aria-label="選一張"></div>
+    <p class="pitch">把小五的社會、英文單字和自然，做成孩子願意自己打開的小遊戲。<br>在玩的過程中理解一點、記住一點，對科目不再那麼排斥。</p>
+    <p class="sums-h">先看六個重點</p>
+    <div class="sums">
+      <button type="button" class="sum" data-go="islands" style="--c:var(--park)">
+        <span class="pic fill"><img src="img/park-map.webp" alt="" width="960" height="540"></span>
+        <span class="txt"><span class="stag">三座島</span><b>一個帳號，社會、英文、自然都在這裡</b><span class="d">每座島是一個遊戲，孩子自己挑想去哪裡玩。</span><span class="more">看三座島 ›</span></span>
+      </button>
+      <button type="button" class="sum" data-go="social" style="--c:var(--social)">
+        <span class="pic fill"><img src="img/island-ch5.webp" alt="" width="960" height="462"></span>
+        <span class="txt"><span class="stag">不用死背</span><b>動手做過，才懂為什麼</b><span class="d">親手蓋八堡圳、變成螞蟻鑽進地底，先懂道理，名詞自然記得住。</span><span class="more">看怎麼玩 ›</span></span>
+      </button>
+      <button type="button" class="sum" data-go="quiz" style="--c:var(--quiz)">
+        <span class="pic fill"><img src="img/quiz-result.webp" alt="" width="960" height="698" style="object-position:top"></span>
+        <span class="txt"><span class="stag">測驗卷</span><b>從錯題自動出一張測驗卷</b><span class="d">大人按一下就挑好題目，交卷馬上看解析，寫錯的可以訂正。</span><span class="more">看測驗卷 ›</span></span>
+      </button>
+      <button type="button" class="sum" data-go="kids" style="--c:var(--kid)">
+        <span class="pic fill"><img src="img/pet.webp" alt="" width="960" height="540"></span>
+        <span class="txt"><span class="stag">寵物島</span><b>一隻會等孩子回來的夥伴</b><span class="d">12 隻夥伴，過關才拿得到蛋；佈置自己的島，也能去別人的島逛逛。</span><span class="more">看寵物島 ›</span></span>
+      </button>
+      <button type="button" class="sum" data-go="safe" style="--c:var(--safe)">
+        <span class="pic fill"><img src="img/wear.webp" alt="" width="960" height="540"></span>
+        <span class="txt"><span class="stag">安心</span><b>不收個資、沒有聊天、不用花錢</b><span class="d">不用 email 和真名，頭像是自己捏的角色，時光幣只能玩出來。</span><span class="more">看安心設計 ›</span></span>
+      </button>
+      <button type="button" class="sum" data-go="class" style="--c:var(--cls)">
+        <span class="pic fit"><img src="img/class-board.webp" alt="" width="960" height="807"></span>
+        <span class="txt"><span class="stag">大人看得到</span><b>玩了多久、卡在哪裡，一眼就懂</b><span class="d">開一個免費的家庭班或學校班，後台看每天玩幾分鐘、哪一章常錯。</span><span class="more">看後台 ›</span></span>
+      </button>
     </div>
     <div class="hero-go">
       <a class="go" href="../?join=TRYIT">免費試玩</a>
-      <p class="goalt">不用班級代碼，註冊就能玩・<a href="#class">老師、家長想自己開班看進度？</a></p>
+      <p class="goalt">完全免費、沒有廣告、不用安裝，不用班級代碼就能玩・<a href="../?staff=signup">老師、家長想自己開班？</a></p>
     </div>
   </div>
 </header>
 
 <nav class="tabbar" aria-label="介紹分頁">
   <div class="tabs" role="tablist">
-    <button role="tab" id="t-park" aria-controls="park" style="--c:var(--park)">樂園總覽</button>
-    <button role="tab" id="t-social" aria-controls="social" style="--c:var(--social)">社會</button>
-    <button role="tab" id="t-english" aria-controls="english" style="--c:var(--eng)">英文</button>
+    <button role="tab" id="t-islands" aria-controls="islands" style="--c:var(--park)">三座島</button>
     <button role="tab" id="t-kids" aria-controls="kids" style="--c:var(--kid)">孩子的小天地</button>
-    <button role="tab" id="t-safe" aria-controls="safe" style="--c:var(--safe)">安心設計</button>
-    <button role="tab" id="t-class" aria-controls="class" style="--c:var(--cls)">開班管理</button>
-    <button role="tab" id="t-parents" aria-controls="parents" style="--c:var(--wood-2)">給家長・老師</button>
+    <button role="tab" id="t-quiz" aria-controls="quiz" style="--c:var(--quiz)">測驗卷</button>
+    <button role="tab" id="t-class" aria-controls="class" style="--c:var(--cls)">開班後台</button>
+    <button role="tab" id="t-safe" aria-controls="safe" style="--c:var(--safe)">安心與常問</button>
   </div>
 </nav>
 
 <main>
-  <!-- ========== 樂園總覽 ========== -->
-  <section class="panel" id="park" role="tabpanel" aria-labelledby="t-park" style="--c:var(--park);--bg:var(--park-bg)">
+  <!-- ========== 三座島 ========== -->
+  <section class="panel" id="islands" role="tabpanel" aria-labelledby="t-islands" style="--c:var(--park);--bg:var(--park-bg)">
     <div class="wrap">
-      <span class="kicker">樂園總覽</span>
+      <span class="kicker">三座島</span>
       <h2>一座浮在海上的樂園，每座島都是一個遊戲</h2>
-      <p class="lead">家裡的孩子升上小五，最怕的就是背社會、背單字。與其逼著背，不如先讓他們覺得「這個好像有點有趣」。所以把科目做成樂園裡的島，孩子用一個帳號就能玩全部。</p>
-      <div class="cards two">
-        <div class="card" style="--c:var(--social);--bg:var(--social-bg)">
-          <p class="q">社會怕背？</p>
-          <h3>用遊戲來理解</h3>
-          <p>孩子跳進每個時代，自己動手解決當時人們遇到的難題。先懂「為什麼會這樣」，年代和名詞自然比較記得住。</p>
-          <span class="tag">穿越吧！島嶼開拓者・小五社會</span>
-        </div>
-        <div class="card" style="--c:var(--eng);--bg:var(--eng-bg)">
-          <p class="q">背單字無趣？</p>
-          <h3>融合遊戲記憶單字</h3>
-          <p>蓋塔、打怪、打魔王，每一下都要認出、聽出或拼出英文單字。同一個字在不同關卡反覆遇到，不知不覺就記起來。</p>
-          <span class="tag">守護異世界・2000 單字</span>
-        </div>
+      <p class="lead">升上小五，最怕的就是背社會、背單字。與其逼著背，不如先讓孩子覺得「這個好像有點有趣」。所以把科目做成樂園裡的島，一個帳號就能玩全部。</p>
+      <div class="isle-jump">
+        <button type="button" data-go="social" style="--c:var(--social)">社會<small>島嶼開拓者</small></button>
+        <button type="button" data-go="english" style="--c:var(--eng)">英文<small>守護異世界</small></button>
+        <button type="button" data-go="science" style="--c:var(--sci)">自然<small>時光祕境島</small></button>
       </div>
 
-      <div class="block how">
-        <div class="how-item small">
-          <img class="shot" src="img/daily.webp" alt="我的時光幣：本週冒險值和今天的三個任務" width="640" height="642" loading="lazy">
-          <div>
-            <h3>每天三個小任務</h3>
-            <p>像「去今天指定的島玩一下」「照顧寵物」這種小目標，做完領時光幣。份量刻意很小，五分鐘就能完成，讓孩子養成「每天來一下」的習慣，而不是一次玩很久。</p>
+      <!-- 社會 -->
+      <div class="isle-sec" id="social" style="--c:var(--social);--bg:var(--social-bg)">
+        <span class="kicker">社會・穿越吧！島嶼開拓者</span>
+        <h2>從史前一路玩到今天的臺灣</h2>
+        <p class="lead">國小五年級社會（臺灣的歷史與地理）。孩子當見習生，跟著時光鐘塔的滴答穿越各個時代，每一章都是一段劇情加上解謎，一章大約 20 到 30 分鐘。</p>
+        <ul class="chapters" aria-label="章節">
+          <li>序章<small>認識臺灣</small></li>
+          <li>第一章<small>史前</small></li>
+          <li>第二章<small>原住民族</small></li>
+          <li>第三章<small>荷西</small></li>
+          <li>第四章<small>鄭氏</small></li>
+          <li>第五章<small>清領</small></li>
+          <li>第六章<small>清末開港</small></li>
+          <li>第七章<small>日治</small></li>
+          <li>終章<small>戰後</small></li>
+          <li class="now">現在的臺灣<small>地理與生活</small></li>
+        </ul>
+        <div class="how">
+          <div class="how-item">
+            <img class="shot" src="img/island-ch5.webp" alt="第五章：用竹蛇籠把溪水導進田裡，蓋八堡圳" width="960" height="462" loading="lazy">
+            <div><h3>動手做過，才知道為什麼</h3><p>第五章要自己編竹蛇籠、把溪水導進田裡蓋出八堡圳；第一章從打製石器一路做到煉鐵。做完再看課本，「水圳」「磨製石器」就不只是名詞。</p></div>
+          </div>
+          <div class="how-item">
+            <img class="shot" src="img/island-map.webp" alt="臺灣大地圖：每過一章，那個時代的城鎮、人物和建設就會出現在地圖上" width="960" height="502" loading="lazy">
+            <div><h3>整座島一段一段亮起來</h3><p>每過一章，大地圖上就會出現那個時代的人物、建築和建設，孩子看得到臺灣是怎麼一步步變成今天的樣子。</p></div>
           </div>
         </div>
-        <div class="how-item small">
-          <img class="shot" src="img/rank.webp" alt="班級排行：本週冒險值、進步之星、勳章牆" width="560" height="411" loading="lazy">
-          <div>
-            <h3>時光幣、護照和勳章</h3>
-            <p>過關、拿星星就會賺時光幣，可以去商店換衣服、傢俱和寵物點心。每座島也有勳章可以收集，蓋在樂園護照上。時光幣只能玩出來，<b>沒有任何花真錢的地方</b>。</p>
+        <details class="more">
+          <summary>看更多：劇情和「現在的臺灣」</summary>
+          <div class="inner how">
+            <div class="how-item">
+              <img class="shot" src="img/island-ch3.webp" alt="第三章：大員的商館與港口，商館員介紹轉口貿易" width="960" height="462" loading="lazy">
+              <div><h3>有劇情、有人物、有選擇</h3><p>每章都有當時的夥伴角色，孩子會遇到要做決定的時候，選擇會影響結局畫面。重點不是背答案，是理解當時的人為什麼這樣做。</p></div>
+            </div>
+            <div class="how-item">
+              <img class="shot" src="img/island-postcard.webp" alt="景點明信片：太魯閣、日月潭、清水斷崖、夜市、新埔柿餅、臺北 101 六個真實景點" width="960" height="364" loading="lazy">
+              <div><h3>最後回到現在的臺灣</h3><p>全部破關後，地圖可以切到「現在」，有漁村、規則小鎮、天空港、離島和景點明信片，帶到地理和公民的概念。景點明信片照「發現問題、蒐集資料、整理分析、行動省思」四步走，最後寫一張明信片推薦給遊客。</p></div>
+            </div>
+            <p class="note">各家課本的單元順序不太一樣，遊戲照時代排，不一定跟學校進度同步。內容參考課綱與公開資料整理，如果發現哪裡寫得不對，很歡迎告訴我們。</p>
           </div>
-        </div>
+        </details>
       </div>
-      <p class="note">目前開放的是社會（小五）和英文；自然科「時光祕境島」已經開始試營運（先開放試玩班），之後也想做小四的社會和自然。</p>
-      <div class="next"><button type="button" data-go="social">下一頁：社會 ›</button></div>
-    </div>
-  </section>
 
-  <!-- ========== 社會 ========== -->
-  <section class="panel" id="social" role="tabpanel" aria-labelledby="t-social" style="--c:var(--social);--bg:var(--social-bg)">
-    <div class="wrap">
-      <span class="kicker">社會・穿越吧！島嶼開拓者</span>
-      <h2>從史前一路玩到今天的臺灣</h2>
-      <p class="lead">目前只做了<b>國小五年級社會</b>（臺灣的歷史與地理）。孩子當見習生，跟著時光鐘塔的滴答穿越各個時代，每一章都是一段劇情加上解謎。</p>
-      <ul class="chapters" aria-label="章節">
-        <li>序章<small>認識臺灣</small></li>
-        <li>第一章<small>史前</small></li>
-        <li>第二章<small>原住民族</small></li>
-        <li>第三章<small>荷西</small></li>
-        <li>第四章<small>鄭氏</small></li>
-        <li>第五章<small>清領</small></li>
-        <li>第六章<small>清末開港</small></li>
-        <li>第七章<small>日治</small></li>
-        <li>終章<small>戰後</small></li>
-        <li class="now">現在的臺灣<small>地理與生活</small></li>
-      </ul>
-      <div class="how">
-        <div class="how-item">
-          <img class="shot" src="img/island-ch5.webp" alt="第五章：用竹蛇籠把溪水導進田裡，蓋八堡圳" width="960" height="462" loading="lazy">
-          <div><h3>動手做過，才知道為什麼</h3><p>例如第五章要自己編竹蛇籠、把溪水導進田裡蓋出八堡圳；第一章從打製石器一路做到煉鐵。做完再看課本，「水圳」「磨製石器」就不只是名詞。</p></div>
+      <!-- 英文 -->
+      <div class="isle-sec" id="english" style="--c:var(--eng);--bg:var(--eng-bg)">
+        <span class="kicker">英文・守護異世界</span>
+        <h2>2000 個單字，變成守城的魔力</h2>
+        <p class="lead">範圍是教育部公告的國中小 <b>2000 個基本英文字彙</b>，從國小最常用的 300 字開始，照生活主題分關、由淺到深。一關大約 3 到 5 分鐘。</p>
+        <div class="facts">
+          <div class="fact"><b>2000<small>字</small></b><span>國中小基本字彙</span></div>
+          <div class="fact"><b>300<small>字</small></b><span>第一章先練最常用的</span></div>
+          <div class="fact"><b>85<small>關</small></b><span>分三章，一路變難</span></div>
+          <div class="fact"><b>3<small>種</small></b><span>讀字、聽字、拼字</span></div>
         </div>
-        <div class="how-item">
-          <img class="shot" src="img/island-ch3.webp" alt="第三章：大員的商館與港口，商館員介紹轉口貿易" width="960" height="462" loading="lazy">
-          <div><h3>有劇情、有人物、有選擇</h3><p>每章都有當時的夥伴角色，孩子會遇到要做決定的時候，選擇會影響結局畫面。重點不是背答案，是理解當時的人為什麼這樣做。</p></div>
-        </div>
-        <div class="how-item">
-          <img class="shot" src="img/island-map.webp" alt="臺灣大地圖：每過一章，那個時代的城鎮、人物和建設就會出現在地圖上" width="960" height="502" loading="lazy">
-          <div><h3>整座島一段一段亮起來</h3><p>每過一章，大地圖上就會出現那個時代的人物、建築和建設，孩子看得到臺灣是怎麼一步步變成今天的樣子。</p></div>
-        </div>
-        <div class="how-item">
-          <img class="shot" src="img/island-postcard.webp" alt="景點明信片：太魯閣、日月潭、清水斷崖、夜市、新埔柿餅、臺北 101 六個真實景點" width="960" height="364" loading="lazy">
-          <div><h3>最後回到現在的臺灣</h3><p>全部破關後，地圖可以切到「現在」，有漁村、規則小鎮、天空港、離島和景點明信片，帶到地理和公民的概念。</p><p>像圖中的景點明信片：從太魯閣、日月潭、夜市這些真實照片挑一個，照「發現問題、蒐集資料、整理分析、行動省思」四步走，還能切回過去看這個地方以前的樣子，最後寫一張明信片推薦給遊客。</p></div>
-        </div>
-      </div>
-      <p class="note">各家課本的單元順序不太一樣，遊戲照時代排，不一定跟學校進度同步。內容參考課綱與公開資料整理，如果發現哪裡寫得不對，很歡迎告訴我們。</p>
-      <div class="next"><button type="button" data-go="english">下一頁：英文 ›</button></div>
-    </div>
-  </section>
-
-  <!-- ========== 英文 ========== -->
-  <section class="panel" id="english" role="tabpanel" aria-labelledby="t-english" style="--c:var(--eng);--bg:var(--eng-bg)">
-    <div class="wrap">
-      <span class="kicker">英文・守護異世界</span>
-      <h2>2000 個單字，變成守城的魔力</h2>
-      <p class="lead">範圍是教育部公告的國中小 <b>2000 個基本英文字彙</b>，從國小最常用的 300 字開始，照生活主題分關、由淺到深。</p>
-      <div class="facts">
-        <div class="fact"><b>2000<small>字</small></b><span>國中小基本字彙</span></div>
-        <div class="fact"><b>300<small>字</small></b><span>第一章先練最常用的</span></div>
-        <div class="fact"><b>85<small>關</small></b><span>分三章，一路變難</span></div>
-        <div class="fact"><b>3<small>種</small></b><span>讀字、聽字、拼字</span></div>
-      </div>
-      <div class="how">
         <div class="how-item">
           <img class="shot" src="img/guardian-td.webp" alt="守塔畫面：上方出中文「十二」，要點寫著 twelve 的怪" width="960" height="540" loading="lazy">
           <div><h3>看中文，點出對的英文</h3><p>怪物身上寫著英文字，上面出中文，點對了箭塔才會發射。也有只聽發音的「聽字」，和一個字母一個字母的「拼字」，不是只有選擇題。</p></div>
         </div>
-        <div class="how-item">
-          <img class="shot" src="img/guardian-map.webp" alt="選關地圖：第一章草地城堡 14 關" width="960" height="540" loading="lazy">
-          <div><h3>一關一個生活主題</h3><p>數字、身體、動物、顏色……先從看得見摸得到的字開始，再慢慢到時間、動作、感覺這些抽象的字，難度自然往上爬。</p></div>
-        </div>
+        <details class="more">
+          <summary>看更多：關卡主題和設計理念</summary>
+          <div class="inner">
+            <div class="how-item">
+              <img class="shot" src="img/guardian-map.webp" alt="選關地圖：第一章草地城堡 14 關" width="960" height="540" loading="lazy">
+              <div><h3>一關一個生活主題</h3><p>數字、身體、動物、顏色……先從看得見摸得到的字開始，再慢慢到時間、動作、感覺這些抽象的字，難度自然往上爬。</p></div>
+            </div>
+            <h3 style="margin:22px 0 10px;color:var(--c)">希望孩子是「想多答對幾題」，而不是「想辦法刷分」</h3>
+            <ul class="ticks two">
+              <li><b>每一個動作都要答題</b><span>蓋塔、派兵、打魔王都靠答對。英文不是遊戲旁邊的作業，而是遊戲本身。</span></li>
+              <li><b>只有答對才會變強</b><span>時光幣和經驗只從答對來，花錢買不到，也沒有掛機。</span></li>
+              <li><b>同一個字刷不了</b><span>一直重玩同一個簡單的字，獎勵會越來越少，鼓勵往新的字前進。</span></li>
+              <li><b>常錯的字會多出幾次</b><span>重玩時優先出孩子常答錯的字，不知不覺就在複習弱點。</span></li>
+              <li><b>答錯不會被罵</b><span>答錯只是少打一下，不會扣光、不會被淘汰，孩子敢猜、敢試。</span></li>
+              <li><b>可以跟同學一起</b><span>魔王團戰要大家一起答題才打得倒，也有跟同學的分身對戰。</span></li>
+            </ul>
+          </div>
+        </details>
       </div>
 
-      <div class="block">
-        <h2>設計理念</h2>
-        <p class="lead">希望孩子是「想多答對幾題」，而不是「想辦法刷分」。</p>
-        <ul class="ticks two">
-          <li><b>每一個動作都要答題</b><span>蓋塔、派兵、打魔王都靠答對。英文不是遊戲旁邊的作業，而是遊戲本身。</span></li>
-          <li><b>只有答對才會變強</b><span>時光幣和經驗只從答對來，花錢買不到，也沒有掛機。</span></li>
-          <li><b>同一個字刷不了</b><span>一直重玩同一個簡單的字，獎勵會越來越少，鼓勵往新的字前進。</span></li>
-          <li><b>常錯的字會多出幾次</b><span>重玩時優先出孩子常答錯的字，不知不覺就在複習弱點。</span></li>
-          <li><b>答錯不會被罵</b><span>答錯只是少打一下，不會扣光、不會被淘汰，孩子敢猜、敢試。</span></li>
-          <li><b>可以跟同學一起</b><span>魔王團戰要大家一起答題才打得倒，也有跟同學的分身對戰。</span></li>
+      <!-- 自然 -->
+      <div class="isle-sec" id="science" style="--c:var(--sci);--bg:var(--sci-bg)">
+        <span class="kicker">自然・時光祕境島（試營運）</span>
+        <h2>跟著小石虎斑斑，到祕境島找媽媽</h2>
+        <p class="lead">這是一個冒險遊戲：孩子在島上走來走去、轉動視角找線索，還會變成枯葉蝶、螞蟻、魚。<b>課本裡的自然知識，就是這個世界的規則</b>，懂了才過得去。目前有 8 關，關卡陸續增加。</p>
+        <ul class="chapters" aria-label="關卡">
+          <li>森林<small>動物的偽裝</small></li>
+          <li>螞蟻地下城<small>群體分工</small></li>
+          <li>海港工坊<small>生鏽與防鏽</small></li>
+          <li>劇場小鎮<small>聲音</small></li>
+          <li>山頂天文台<small>太陽與影子</small></li>
+          <li>池塘<small>水生植物和魚</small></li>
+          <li>海港燈塔<small>燃燒與滅火</small></li>
+          <li>光的魔術舞台<small>光</small></li>
         </ul>
+        <div class="how">
+          <div class="how-item">
+            <img class="shot" src="img/animal-ant.webp" alt="螞蟻地下城：小石虎斑斑和孩子的時空旅人站在蟻窩洞口前，洞口旁有兩隻螞蟻" width="960" height="540" loading="lazy">
+            <div><h3>變成螞蟻，鑽進地底</h3><p>先觀察兩隻螞蟻碰觸角，再變成螞蟻鑽進洞裡：在黑暗裡聞氣味找路、找同伴一起搬餅乾、通過兵蟻找到蟻后。過關後收進「祕境圖鑑」的卡片，寫的就是課本重點：螞蟻怎麼分工、怎麼傳遞消息。</p></div>
+          </div>
+          <div class="how-item">
+            <img class="shot" src="img/animal-sky.webp" alt="山頂天文台：帝雉台長站在石門前，門上有太陽圖案，旁邊的石柱要讓影子碰到鑰匙孔" width="960" height="540" loading="lazy">
+            <div><h3>用太陽的影子開門</h3><p>轉動星盤改變時間，讓石柱的影子剛好碰到鑰匙孔；中午影子最短，下午倒向另一邊。親手調過一次，「太陽的位置和影子」就不用死背。</p></div>
+          </div>
+        </div>
+        <details class="more">
+          <summary>看更多：整座祕境島</summary>
+          <div class="inner">
+            <div class="how-item">
+              <img class="shot" src="img/animal-map.webp" alt="時光祕境島地圖：森林、螞蟻地下城、池塘、海港、燈塔、劇場小鎮、魔術舞台、山頂天文台" width="960" height="540" loading="lazy">
+              <div><h3>一座島，四個區域</h3><p>森林、海港、劇場小鎮、山頂天文台，每一關找回一個時光齒輪，關卡照順序打開。答錯時提示會一步一步變清楚，不會卡著不知道怎麼辦。</p></div>
+            </div>
+            <p class="note">自然還在試營運，之後會補上溪谷、發明工坊等區域。內容參考五年級自然課本，各版本單元順序不一樣。</p>
+          </div>
+        </details>
       </div>
       <div class="next"><button type="button" data-go="kids">下一頁：孩子的小天地 ›</button></div>
     </div>
@@ -407,69 +404,148 @@ footer{text-align:center;font-size:14px;color:var(--muted);padding:12px 16px 40p
           <div>
             <p class="voice">「布丁今天有沒有乖乖等我？」</p>
             <h3>寵物島：一隻會等你的夥伴</h3>
-            <p>第一次來會拿到一顆時光蛋，孩子自己挑小狗、小貓或黃金鼠，再幫牠取名字。可以餵食、摸摸、丟球，看牠在島上跑來跑去。島上的白天黑夜、季節和天氣會跟著真實時間變。</p>
+            <p>第一次來就有一顆時光蛋，孩子自己挑小狗、小貓或黃金鼠，再幫牠取名字。可以餵食、摸摸、丟球，看牠在島上跑來跑去；白天黑夜、季節和天氣跟著真實時間變。</p>
             <p>幾天沒來牠會肚子餓、鬧點小脾氣，但<b>不會生病、也不會死掉</b>，回來摸摸就和好了。我們想要的是「想念」，不是「愧疚」。</p>
           </div>
         </div>
-        <div class="how-item">
-          <img class="shot" src="img/wear.webp" alt="換裝間：時空旅人穿著漁夫帽、牛仔外套和工裝褲" width="960" height="540" loading="lazy">
-          <div>
-            <p class="voice">「這是我在樂園裡的樣子！」</p>
-            <h3>時空旅人：我自己的角色</h3>
-            <p>孩子挑臉型、髮型和一套起始衣服，捏出自己的時空旅人。這個角色就是他在樂園裡的頭像，排行榜、名片上看到的都是它，不用放真實照片。</p>
-            <p>想換新衣服，要靠自己玩出來的時光幣去商店換。穿上自己「賺來」的衣服，比直接送的更有成就感。</p>
-          </div>
-        </div>
-        <div class="how-item">
-          <img class="shot" src="img/shop.webp" alt="時空商店：主角、寵物、傢俱、本月限定四個分類" width="960" height="540" loading="lazy">
-          <div>
-            <p class="voice">「再存一點，就能買那件發光外套了！」</p>
-            <h3>時空商店：只收時光幣，不收台幣</h3>
-            <p>商店分成主角衣服、寵物點心配件、寵物島傢俱和本月限定。所有東西都只能用遊戲裡玩出來的時光幣換，<b>沒有儲值、沒有抽卡、沒有任何要花真錢的地方</b>，也沒有廣告。存錢買想要的東西，本身也是一個小小的練習。</p>
-          </div>
-        </div>
       </div>
-      <div class="next"><button type="button" data-go="safe">下一頁：安心設計 ›</button></div>
-    </div>
-  </section>
-
-  <!-- ========== 安心設計 ========== -->
-  <section class="panel" id="safe" role="tabpanel" aria-labelledby="t-safe" style="--c:var(--safe);--bg:var(--safe-bg)">
-    <div class="wrap">
-      <span class="kicker">安心設計</span>
-      <h2>孩子的個資，一開始就不收</h2>
-      <p class="lead">這是給國小孩子玩的，所以能不收的資料就不收，能不開的功能就不開。</p>
-      <ul class="ticks two">
-        <li><b>不用 email、不用真名</b><span>孩子只要取一個帳號、密碼和暱稱，不填生日、學校或電話。</span></li>
-        <li><b>頭像是自己捏的角色</b><span>沒有上傳照片的地方，別人看到的只有時空旅人和暱稱。</span></li>
-        <li><b>暱稱會擋不雅字</b><span>取暱稱時會自動檢查，不好的字取不了。</span></li>
-        <li><b>沒有聊天室</b><span>遊戲裡沒有可以自由打字聊天的地方，也沒有私訊。</span></li>
-        <li><b>不能互送東西</b><span>時光幣和道具不能轉給別人，避免被要求「送我」或被勒索。</span></li>
-        <li><b>只跟同班比</b><span>排行榜只有同一個班的人看得到，外面的人看不到孩子的名字和成績。</span></li>
-      </ul>
 
       <div class="block">
-        <h2>排行榜：不會有人永遠霸榜</h2>
-        <p class="lead">排行榜是讓孩子有動力的好工具，但用不好會讓一直排後面的孩子乾脆放棄。所以這樣設計：</p>
+        <p class="voice">「下一顆蛋會是誰？」</p>
+        <h3 style="font-size:clamp(20px,4.8vw,24px);color:var(--wood);margin-bottom:6px">12 隻夥伴，要過關才拿得到蛋</h3>
+        <ul class="pals" aria-label="12 隻夥伴">
+          <li class="start"><img src="../img/pet/puppy/1-idle.webp" alt="" loading="lazy">小狗</li>
+          <li class="start"><img src="../img/pet/kitten/1-idle.webp" alt="" loading="lazy">小貓</li>
+          <li class="start"><img src="../img/pet/hamster/1-idle.webp" alt="" loading="lazy">黃金鼠</li>
+          <li><img src="../img/pet/bear/1-idle.webp" alt="" loading="lazy">黑熊</li>
+          <li><img src="../img/pet/magpie/1-idle.webp" alt="" loading="lazy">藍鵲</li>
+          <li><img src="../img/pet/deer/1-idle.webp" alt="" loading="lazy">梅花鹿</li>
+          <li><img src="../img/pet/pangolin/1-idle.webp" alt="" loading="lazy">穿山甲</li>
+          <li><img src="../img/pet/leopard-cat/1-idle.webp" alt="" loading="lazy">石虎</li>
+          <li><img src="../img/pet/dragon/1-idle.webp" alt="" loading="lazy">小火龍</li>
+          <li><img src="../img/pet/unicorn/1-idle.webp" alt="" loading="lazy">獨角獸</li>
+          <li><img src="../img/pet/leaf-butterfly/1-idle.webp" alt="" loading="lazy">枯葉蝶</li>
+          <li><img src="../img/pet/ant-princess/1-idle.webp" alt="" loading="lazy">小蟻公主</li>
+        </ul>
         <div class="how-item small">
-          <img class="shot" src="img/rank.webp" alt="班級排行三個分頁：本週冒險值、進步之星、勳章牆" width="560" height="411" loading="lazy">
-          <ul class="ticks">
-            <li><b>每週一重新開始</b><span>比的是「這週新賺的」時光幣，不是存了多少。上週落後，這週一樣有機會。</span></li>
-            <li><b>進步之星</b><span>另外比「這週比上週多了多少」，平常不在前面的孩子，只要比自己進步就能上榜。</span></li>
-            <li><b>只列前 10 名、0 分不上榜</b><span>不會把全班從頭排到尾，沒玩的孩子也不會被列在最後一名。孩子只會另外看到自己的名次。</span></li>
-          </ul>
+          <img class="shot" src="img/pet-dex.webp" alt="夥伴圖鑑：還沒遇到的夥伴只看得到影子，下面寫著要去哪一座島的哪一章過關" width="714" height="678" loading="lazy">
+          <div>
+            <p>除了一開始的三隻，其他夥伴都要在某一座島過關才會拿到蛋：社會過某一章、英文打倒魔王、祕境島走完森林……蛋要隔一天才孵。圖鑑裡還沒遇到的夥伴只看得到影子，孩子自然會想去玩下一關。</p>
+            <p>每隻夥伴有自己的本事，像穿山甲每天挖一份點心、藍鵲去拜訪別人時會帶回禮物，之後的寵物小遊戲也會用到。</p>
+          </div>
         </div>
       </div>
-      <div class="next"><button type="button" data-go="class">下一頁：開班管理 ›</button></div>
+
+      <div class="block how-item">
+        <img class="shot" src="img/pet-visit.webp" alt="拜訪別人的寵物島：下面只有好可愛、好厲害、好漂亮、好好笑、好有創意、我來過了六個圖示" width="956" height="596" loading="lazy">
+        <div>
+          <p class="voice">「我的島被按了好有創意！」</p>
+          <h3>佈置自己的島，也去別人的島逛逛</h3>
+          <p>傢俱、樹和裝飾都由孩子自己擺。可以拜訪同班、同伴圈或「今日精選」的島，看別人的夥伴在島上走動。</p>
+          <p>拜訪時<b>只能留好話圖示</b>（好可愛、好有創意……），一座島一天一個，沒有打字留言。</p>
+        </div>
+      </div>
+
+      <details class="more">
+        <summary>看更多：時空旅人、商店、每日任務和勳章</summary>
+        <div class="inner how">
+          <div class="how-item">
+            <img class="shot" src="img/wear.webp" alt="換裝間：時空旅人穿著漁夫帽、牛仔外套和工裝褲" width="960" height="540" loading="lazy">
+            <div>
+              <p class="voice">「這是我在樂園裡的樣子！」</p>
+              <h3>時空旅人：我自己的角色</h3>
+              <p>孩子挑臉型、髮型和一套起始衣服，捏出自己的時空旅人。排行榜、名片上看到的都是它，不用放真實照片。想換新衣服，要靠自己玩出來的時光幣去商店換。</p>
+            </div>
+          </div>
+          <div class="how-item">
+            <img class="shot" src="img/shop.webp" alt="時空商店：主角、寵物、傢俱、本月限定四個分類" width="960" height="540" loading="lazy">
+            <div>
+              <p class="voice">「再存一點，就能買那件發光外套了！」</p>
+              <h3>時空商店：只收時光幣，不收台幣</h3>
+              <p>主角衣服、寵物點心、寵物島傢俱和本月限定，都只能用玩出來的時光幣換，<b>沒有儲值、沒有抽卡、沒有廣告</b>。存錢買想要的東西，本身也是一個小小的練習。</p>
+            </div>
+          </div>
+          <div class="how-item small">
+            <img class="shot" src="img/daily.webp" alt="我的時光幣：本週冒險值和今天的三個任務" width="640" height="642" loading="lazy">
+            <div>
+              <h3>每天三個小任務</h3>
+              <p>像「去今天指定的島玩一下」「照顧寵物」這種小目標，五分鐘就能完成，讓孩子養成「每天來一下」的習慣，而不是一次玩很久。</p>
+            </div>
+          </div>
+          <div class="how-item small">
+            <img class="shot" src="img/rank.webp" alt="班級排行：本週冒險值、進步之星、勳章牆" width="560" height="411" loading="lazy">
+            <div>
+              <h3>護照和勳章</h3>
+              <p>每座島都有勳章可以收集，蓋在樂園護照上。過關、拿星星、寫試煉卷都會賺時光幣。</p>
+            </div>
+          </div>
+        </div>
+      </details>
+      <div class="next"><button type="button" data-go="quiz">下一頁：測驗卷 ›</button></div>
     </div>
   </section>
 
-  <!-- ========== 開班管理 ========== -->
+  <!-- ========== 測驗卷：時光試煉島 ========== -->
+  <section class="panel" id="quiz" role="tabpanel" aria-labelledby="t-quiz" style="--c:var(--quiz);--bg:var(--quiz-bg)">
+    <div class="wrap">
+      <span class="kicker">測驗卷・時光試煉島</span>
+      <h2>從孩子的錯題，自動出一張測驗卷</h2>
+      <p class="lead">玩是為了有興趣，但大人也想知道孩子到底懂了沒。家長或老師在後台按一下，就依孩子在遊戲裡的對錯挑好題目；孩子收到信鴿信，到樂園外的「時光試煉島」找貓頭鷹考官作答。</p>
+      <div class="facts">
+        <div class="fact"><b>1<small>鍵</small></b><span>從錯題自動挑題</span></div>
+        <div class="fact"><b>10<small>題</small></b><span>一張卷（也能 20、30 題）</span></div>
+        <div class="fact"><b>7<small>種</small></b><span>題型，不只選擇題</span></div>
+        <div class="fact"><b>2<small>科</small></b><span>社會和自然</span></div>
+      </div>
+
+      <div class="how">
+        <div class="how-item">
+          <img class="shot" src="img/quiz-make.webp" alt="出新卷的預覽：每一題標著是哪一章、還沒玩過或待加強，可以換題或刪掉" width="960" height="718" loading="lazy">
+          <div><span class="num">1</span><h3>大人：按一下自動挑題</h3><p>5 成是孩子待加強的、3 成是玩過還沒學會的、2 成是還沒玩過的；已經學會的不出。可以只考某次段考的範圍、換掉不想要的題，也能自己加一題。</p></div>
+        </div>
+        <div class="how-item">
+          <img class="shot" src="img/quiz-kid.webp" alt="孩子作答畫面：荷蘭時期每年運走好幾萬張鹿皮，結果會怎樣？大衛、阿福、小真三個人誰說得對" width="760" height="600" loading="lazy">
+          <div><span class="num">2</span><h3>孩子：到試煉島作答</h3><p>是非、選擇、多選、誰說得對、分類、短文圈選、排順序，接近學校評量的題型，但一次只出一題，慢慢讀。</p></div>
+        </div>
+        <div class="how-item">
+          <img class="shot" src="img/quiz-result.webp" alt="交卷後：貓頭鷹考官說沒關係，先看解析再訂正；每一題列出你的答案、正確答案和為什麼" width="960" height="698" loading="lazy">
+          <div><span class="num">3</span><h3>交卷馬上看解析，再訂正一次</h3><p>每一題都說明<b>為什麼對、錯的為什麼錯</b>，不是只給答案。寫錯的可以訂正，全部改對再拿時光幣。分數是用來找出還不熟的地方，考不好也有幣拿。</p></div>
+        </div>
+        <div class="how-item">
+          <img class="shot" src="img/quiz-report.webp" alt="大人看到的報告：分數、比較弱的地方、對應課本哪個單元、寄信推薦去玩這幾關" width="960" height="760" loading="lazy">
+          <div><span class="num">4</span><h3>大人看報告：該翻課本哪一段</h3><p>報告列出比較弱的地方、對應課本哪個單元、遊戲裡哪一關可以再玩，還會提醒「有幾題不到 3 秒就答錯，可能沒看完題目」。可以一鍵寄信推薦孩子去玩那幾關，也能列印成紙本。</p></div>
+        </div>
+      </div>
+
+      <details class="more">
+        <summary>看更多：學習地圖、時光幣和題目怎麼來</summary>
+        <div class="inner">
+          <div class="how-item">
+            <img class="shot" src="img/quiz-map.webp" alt="學習地圖：每一章的知識點標成學會了、待加強、玩過還沒學會、還沒玩過" width="960" height="680" loading="lazy">
+            <div><h3>學習地圖</h3><p>每個知識點標成學會了、待加強、玩過還沒學會、還沒玩過。「學會」要在不同的兩天、用不同的題目答對，學會的就不再出題。</p></div>
+          </div>
+          <ul class="ticks two" style="margin-top:16px">
+            <li><b>時光幣刷不了</b><span>100 分 30 個、80 分以上 20 個、60 分以上 10 個、其他 5 個；每星期最多 3 張卷給幣。</span></li>
+            <li><b>題目有出處、有人審</b><span>每題都標課本出處和解析，審過才會被抽到；孩子覺得哪一題怪怪的，可以直接回報。</span></li>
+            <li><b>家長看得到學校的卷</b><span>孩子在學校班寫的卷，連起來的家長也看得到（只能看）；老師看不到家庭班的卷。</span></li>
+            <li><b>英文卷準備中</b><span>目前出社會和自然；英文單字在守護異世界的細節頁就看得到哪些字常錯。</span></li>
+          </ul>
+        </div>
+      </details>
+      <div class="open-cta" style="margin-top:28px">
+        <a class="go" href="../teacher.html?child=1">家長：幫孩子開帳號</a>
+        <p class="goalt">出卷要先有一個班：家長幫孩子開帳號會自動開好家庭班・<a href="../?staff=signup">老師開學校班</a></p>
+      </div>
+      <div class="next"><button type="button" data-go="class">下一頁：開班後台 ›</button></div>
+    </div>
+  </section>
+
+  <!-- ========== 開班後台 ========== -->
   <section class="panel" id="class" role="tabpanel" aria-labelledby="t-class" style="--c:var(--cls);--bg:var(--cls-bg)">
     <div class="wrap">
       <span class="kicker">老師・家長開班</span>
       <h2>自己開一個班，孩子玩了什麼一目了然</h2>
-      <p class="lead">學校老師可以開全班，家長可以開一個「家庭班」，兄弟姊妹、親戚的孩子都能一起加入。開班免費，只要 email 和密碼，不用收確認信，開好就拿到一組班級代碼。孩子加入之後，下面這些在後台都看得到。</p>
+      <p class="lead">學校老師可以開全班，家長可以開一個「家庭班」，兄弟姊妹、親戚的孩子都能一起加入。開班免費，只要 email 和密碼，不用收確認信。</p>
       <div class="open-cta">
         <a class="go" href="../teacher.html?child=1">家長：幫孩子開帳號</a>
         <a class="go small alt" href="../?staff=signup">免費開班</a>
@@ -479,73 +555,57 @@ footer{text-align:center;font-size:14px;color:var(--muted);padding:12px 16px 40p
       <div class="block feat">
         <span class="num">1</span>
         <h3>誰有在玩，打開就知道</h3>
-        <p class="sub">全班總覽會把最近有在玩的孩子排在前面，每個人名字下面寫著「最後活動 18 分鐘前」，還有他最後在玩哪一座島、第幾章。</p>
+        <p class="sub">全班總覽把最近有在玩的孩子排在前面，每個人寫著「最後活動 18 分鐘前」、最後在玩哪一座島、第幾章；超過 7 天沒來、答對率偏低、密碼試錯被鎖住會標紅。</p>
         <img class="shot" src="img/class-board.webp" alt="全班總覽：有在玩的排前面，每個孩子顯示最後活動時間、在玩哪個遊戲、各遊戲進度和需要注意的提醒" width="960" height="807" loading="lazy">
-        <ul class="ticks two">
-          <li><b>最近 7 天有幾位來玩</b><span>一行字告訴你全班有多少人真的在用，7 天內有來的會標綠色。</span></li>
-          <li><b>每個遊戲玩到哪</b><span>進度條、玩到第幾關或第幾章、最後一次玩是什麼時候。</span></li>
-          <li><b>需要注意的會標紅</b><span>超過 7 天沒來、最近答對率偏低、密碼試錯被鎖住，一眼就看到。</span></li>
-          <li><b>想照名字排也可以</b><span>「有在玩的排前面」關掉就回到依名字排，也能只看需要注意的孩子。</span></li>
-        </ul>
       </div>
 
       <div class="block feat">
         <span class="num">2</span>
         <h3>遊玩紀錄：每天玩了多久</h3>
-        <p class="sub">一張表看全班這一週（或 14、28 天）每天各玩了幾分鐘，顏色越深玩越久。點孩子的名字，就看得到他每天去了哪些島、從幾點玩到幾點、拿到哪些勳章。</p>
+        <p class="sub">一張表看這一週每天各玩了幾分鐘，顏色越深玩越久。點名字，就看得到孩子每天去了哪些島、從幾點玩到幾點。玩太久、太晚還在玩，或好幾天沒來，都看得出來。</p>
         <img class="shot" src="img/class-play.webp" alt="遊玩紀錄分頁：全班每個孩子每天玩了幾分鐘的表格，顏色越深玩越久" width="960" height="410" loading="lazy">
-        <img class="shot" src="img/class-kid.webp" alt="點進一個孩子：每天一列，點開看那天幾點在哪個遊戲、玩了幾分鐘、拿到什麼勳章" width="960" height="587" loading="lazy">
-        <p class="note">很適合拿來對照「每次 20 到 30 分鐘」的建議：玩太久、太晚還在玩，或是好幾天沒來，都看得出來。</p>
       </div>
 
       <div class="block feat">
         <span class="num">3</span>
         <h3>細節頁：看得出卡在哪裡</h3>
-        <p class="sub">每個遊戲都有自己的細節頁，用家長看得懂的話寫，不只告訴你分數，還告訴你可以陪孩子練什麼。</p>
-        <div class="how">
-          <div class="how-item">
-            <img class="shot" src="img/class-island.webp" alt="社會的細節頁：每一章全班想一想的答對率，綠黃紅三色，還有幾個人過關、平均失誤次數" width="960" height="454" loading="lazy">
-            <div>
-              <h3 style="color:var(--social)">社會：每一章想一想答對多少</h3>
-              <p>每章最後的「想一想」，全班答對率用綠、黃、紅標出來，紅色的先看。點開看大家最常選錯哪個、正確答案的理由；也有每個孩子自己的白話學習報告，適合拿來跟孩子聊這一章。</p>
-            </div>
-          </div>
-          <div class="how-item small">
-            <img class="shot" src="img/class-english.webp" alt="英文的細節頁：認字、拼字、聽音三張卡片的答對率，錯最多的字，答對率比較低的關卡" width="720" height="853" loading="lazy">
-            <div>
-              <h3 style="color:var(--eng)">英文：認字、拼字、聽音哪個弱</h3>
-              <p>把答題分成認字、拼字、聽音三張卡，馬上知道孩子是「看得懂但拼不出來」還是「聽不出來」。點卡片看錯最多的字，還會列出答對率比較低的關卡，陪他把那關的字先念一遍再打。</p>
-            </div>
-          </div>
-        </div>
+        <p class="sub">每座島都有自己的細節頁，用家長看得懂的話寫：社會看每章「想一想」哪一題錯最多，英文分認字、拼字、聽音看哪個弱，自然看每一關卡在哪一步。</p>
+        <img class="shot" src="img/class-island.webp" alt="社會的細節頁：每一章全班想一想的答對率，綠黃紅三色，還有幾個人過關、平均失誤次數" width="960" height="454" loading="lazy">
       </div>
 
-      <div class="block feat">
-        <span class="num">4</span>
-        <h3>孩子的回報，你也收得到</h3>
-        <p class="sub">孩子在遊戲裡按「💬 問題回報」說哪裡卡住、哪裡不好玩、想加什麼，開班的人在後台的「班上的回報」都看得到，也看得到處理進度和我們的回覆。</p>
-        <img class="shot" src="img/class-feedback.webp" alt="班上的回報：孩子送來的想法和問題，標著處理進度和回覆" width="960" height="391" loading="lazy">
-        <p class="note">回報處理好之後，孩子下次登入會先跳出「謝謝你的問題回報！你回報的問題處理囉！」；建議被採用的孩子，名字還會出現在樂園「時光修理站」的小幫手牆上。孩子會發現自己說的話真的有人聽。</p>
-      </div>
-
-      <div class="block">
-        <span class="num">5</span>
-        <h3>還有這些小幫手</h3>
-        <div class="cards three" style="margin-top:12px">
-          <div class="card"><div class="ic">🔑</div><h3>忘記密碼直接重設</h3><p>順便解鎖試錯被鎖住的帳號，也能幫孩子改暱稱，每次都留紀錄。</p></div>
-          <div class="card"><div class="ic">🏫</div><h3>一個孩子可以在好幾個班</h3><p>學校班和家庭班同時看得到同一個孩子。孩子可以在「我的資料」自己選主要班級，老師也能幫忙設。</p></div>
-          <div class="card"><div class="ic">🏝️</div><h3>決定開放哪些島</h3><p>勾起來的遊戲孩子才進得去，新的島開幕時，先勾好的班當天就能玩。</p></div>
-          <div class="card"><div class="ic">😴</div><h3>上課時間寵物休息</h3><p>打開後週一到週五 8:00–16:00 寵物會睡覺，上課不會分心。</p></div>
-          <div class="card"><div class="ic">🚪</div><h3>關起門來的班</h3><p>全班加入完就可以關閉加入，代碼流出去也沒用；需要的話隨時換一組代碼。</p></div>
-          <div class="card"><div class="ic">📄</div><h3>匯出 CSV</h3><p>全班名單、最後活動時間和各遊戲進度一鍵匯出，方便做紀錄。</p></div>
+      <details class="more">
+        <summary>看更多：孩子的回報和其他小幫手</summary>
+        <div class="inner">
+          <div class="how">
+            <div class="how-item">
+              <img class="shot" src="img/class-kid.webp" alt="點進一個孩子：每天一列，點開看那天幾點在哪個遊戲、玩了幾分鐘、拿到什麼勳章" width="960" height="587" loading="lazy">
+              <div><h3>點進一個孩子</h3><p>每天一列，點開看那天幾點在哪個遊戲、玩了幾分鐘、拿到什麼勳章。</p></div>
+            </div>
+            <div class="how-item small">
+              <img class="shot" src="img/class-english.webp" alt="英文的細節頁：認字、拼字、聽音三張卡片的答對率，錯最多的字，答對率比較低的關卡" width="720" height="853" loading="lazy">
+              <div><h3 style="color:var(--eng)">英文：認字、拼字、聽音哪個弱</h3><p>馬上知道孩子是「看得懂但拼不出來」還是「聽不出來」。點卡片看錯最多的字，陪孩子把那關的字先念一遍再打。</p></div>
+            </div>
+            <div class="how-item">
+              <img class="shot" src="img/class-feedback.webp" alt="班上的回報：孩子送來的想法和問題，標著處理進度和回覆" width="960" height="391" loading="lazy">
+              <div><h3>孩子的回報，你也收得到</h3><p>孩子在遊戲裡按「問題回報」說哪裡卡住、想加什麼，後台都看得到處理進度和我們的回覆。建議被採用的孩子，名字會出現在「時光修理站」的小幫手牆上。</p></div>
+            </div>
+          </div>
+          <div class="cards three" style="margin-top:18px">
+            <div class="card"><div class="ic">🔑</div><h3>忘記密碼直接重設</h3><p>順便解鎖試錯被鎖住的帳號，也能幫孩子改暱稱，每次都留紀錄。</p></div>
+            <div class="card"><div class="ic">🏫</div><h3>一個孩子可以在好幾個班</h3><p>學校班和家庭班同時看得到同一個孩子。</p></div>
+            <div class="card"><div class="ic">🏝️</div><h3>決定開放哪些島</h3><p>勾起來的遊戲孩子才進得去，新的島開幕時，先勾好的班當天就能玩。</p></div>
+            <div class="card"><div class="ic">😴</div><h3>上課時間寵物休息</h3><p>打開後週一到週五 8:00–16:00 寵物會睡覺，上課不會分心。</p></div>
+            <div class="card"><div class="ic">🤝</div><h3>同伴圈可以關</h3><p>家長可以在孩子的卡片上關掉同伴圈，老師也可以整班關掉。</p></div>
+            <div class="card"><div class="ic">📄</div><h3>匯出 CSV、關閉加入</h3><p>名單和進度一鍵匯出；全班加入完可以關閉加入，代碼流出去也沒用。</p></div>
+          </div>
         </div>
-      </div>
+      </details>
 
       <div class="block">
         <span class="kicker">三步開班</span>
         <h2>五分鐘就能開好</h2>
         <ol class="open-steps">
-          <li><b>建立開班帳號</b><span>按下面的「免費開班」，填 email、密碼和要顯示的名字（例如「王老師」「小明媽媽」），不用收確認信。</span></li>
+          <li><b>建立開班帳號</b><span>按「免費開班」，填 email、密碼和要顯示的名字（例如「王老師」「小明媽媽」），不用收確認信。</span></li>
           <li><b>開一個班</b><span>取班名、選學校班或家庭班和年級，馬上拿到 6 碼班級代碼和分享連結。</span></li>
           <li><b>讓孩子加入</b><span>孩子第一次來，在樂園按「第一次來」填代碼；已經在樂園玩過的，到「我的資料」輸入代碼就好，進度都會帶著走。</span></li>
         </ol>
@@ -555,15 +615,78 @@ footer{text-align:center;font-size:14px;color:var(--muted);padding:12px 16px 40p
         </div>
         <p class="note">這一頁的後台畫面都是示範資料，暱稱和數字不是真的孩子。</p>
       </div>
-      <div class="next"><button type="button" data-go="parents">下一頁：給家長・老師 ›</button></div>
+
+      <div class="audience" id="teacher" style="--c:var(--tch);--bg:var(--tch-bg)">
+        <p class="aud-tag">給學校老師</p>
+        <h2 style="margin-top:0">把社會、英文和自然，變成全班回家想玩的功課</h2>
+        <div class="cards three" style="margin-top:12px">
+          <div class="card"><div class="ic">🏠</div><h3>課後延伸</h3><p>上完一個時代，請學生回家玩對應的那一章（約 20–30 分鐘）。隔天問一句「你在遊戲裡幫誰做了什麼？」就能接著上課。</p></div>
+          <div class="card"><div class="ic">💻</div><h3>電腦課或平板課</h3><p>一節課帶全班開帳號、玩第一章。第一次用最推薦這樣做，之後學生回家就會自己玩。</p></div>
+          <div class="card"><div class="ic">🎯</div><h3>找出要補的地方</h3><p>細節頁和試煉卷報告標出全班最常錯的地方，紅色的先拿來在課堂上講。</p></div>
+        </div>
+        <details class="more">
+          <summary>看更多：對應課程和第一節課怎麼帶</summary>
+          <div class="inner">
+            <table class="lesson">
+              <thead><tr><th>遊戲</th><th>範圍</th></tr></thead>
+              <tbody>
+                <tr><td>社會<small>島嶼開拓者</small></td><td>國小五年級臺灣的歷史與地理，依 108 課綱。序章「認識臺灣」，接著史前、原住民族、荷西、鄭氏、清領、清末開港、日治、戰後，再到「現在的臺灣」（地理、生活與公民）。<small>遊戲照時代排，各版本課本的單元順序不太一樣。</small></td></tr>
+                <tr><td>英文<small>守護異世界</small></td><td>教育部公告的國中小 2000 個基本英文字彙，從最常用的 300 字開始，分讀字、聽字、拼字三種練法，一共 85 關。<small>練的是單字；句型、文法和口說仍要靠課堂。</small></td></tr>
+                <tr><td>自然<small>時光祕境島</small></td><td>五年級自然：動物的求生與群體生活、生鏽與燃燒、聲音、光、太陽與影子、水生植物，用探險的方式認識。<small>目前試營運 8 關，陸續增加。</small></td></tr>
+              </tbody>
+            </table>
+            <h3 style="margin:22px 0 10px;color:var(--c)">第一節課 40 分鐘的建議流程</h3>
+            <ol class="open-steps">
+              <li><b>課前 5 分鐘：開班</b><span>開一個學校班，勾選要開放的遊戲，把 6 碼班級代碼寫在黑板或投影分享連結。</span></li>
+              <li><b>前 10 分鐘：學生建帳號</b><span>學生在樂園按「第一次來」、填代碼，自己取帳號、密碼和暱稱。請學生把帳號密碼抄在聯絡簿。</span></li>
+              <li><b>中間 20 分鐘：一起玩第一章</b><span>新帳號會有「新手冒險手冊」一步一步帶，老師只要走動看看誰卡住。</span></li>
+              <li><b>最後 5 分鐘：收尾</b><span>問大家「你今天去了哪個時代？」，再說明回家一次玩 20–30 分鐘就好。</span></li>
+            </ol>
+            <p class="note">共用平板的話，玩完請學生按 ⚙ 設定裡的「登出」，下一位才不會用到別人的帳號。</p>
+          </div>
+        </details>
+        <div class="block">
+          <h3 style="font-size:20px;color:var(--wood);margin-bottom:10px">老師常問</h3>
+          <details><summary>可以拿來打成績嗎？</summary><p>不建議。遊戲的目的是提升興趣、讓學生回到課本時覺得「這個我玩過」。後台的答對率和試煉卷報告，比較適合拿來決定課堂上要多講哪一段。</p></details>
+          <details><summary>學生沒有班級代碼就先玩了，進度會不見嗎？</summary><p>不會。學生到「我的資料」輸入老師的班級代碼就加入了，原本的進度、寵物和勳章都會帶著走。一個學生也可以同時在學校班和家庭班。</p></details>
+          <details><summary>可以開好幾個班嗎？</summary><p>可以。同一個開班帳號可以開好幾個班，後台切換著看。</p></details>
+        </div>
+        <div class="open-cta" style="margin-top:20px">
+          <a class="go" href="../?staff=signup">免費開一個學校班</a>
+          <p class="goalt">已經有開班帳號？<a href="../teacher.html">直接登入後台</a></p>
+        </div>
+      </div>
+      <div class="next"><button type="button" data-go="safe">下一頁：安心與常問 ›</button></div>
     </div>
   </section>
 
-  <!-- ========== 給家長 ========== -->
-  <section class="panel" id="parents" role="tabpanel" aria-labelledby="t-parents" style="--c:var(--wood-2);--bg:var(--cream-2)">
+  <!-- ========== 安心與常問 ========== -->
+  <section class="panel" id="safe" role="tabpanel" aria-labelledby="t-safe" style="--c:var(--safe);--bg:var(--safe-bg)">
     <div class="wrap">
-      <p class="aud-jump">這一頁上半給家長，下半給學校老師。<a href="#teacher">老師直接看這裡 ›</a></p>
-      <div class="helper">
+      <span class="kicker">安心設計</span>
+      <h2>孩子的個資，一開始就不收</h2>
+      <p class="lead">這是給國小孩子玩的，所以能不收的資料就不收，能不開的功能就不開。</p>
+      <ul class="ticks two">
+        <li><b>不用 email、不用真名</b><span>孩子只要取一個帳號、密碼和暱稱，不填生日、學校或電話。</span></li>
+        <li><b>頭像是自己捏的角色</b><span>沒有上傳照片的地方，別人看到的只有時空旅人和暱稱；暱稱會擋不雅字。</span></li>
+        <li><b>沒有聊天室</b><span>遊戲裡沒有可以自由打字聊天的地方，也沒有私訊；拜訪寵物島只能留好話圖示。</span></li>
+        <li><b>不能互送東西</b><span>時光幣和道具不能轉給別人，避免被要求「送我」或被勒索。</span></li>
+        <li><b>只跟身邊的小夥伴比</b><span>排行榜比的是同班和這週的同伴圈（同年級約 30 人）；全樂園排行只列前 50 名的暱稱。</span></li>
+        <li><b>不用花錢、沒有廣告</b><span>時光幣只能玩出來，沒有儲值、沒有抽卡。</span></li>
+      </ul>
+      <details class="more">
+        <summary>看更多：排行榜為什麼不會讓孩子放棄</summary>
+        <div class="inner how-item small">
+          <img class="shot" src="img/rank.webp" alt="班級排行三個分頁：本週冒險值、進步之星、勳章牆" width="560" height="411" loading="lazy">
+          <ul class="ticks">
+            <li><b>每週一重新開始</b><span>比的是「這週新賺的」時光幣，不是存了多少。上週落後，這週一樣有機會。</span></li>
+            <li><b>進步之星</b><span>另外比「這週比上週多了多少」，平常不在前面的孩子，只要比自己進步就能上榜。</span></li>
+            <li><b>只列前 10 名、0 分不上榜</b><span>不會把全班從頭排到尾，沒玩的孩子也不會被列在最後一名。</span></li>
+          </ul>
+        </div>
+      </details>
+
+      <div class="block helper">
         <span class="kicker" style="--c:var(--warn)">請先知道</span>
         <h2>這是輔助，不是主要的教材</h2>
         <p>這些遊戲的目的是<b>提升孩子的興趣</b>，讓他們回到課本時會覺得「這個我玩過」，而不是用來取代課本、老師或爸媽的陪伴。</p>
@@ -575,28 +698,14 @@ footer{text-align:center;font-size:14px;color:var(--muted);padding:12px 16px 40p
       </div>
 
       <div class="block">
-        <span class="kicker">遊玩時間建議</span>
+        <span class="kicker" style="--c:var(--wood-2)">遊玩時間建議</span>
         <h2>每次 20 到 30 分鐘就好</h2>
-        <p class="lead">短短玩、常常玩，比一次玩很久更記得住，也不會傷眼睛。</p>
+        <p class="lead">短短玩、常常玩，比一次玩很久更記得住，也不會傷眼睛。建議先寫完功課再玩，睡前一小時不要玩。</p>
         <div class="time">
           <div class="tcard"><span class="big">20–30 分</span><span>每次玩的長度</span></div>
           <div class="tcard"><span class="big">1 次</span><span>一天最多一次</span></div>
           <div class="tcard"><span class="big">3–5 天</span><span>一週這樣就夠</span></div>
           <div class="tcard"><span class="big">休息 10 分</span><span>玩 30 分鐘就休息</span></div>
-        </div>
-        <ul class="tips">
-          <li>社會一章大約 20 到 30 分鐘，剛好一次玩完一章；英文一關大約 3 到 5 分鐘，一次玩幾關就好。</li>
-          <li>建議先寫完功課再玩，把它當成讀書後的小獎勵。</li>
-          <li>睡前一小時不要玩，讓眼睛和腦袋休息。</li>
-        </ul>
-      </div>
-
-      <div class="block">
-        <span class="kicker">家長後台</span>
-        <h2>孩子玩到哪，家長看得到</h2>
-        <div class="class-teaser">
-          <p>開一個免費的「家庭班」，孩子每天玩了多久、玩到哪一章、哪些字常錯、最近有沒有來，在後台都看得到。</p>
-          <button type="button" data-go="class">看開班能看到什麼 ›</button>
         </div>
       </div>
 
@@ -622,96 +731,15 @@ footer{text-align:center;font-size:14px;color:var(--muted);padding:12px 16px 40p
       </div>
 
       <div class="block">
-        <span class="kicker">家長常問</span>
+        <span class="kicker" style="--c:var(--wood-2)">家長常問</span>
         <h2>還想知道的</h2>
         <details><summary>要花錢嗎？</summary><p>不用，完全免費，沒有付費項目也沒有廣告。遊戲裡的時光幣只能靠玩出來，買不到。</p></details>
-        <details><summary>適合幾年級？</summary><p>社會目前是照小五的內容做的；英文從國小常用字開始，一路到國中範圍，三到六年級都可以玩，程度好的孩子可以往後挑戰。</p></details>
+        <details><summary>適合幾年級？</summary><p>社會和自然目前是照小五的內容做的；英文從國小常用字開始，一路到國中範圍，三到六年級都可以玩，程度好的孩子可以往後挑戰。</p></details>
         <details><summary>在哪裡玩？要安裝嗎？</summary><p>手機、平板、電腦的瀏覽器都可以，不用安裝 App。畫面比較大的平板或電腦玩起來最舒服。</p></details>
         <details><summary>孩子會跟陌生人互動嗎？</summary><p>每週孩子會和同年級的 30 個左右小夥伴分成一個「同伴圈」，一起比排行、互相參觀寵物島，另外有全樂園前 50 名的排行。家長可以在後台孩子的卡片上關掉同伴圈，老師也可以整班關掉。只看得到暱稱和自己捏的角色；遊戲裡沒有聊天，也不能互送東西。暱稱不要用真實姓名就好。想完全只看自己孩子的話，可以開一個家庭班。</p></details>
-        <details><summary>學校老師可以拿來在班上用嗎？</summary><p>可以，開班一樣免費。老師開一個學校班、把代碼給全班，就能在後台看到誰有在玩、每個人玩到哪、哪一章大家答錯最多，也能決定班上開放哪些遊戲。詳細看「開班管理」那一頁，下面也有給老師的課堂用法。</p></details>
+        <details><summary>學校老師可以拿來在班上用嗎？</summary><p>可以，開班一樣免費。詳細看「開班後台」那一頁，最下面有給老師的課堂用法。</p></details>
         <details><summary>忘記密碼怎麼辦？</summary><p>請開班的老師或家長在後台幫忙重設。還沒有班的話，和爸媽連起來之後，可以在登入畫面按「忘記密碼？」寄信給爸媽重設，或在遊戲左上角的齒輪按「問題回報」告訴我們。</p></details>
-        <details><summary>有建議或發現錯誤，要怎麼告訴你們？</summary><p>遊戲裡左上角的齒輪有「問題回報」，哪裡卡住、哪裡不好玩、內容哪裡不對，或希望之後加什麼，都很歡迎留言。自然科和小四的內容也還在構思，很想聽聽大家的想法。</p></details>
-      </div>
-
-      <div class="audience" id="teacher" style="--c:var(--tch);--bg:var(--tch-bg)">
-        <p class="aud-tag">以下給學校老師</p>
-
-      
-      <h2 style="margin-top:0">把社會和英文，變成全班回家想玩的功課</h2>
-      <p class="lead">時空冒險樂園免費、沒有廣告、沒有付費項目，學生不用 email、不用真名。老師開一個班、把代碼發給學生，就能在後台看到誰有在玩、全班卡在哪一章、哪些字最常錯。</p>
-      <div class="open-cta">
-        <a class="go" href="../?staff=signup">免費開一個學校班</a>
-        <p class="goalt">已經有開班帳號？<a href="../teacher.html">直接登入後台</a></p>
-      </div>
-
-      <div class="block">
-        <span class="kicker">三種用法</span>
-        <h2>課前、課中、課後都用得上</h2>
-        <div class="cards three" style="margin-top:12px">
-          <div class="card"><div class="ic">🏠</div><h3>課後延伸</h3><p>上完一個時代，請學生回家玩對應的那一章（約 20–30 分鐘）。隔天問一句「你在遊戲裡幫誰做了什麼？」就能接著上課。</p></div>
-          <div class="card"><div class="ic">💻</div><h3>電腦課或平板課</h3><p>一節課帶全班開帳號、玩第一章。第一次用最推薦這樣做，之後學生回家就會自己玩。</p></div>
-          <div class="card"><div class="ic">🎯</div><h3>找出要補的地方</h3><p>細節頁用綠黃紅標出全班每章「想一想」的答對率、英文最常錯的字。紅色的先拿來在課堂上講。</p></div>
-        </div>
-      </div>
-
-      <div class="block">
-        <span class="kicker">對應課程</span>
-        <h2>遊戲裡教了什麼</h2>
-        <table class="lesson">
-          <thead><tr><th>遊戲</th><th>範圍</th></tr></thead>
-          <tbody>
-            <tr><td>社會<small>島嶼開拓者</small></td><td>國小五年級臺灣的歷史與地理，依 108 課綱。序章「認識臺灣」，接著史前、原住民族、荷西、鄭氏、清領、清末開港、日治、戰後，再到「現在的臺灣」（地理、生活與公民）。<small>遊戲照時代排，各版本課本的單元順序不太一樣，不一定跟學校進度同步。</small></td></tr>
-            <tr><td>英文<small>守護異世界</small></td><td>教育部公告的國中小 2000 個基本英文字彙，從最常用的 300 字開始，分讀字、聽字、拼字三種練法，一共 85 關。<small>練的是單字；句型、文法和口說仍要靠課堂。</small></td></tr>
-            <tr><td>自然<small>時光祕境島</small></td><td>自然科的觀察與探究，例如森林裡的動物、螞蟻的地下世界、光和影子，用探險的方式認識。<small>目前試營運中，關卡陸續增加。</small></td></tr>
-          </tbody>
-        </table>
-      </div>
-
-      <div class="block">
-        <span class="kicker">第一節課怎麼帶</span>
-        <h2>40 分鐘的建議流程</h2>
-        <ol class="open-steps">
-          <li><b>課前 5 分鐘：開班</b><span>建立開班帳號、開一個學校班，勾選要開放的遊戲。把 6 碼班級代碼寫在黑板，或投影分享連結。</span></li>
-          <li><b>前 10 分鐘：學生建帳號</b><span>學生在樂園按「第一次來」、填代碼，自己取帳號（英文或數字）、密碼和暱稱。請學生把帳號密碼抄在聯絡簿，忘記時老師可以在後台重設。</span></li>
-          <li><b>中間 20 分鐘：一起玩第一章</b><span>新帳號會有「新手冒險手冊」一步一步帶，老師只要走動看看誰卡住。</span></li>
-          <li><b>最後 5 分鐘：收尾</b><span>問大家「你今天去了哪個時代？」，再說明回家一次玩 20–30 分鐘就好。下課後打開後台，就看得到每個人玩到哪裡。</span></li>
-        </ol>
-        <p class="note">共用平板的話，玩完請學生按 ⚙ 設定裡的「登出」，下一位才不會用到別人的帳號。</p>
-      </div>
-
-      <div class="block">
-        <span class="kicker">老師可以放心的地方</span>
-        <h2>為班級設計的安全規則</h2>
-        <ul class="ticks two">
-          <li><b>不收學生個資</b><span>學生不用 email、不用真名，只有帳號、密碼和暱稱。</span></li>
-          <li><b>沒有聊天、不能互送東西</b><span>學生之間只看得到暱稱和自己捏的角色，沒有任何打字交談的地方。</span></li>
-          <li><b>只看得到自己班</b><span>開班的人只看得到自己班上的學生，看不到別班。</span></li>
-          <li><b>上課時間不分心</b><span>可以設定週一到週五 8:00–16:00 寵物睡覺，也可以只開放想讓學生玩的遊戲。</span></li>
-          <li><b>不用花錢、沒有廣告</b><span>遊戲裡的時光幣只能靠玩出來，買不到。</span></li>
-          <li><b>關起門來的班</b><span>全班加入完就可以關閉加入，代碼外流也沒有關係。</span></li>
-        </ul>
-        <div class="class-teaser" style="margin-top:16px;background:var(--tch-bg)">
-          <p>後台看得到什麼（全班總覽、遊玩紀錄、細節頁、班上的回報），在「開班管理」那一頁有完整畫面。</p>
-          <button type="button" data-go="class" style="background:var(--tch)">看後台畫面 ›</button>
-        </div>
-      </div>
-
-      <div class="block">
-        <span class="kicker">老師常問</span>
-        <h2>還想知道的</h2>
-        <details><summary>可以拿來打成績嗎？</summary><p>不建議。遊戲的目的是提升興趣、讓學生回到課本時覺得「這個我玩過」。後台的答對率比較適合拿來決定課堂上要多講哪一段，而不是評分。</p></details>
-        <details><summary>學生沒有班級代碼就先玩了，進度會不見嗎？</summary><p>不會。學生到「我的資料」輸入老師的班級代碼就加入了，原本的進度、寵物和勳章都會帶著走。一個學生也可以同時在學校班和家庭班。</p></details>
-        <details><summary>要用什麼裝置？</summary><p>電腦、平板、手機的瀏覽器都可以，不用安裝。電腦或平板畫面大，最適合在課堂上用。</p></details>
-        <details><summary>可以開好幾個班嗎？</summary><p>可以。同一個開班帳號可以開好幾個班，後台切換著看。</p></details>
-        <details><summary>發現內容有錯，或想建議新的單元？</summary><p>很歡迎。在樂園裡按「💬 問題回報」告訴我們，每一則都會有人看、有人回。</p></details>
-      </div>
-
-      <div class="block">
-        <div class="open-cta">
-          <a class="go" href="../?staff=signup">免費開一個學校班</a>
-          <p class="goalt">開好就有班級代碼，五分鐘內學生就能開始玩。</p>
-        </div>
-      </div>
+        <details><summary>有建議或發現錯誤，要怎麼告訴你們？</summary><p>遊戲裡左上角的齒輪有「問題回報」，哪裡卡住、哪裡不好玩、內容哪裡不對，或希望之後加什麼，都很歡迎留言。小四的內容也還在構思，很想聽聽大家的想法。</p></details>
       </div>
     </div>
   </section>
@@ -722,12 +750,15 @@ footer{text-align:center;font-size:14px;color:var(--muted);padding:12px 16px 40p
 </footer>
 
 <script>
-// 頁籤：網址的 #social 這類 hash 會直接打開那一頁，方便單獨分享；沒有 JS 時全部展開
+// 頁籤：網址的 #quiz 這類 hash 會直接打開那一頁，方便單獨分享；沒有 JS 時全部展開。
+// 舊網址照樣能用：#park → 三座島、#parents → 安心與常問；#social #english #science 是三座島裡的段落，#teacher 在開班後台、#try 在安心與常問
 (function () {
   document.documentElement.classList.add('js');
   var tabs = [].slice.call(document.querySelectorAll('[role=tab]'));
   var ids = tabs.map(function (t) { return t.getAttribute('aria-controls'); });
-  function show(id, scroll) {
+  var SUB = { social: 'islands', english: 'islands', science: 'islands', teacher: 'class', try: 'safe' };
+  var OLD = { park: 'islands', parents: 'safe' };
+  function show(id) {
     if (ids.indexOf(id) < 0) id = ids[0];
     tabs.forEach(function (t) {
       var on = t.getAttribute('aria-controls') === id;
@@ -736,10 +767,17 @@ footer{text-align:center;font-size:14px;color:var(--muted);padding:12px 16px 40p
       document.getElementById(t.getAttribute('aria-controls')).hidden = !on;
       if (on) t.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     });
-    if (scroll) document.querySelector('.tabbar').scrollIntoView({ behavior: 'smooth' });
+  }
+  function go(h, scroll) {
+    h = OLD[h] || h;
+    var sub = SUB[h];
+    show(sub || h);
+    if (!scroll && !sub) return;
+    var el = sub ? document.getElementById(h) : document.querySelector('.tabbar');
+    el.scrollIntoView({ behavior: scroll ? 'smooth' : 'auto' });
   }
   tabs.forEach(function (t, i) {
-    t.onclick = function () { history.replaceState(null, '', '#' + ids[i]); show(ids[i], true); };
+    t.onclick = function () { history.replaceState(null, '', '#' + ids[i]); go(ids[i], true); };
     t.onkeydown = function (e) {
       var d = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
       if (!d) return;
@@ -748,69 +786,10 @@ footer{text-align:center;font-size:14px;color:var(--muted);padding:12px 16px 40p
     };
   });
   [].forEach.call(document.querySelectorAll('[data-go]'), function (b) {
-    b.onclick = function () { history.replaceState(null, '', '#' + b.dataset.go); show(b.dataset.go, true); };
+    b.onclick = function () { history.replaceState(null, '', '#' + b.dataset.go); go(b.dataset.go, true); };
   });
-  // #try、#teacher 是「給家長・老師」頁裡的段落
-  function route(scroll) {
-    var h = location.hash.slice(1), sub = h === 'try' || h === 'teacher';
-    show(sub ? 'parents' : h, scroll && !sub);
-    if (sub) document.getElementById(h).scrollIntoView({ behavior: scroll ? 'smooth' : 'auto' });
-  }
-  route(false);
-  addEventListener('hashchange', function () { route(true); });
-})();
-</script>
-<script>
-// 開頭輪播：5 秒自動換一張；滑過、點圓點或箭頭就停下來不再自動轉；滑鼠移上去暫停；看不到輪播時不轉
-(function () {
-  var car = document.querySelector('.car');
-  if (!car) return;
-  var track = car.querySelector('.track');
-  var slides = [].slice.call(car.querySelectorAll('.slide'));
-  var dotBox = car.querySelector('.dots');
-  var cur = 0, stopped = matchMedia('(prefers-reduced-motion: reduce)').matches, hover = false, seen = true;
-  var dots = slides.map(function (s, i) {
-    var b = document.createElement('button');
-    b.type = 'button'; b.setAttribute('role', 'tab'); b.setAttribute('aria-label', s.getAttribute('aria-label'));
-    b.onclick = function () { stop(); go(i); };
-    dotBox.appendChild(b);
-    return b;
-  });
-  function paint(i) {
-    cur = i;
-    dots.forEach(function (d, k) { d.setAttribute('aria-selected', k === i); });
-    // 下一張先載好，輪到時不會空白
-    var n = slides[(i + 1) % slides.length].querySelector('img');
-    if (n && n.loading === 'lazy') n.loading = 'eager';
-  }
-  function go(i) {
-    i = (i + slides.length) % slides.length;
-    track.scrollTo({ left: i * track.clientWidth, behavior: 'smooth' });
-    paint(i);
-  }
-  function stop() { stopped = true; }
-  function tick() { if (!stopped && !hover && seen && !document.hidden) go(cur + 1); }
-  car.querySelector('.prev').onclick = function () { stop(); go(cur - 1); };
-  car.querySelector('.next2').onclick = function () { stop(); go(cur + 1); };
-  ['pointerdown', 'wheel', 'touchstart', 'keydown'].forEach(function (e) { track.addEventListener(e, stop, { passive: true }); });
-  car.addEventListener('mouseenter', function () { hover = true; });
-  car.addEventListener('mouseleave', function () { hover = false; });
-  // 手滑之後跟著更新圓點
-  var t;
-  track.addEventListener('scroll', function () {
-    clearTimeout(t);
-    t = setTimeout(function () {
-      var i = Math.round(track.scrollLeft / track.clientWidth);
-      if (i !== cur) paint(Math.max(0, Math.min(slides.length - 1, i)));
-    }, 80);
-  }, { passive: true });
-  track.addEventListener('keydown', function (e) {
-    if (e.key === 'ArrowRight') { e.preventDefault(); go(cur + 1); }
-    if (e.key === 'ArrowLeft') { e.preventDefault(); go(cur - 1); }
-  });
-  if ('IntersectionObserver' in window) new IntersectionObserver(function (es) { seen = es[0].isIntersecting; }, { threshold: 0.4 }).observe(car);
-  paint(0);
-  setInterval(tick, 5000);
+  go(location.hash.slice(1), false);
+  addEventListener('hashchange', function () { go(location.hash.slice(1), true); });
 })();
 </script>
 </body>
