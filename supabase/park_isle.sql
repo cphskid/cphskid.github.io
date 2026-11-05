@@ -322,7 +322,58 @@ begin
     'layout', coalesce(v_i.layout, '{}'::jsonb),
     'pets', coalesce((select jsonb_agg(jsonb_build_object('species', p.species, 'stage', public.park_pet_stage(p.xp), 'name', p.name) order by p.active desc, p.id)
                         from public.park_pets p where p.student_id = p_student), '[]'::jsonb),
-    'mine', (select r.kind from public.park_isle_reacts r where r.from_id = v_me and r.to_id = p_student and r.day = public.park_today()));
+    'mine', (select r.kind from public.park_isle_reacts r where r.from_id = v_me and r.to_id = p_student and r.day = public.park_today()),
+    -- 枯葉蝶躲在這座島（主人有枯葉蝶、不是自己的島）；found＝今天找到過了
+    'hide', p_student <> v_me and exists (select 1 from public.park_pets p where p.student_id = p_student and p.species = 'leaf-butterfly'),
+    'found', exists (select 1 from public.park_pet_skill_log l where l.student_id = v_me and l.skill = 'find'
+                        and l.other = p_student and l.day = public.park_today()),
+    -- 藍鵲：今天還沒帶過禮物
+    'gift', p_student <> v_me and exists (select 1 from public.park_pets p where p.student_id = v_me and p.species = 'magpie')
+            and not exists (select 1 from public.park_pet_skill_log l where l.student_id = v_me and l.skill = 'magpie' and l.day = public.park_today()));
+end;
+$$;
+
+-- 藍鵲的本事：去別人的島玩，每天叼一份小點心回來（直接放進背包）。回傳 {item, name} 或 null
+create or replace function public.park_isle_gift(p_student uuid)
+returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
+declare v_me uuid := public.current_student_id(); v_day date := public.park_today(); v_i public.park_pet_items;
+begin
+  if v_me is null then raise exception '請先登入學生帳號'; end if;
+  if p_student = v_me or not public.park_isle_can_see(v_me, p_student) then return null; end if;
+  if not exists (select 1 from public.park_pets p where p.student_id = v_me and p.species = 'magpie') then return null; end if;
+  perform pg_advisory_xact_lock(hashtext('park_isle_gift:' || v_me));
+  if exists (select 1 from public.park_pet_skill_log l where l.student_id = v_me and l.skill = 'magpie' and l.day = v_day) then return null; end if;
+  select * into v_i from public.park_pet_items i where i.code in ('apple', 'carrot', 'seeds', 'biscuit', 'fish') order by random() limit 1;
+  insert into public.park_pet_skill_log (student_id, skill, day, other, item) values (v_me, 'magpie', v_day, p_student, v_i.code);
+  insert into public.park_pet_inventory as v (student_id, item, qty) values (v_me, v_i.code, 1)
+  on conflict (student_id, item) do update set qty = v.qty + 1;
+  return jsonb_build_object('item', v_i.code, 'name', v_i.name);
+end;
+$$;
+
+-- 枯葉蝶躲貓貓：在同學的島上找到假裝成葉子的枯葉蝶，找到的人 +10 時光幣（每座島每天一次），
+-- 島主也 +10（每天最多 3 次）。回傳 {coins, owner}
+create or replace function public.park_isle_find(p_student uuid)
+returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
+declare v_me uuid := public.current_student_id(); v_day date := public.park_today(); v_n int; v_o int := 0;
+begin
+  if v_me is null then raise exception '請先登入學生帳號'; end if;
+  if p_student = v_me then raise exception '自己的島不用找喔'; end if;
+  if not public.park_isle_can_see(v_me, p_student) then raise exception '只能參觀同班同學或今日精選的島'; end if;
+  if not exists (select 1 from public.park_pets p where p.student_id = p_student and p.species = 'leaf-butterfly') then
+    raise exception '這座島沒有枯葉蝶';
+  end if;
+  perform pg_advisory_xact_lock(hashtext('park_isle_find:' || p_student));
+  if exists (select 1 from public.park_pet_skill_log l where l.student_id = v_me and l.skill = 'find' and l.other = p_student and l.day = v_day) then
+    raise exception '今天已經找到過了，明天牠會躲到別的地方';
+  end if;
+  insert into public.park_pet_skill_log (student_id, skill, day, other) values (v_me, 'find', v_day, p_student);
+  v_n := public.park_coin_grant(v_me, 'leaf:find:' || p_student || ':' || v_day, 10, null, '找到同學島上的枯葉蝶');
+  if (select count(*) from public.park_pet_skill_log l where l.student_id = p_student and l.skill = 'found' and l.day = v_day) < 3 then
+    insert into public.park_pet_skill_log (student_id, skill, day, other) values (p_student, 'found', v_day, v_me);
+    v_o := public.park_coin_grant(p_student, 'leaf:found:' || v_me || ':' || v_day, 10, null, '同學找到你島上的枯葉蝶');
+  end if;
+  return jsonb_build_object('coins', v_n, 'owner', v_o);
 end;
 $$;
 
@@ -350,10 +401,12 @@ revoke all on function
   public.park_isle_can_see(uuid, uuid), public.park_isle_love(uuid), public.park_isle_card(uuid),
   public.park_isle_me(), public.park_isle_seen(), public.park_isle_save(text, int[], jsonb, text[]),
   public.park_isle_class(), public.park_isle_featured_today(), public.park_isle_view(uuid), public.park_isle_react(uuid, int),
-  public.park_isle_class_page(text, int), public.park_isle_explore(int)
+  public.park_isle_class_page(text, int), public.park_isle_explore(int),
+  public.park_isle_gift(uuid), public.park_isle_find(uuid)
   from public, anon, authenticated;
 grant execute on function
   public.park_isle_me(), public.park_isle_seen(), public.park_isle_save(text, int[], jsonb, text[]),
   public.park_isle_class(), public.park_isle_featured_today(), public.park_isle_view(uuid), public.park_isle_react(uuid, int),
-  public.park_isle_class_page(text, int), public.park_isle_explore(int)
+  public.park_isle_class_page(text, int), public.park_isle_explore(int),
+  public.park_isle_gift(uuid), public.park_isle_find(uuid)
   to authenticated;

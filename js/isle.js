@@ -214,7 +214,9 @@ function islandParts(v, { still = false } = {}) {
   for (let c = 0; c < N * N; c++) if (!occ.solid[c]) free.push(c);
   // 縮圖：寵物站在固定的空格（同一座島每次看都一樣），參觀時隨便站
   const pick = (k) => free[still ? (k * 97 + 331) % Math.max(free.length, 1) : Math.floor(Math.random() * free.length)] ?? 0;
-  const petList = still ? (v.pet ? [{ ...v.pet, name: '' }] : []) : (v.pets ?? []);
+  // 枯葉蝶：島主有枯葉蝶、今天還沒找到，就不跟大家一起走，躲在一棵樹或擺設上假裝成葉子（參觀時才有）
+  const hide = !still && v.hide && !v.found ? (v.pets ?? []).find((p) => p.species === 'leaf-butterfly') : null;
+  const petList = still ? (v.pet ? [{ ...v.pet, name: '' }] : []) : (v.pets ?? []).filter((p) => p !== hide);
   const pets = petList.map((p, k) => { const c = pick(k); return { ...p, ...W.center(c % N, Math.floor(c / N)) }; });
   const z = (y) => Math.round(y * 1000);
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
@@ -238,10 +240,18 @@ function islandParts(v, { still = false } = {}) {
     return `<span class="iv-pet${still ? ' still' : ''}" style="left:${p.x * GW}px;top:${p.y * GH}px;width:${[0, 84, 98, 112][p.stage] ?? 98}px;z-index:${z(p.y)};--d:${rnd(0, 2).toFixed(2)}s;--k:${i % 2 ? -1 : 1}">
       <img src="${ctx.art(p.species, p.stage, 'idle')}" alt="${esc(p.name)}"></span>`;
   }).join('');
+  let leaf = '';
+  if (hide) {
+    const spots = [...W.trees(v.theme).map((t) => ({ x: t.x, y: t.y })),
+      ...items.filter((o) => ['furn', 'house'].includes(W.kindOf(o.id))).map((o) => W.spot(o.id, o.i, o.j, o.f))];
+    const at = spots[Math.floor(Math.random() * spots.length)] ?? { x: .5, y: .5 };
+    leaf = `<button type="button" class="iv-leaf" data-leaf style="left:${at.x * GW + rnd(-25, 25)}px;top:${at.y * GH - rnd(40, 90)}px;z-index:${z(at.y) + 1}" aria-label="一片葉子？">
+      <img src="${ctx.art('leaf-butterfly', hide.stage, 'sit')}" alt=""></button>`;
+  }
   const html = `<img class="land" src="${landSrc(v.theme)}" alt="">
     <svg class="floor" viewBox="0 0 ${GW} ${GH}" width="${GW}" height="${GH}" aria-hidden="true">${W.floorSvg(items)}</svg>
-    ${trees}${fences}${props}${petHtml}`;
-  return { html, box: x0 < x1 ? { x0, y0, x1, y1 } : null };
+    ${trees}${fences}${props}${leaf}${petHtml}`;
+  return { html, box: x0 < x1 ? { x0, y0, x1, y1 } : null, hide };
 }
 
 // 清單縮圖：整座島太大（卡片裡傢俱會變一粒米），鏡頭對準擺了東西的地方，至少看得到島寬的 22%
@@ -283,11 +293,12 @@ async function paintVisit(box, id) {
   let v;
   try { v = await auth.isle.view(id); } catch (e) { toast(box, e.message); return; }
   const { GW, GH } = W;
+  const parts = islandParts(v), hide = parts.hide;
   box.innerHTML = `<div class="iv-view" role="dialog" aria-label="參觀 ${esc(v.nickname)} 的島">
     <div class="iv-top"><button type="button" class="ghost small" data-iv-back>‹ 回清單</button>
       <p><b>${esc(nameText(v.name))}</b><small>${esc(v.nickname)} 的島</small></p></div>
     <div class="iv-stage"><div class="iv-ground" style="width:${GW}px;height:${GH}px">
-      ${islandParts(v).html}
+      ${parts.html}
     </div></div>
     <div class="iv-react"></div>
     <p class="note iv-note"></p></div>`;
@@ -305,6 +316,28 @@ async function paintVisit(box, id) {
   addEventListener('resize', fit);
   $('[data-iv-back]', box).onclick = () => { removeEventListener('resize', fit); paintList(box); };
   paintReact(box, v);
+  if (hide) {
+    $('.iv-note', box).textContent = `${v.nickname} 的枯葉蝶假裝成一片葉子躲在島上，找到牠兩個人都有時光幣！`;
+    $('[data-leaf]', box).onclick = async (e) => {
+      const b = e.currentTarget;
+      b.disabled = true;
+      try {
+        const r = await auth.isle.find(v.id);
+        b.classList.add('found');
+        $('img', b).src = ctx.art('leaf-butterfly', hide.stage, 'cheer');
+        toast(box, `找到枯葉蝶了！+${r.coins} 時光幣${r.owner ? `，${v.nickname} 也拿到 ${r.owner} 個` : ''}`);
+        dispatchEvent(new Event('park:coins'));
+      } catch (err) { toast(box, err.message); }
+    };
+  } else if (v.hide && v.found) {
+    $('.iv-note', box).textContent += ' 今天已經找到這座島的枯葉蝶了，明天牠會躲到別的地方。';
+  }
+  // 藍鵲的本事：去別人的島玩，每天叼一份小禮物回來
+  if (v.gift) {
+    auth.isle.gift(v.id).then((g) => {
+      if (g && box.isConnected) setTimeout(() => toast(box, `你的臺灣藍鵲從 ${v.nickname} 的島叼回了「${g.name}」，放進背包了！`), 1200);
+    }).catch(() => {});
+  }
 }
 
 let toastTimer = 0;

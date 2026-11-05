@@ -144,6 +144,11 @@ select test_ok((:'s'::jsonb ->> 'slots')::int = 1 + ((:'s'::jsonb ->> 'stamps'):
 reset role;
 -- 讓艾咪剛好 3 個章：第二隻解鎖、第三隻還沒
 delete from public.park_student_stamps where student_id = :'amy' and (facility, stamp) not in (select facility, stamp from public.park_student_stamps where student_id = :'amy' order by awarded_at limit 3);
+-- 過關拿蛋孵的新夥伴（寵物島 B 期）先拿掉，這段只測起始夥伴；蛋記成已經孵過，才不會再發
+delete from public.park_pets p using public.park_pet_species s where s.code = p.species and not s.starter and p.student_id = :'amy';
+delete from public.park_pet_eggs where student_id = :'amy';
+insert into public.park_pet_eggs (student_id, species, source, hatch_on, hatched_at)
+select :'amy', s.code, 'test', current_date, now() from public.park_pet_species s where not s.starter;
 set role authenticated;
 select test_as('d0000000-0000-0000-0000-000000000011', true);
 select test_ok((public.park_pet_me() ->> 'slots')::int = 2, '3 個章：可以養兩隻');

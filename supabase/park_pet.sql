@@ -92,6 +92,32 @@ create table if not exists public.park_pet_bowl (
   filled_at  timestamptz not null default now()    -- 最後一次放飼料的時間：在這之前餓的不算（那時碗是空的）
 );
 
+-- 寵物島 B 期：新夥伴的蛋。過了對應的關卡（或爸媽任務的神秘蛋）就拿到一顆；
+-- 第一顆蛋當天就孵，之後的蛋隔天登入才孵（hatch_on＝哪一天可以孵，臺灣日期）。
+alter table public.park_pet_species add column if not exists egg_src  text;          -- stamp:<設施>:<章> / animal:<關卡>；null＝起始夥伴
+alter table public.park_pet_species add column if not exists egg_hint text not null default '';   -- 圖鑑上「去哪拿蛋」
+alter table public.park_pet_species add column if not exists skill    text not null default '';   -- 圖鑑上「牠的本事」
+alter table public.park_pet_species add column if not exists skill_on boolean not null default false;   -- 本事現在就有作用（其他的等小遊戲）
+create table if not exists public.park_pet_eggs (
+  student_id uuid not null references public.students(id) on delete cascade,
+  species    text not null references public.park_pet_species(code) on update cascade on delete cascade,
+  source     text not null,               -- egg_src 或 parent
+  got_at     timestamptz not null default now(),
+  hatch_on   date not null,
+  hatched_at timestamptz,
+  primary key (student_id, species)
+);
+-- 每天一次的本事（穿山甲挖寶、藍鵲帶禮物、枯葉蝶被找到）
+create table if not exists public.park_pet_skill_log (
+  student_id uuid not null references public.students(id) on delete cascade,
+  skill      text not null,
+  day        date not null,
+  other      uuid,                        -- 枯葉蝶：誰找到的／找到誰的
+  item       text,
+  at         timestamptz not null default now()
+);
+create index if not exists park_pet_skill_log_day on public.park_pet_skill_log (student_id, skill, day);
+
 -- 班級設定多一欄：上課時間桌寵休息
 alter table public.park_class_settings add column if not exists pet_quiet boolean not null default false;
 
@@ -104,6 +130,25 @@ insert into public.park_pet_species (code, name, series, starter, sort) values
   ('hamster', '黃金鼠', 'animal', true, 3)
 on conflict (code) do update
   set name = excluded.name, series = excluded.series, starter = excluded.starter, sort = excluded.sort;
+
+-- 寵物島 B 期：九隻新夥伴（不能直接領養，要拿蛋）
+insert into public.park_pet_species (code, name, series, starter, sort, egg_src, egg_hint, skill, skill_on) values
+  ('bear',           '臺灣黑熊', 'taiwan',  false, 11, 'stamp:island_pioneer:ch2', '島嶼開拓者「山林與部落」過關', '收成果樹時多一顆果子', false),
+  ('magpie',         '臺灣藍鵲', 'taiwan',  false, 12, 'stamp:island_pioneer:ch3', '島嶼開拓者「大航海時代」過關', '去別人的島玩，每天會叼一份小禮物回來', true),
+  ('deer',           '梅花鹿',   'taiwan',  false, 13, 'stamp:island_pioneer:ch4', '島嶼開拓者「東寧屯田」過關',   '跳得特別高，運動會跳躍項目有加分', false),
+  ('pangolin',       '穿山甲',   'taiwan',  false, 14, 'stamp:island_pioneer:ch7', '島嶼開拓者「縱貫與大圳」過關', '每天在島上挖到一樣小東西', true),
+  ('leopard-cat',    '石虎',     'taiwan',  false, 15, 'stamp:island_pioneer:end', '島嶼開拓者最後一章「今天的島嶼」過關', '晚上釣魚會釣到夜行魚', false),
+  ('dragon',         '小火龍',   'fantasy', false, 21, 'stamp:guardian:ch1',       '守護異世界「草地城堡」全破',   '烤點心時「剛剛好」的範圍比較大', false),
+  ('unicorn',        '小獨角獸', 'fantasy', false, 22, 'stamp:guardian:a-boss-slayer', '守護異世界第一次打倒魔王', '每天讓一棵果樹一下子長大一階', false),
+  ('leaf-butterfly', '枯葉蝶',   'forest',  false, 31, 'animal:forest',            '時光動物祕境「森林」過關',     '會假裝成島上的一片葉子，同學來你的島找到牠，兩個人都有獎勵', true),
+  ('ant-princess',   '小蟻公主', 'forest',  false, 32, 'animal:nest',              '時光動物祕境「螞蟻地下城」過關', '果子熟了會自動幫你收成', false)
+on conflict (code) do update
+  set name = excluded.name, series = excluded.series, starter = excluded.starter, sort = excluded.sort,
+      egg_src = excluded.egg_src, egg_hint = excluded.egg_hint, skill = excluded.skill, skill_on = excluded.skill_on;
+update public.park_pet_species set skill = v.skill, egg_hint = '一開始就能領養'
+  from (values ('puppy', '跑得快，運動會賽跑有加分'), ('kitten', '釣魚高手，魚上鉤會停比較久'),
+               ('hamster', '愛收集，收成時多撿一顆種子')) v(code, skill)
+ where park_pet_species.code = v.code;
 
 insert into public.park_pet_items (code, kind, name, icon, xp, facility, sort) values
   ('kibble',      'food',    '時光飼料',     '🥣', 1, null,             1),
@@ -122,6 +167,9 @@ alter table public.park_pets          enable row level security;
 alter table public.park_pet_inventory enable row level security;
 alter table public.park_pet_grants    enable row level security;
 alter table public.park_pet_bowl      enable row level security;
+alter table public.park_pet_eggs      enable row level security;
+alter table public.park_pet_skill_log enable row level security;
+revoke all on public.park_pet_eggs, public.park_pet_skill_log from anon, authenticated;
 
 revoke all on public.park_pet_species, public.park_pet_items, public.park_pets,
               public.park_pet_inventory, public.park_pet_grants, public.park_pet_bowl from anon, authenticated;
@@ -252,6 +300,15 @@ begin
    where x.student_id = p_student
   on conflict do nothing;
 
+  -- 穿山甲的本事：每天在島上挖到一樣小點心
+  if exists (select 1 from public.park_pets p where p.student_id = p_student and p.species = 'pangolin') then
+    insert into public.park_pet_grants (student_id, source, key, item, qty)
+    select p_student, 'dig', v_day, i.code, 1
+      from public.park_pet_items i where i.code in ('apple', 'carrot', 'seeds', 'biscuit', 'fish')
+     order by random() limit 1
+    on conflict do nothing;
+  end if;
+
   -- 還沒放進背包的（seen = false）放進去，並回傳給畫面說「拿到了什麼」
   with fresh as (
     update public.park_pet_grants g set seen = true
@@ -277,8 +334,11 @@ returns jsonb language sql stable security definer set search_path = public, pg_
                         from public.park_pets p where p.student_id = p_student), '[]'::jsonb),
     'inventory', coalesce((select jsonb_object_agg(v.item, v.qty)
                              from public.park_pet_inventory v where v.student_id = p_student and v.qty > 0), '{}'::jsonb),
-    'species', (select jsonb_agg(jsonb_build_object('code', s.code, 'name', s.name, 'series', s.series, 'starter', s.starter)
+    'species', (select jsonb_agg(jsonb_build_object('code', s.code, 'name', s.name, 'series', s.series, 'starter', s.starter,
+                                                    'egg_hint', s.egg_hint, 'skill', s.skill, 'skill_on', s.skill_on)
                                  order by s.sort) from public.park_pet_species s),
+    'eggs', coalesce((select jsonb_agg(jsonb_build_object('species', e.species, 'source', e.source, 'hatch_on', e.hatch_on) order by e.got_at)
+                        from public.park_pet_eggs e where e.student_id = p_student and e.hatched_at is null), '[]'::jsonb),
     'items', (select jsonb_agg(jsonb_build_object('code', i.code, 'kind', i.kind, 'name', i.name, 'icon', i.icon, 'xp', i.xp,
                                                   'facility', i.facility,
                                                   'facility_name', (select f.name from public.park_facilities f where f.code = i.facility))
@@ -361,6 +421,68 @@ begin
 end;
 $$;
 
+-- 給一顆蛋（已經有這隻或已經有蛋就不給）。第一顆蛋當天就能孵，之後的隔天。回傳 true＝給了
+create or replace function public.park_pet_egg_give(p_student uuid, p_species text, p_source text)
+returns boolean language plpgsql security definer set search_path = public, pg_temp as $$
+declare v_today date := public.park_pet_today(); v_first boolean;
+begin
+  if exists (select 1 from public.park_pets p where p.student_id = p_student and p.species = p_species) then return false; end if;
+  v_first := not exists (select 1 from public.park_pet_eggs e where e.student_id = p_student);
+  insert into public.park_pet_eggs (student_id, species, source, hatch_on)
+  values (p_student, p_species, p_source, case when v_first then v_today else v_today + 1 end)
+  on conflict do nothing;
+  return found;
+end;
+$$;
+
+create or replace function public.park_pet_today()
+returns date language sql stable set search_path = public, pg_temp as $$
+  select (now() at time zone 'Asia/Taipei')::date;
+$$;
+
+-- 看看過了哪些關、該拿哪些蛋（打開桌寵時補發）
+create or replace function public.park_pet_egg_check(p_student uuid)
+returns void language plpgsql security definer set search_path = public, pg_temp as $$
+declare r record; v_ok boolean;
+begin
+  for r in select s.code, s.egg_src from public.park_pet_species s
+            where s.egg_src is not null
+              and not exists (select 1 from public.park_pets p where p.student_id = p_student and p.species = s.code)
+              and not exists (select 1 from public.park_pet_eggs e where e.student_id = p_student and e.species = s.code)
+            order by s.sort loop
+    v_ok := false;
+    if r.egg_src like 'stamp:%' then
+      v_ok := exists (select 1 from public.park_student_stamps x
+                       where x.student_id = p_student and x.facility = split_part(r.egg_src, ':', 2)
+                         and x.stamp = split_part(r.egg_src, ':', 3));
+    elsif r.egg_src like 'animal:%' and to_regclass('public.animal_progress') is not null then
+      execute 'select exists (select 1 from public.animal_progress a where a.student_id = $1 and a.level = $2 and a.first_clear_at is not null)'
+         into v_ok using p_student, split_part(r.egg_src, ':', 2);
+    end if;
+    if v_ok then perform public.park_pet_egg_give(p_student, r.code, r.egg_src); end if;
+  end loop;
+end;
+$$;
+
+-- 孵蛋：到了孵化日的蛋孵出來，住到寵物島（還沒有照顧中的那隻就直接住進來）。回傳孵出來的種類
+create or replace function public.park_pet_hatch(p_student uuid)
+returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
+declare r record; v_out jsonb := '[]';
+begin
+  for r in select e.species from public.park_pet_eggs e
+            where e.student_id = p_student and e.hatched_at is null and e.hatch_on <= public.park_pet_today()
+            order by e.got_at for update loop
+    insert into public.park_pets (student_id, species, name, active)
+    values (p_student, r.species, (select name from public.park_pet_species where code = r.species),
+            not exists (select 1 from public.park_pets p where p.student_id = p_student and p.active))
+    on conflict (student_id, species) do nothing;
+    update public.park_pet_eggs set hatched_at = now() where student_id = p_student and species = r.species;
+    v_out := v_out || to_jsonb(r.species);
+  end loop;
+  return v_out;
+end;
+$$;
+
 -- -----------------------------------------------------------------------------
 -- 5. 給樂園畫面叫的
 -- -----------------------------------------------------------------------------
@@ -368,12 +490,14 @@ $$;
 -- 打開桌寵：順便發今天的飼料和護照章的點心
 create or replace function public.park_pet_me()
 returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
-declare v_me uuid := public.current_student_id(); v_g jsonb;
+declare v_me uuid := public.current_student_id(); v_g jsonb; v_h jsonb;
 begin
   if v_me is null then return null; end if;
+  perform public.park_pet_egg_check(v_me);
+  v_h := public.park_pet_hatch(v_me);
   v_g := public.park_pet_grant(v_me);
   perform public.park_pet_bowl_eat(v_me);
-  return public.park_pet_state(v_me, v_g);
+  return public.park_pet_state(v_me, v_g) || jsonb_build_object('hatched', v_h);
 end;
 $$;
 
@@ -384,7 +508,9 @@ returns jsonb language plpgsql security definer set search_path = public, pg_tem
 declare v_me uuid := public.current_student_id(); v_sp text; v_name text; v_have int;
 begin
   if v_me is null then raise exception '請先登入學生帳號'; end if;
-  select count(*) into v_have from public.park_pets p where p.student_id = v_me;
+  -- 只算起始夥伴（拿蛋孵出來的新夥伴不佔領養名額）
+  select count(*) into v_have from public.park_pets p join public.park_pet_species s on s.code = p.species
+   where p.student_id = v_me and s.starter;
   if v_have >= public.park_pet_slots(v_me) then
     raise exception '%', case when v_have = 0 then '現在不能領養' when v_have >= 3 then '起始夥伴都領養完了'
                               else '再多過幾關，就能領養下一隻夥伴' end;
@@ -401,7 +527,8 @@ begin
   end if;
   if v_sp is null then raise exception '沒有這種桌寵'; end if;
   v_name := public.park_pet_name_ok(coalesce(nullif(btrim(p_name), ''), (select name from public.park_pet_species where code = v_sp)));
-  insert into public.park_pets (student_id, species, name, active) values (v_me, v_sp, v_name, v_have = 0);
+  insert into public.park_pets (student_id, species, name, active)
+  values (v_me, v_sp, v_name, not exists (select 1 from public.park_pets p where p.student_id = v_me and p.active));
   return public.park_pet_state(v_me) || jsonb_build_object('adopted', v_sp);
 end;
 $$;
@@ -566,7 +693,8 @@ revoke all on function
   public.park_pet_slots(uuid), public.park_pet_swap(bigint),
   public.park_pet_feed(text), public.park_pet_pat(), public.park_pet_rename(text),
   public.park_pet_class_quiet(text), public.park_pet_set_class_quiet(text, boolean),
-  public.park_pet_bowl_eat(uuid), public.park_pet_bowl_fill()
+  public.park_pet_bowl_eat(uuid), public.park_pet_bowl_fill(),
+  public.park_pet_egg_give(uuid, text, text), public.park_pet_egg_check(uuid), public.park_pet_hatch(uuid)
   from public, anon, authenticated;
 grant execute on function
   public.park_pet_me(), public.park_pet_adopt(text, text), public.park_pet_feed(text), public.park_pet_swap(bigint),

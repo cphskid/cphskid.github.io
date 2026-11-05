@@ -1763,3 +1763,29 @@ button.dt-i:hover,button.dt-i:focus-visible{border-color:var(--wood);outline:non
 #dock .dot,#dock-more .dot{background:#e2553f;color:#fff;border:2px solid #fff;border-radius:99px;font:900 14px/20px var(--f-body);font-style:normal;text-align:center;box-shadow:0 2px 4px rgba(0,0,0,.3);box-sizing:border-box}
 #dock-more .dot{min-width:24px;height:24px}
 #dock .dot:empty,#dock-more .dot:empty{min-width:18px!important;width:18px;height:18px!important;top:-4px!important;right:-2px!important}
+
+/* 寵物島 B 期：孵蛋的本事、等著孵的蛋、夥伴圖鑑、拜訪時躲起來的枯葉蝶 */
+.den.hatch .skill{position:absolute;bottom:10px;left:20px;right:20px;text-align:center;font:700 16px/1.4 var(--f-body);color:var(--ink,#5a3a1a);opacity:0;animation:showIn .4s 2.2s forwards}
+.actor.egg-nest.wait{opacity:.92;filter:saturate(.8)}
+.pal-s.dex-b{border-color:#9ac7e8;background:#f2f9ff}
+.pal-s.dex-b span{font-size:24px;line-height:1}
+.dex-pop{position:absolute;inset:0;z-index:60;display:grid;place-items:center;background:rgba(40,30,20,.45);padding:12px}
+.dex{background:var(--cream,#fff8ea);border-radius:22px;border:4px solid var(--wood,#8a5a2b);width:min(720px,100%);max-height:calc(100dvh - 24px);overflow:auto;padding:16px 18px;box-shadow:0 8px 0 rgba(107,63,31,.35)}
+.dex h2{margin:0 0 4px;font:900 24px/1.2 var(--f-body);color:var(--wood,#8a5a2b)}
+.dex h2 small{font-size:16px;opacity:.7}
+.dex .lead{margin:0 0 10px;font-size:15px}
+.dex-g{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.dex-c{background:#fff;border-radius:16px;border:3px solid var(--cream-2,#ecdcc0);padding:8px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0}
+.dex-c img{height:90px;width:auto;max-width:100%;object-fit:contain}
+.dex-c img.shade{filter:brightness(0);opacity:.28}
+.dex-c .egg{width:60px;height:74px;margin:8px 0}
+.dex-c b{font-size:16px}
+.dex-c small{font-size:13px;line-height:1.35;opacity:.85}
+.dex-c .sk{margin:4px 0 0;font-size:13px;line-height:1.35;color:#2c6b4f}
+.dex-c .sk i{display:block;font-style:normal;opacity:.7}
+.dex-c.have{border-color:#9fd3a8}
+.dex-c.egg-wait{border-color:var(--gold,#f2b84b)}
+.dex .row{display:flex;justify-content:center;margin-top:12px}
+.iv-leaf{position:absolute;width:62px;padding:0;border:0;background:none;transform:translate(-50%,-50%) rotate(-18deg);cursor:pointer;pointer-events:auto}
+.iv-leaf img{display:block;width:100%;height:auto}
+.iv-leaf.found{width:90px;transform:translate(-50%,-60%);animation:hatchPop .6s cubic-bezier(.34,1.7,.5,1)}

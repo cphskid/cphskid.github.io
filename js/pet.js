@@ -71,7 +71,11 @@ const FOOD_IMG = new Set(['kibble', 'rice-ball', 'magic-fruit', 'apple', 'carrot
 const icon = (i) => FOOD_IMG.has(i.code) ? `<img src="img/pet/food/${esc(i.code)}.webp" alt="">` : esc(i.icon);
 const owned = (code) => state?.pets?.some((p) => p.species === code);
 const freeStarters = () => (state?.species ?? []).filter((s) => s.starter && !owned(s.code));
-const canAdopt = () => !!state && state.pets.length < (state.slots ?? 1) && freeStarters().length > 0;
+const isStarter = (code) => !!state?.species?.find((s) => s.code === code)?.starter;
+// 領養名額只算起始夥伴（拿蛋孵出來的新夥伴不佔名額）
+const canAdopt = () => !!state && state.pets.filter((p) => isStarter(p.species)).length < (state.slots ?? 1) && freeStarters().length > 0;
+const speciesOf = (code) => state?.species?.find((s) => s.code === code);
+let hatchQ = [];             // 剛孵出來、還沒給小朋友看的新夥伴（種類）
 function moodOf(p) {
   if (!p.active) return 'island';
   if (state?.quiet) return 'quiet';
@@ -92,6 +96,7 @@ export async function load() {
   bought = state ? await (api.furniture ?? auth.coins.furniture)().catch(() => []) : [];
   if (state) await isle.load();      // 島的風格、島名、擺放（park_isle.sql 沒裝就只存在這台裝置）
   if (state?.granted?.length) news = state.granted;
+  if (state?.hatched?.length) hatchQ = [...hatchQ, ...state.hatched.filter((c) => !hatchQ.includes(c))];
   paintMap();
   return state;
 }
@@ -104,6 +109,7 @@ export function notice() {
   const p = myPet();
   if (!state) return null;
   if (!p) return '寵物島上有一顆會發光的時光蛋，點點看！';
+  if (hatchQ.length) return `時光蛋孵出了${speciesName(hatchQ[0])}！快去寵物島看看！`;
   if (state.quiet) return null;
   if (p.mood === 'asleep') return `${p.name}在寵物島睡著了，去叫醒牠吧！`;
   if (p.mood === 'angry') return `${p.name}好像在生氣，快去寵物島餵牠吃東西！`;
@@ -179,7 +185,57 @@ export async function open() {
     try { state = await api.me(); } catch (e) { problem(e.missing ? '夥伴們很快就會搬進寵物島，再等一下下！' : e.message); return; }
   }
   if (!state.pets.length) return openAdopt();
+  if (hatchQ.length) return showHatched();
   openScene();
+}
+
+// ---------- 過關拿到的蛋孵出新夥伴：一隻一隻給小朋友看，再帶到寵物島 ----------
+function showHatched() {
+  const code = hatchQ.shift();
+  const p = state.pets.find((x) => x.species === code);
+  if (!p) { if (hatchQ.length) showHatched(); else openScene(); return; }
+  const sp = speciesOf(code);
+  show(`<div class="den hatch" role="dialog" aria-modal="true" aria-label="孵蛋">
+    <div class="egg big"></div><img class="pop" src="${art(p.species, p.stage, 'cheer')}" alt="">
+    <p>${esc(sp?.name ?? p.name)}孵出來了！</p>
+    ${sp?.skill ? `<small class="skill">牠的本事：${esc(sp.skill)}</small>` : ''}</div>`);
+  setTimeout(() => {
+    if (layer.hidden) return;
+    if (hatchQ.length) { showHatched(); return; }
+    paintMap();
+    openScene({ select: p.id, say: p.active ? `你好！我是${p.name}，以後請多多指教！`
+      : `我是${p.name}！${sp?.skill ? `我的本事是「${sp.skill}」。` : ''}想照顧我就按「換牠照顧」。` });
+  }, 3200);
+}
+
+// ---------- 夥伴圖鑑：有的看得到、蛋在等的、還沒有的只看到影子和去哪拿蛋 ----------
+function openDex() {
+  const eggs = new Map((state.eggs ?? []).map((e) => [e.species, e]));
+  const cards = (state.species ?? []).map((s) => {
+    const p = state.pets.find((x) => x.species === s.code);
+    const e = eggs.get(s.code);
+    const pic = p ? `<img src="${art(s.code, p.stage, 'idle')}" alt="">`
+      : e ? '<span class="egg"></span>'
+      : `<img class="shade" src="${art(s.code, 1, 'idle')}" alt="">`;
+    const how = p ? `<b>${esc(s.name)}</b>${p.name !== s.name ? `<small>叫做「${esc(p.name)}」</small>` : ''}`
+      : e ? `<b>${esc(s.name)}的蛋</b><small>明天再來就會孵出來</small>`
+      : `<b>？？？</b><small>${esc(s.starter ? '在寵物島領養' : s.egg_hint)}</small>`;
+    const skill = s.skill && (p || e) ? `<p class="sk">本事：${esc(s.skill)}${s.skill_on ? '' : '<i>（之後的小遊戲會用到）</i>'}</p>` : '';
+    return `<div class="dex-c${p ? ' have' : e ? ' egg-wait' : ''}">${pic}${how}${skill}</div>`;
+  }).join('');
+  const n = state.pets.length, all = state.species?.length ?? 0;
+  const host = $('.pisle', layer) ?? layer;
+  const box = document.createElement('div');
+  box.className = 'dex-pop';
+  box.setAttribute('role', 'dialog');
+  box.setAttribute('aria-label', '夥伴圖鑑');
+  box.innerHTML = `<div class="dex"><h2>夥伴圖鑑 <small>${n} / ${all}</small></h2>
+    <p class="lead">還沒遇到的夥伴只看得到影子。照下面寫的去過關，就會拿到牠的蛋！</p>
+    <div class="dex-g">${cards}</div>
+    <div class="row"><button type="button" class="btn small" data-dex-x>好</button></div></div>`;
+  host.appendChild(box);
+  $('[data-dex-x]', box).onclick = () => box.remove();
+  box.addEventListener('click', (e) => { if (e.target === box) box.remove(); });
 }
 export const openIsland = open;
 
@@ -248,7 +304,7 @@ function newsHtml() {
   // 同一座島蓋了好幾個章（守護異世界一關一個章）合成一句，不要同一句重複十幾次
   const sum = new Map();
   news.forEach((g) => {
-    const k = `${g.source === 'daily' ? 'daily' : 'stamp'}:${g.item}`;
+    const k = `${['daily', 'dig'].includes(g.source) ? g.source : 'stamp'}:${g.item}`;
     const o = sum.get(k) ?? { ...g, qty: 0, n: 0 };
     o.qty += g.qty; o.n += 1;
     sum.set(k, o);
@@ -256,6 +312,7 @@ function newsHtml() {
   const t = [...sum.values()].map((g) => {
     const i = item(g.item);
     if (g.source === 'daily') return `今天的 ${g.qty} 份${esc(i?.name ?? '飼料')}送到了`;
+    if (g.source === 'dig') return `穿山甲在島上挖到了${esc(i?.name ?? '點心')}！`;
     return `在「${esc(i?.facility_name ?? '島上')}」蓋了${g.n > 1 ? ` ${g.n} 個` : ''}章，拿到${esc(i?.name ?? '點心')}${g.qty > 1 ? ` ×${g.qty}` : ''}`;
   });
   return `<div class="gotnew"><img src="img/fx/sparkle.webp" alt=""><p>${t.join('；')}！</p></div>`;
@@ -408,6 +465,7 @@ function openScene({ select, say: first } = {}) {
     if (walkable(at.x, at.y)) throwBall(at);
   });
   if (canAdopt()) addEgg(box);
+  (state.eggs ?? []).forEach((e, k) => addWaitEgg(box, e, k));
   skyFx = makeSky($('.ground', layer), sky, { w: GW, h: GH, lake: LAKE });
   bindCam();
   fitScene(true);
@@ -1591,6 +1649,25 @@ function addEgg(box) {
   box.appendChild(el);
 }
 
+// 過關拿到、明天才孵的蛋：放在領養蛋旁邊，點了說明天會孵
+function addWaitEgg(box, e, k) {
+  const el = document.createElement('button');
+  el.type = 'button';
+  el.className = 'actor egg-nest wait';
+  el.setAttribute('aria-label', '等著孵的時光蛋');
+  el.innerHTML = '<img src="img/pet/egg/nest.webp" alt="">';
+  const x = EGG_AT.x - .05 * (k + 1), y = EGG_AT.y + .03 * (k % 2);
+  el.style.cssText = `left:${x * GW}px;top:${y * GH}px;z-index:${Math.round(y * 1000)}`;
+  el.onclick = (ev) => {
+    ev.stopPropagation();
+    const home = myPet() ?? state.pets[0];
+    if (!home) return;
+    say(e.source === 'parent' ? '這是爸媽送的神秘蛋！明天再來，就會孵出來喔。'
+      : `這是過關拿到的蛋，裡面好像是${speciesName(e.species)}！明天再來就會孵出來。`, home.id);
+  };
+  box.appendChild(el);
+}
+
 // 名牌、頭上的符號、大小
 function dress(a) {
   const p = a.p;
@@ -1821,7 +1898,8 @@ function paintCare() {
   $('.pals-s', layer).innerHTML = state.pets.map((x) => `<button type="button" class="pal-s${x.id === selected ? ' on' : ''}${x.active ? ' care' : ''}" data-sel="${x.id}" aria-label="${esc(x.name)}${x.active ? '（照顧中）' : ''}">
       <img src="${art(x.species, x.stage)}" alt="">${x.active ? '<i>照顧中</i>' : ''}</button>`).join('')
     + (canAdopt() ? '<button type="button" class="pal-s new" data-adopt aria-label="新的時光蛋：領養一隻新夥伴"><span class="egg"></span><i>新的蛋！</i></button>' : '')
-    + locked.map((n) => `<span class="pal-s locked" title="過關章蓋到 ${n} 個就能領養"><img src="${art(left[0]?.code ?? 'puppy')}" alt=""><i>過 ${n} 關</i></span>`).join('');
+    + locked.map((n) => `<span class="pal-s locked" title="過關章蓋到 ${n} 個就能領養"><img src="${art(left[0]?.code ?? 'puppy')}" alt=""><i>過 ${n} 關</i></span>`).join('')
+    + `<button type="button" class="pal-s dex-b" data-dex aria-label="夥伴圖鑑"><span>📖</span><i>圖鑑 ${state.pets.length}/${state.species?.length ?? 0}</i></button>`;
   let top = '', body = '';
   if (p?.active) {
     const m = moodOf(p);
@@ -1830,6 +1908,7 @@ function paintCare() {
     body = `${newsHtml()}
       <p class="kind">${esc(speciesName(p.species))}・${STAGE[p.stage]}・<span class="mood m-${m}">${m === 'quiet' ? '上課時間在休息' : MOOD[m]}</span></p>
       ${gauges(p, m)}
+      ${speciesOf(p.species)?.skill ? `<p class="note">本事：${esc(speciesOf(p.species).skill)}</p>` : ''}
       <div class="xp" aria-label="長大進度"><i style="width:${pct}%"></i></div>
       <small class="xpt">${p.next_xp ? `再 ${p.next_xp - p.xp} 點長成${STAGE[p.stage + 1]}（吃點心長得最快）` : '已經是完全體了！'}</small>
       ${wish()}
@@ -1838,6 +1917,7 @@ function paintCare() {
     const home = myPet();
     top = `<b>${esc(p.name)}</b><small>在島上玩</small>`;
     body = `<p class="kind">${esc(speciesName(p.species))}・${STAGE[p.stage]}</p>
+      ${speciesOf(p.species)?.skill ? `<p class="note">本事：${esc(speciesOf(p.species).skill)}</p>` : ''}
       <p class="lead">${esc(p.name)}在島上自己找東西吃，不用餵。可是只有「照顧中」的那一隻會長大喔。</p>
       <div class="row"><button type="button" class="btn small" data-swap="${p.id}">換牠照顧</button></div>
       ${home ? `<p class="note">換了以後，${esc(home.name)}會回到島上自己玩。</p>` : ''}`;
@@ -1849,6 +1929,7 @@ function paintCare() {
   $('[data-card]', box)?.addEventListener('click', () => { cardOpen = !cardOpen; paintCare(); });
   layer.querySelectorAll('[data-sel]').forEach((b) => { b.onclick = () => { const a = actors.find((x) => x.p.id === +b.dataset.sel); if (a) tap(a); }; });
   $('[data-adopt]', layer)?.addEventListener('click', () => openAdopt({ more: true }));
+  $('[data-dex]', layer)?.addEventListener('click', openDex);
   $('[data-rename]', box)?.addEventListener('click', rename);
   $('[data-swap]', box)?.addEventListener('click', (e) => swap(+e.currentTarget.dataset.swap, e.currentTarget));
   paintBar();
