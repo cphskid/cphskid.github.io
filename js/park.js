@@ -736,7 +736,7 @@ $('#contact-btn').addEventListener('click', () => {
     <p class="mail"><b>${CONTACT}</b></p>
     <div class="row"><a class="btn go" href="mailto:${CONTACT}?subject=${encodeURIComponent('給時空冒險樂園園長')}">寫信給園長</a>
     <button type="button" class="btn small" id="copy-mail">複製信箱</button></div>
-    <p class="hint">遊戲裡卡住或壞掉，用齒輪裡的「💬 問題回報」最快，會自動附上你在哪一關。小朋友寫信前，可以請爸爸媽媽幫忙。</p></div></div>`;
+    <p class="c-tip">遊戲裡卡住或壞掉，用齒輪裡的「💬 問題回報」最快，會自動附上你在哪一關。小朋友寫信前，可以請爸爸媽媽幫忙。</p></div></div>`;
   veil.hidden = false;
   snd.sfx('SE-03');
   $('#close').onclick = closeCard;
