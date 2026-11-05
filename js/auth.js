@@ -339,6 +339,8 @@ export const isle = {
   explore:  (seed) => icall('park_isle_explore', { p_seed: seed ?? 0 }),
   view:     (id) => icall('park_isle_view', { p_student: id }),
   react:    (id, kind) => icall('park_isle_react', { p_student: id, p_kind: kind }),
+  gift:     (id) => icall('park_isle_gift', { p_student: id }),      // 藍鵲叼禮物回來
+  find:     (id) => icall('park_isle_find', { p_student: id }),      // 找到同學島上的枯葉蝶
 };
 
 // ---------- 時空旅人換裝（supabase/park_traveller.sql） ----------

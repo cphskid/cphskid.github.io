@@ -13,7 +13,7 @@
 --               （碼是孩子自己產生、自己拿給爸媽的，就算孩子確認過了）
 --
 -- 爸媽任務（伺服器看紀錄判斷，孩子打開卡片時 park_parent_me 自動發獎）：
---   link    和爸媽連起來        → 神秘蛋：孵出一隻還沒有的夥伴（都有了改送 100 時光幣）
+--   link    和爸媽連起來        → 神秘蛋：任何一隻還沒有的夥伴（含新夥伴；第一顆蛋當天孵、不然隔天孵；都有了改送 100 時光幣）
 --   view    爸媽看過我的冒險    → 100 時光幣
 --   sticker 爸媽送我鼓勵貼紙    → 親子長椅（寵物島傢俱）
 --   goal    爸媽幫我訂本週目標  → 達成那週送 30 時光幣（每週都能再訂）
@@ -170,18 +170,22 @@ begin
     insert into public.park_parent_rewards (student_id, task) values (p_student, 'link') on conflict do nothing;
     get diagnostics v_n = row_count;
     if v_n = 0 then return null; end if;
+    -- 神秘蛋：所有夥伴（起始夥伴和寵物島 B 期的新夥伴）裡挑一隻還沒有、也還沒有蛋的
     select s.code into v_sp from public.park_pet_species s
-     where s.starter and not exists (select 1 from public.park_pets p where p.student_id = p_student and p.species = s.code)
+     where not exists (select 1 from public.park_pets p where p.student_id = p_student and p.species = s.code)
+       and not exists (select 1 from public.park_pet_eggs e where e.student_id = p_student and e.species = s.code)
      order by random() limit 1;
     if v_sp is null then
       perform public.park_coin_grant(p_student, 'parent:link', 100, null, '爸媽任務：和爸媽連起來');
       return '神秘蛋孵出 100 時光幣（夥伴你都有了）';
     end if;
-    insert into public.park_pets (student_id, species, name, active)
-    values (p_student, v_sp, (select name from public.park_pet_species where code = v_sp),
-            not exists (select 1 from public.park_pets p where p.student_id = p_student))
-    on conflict (student_id, species) do nothing;
-    return '神秘蛋孵出了「' || (select name from public.park_pet_species where code = v_sp) || '」！去寵物島看看';
+    perform public.park_pet_egg_give(p_student, v_sp, 'parent');
+    if exists (select 1 from public.park_pet_eggs e where e.student_id = p_student and e.species = v_sp
+                  and e.hatch_on <= public.park_pet_today()) then
+      perform public.park_pet_hatch(p_student);
+      return '神秘蛋孵出了「' || (select name from public.park_pet_species where code = v_sp) || '」！去寵物島看看';
+    end if;
+    return '收到爸媽的神秘蛋！蛋放在寵物島上，明天再來就會孵出來';
   elsif p_task = 'view' then
     v_n := public.park_coin_grant(p_student, 'parent:view', 100, null, '爸媽任務：爸媽看過我的冒險');
     return case when v_n > 0 then '爸媽看過你的冒險了，+100 時光幣' end;
