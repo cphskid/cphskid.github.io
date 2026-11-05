@@ -86,6 +86,12 @@ if (q.get('deco')) {
   Object.assign(auth.isle, {
     me: async () => JSON.parse(JSON.stringify(I)), seen: async () => {}, save: async (t, n, l) => { Object.assign(I, { theme: t, name: n, layout: l, saved: true }); return { ok: true }; },
     featured: async () => isles, mates: async () => isles.slice(0, 4),
+    // 我們班的島（一頁 12 座、可以找）：假裝班上有 30 座＋一個還沒打開寵物島的「小新」
+    matesPage: async (q, page) => {
+      const all = Array.from({ length: 30 }, (_, i) => ({ ...isles[i % 6], id: isles[i % 6].id, nickname: isles[i % 6].nickname + (i >= 6 ? i : '') }));
+      const hit = q ? [...all.filter((x) => x.nickname.toLowerCase().includes(q.toLowerCase())), ...('小新'.includes(q) ? [{ id: 'n0', nickname: '小新', none: true }] : [])] : all;
+      return { total: hit.length, page, size: 12, rows: hit.slice(page * 12, page * 12 + 12) };
+    },
     view: async (id) => ({ ...isles.find((x) => x.id === id) }),
     react: async (id, k) => { const v = isles.find((x) => x.id === id); v.love[k]++; v.mine = k; return { love: v.love, mine: k }; },
   });

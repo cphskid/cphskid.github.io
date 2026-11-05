@@ -111,12 +111,14 @@ returns int[] language sql stable security definer set search_path = public, pg_
     from public.park_isle_reacts where to_id = p_student;
 $$;
 
--- 一座島的卡片（清單用）：{id, nickname, name, theme, placed, love}
+-- 一座島的卡片（清單用）：{id, nickname, name, theme, placed, love, pet, layout}
+-- layout：清單縮圖要畫出這座島真的擺了什麼（2026-11-05 Chuck：縮圖要看得到裝潢，點進去才會動）
 create or replace function public.park_isle_card(p_student uuid)
 returns jsonb language sql stable security definer set search_path = public, pg_temp as $$
   select jsonb_build_object('id', st.id, 'nickname', st.nickname,
            'name', coalesce(to_jsonb(i.name), '[0,0,0]'::jsonb), 'theme', coalesce(i.theme, 'spring'),
            'placed', coalesce(i.placed, 0), 'love', to_jsonb(public.park_isle_love(st.id)),
+           'layout', coalesce(i.layout, '{}'::jsonb),
            'pet', (select jsonb_build_object('species', p.species, 'stage', public.park_pet_stage(p.xp))
                      from public.park_pets p where p.student_id = st.id order by p.active desc, p.id limit 1))
     from public.students st left join public.park_isle i on i.student_id = st.id
@@ -217,6 +219,46 @@ begin
 end;
 $$;
 
+-- 島名的字（跟 js/isle.js 的 WORDS 一樣，改那邊也要改這裡）：搜尋島名用
+create or replace function public.park_isle_name_text(p_name int[])
+returns text language sql immutable set search_path = public, pg_temp as $$
+  select coalesce((array['星空','微風','彩虹','月光','陽光','花開','雪花','楓葉','海浪','糖果','晨霧','夕陽','雲朵','森林','螢火','春天','夏日','秋風','冬眠','魔法'])[coalesce(p_name[1], 0) + 1], '')
+      || coalesce((array['貓咪','小狗','倉鼠','小熊','小鹿','石虎','藍鵲','小龍','獨角獸','蝴蝶','螞蟻','穿山甲','夥伴','旅人','勇者','探險隊','好朋友','寶貝','小精靈','小英雄'])[coalesce(p_name[2], 0) + 1], '')
+      || coalesce((array['樂園','小島','秘密基地','度假村','遊樂場','花園','森林','營地','果園','城堡','小鎮','牧場','海灘','天堂','王國','農場','學院','碼頭','動物園','小屋'])[coalesce(p_name[3], 0) + 1], '');
+$$;
+
+-- 同班同學的島，一頁 12 座（2026-11-05 Chuck：要能搜尋、翻頁）
+-- p_q：空白＝列打開過寵物島的同學（最近改過的排前面）；有字＝找暱稱或島名，
+--   還沒打開寵物島的同學也找得到（none: true，前端顯示「還沒有島」、不能參觀）
+-- 回傳 {total, page, size, rows:[卡片]}
+create or replace function public.park_isle_class_page(p_q text default '', p_page int default 0)
+returns jsonb language plpgsql stable security definer set search_path = public, pg_temp as $$
+declare v_me uuid := public.current_student_id(); v_q text := nullif(btrim(coalesce(p_q, '')), ''); v_size int := 12;
+        v_page int := greatest(coalesce(p_page, 0), 0); v_total int; v_rows jsonb;
+begin
+  if v_me is null then raise exception '請先登入學生帳號'; end if;
+  if v_q is not null then v_q := left(v_q, 20); end if;
+  with m as (
+    select x.sid, st.nickname, i.updated_at as up, i.student_id is not null as has
+      from (select distinct b.student_id as sid
+              from public.park_class_members a
+              join public.park_class_members b on b.class_code = a.class_code and b.student_id <> v_me
+             where a.student_id = v_me and not public.park_isle_open_class(a.class_code)) x
+      join public.students st on st.id = x.sid
+      left join public.park_isle i on i.student_id = x.sid
+     where case when v_q is null then i.student_id is not null
+                else strpos(lower(coalesce(st.nickname, '')), lower(v_q)) > 0
+                  or (i.student_id is not null and strpos(public.park_isle_name_text(i.name), replace(replace(v_q, '・', ''), ' ', '')) > 0) end),
+  pg as (select * from m order by has desc, up desc nulls last, sid offset v_page * v_size limit v_size)
+  select (select count(*) from m),
+         coalesce((select jsonb_agg(case when pg.has then public.park_isle_card(pg.sid)
+                                         else jsonb_build_object('id', pg.sid, 'nickname', pg.nickname, 'none', true) end
+                                    order by pg.has desc, pg.up desc nulls last, pg.sid) from pg), '[]'::jsonb)
+    into v_total, v_rows;
+  return jsonb_build_object('total', v_total, 'page', v_page, 'size', v_size, 'rows', v_rows);
+end;
+$$;
+
 -- 今日精選：今天還沒選就先選（同一時間只有一個人在選）
 create or replace function public.park_isle_featured_today()
 returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
@@ -283,9 +325,11 @@ revoke all on function
   public.park_isle_themes(uuid), public.park_isle_open_class(text), public.park_isle_classmate(uuid, uuid),
   public.park_isle_can_see(uuid, uuid), public.park_isle_love(uuid), public.park_isle_card(uuid),
   public.park_isle_me(), public.park_isle_seen(), public.park_isle_save(text, int[], jsonb, text[]),
-  public.park_isle_class(), public.park_isle_featured_today(), public.park_isle_view(uuid), public.park_isle_react(uuid, int)
+  public.park_isle_class(), public.park_isle_featured_today(), public.park_isle_view(uuid), public.park_isle_react(uuid, int),
+  public.park_isle_class_page(text, int)
   from public, anon, authenticated;
 grant execute on function
   public.park_isle_me(), public.park_isle_seen(), public.park_isle_save(text, int[], jsonb, text[]),
-  public.park_isle_class(), public.park_isle_featured_today(), public.park_isle_view(uuid), public.park_isle_react(uuid, int)
+  public.park_isle_class(), public.park_isle_featured_today(), public.park_isle_view(uuid), public.park_isle_react(uuid, int),
+  public.park_isle_class_page(text, int)
   to authenticated;

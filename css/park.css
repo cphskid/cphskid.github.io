@@ -1529,12 +1529,24 @@ body[data-starter="on"][data-scene="map"] #tick .bubble{display:none}
 .iv-tabs button.on{background:var(--gold)}
 .iv-find{display:block;width:100%;box-sizing:border-box;font:700 15px/1.2 var(--f-body);border:3px solid var(--wood);border-radius:12px;padding:9px 12px;margin-bottom:10px;background:#fff}
 .iv-card[hidden]{display:none}
-.iv-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.iv-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px}
+@media (max-width:420px){.iv-cards{grid-template-columns:1fr 1fr}}
 .iv-card{display:grid;gap:3px;text-align:left;padding:8px;border-radius:14px;background:#fff;border:2px solid #ecd9b8;font:inherit;cursor:pointer}
 .iv-card:hover,.iv-card:focus-visible{border-color:var(--wood);outline:none;transform:translateY(-1px)}
 .iv-card .th{position:relative;display:block;background:#cfeafb;border-radius:10px}
-.iv-card .th img{display:block;width:100%;aspect-ratio:4/3;object-fit:contain}
-.iv-card .th img.pet{position:absolute;right:6px;bottom:4px;width:34%;height:auto;aspect-ratio:auto}
+.iv-card .th>img{display:block;width:100%;aspect-ratio:4/3;object-fit:contain}
+.iv-card .th>img.pet{position:absolute;right:6px;bottom:4px;width:34%;height:auto;aspect-ratio:auto}
+/* 縮圖：畫出這座島真的擺法（不會動），js 依卡片寬度縮放、對準擺了東西的地方 */
+.iv-card .th.mini{aspect-ratio:4/3;overflow:hidden;background:linear-gradient(#bfe3fb,#e3f4ff)}
+.iv-card .th.mini .iv-ground{left:0;top:0}
+.iv-pet.still{animation:none}
+.iv-card.none{cursor:default;opacity:.8}
+.iv-card.none .th>img{filter:grayscale(.7) opacity(.5)}
+.iv-card.none .th em{position:absolute;inset:0;display:grid;place-items:center;font:900 15px/1 var(--f-body);font-style:normal;color:var(--wood)}
+.iv-pager{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:12px;flex-wrap:wrap}
+.iv-pager span{font:800 14px/1.3 var(--f-body);color:#8a6a4a}
+.iv-pager button{min-height:44px;font:900 15px/1 var(--f-body);color:var(--wood);background:#fff;border:3px solid var(--wood);border-radius:99px;padding:8px 16px;cursor:pointer}
+.iv-pager button[disabled]{opacity:.4;cursor:default}
 .iv-card b{font:900 14px/1.3 var(--f-body);color:var(--wood)}
 .iv-card small{font:700 12px/1.3 var(--f-body);color:#8a6a4a}
 .isle-visit .tip{font:700 15px/1.5 var(--f-body);color:#8a6a4a}
