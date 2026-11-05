@@ -1,7 +1,7 @@
 // 寵物島裝扮、拜訪、今日精選島（資料庫在 supabase/park_isle.sql；規劃 doc「寵物島 2.0 規劃」第 1 期）。
 //
 // 裝扮：島的風格（主題地面）、島名（三組字各挑一個，不能自己打字），傢俱擺在哪由 js/pet.js 管，這裡負責存到伺服器。
-// 拜訪：「今日精選」（全部班級一起選 6 座）和「我們班的島」（一頁 12 座、可以打暱稱或島名找）。清單縮圖畫出每座島真的擺法（不會動），點進去才會動。別人的島只能看，
+// 拜訪：「今日精選」（全部班級一起選 6 座）、「我們班的島」（一頁 12 座、可以打暱稱或島名找）、「逛逛別的島」（別班隨機 12 座、可換一批）。清單縮圖畫出每座島真的擺法（不會動），點進去才會動。別人的島只能看，
 //   每座島每天可以留一個正面圖示，對方下次打開寵物島會看到。
 // 資料庫還沒裝（missing）時：裝扮照舊存在這台裝置，拜訪鈕不出現。
 import * as auth from './auth.js';
@@ -139,12 +139,14 @@ export function closeVisit(host) { $('.isle-visit', host)?.remove(); }
 
 // 「我們班的島」：伺服器一次給一頁 12 座，可以打暱稱或島名找（找得到還沒打開寵物島的同學）
 let mq = '', mpage = 0;
+let eseed = 0;   // 逛逛別的島：按「換一批」就 +1
 async function paintList(box) {
   box.innerHTML = `<div class="iv-panel" role="dialog" aria-label="去拜訪別人的寵物島">
     <button class="x" data-iv-close aria-label="關閉"></button>
     <h3>去拜訪</h3>
     <div class="iv-tabs"><button type="button" data-iv-tab="feat" class="${tab === 'feat' ? 'on' : ''}">⭐ 今日精選</button>
-      <button type="button" data-iv-tab="mates" class="${tab === 'mates' ? 'on' : ''}">🏫 我們班的島</button></div>
+      <button type="button" data-iv-tab="mates" class="${tab === 'mates' ? 'on' : ''}">🏫 我們班</button>
+      <button type="button" data-iv-tab="explore" class="${tab === 'explore' ? 'on' : ''}">🧭 去逛逛</button></div>
     ${tab === 'mates' ? `<input type="search" class="iv-find" placeholder="🔍 打同學的暱稱或島名找找看" aria-label="找同學的島" maxlength="20" value="${esc(mq)}">` : ''}
     <div class="iv-list"><p class="tip">讀取中…</p></div></div>`;
   $('[data-iv-close]', box).onclick = () => { unwatchThumbs(); box.remove(); };
@@ -165,6 +167,7 @@ async function paintRows(box) {
   let rows, page = null;
   try {
     if (tab === 'feat') rows = await auth.isle.featured();
+    else if (tab === 'explore') rows = await auth.isle.explore(eseed);
     else { page = await auth.isle.matesPage(mq, mpage); rows = page.rows ?? []; }
   } catch (e) { if (seq === rowsSeq) list.innerHTML = `<p class="tip bad">${esc(e.message)}</p>`; return; }
   if (!box.isConnected || seq !== rowsSeq) return;
@@ -176,6 +179,7 @@ async function paintRows(box) {
         <span class="th mini" data-th="${esc(r.id)}">${miniHtml(r)}</span>
         <b>${esc(nameText(r.name))}</b><small>${esc(r.nickname)} 的島・收到 ${sum(r.love)} 個圖示</small></button>`;
   const empty = tab === 'feat' ? '今天還沒有精選島。把自己的島擺上 5 件以上的東西，就有機會被選上！'
+    : tab === 'explore' ? '現在還沒有別的島可以逛，晚一點再來看看。'
     : mq ? `找不到「${esc(mq)}」。換個字試試看，或是把字刪掉看全部。`
       : '班上的同學還沒有人打開寵物島。先去「今日精選」逛逛吧！';
   list.innerHTML = rows.length ? `<div class="iv-cards">${rows.map(card).join('')}</div>` : `<p class="tip">${empty}</p>`;
@@ -190,6 +194,11 @@ async function paintRows(box) {
     list.insertAdjacentHTML('beforeend', `<p class="note">共 ${page.total} 座${mq ? '' : '，最近有改過的排前面'}。</p>`);
   }
   if (tab === 'feat') list.insertAdjacentHTML('beforeend', '<p class="note">每天早上換一批。島上擺 5 件以上、收到的圖示越多，越有機會上精選。</p>');
+  if (tab === 'explore') {
+    list.insertAdjacentHTML('beforeend', `<div class="iv-pager"><button type="button" data-more>🔄 換一批</button></div>
+      <p class="note">這裡是別班小朋友的島。只看得到暱稱和島名，可以留一個好話圖示。自己的島擺 5 件以上，也會出現在別人這裡喔！</p>`);
+    $('[data-more]', list).onclick = () => { eseed++; paintRows(box); };
+  }
   list.querySelectorAll('[data-iv-go]').forEach((b) => { b.onclick = () => { unwatchThumbs(); paintVisit(box, b.dataset.ivGo); }; });
   watchThumbs(list);
 }
