@@ -533,15 +533,28 @@ async function paintPet(c) {
   }
   const home = c.kind === 'home';
   const OPTS = [null, 15, 20, 30, 45, 60, 90, 120];
-  p.innerHTML = `<div class="head">${h2('clock', '寵物島')}</div>
+  p.innerHTML = `<div class="head">${h2('clock', home ? '寵物島' : '寵物島和同伴圈')}</div>
     <div class="row" data-petq-row hidden>
       <button class="toggle" data-petq aria-pressed="false"><i></i>上課時間桌寵休息</button><span class="tip" data-petq-tip></span></div>
     <div class="row"><label class="inline">每天可以在寵物島玩 <select data-petmin>${OPTS.map((m) => `<option value="${m ?? ''}" ${m === (cfg.pet_daily_min ?? null) ? 'selected' : ''}>${m ? `${m} 分鐘` : '不限'}</option>`).join('')}
       ${cfg.pet_daily_min && !OPTS.includes(cfg.pet_daily_min) ? `<option value="${cfg.pet_daily_min}" selected>${cfg.pet_daily_min} 分鐘</option>` : ''}</select></label></div>
     <p class="tip">${home
       ? '你是家長的話，這裡的設定優先：孩子在學校班的老師設得比較寬或比較嚴，都照你的。時間到了寵物島會關門，明天再開；遊戲本身不受影響。'
-      : '時間到了寵物島會關門，明天再開；遊戲本身不受影響。孩子有好幾個班的話取最少的那個；孩子的家長在家庭班設了時間，就照家長的。'}</p>`;
+      : '時間到了寵物島會關門，明天再開；遊戲本身不受影響。孩子有好幾個班的話取最少的那個；孩子的家長在家庭班設了時間，就照家長的。'}</p>
+    ${home ? '<p class="tip">同伴圈（和全樂園同年級的小夥伴一起比排行、互訪寵物島）在「首頁」每個孩子的卡片上開關。</p>' : `
+    <div class="row"><button class="toggle${cfg.circle !== false ? ' on' : ''}" data-circle aria-pressed="${cfg.circle !== false}"><i></i>${cfg.circle !== false ? '同伴圈：打開' : '同伴圈：關掉'}</button></div>
+    <p class="tip">同伴圈：每週一，孩子和全樂園同年級約 30 個小夥伴分成一圈，一起比排行、互相參觀寵物島（只看得到暱稱和角色，沒有聊天）。班上同學一樣看得到彼此。關掉以後，這班的孩子只和同學互動；家長自己設過的孩子照家長的。</p>`}`;
   paintPetQuiet(c, p);
+  const circ = $('[data-circle]', p);
+  if (circ) {
+    circ.onclick = () => run(circ, async () => {
+      const on = await auth.lounge.setClass(c.code, circ.getAttribute('aria-pressed') !== 'true');
+      circ.classList.toggle('on', on);
+      circ.setAttribute('aria-pressed', on);
+      circ.lastChild.textContent = on ? '同伴圈：打開' : '同伴圈：關掉';
+      toast(on ? '這班的孩子會加入同伴圈' : '這班的孩子不加入同伴圈了');
+    });
+  }
   const sel = $('[data-petmin]', p);
   sel.onchange = () => run(sel, async () => {
     const v = sel.value ? Number(sel.value) : null;
@@ -1756,9 +1769,9 @@ function loungePanel(l) {
   const circles = l.grades.reduce((a, g) => a + g.circles.length, 0);
   return `<section class="panel" id="p-lounge">${head}
     <p class="lead">沒填班級代碼註冊的孩子、試玩的孩子都在這裡（代碼 <span class="mono">TRYIT</span>）。交誼廳不決定能玩哪些遊戲：孩子有自己的班照那個班，沒有班的所有開放的遊戲都能玩。
-      每週一以後，孩子這週第一次打開樂園，就和同年級的夥伴分進同一個「同伴圈」（一圈最多 ${l.size} 人，同暱稱分開），拜訪寵物島、排行榜都在圈裡；另外有全樂園前 50 名。</p>
+      同伴圈不只交誼廳：每個孩子預設都加入，家長可以在孩子卡片關掉、老師可以在班級設定整班關掉（家長設過的照家長）。每週一以後，孩子這週第一次打開樂園，就和同年級的夥伴分進同一圈（一圈最多 ${l.size} 人，同暱稱分開），一起比排行、互訪寵物島；另外有全樂園前 50 名。</p>
     <div class="kpis"><div class="kpi"><b>${l.members}</b><span>在交誼廳</span></div><div class="kpi"><b>${l.only}</b><span>只在交誼廳（沒有自己的班）</span></div>
-      <div class="kpi"><b>${l.this_week}</b><span>這週來過、分好圈</span></div><div class="kpi"><b>${circles}</b><span>這週的同伴圈</span></div></div>
+      <div class="kpi"><b>${l.this_week}</b><span>這週來過、分好圈</span></div><div class="kpi"><b>${circles}</b><span>這週的同伴圈</span></div><div class="kpi"><b>${l.off ?? 0}</b><span>關掉同伴圈的孩子</span></div></div>
     ${l.grades.length ? `<div class="tablewrap"><table class="adm">
       <thead><tr><th>年級</th><th>同伴圈（每圈人數）</th></tr></thead>
       <tbody>${l.grades.map((g) => `<tr><td class="nowrap">${grade(g.grade)}</td><td>${g.circles.map((c) => `<span class="tag">第 ${c.no} 圈・${c.n} 人</span>`).join(' ')}</td></tr>`).join('')}</tbody></table></div>`

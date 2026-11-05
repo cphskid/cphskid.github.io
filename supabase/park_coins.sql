@@ -600,7 +600,7 @@ $$;
 --   medals 勳章牆＝總共拿到幾枚勳章（樂園護照上的章）
 -- 每人旁邊掛代表勳章。同班同學或這班的老師才看得到。只列前 10 名（0 分的不列），
 -- 另外回傳自己的名次，避免墊底的人被看見。算之前先幫全班補帳（通知照樣留給本人看）。
--- 公共交誼廳（TRYIT，park_lounge.sql）：孩子看到的是這週自己的同伴圈；代碼 '*'＝全樂園前 50 名（交誼廳的孩子和管理員看得到）
+-- 同伴圈（park_lounge.sql）：代碼 '~'（或交誼廳 TRYIT）＝孩子這週自己的同伴圈；'*'＝全樂園前 50 名（加入同伴圈的孩子和管理員看得到）
 -- 回傳 {kind, code, name, rows:[{rank, id, nickname, look, frame, medal:{name, art, rarity}, score, me}], me:{rank, score}|null, total, circle?, site?}
 drop function if exists public.park_class_board(text);
 -- 排行要比的人：'*' 全樂園、交誼廳的孩子比同伴圈、其他整班
@@ -628,18 +628,21 @@ declare
   v_name text;
 begin
   if v_site then
-    if not (public.is_admin() or exists (select 1 from public.park_class_members where class_code = 'TRYIT' and student_id = v_me)) then
-      raise exception '全樂園排行只有交誼廳看得到';
+    if not (public.is_admin() or (v_me is not null and public.park_lounge_on(v_me))) then
+      raise exception '全樂園排行要加入同伴圈才看得到';
     end if;
     v_top := 50;
     v_name := '全樂園';
     if v_me is not null and v_kind <> 'medals' then perform public.park_coin_sync(v_me); end if;
+  elsif v_code in ('~', 'TRYIT') and v_me is not null then   -- 孩子看自己這週的同伴圈
+    v_ring := public.park_lounge_assign(v_me);
+    if v_ring is null then raise exception '同伴圈關掉了（爸媽或老師可以打開）'; end if;
+    v_name := '我的同伴圈';
   else
     if not (public.is_teacher_of(v_code)
             or exists (select 1 from public.park_class_members where class_code = v_code and student_id = v_me)) then
       raise exception '你不在這個班';
     end if;
-    if v_code = 'TRYIT' and v_me is not null then v_ring := public.park_lounge_assign(v_me); end if;
     v_name := case when v_ring is not null then '我的同伴圈' else (select c.name from public.classes c where c.code = v_code) end;
   end if;
   if v_kind <> 'medals' and not v_site then

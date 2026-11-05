@@ -157,9 +157,9 @@ returns jsonb language plpgsql stable security definer set search_path = public,
 declare v_code text := upper(btrim(coalesce(p_code, '')));
 begin
   if not public.is_teacher_of(v_code) then raise exception '這不是你的班'; end if;
-  return coalesce((select jsonb_build_object('pet_quiet', s.pet_quiet, 'pet_daily_min', s.pet_daily_min, 'kind', s.kind)
+  return coalesce((select jsonb_build_object('pet_quiet', s.pet_quiet, 'pet_daily_min', s.pet_daily_min, 'kind', s.kind, 'circle', s.circle)
                      from public.park_class_settings s where s.class_code = v_code),
-                  jsonb_build_object('pet_quiet', false, 'pet_daily_min', null, 'kind', 'school'));
+                  jsonb_build_object('pet_quiet', false, 'pet_daily_min', null, 'kind', 'school', 'circle', true));
 end;
 $$;
 

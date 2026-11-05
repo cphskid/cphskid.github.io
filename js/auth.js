@@ -400,6 +400,9 @@ export const coins = {
 export const lounge = {
   state: null,
   me: async () => { try { lounge.state = await ccall('park_lounge_me'); } catch { lounge.state = null; } return lounge.state; },
+  kid:      (id) => ccall('park_lounge_kid', { p_student: id }),                         // 家長：{on, set}
+  setKid:   (id, on) => ccall('park_lounge_set_kid', { p_student: id, p_on: on }),
+  setClass: (code, on) => ccall('park_class_set_circle', { p_code: code, p_on: on }),   // 老師：整班
 };
 
 // ---------- 爸媽任務與監護人（supabase/park_parent.sql） ----------

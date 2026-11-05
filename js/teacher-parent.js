@@ -150,6 +150,7 @@ export async function renderParent(box, { toast, run, openPlay, homeOnly, refres
       b.onclick = () => run(b, async () => { await auth.parent.goal(k.id, b.dataset.goal); toast('本週目標訂好了'); await refresh(); });
     });
     $('[data-adults]', card).onclick = () => adults(k, { toast, refresh: again });
+    paintCircle(k, card, toast);
     const sign = $('[data-sign]', card);
     if (sign) sign.onclick = () => run(sign, async () => { await auth.parent.sign(k.id); toast('聯絡簿簽好了，孩子會收到 30 時光幣'); await refresh(); });
   }
@@ -162,6 +163,7 @@ function kidCard(k) {
   const todo = [!k.viewed, !k.stickers, !k.goal, !k.signed].filter(Boolean).length;
   return `<article class="kid" data-kid="${esc(k.id)}">
     <header><b>${esc(k.nickname)}</b><small>帳號 ${esc(k.login)}</small><button class="linkish" data-adults>連起來的大人</button>${todo ? `<span class="chip warn">${todo} 件等你</span>` : '<span class="chip ok">這週都做完了</span>'}</header>
+    <div class="row circ" data-circ hidden><button class="toggle" data-circle aria-pressed="false"><i></i>同伴圈</button><span class="tip" data-circ-tip></span></div>
     <p class="wk">這週：來玩 <b>${w.days ?? 0}</b> 天、玩了 <b>${w.minutes ?? 0}</b> 分鐘、拿到 <b>${w.stamps ?? 0}</b> 個護照章${places ? `；去了${places}` : ''}</p>
     <ol class="steps">
       <li class="${k.viewed ? 'done' : ''}"><span>看看孩子的冒險</span><small>${k.viewed ? '孩子拿到 100 時光幣了' : '看完孩子拿到 100 時光幣'}</small>
@@ -174,6 +176,31 @@ function kidCard(k) {
         ${k.signed ? '' : '<button class="btn small" data-sign>簽名</button>'}</li>
     </ol>
   </article>`;
+}
+
+// 同伴圈開關（supabase/park_lounge.sql）：預設打開，家長關掉就只看得到自己家的排行和寵物島
+async function paintCircle(k, card, toast) {
+  const row = $('[data-circ]', card);
+  const btn = $('[data-circle]', card);
+  const tip = $('[data-circ-tip]', card);
+  let on;
+  try { on = (await auth.lounge.kid(k.id)).on; } catch { return; }   // 還沒裝 SQL 就不顯示
+  const paint = () => {
+    btn.classList.toggle('on', on);
+    btn.setAttribute('aria-pressed', on);
+    btn.lastChild.textContent = on ? '同伴圈：打開' : '同伴圈：關掉';
+    tip.textContent = on
+      ? `每週一和同年級約 30 個小夥伴分成一圈，一起比排行、互相參觀寵物島。只看得到暱稱和角色，沒有聊天、不能互送東西。`
+      : `${k.nickname} 只看得到自己家的排行和寵物島。打開就能和同年級的小夥伴一起比排行、互訪寵物島。`;
+  };
+  paint();
+  row.hidden = false;
+  btn.onclick = async () => {
+    btn.disabled = true;
+    try { on = await auth.lounge.setKid(k.id, !on); paint(); toast(on ? `${k.nickname} 加入同伴圈了` : `${k.nickname} 的同伴圈關掉了`); }
+    catch (e) { toast(e.message, true); }
+    btn.disabled = false;
+  };
 }
 
 // 連起來的大人：解除自己、移除不認識的另一位（雙方都會收到信）

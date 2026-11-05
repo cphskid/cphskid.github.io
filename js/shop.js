@@ -174,14 +174,15 @@ const KINDS = [
   { id: 'medals', name: '勳章牆', tip: '樂園護照上總共拿到幾枚勳章。', unit: (n) => `<em class="md-n">🏅${n}</em>`,
     mine: (r) => `你有 ${r.score} 枚勳章，全班第 ${r.rank} 名！`, none: '還沒有勳章，去島上過一關就能拿到第一枚！' },
 ];
-// 公共交誼廳（TRYIT）的孩子：交誼廳那一格比的是這週的同伴圈，另外多一格「全樂園」前 50 名
+// 同伴圈（supabase/park_lounge.sql）：加入同伴圈的孩子多兩格「同伴圈」（這週同年級的夥伴，代碼 ~）和「全樂園」前 50 名（代碼 *）。
+// 公共交誼廳（TRYIT）本身不列，交誼廳的孩子比的就是同伴圈
 const LOUNGE = 'TRYIT';
 function boardTabs() {
-  const list = myClasses().map((c) => ({ code: c.code, name: c.code === LOUNGE ? '同伴圈' : (c.name || c.code), primary: c.primary }));
-  if (list.some((c) => c.code === LOUNGE)) list.push({ code: '*', name: '全樂園' });
+  const list = myClasses().filter((c) => c.code !== LOUNGE).map((c) => ({ code: c.code, name: c.name || c.code, primary: c.primary }));
+  if (auth.lounge.state?.lounge) list.push({ code: '~', name: '同伴圈' }, { code: '*', name: '全樂園' });
   return list;
 }
-export async function openBoard(code = boardCode ?? boardTabs().find((c) => c.primary && c.code !== LOUNGE)?.code ?? boardTabs()[0]?.code, kind = boardKind) {
+export async function openBoard(code = boardCode ?? boardTabs().find((c) => c.primary)?.code ?? boardTabs()[0]?.code, kind = boardKind) {
   if (!code) return;
   boardCode = code;
   boardKind = kind;

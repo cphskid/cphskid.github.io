@@ -9,6 +9,9 @@
 --   4. 寵物島「我們班的島」、班級排行看的是同伴圈，不是整個交誼廳；另外有全樂園前 50 名
 --   5. 交誼廳裡暱稱可以重複（真的班才擋）
 --   6. 完全沒有班的孩子（例如退出了所有班）自動放進交誼廳
+--   7. （2026-11-05 14:23Z Chuck 選「家長的和學校班都加」）同伴圈不只交誼廳：每個孩子預設都加入，
+--      家長可以在孩子卡片關掉／打開（park_lounge_prefs），老師可以在班級設定把整班關掉（park_class_settings.circle）；
+--      家長設過就照家長的，沒設過有任何一班關掉就不加，不然就加
 --
 -- 守護異世界的排行榜靠主要班級（students.class_code），交誼廳的孩子主要班級還是 TRYIT，這份沒有動它。
 -- 要先套 park_accounts.sql、park_teacher.sql、park_coins.sql、park_bind.sql。可以重複執行。
@@ -94,11 +97,72 @@ returns date language sql stable set search_path = public, pg_temp as $$
   select (public.park_week_start() at time zone 'Asia/Taipei')::date;
 $$;
 
+-- 誰在同伴圈：家長設過照家長；沒設過，所在的班（交誼廳除外）有一班關掉就不加；不然加
+create table if not exists public.park_lounge_prefs (
+  student_id uuid primary key references public.students(id) on delete cascade,
+  on_       boolean not null,
+  by_user   uuid,
+  at        timestamptz not null default now()
+);
+alter table public.park_lounge_prefs enable row level security;
+alter table public.park_class_settings add column if not exists circle boolean not null default true;
+
+create or replace function public.park_lounge_on(p_student uuid)
+returns boolean language sql stable security definer set search_path = public, pg_temp as $$
+  select coalesce((select p.on_ from public.park_lounge_prefs p where p.student_id = p_student),
+                  not exists (select 1 from public.park_class_members m
+                                join public.park_class_settings st on st.class_code = m.class_code
+                               where m.student_id = p_student and m.class_code <> 'TRYIT' and not st.circle));
+$$;
+
+-- 家長：這個孩子要不要加入同伴圈（只有確認過的監護人）
+create or replace function public.park_lounge_set_kid(p_student uuid, p_on boolean)
+returns boolean language plpgsql security definer set search_path = public, pg_temp as $$
+begin
+  if not public.park_is_guardian(p_student) then raise exception '只有孩子的爸媽可以設定'; end if;
+  insert into public.park_lounge_prefs (student_id, on_, by_user) values (p_student, coalesce(p_on, true), auth.uid())
+  on conflict (student_id) do update set on_ = excluded.on_, by_user = excluded.by_user, at = now();
+  if not coalesce(p_on, true) then   -- 關掉：這週的圈馬上退出
+    delete from public.park_lounge_circles c where c.student_id = p_student and c.week = public.park_lounge_week();
+  end if;
+  perform public.park_log('lounge_kid', null, (select st.nickname from public.students st where st.id = p_student), jsonb_build_object('on', p_on));
+  return coalesce(p_on, true);
+end;
+$$;
+
+create or replace function public.park_lounge_kid(p_student uuid)
+returns jsonb language plpgsql stable security definer set search_path = public, pg_temp as $$
+begin
+  if not public.park_is_guardian(p_student) then raise exception '只有孩子的爸媽可以看'; end if;
+  return jsonb_build_object('on', public.park_lounge_on(p_student),
+                            'set', exists (select 1 from public.park_lounge_prefs p where p.student_id = p_student));
+end;
+$$;
+
+-- 老師：整班要不要加入同伴圈（家長設過的孩子照家長）
+create or replace function public.park_class_set_circle(p_code text, p_on boolean)
+returns boolean language plpgsql security definer set search_path = public, pg_temp as $$
+declare v_code text := upper(btrim(coalesce(p_code, '')));
+begin
+  if not public.is_teacher_of(v_code) then raise exception '這不是你的班'; end if;
+  insert into public.park_class_settings as s (class_code, circle) values (v_code, coalesce(p_on, true))
+  on conflict (class_code) do update set circle = excluded.circle, updated_at = now();
+  if not coalesce(p_on, true) then
+    delete from public.park_lounge_circles c
+     using public.park_class_members m
+     where m.class_code = v_code and c.student_id = m.student_id and c.week = public.park_lounge_week()
+       and not public.park_lounge_on(m.student_id);
+  end if;
+  perform public.park_log('class_circle', v_code, null, jsonb_build_object('on', p_on));
+  return coalesce(p_on, true);
+end;
+$$;
+
 -- 一圈收到幾個人就開下一圈（Chuck：25–40 人）
 create or replace function public.park_lounge_size()
 returns int language sql immutable set search_path = public, pg_temp as $$ select 30 $$;
 
--- 分圈：在交誼廳、這週還沒分的才分。回傳 (grade, no)；不在交誼廳回 null
+-- 分圈：要加入同伴圈（park_lounge_on）、這週還沒分的才分。回傳 (grade, no)；不在交誼廳回 null
 create or replace function public.park_lounge_assign(p_student uuid)
 returns smallint language plpgsql security definer set search_path = public, pg_temp as $$
 declare v_week date := public.park_lounge_week(); v_no smallint; v_grade smallint; v_nick text;
@@ -106,9 +170,7 @@ begin
   if p_student is null then return null; end if;
   select c.no into v_no from public.park_lounge_circles c where c.week = v_week and c.student_id = p_student;
   if v_no is not null then return v_no; end if;
-  if not exists (select 1 from public.park_class_members m where m.student_id = p_student and m.class_code = 'TRYIT') then
-    return null;
-  end if;
+  if not public.park_lounge_on(p_student) then return null; end if;
   v_grade := coalesce((select g.grade from public.park_student_grades g where g.student_id = p_student), 0);
   v_nick := lower(coalesce((select s.nickname from public.students s where s.id = p_student), ''));
   perform pg_advisory_xact_lock(hashtext('park_lounge:' || v_week || ':' || v_grade));
@@ -135,7 +197,8 @@ create or replace function public.park_lounge_ring(p_student uuid)
 returns setof uuid language sql stable security definer set search_path = public, pg_temp as $$
   select b.student_id from public.park_lounge_circles a
     join public.park_lounge_circles b on b.week = a.week and b.grade = a.grade and b.no = a.no
-   where a.week = public.park_lounge_week() and a.student_id = p_student;
+   where a.week = public.park_lounge_week() and a.student_id = p_student
+     and public.park_lounge_on(b.student_id);
 $$;
 
 -- 「同學」：真的班（不含交誼廳）的同學＋這週同伴圈的人。寵物島拜訪、名片都用這個
@@ -174,6 +237,7 @@ begin
     'only', (select count(*) from public.park_class_members m where m.class_code = 'TRYIT'
                and not exists (select 1 from public.park_class_members o where o.student_id = m.student_id and o.class_code <> 'TRYIT')),
     'this_week', (select count(*) from public.park_lounge_circles c where c.week = v_week),
+    'off', (select count(*) from public.students s where not public.park_lounge_on(s.id)),
     'week', v_week,
     'size', public.park_lounge_size(),
     'grades', coalesce((select jsonb_agg(jsonb_build_object('grade', g.grade, 'circles', g.circles) order by g.grade) from (
@@ -191,4 +255,6 @@ $$;
 -- -----------------------------------------------------------------------------
 revoke all on function public.park_lounge_assign(uuid), public.park_lounge_ring(uuid), public.park_mates(uuid),
   public.park_lounge_catch() from public, anon, authenticated;
-grant execute on function public.park_lounge_me(), public.park_lounge_admin() to authenticated;
+grant execute on function public.park_lounge_me(), public.park_lounge_admin(), public.park_lounge_set_kid(uuid, boolean),
+  public.park_lounge_kid(uuid), public.park_class_set_circle(text, boolean) to authenticated;
+revoke all on function public.park_lounge_on(uuid) from public, anon, authenticated;
