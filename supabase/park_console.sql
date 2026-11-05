@@ -1,7 +1,7 @@
 -- =============================================================================
 -- 時空冒險樂園：後台整併第 1 期（2026-11-05「規劃管理介面整併與權限分層」）
 --
--- 1. 家長設的優先：孩子有「監護人開的家庭班」時，開放哪些遊戲照那個家庭班；沒有才是所有班的聯集
+-- 1. 家長設的優先（第 2 期：公共交誼廳不算班，沒有真的班就全部開放的遊戲都能玩）：孩子有「監護人開的家庭班」時，開放哪些遊戲照那個家庭班；沒有才是所有班的聯集
 -- 2. 寵物島每天可以玩幾分鐘（班級設定，開班預設不限）：家長有設照家長，沒設取各班最嚴的
 -- 3. 管理員看全站測驗卷（每張卷每個孩子的作答用原本的 park_quiz_report，管理員本來就看得到）
 --
@@ -26,13 +26,20 @@ returns text language sql stable security definer set search_path = public, pg_t
    limit 1;
 $$;
 
--- 決定「開放哪些遊戲」要看的班：有家長的家庭班就只看那一班，不然看他所有的班
+-- 決定「開放哪些遊戲」要看的班：有家長的家庭班就只看那一班，不然看他所有的班。
+-- 公共交誼廳（TRYIT，park_lounge.sql）不算：交誼廳不決定能玩什麼
 create or replace function public.park_rule_classes(p_student uuid)
 returns setof text language sql stable security definer set search_path = public, pg_temp as $$
   select coalesce(public.park_home_class_of(p_student), m.class_code)
     from public.park_class_members m
-   where m.student_id = p_student
+   where m.student_id = p_student and m.class_code <> 'TRYIT'
    group by 1;
+$$;
+
+-- 沒有真的班（只在交誼廳、或什麼班都沒有）：所有開放的遊戲都能玩
+create or replace function public.park_no_real_class(p_student uuid)
+returns boolean language sql stable security definer set search_path = public, pg_temp as $$
+  select not exists (select 1 from public.park_class_members m where m.student_id = p_student and m.class_code <> 'TRYIT');
 $$;
 
 -- 地圖：每個設施的狀態＋「我能不能玩」。正式開放看規則班，試營運照舊看所有的班（試玩班是管理員指定的）
@@ -42,7 +49,7 @@ returns table (code text, zone text, name text, subject text, grade_min smallint
 language sql stable security definer set search_path = public, pg_temp as $$
   select f.code, f.zone, f.name, f.subject, f.grade_min, f.grade_max, f.status, f.url, f.url_dev,
          case when public.current_student_id() is null then null
-              when f.status = 'open' then exists (
+              when f.status = 'open' then public.park_no_real_class(public.current_student_id()) or exists (
                 select 1 from public.park_rule_classes(public.current_student_id()) r(code)
                   join public.park_class_facilities cf on cf.class_code = r.code and cf.facility = f.code)
               when f.status = 'trial' then exists (
@@ -88,13 +95,10 @@ begin
     end if;
     return jsonb_build_object('ok', false, 'reason', '「' || v_f.name || '」還在試營運，只有試玩班可以進去');
   end if;
-  if exists (select 1 from public.park_rule_classes(v_me) r(code)
+  if public.park_no_real_class(v_me) or exists (select 1 from public.park_rule_classes(v_me) r(code)
                join public.park_class_facilities cf on cf.class_code = r.code
               where cf.facility = v_f.code) then
     return jsonb_build_object('ok', true);
-  end if;
-  if not exists (select 1 from public.park_class_members m where m.student_id = v_me) then
-    return jsonb_build_object('ok', false, 'reason', '你還沒有加入班級，請在「我的資料」輸入老師給的班級代碼');
   end if;
   v_home := public.park_home_class_of(v_me);
   if v_home is not null then
@@ -153,9 +157,9 @@ returns jsonb language plpgsql stable security definer set search_path = public,
 declare v_code text := upper(btrim(coalesce(p_code, '')));
 begin
   if not public.is_teacher_of(v_code) then raise exception '這不是你的班'; end if;
-  return coalesce((select jsonb_build_object('pet_quiet', s.pet_quiet, 'pet_daily_min', s.pet_daily_min, 'kind', s.kind)
+  return coalesce((select jsonb_build_object('pet_quiet', s.pet_quiet, 'pet_daily_min', s.pet_daily_min, 'kind', s.kind, 'circle', s.circle)
                      from public.park_class_settings s where s.class_code = v_code),
-                  jsonb_build_object('pet_quiet', false, 'pet_daily_min', null, 'kind', 'school'));
+                  jsonb_build_object('pet_quiet', false, 'pet_daily_min', null, 'kind', 'school', 'circle', true));
 end;
 $$;
 
@@ -203,7 +207,8 @@ $$;
 -- -----------------------------------------------------------------------------
 -- 4. 權限
 -- -----------------------------------------------------------------------------
-revoke all on function public.park_home_class_of(uuid), public.park_rule_classes(uuid), public.park_pet_limit_of(uuid)
+revoke all on function public.park_home_class_of(uuid), public.park_rule_classes(uuid), public.park_pet_limit_of(uuid),
+  public.park_no_real_class(uuid)
   from public, anon, authenticated;
 grant execute on function public.park_facility_list() to anon, authenticated;
 grant execute on function public.park_can_enter(text) to anon, authenticated;

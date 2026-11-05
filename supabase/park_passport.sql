@@ -319,12 +319,10 @@ returns setof text language sql stable security definer set search_path = public
 $$;
 
 -- 跟這個學生同一班的人（含他自己；在好幾班就全部算）。名片上「全班只有幾個人拿到」用。
+-- 公共交誼廳不算整班，算這週同伴圈的人（park_lounge.sql 的 park_mates）
 create or replace function public.park_classmates(p_student uuid)
 returns setof uuid language sql stable security definer set search_path = public, pg_temp as $$
-  select distinct m2.student_id
-    from public.park_class_members m1
-    join public.park_class_members m2 on m2.class_code = m1.class_code
-   where m1.student_id = p_student
+  select x from public.park_mates(p_student) x
   union
   select p_student;
 $$;

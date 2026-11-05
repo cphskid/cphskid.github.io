@@ -89,10 +89,10 @@ returns boolean language sql immutable set search_path = public, pg_temp as $$
   select false;
 $$;
 
+-- 同學＝真的班的同學＋這週同伴圈的人（公共交誼廳不算整班，park_lounge.sql 的 park_mates）
 create or replace function public.park_isle_classmate(p_me uuid, p_other uuid)
 returns boolean language sql stable security definer set search_path = public, pg_temp as $$
-  select exists (select 1 from public.park_class_members a join public.park_class_members b on b.class_code = a.class_code
-                  where a.student_id = p_me and b.student_id = p_other and not public.park_isle_open_class(a.class_code));
+  select exists (select 1 from public.park_mates(p_me) x(sid) where x.sid = p_other);
 $$;
 
 -- 「逛逛別的島」會出現的島：擺了 5 件以上、30 天內動過（2026-11-05 Chuck：要能跨班拜訪，家庭班只有 1、2 個人）
@@ -217,11 +217,9 @@ declare v_me uuid := public.current_student_id();
 begin
   if v_me is null then raise exception '請先登入學生帳號'; end if;
   return coalesce((select jsonb_agg(public.park_isle_card(x.sid) order by x.up desc nulls last) from (
-    select distinct b.student_id as sid, i.updated_at as up
-      from public.park_class_members a
-      join public.park_class_members b on b.class_code = a.class_code and b.student_id <> v_me
-      join public.park_isle i on i.student_id = b.student_id   -- 打開過寵物島的才列
-     where a.student_id = v_me and not public.park_isle_open_class(a.class_code)
+    select x.sid, i.updated_at as up
+      from public.park_mates(v_me) x(sid)
+      join public.park_isle i on i.student_id = x.sid   -- 打開過寵物島的才列
      order by up desc nulls last
      limit 120) x), '[]'::jsonb);
 end;
@@ -248,10 +246,7 @@ begin
   if v_q is not null then v_q := left(v_q, 20); end if;
   with m as (
     select x.sid, st.nickname, i.updated_at as up, i.student_id is not null as has
-      from (select distinct b.student_id as sid
-              from public.park_class_members a
-              join public.park_class_members b on b.class_code = a.class_code and b.student_id <> v_me
-             where a.student_id = v_me and not public.park_isle_open_class(a.class_code)) x
+      from public.park_mates(v_me) x(sid)
       join public.students st on st.id = x.sid
       left join public.park_isle i on i.student_id = x.sid
      where case when v_q is null then i.student_id is not null

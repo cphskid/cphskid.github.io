@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>樂園信件樣板</title>
+<style>
+  :root{--wood:#6b3f1f;--cream:#fff4dc;--cream-2:#f6dfb4;--ink:#3a2412;--sea:#2f9fd8}
+  *{box-sizing:border-box}
+  body{margin:0;background:#e9f6fd;color:var(--ink);font:16px/1.6 "Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif}
+  main{max-width:1180px;margin:0 auto;padding:20px 16px 40px;display:grid;grid-template-columns:minmax(0,420px) minmax(0,1fr);gap:20px}
+  h1{grid-column:1/-1;margin:0;font-size:24px;color:var(--wood)}
+  .lead{grid-column:1/-1;margin:-8px 0 0;color:#5a4030}
+  section{background:#fff;border:3px solid var(--cream-2);border-radius:16px;padding:16px}
+  h2{margin:0 0 10px;font-size:18px;color:var(--wood)}
+  label{display:block;font-weight:700;margin:12px 0 4px}
+  input,textarea{width:100%;font:inherit;padding:8px 10px;border:2px solid var(--cream-2);border-radius:10px;background:#fffdf7}
+  textarea{min-height:180px;resize:vertical}
+  .small{font-size:13px;color:#7a5a3a;margin:4px 0 0}
+  .btns{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px}
+  button{font-family:inherit;font-size:16px;font-weight:900;line-height:1;padding:12px 18px;border-radius:999px;border:3px solid var(--wood);background:var(--cream);color:var(--wood);cursor:pointer}
+  button.go{background:#4caf2e;border-color:#2f7a1c;color:#fff}
+  button:focus-visible{outline:3px solid #ffc23d;outline-offset:2px}
+  .msg{min-height:1.6em;font-weight:700;color:#2f7a1c;margin:8px 0 0}
+  iframe{width:100%;height:760px;border:0;border-radius:12px;background:var(--sea)}
+  ol{margin:6px 0 0;padding-left:22px}
+  li{margin:4px 0}
+  .sig{border:2px dashed var(--cream-2);border-radius:12px;padding:12px;margin-top:10px}
+  @media (max-width:820px){main{grid-template-columns:1fr}iframe{height:640px}}
+</style>
+</head>
+<body>
+<main>
+  <h1>樂園信件樣板</h1>
+  <p class="lead">填好左邊，右邊就是信的樣子。按「複製信件」，再到 Gmail 新郵件裡貼上，選寄件人 timepark@ciyulab.com 就能寄。</p>
+
+  <section>
+    <h2>1. 寫信</h2>
+    <label for="t">標題（信裡的大字）</label>
+    <input id="t" value="爸媽任務上線了！">
+    <label for="b">內文</label>
+    <textarea id="b">爸爸媽媽好！
+
+現在可以和孩子的帳號連起來了：請孩子在樂園按功能列的信封，出示 QR 碼，您用手機掃一下就完成。連好之後，孩子會收到一顆神秘蛋。
+
+連好以後，您可以看孩子的學習報告、送貼紙，也能幫孩子選本週目標。</textarea>
+    <p class="small">空一行就是新的一段。想要粗體，用 **兩個星號** 包起來。</p>
+    <label for="bt">按鈕文字（不要按鈕就留空）</label>
+    <input id="bt" value="打開家長後台">
+    <label for="bu">按鈕連結（https 開頭）</label>
+    <input id="bu" value="https://timepark.ciyulab.com/teacher.html">
+    <label for="s">署名</label>
+    <input id="s" value="時空冒險樂園 園長 敬上">
+    <div class="btns">
+      <button type="button" class="go" id="copy">複製信件</button>
+      <button type="button" id="copy-html">複製 HTML 原始碼</button>
+    </div>
+    <p class="msg" id="msg" role="status"></p>
+  </section>
+
+  <section>
+    <h2>預覽</h2>
+    <iframe id="pv" title="信件預覽"></iframe>
+  </section>
+
+  <section>
+    <h2>2. 在 Gmail 用 timepark 寄出</h2>
+    <ol>
+      <li>Gmail 按「撰寫」，在「寄件者」選 <b>timepark@ciyulab.com</b>。</li>
+      <li>內文區按 Ctrl+V（Mac 是 ⌘+V）貼上，樣式和圖片會一起過去。</li>
+      <li>填收件人和主旨就能寄。收件人多的話放「密件副本」，家長彼此看不到信箱。</li>
+    </ol>
+    <p class="small">手機版 Gmail 貼上會掉樣式，請用電腦寄。</p>
+  </section>
+
+  <section>
+    <h2>3. Gmail 簽名檔（選用）</h2>
+    <p class="small">平常回家長的信，底下自動帶這個簽名。</p>
+    <div class="sig" id="sig"></div>
+    <div class="btns"><button type="button" id="copy-sig">複製簽名</button></div>
+    <ol>
+      <li>Gmail 右上齒輪 → 查看所有設定 → 一般 → 簽名 → 建立新簽名，取名「樂園」。</li>
+      <li>在編輯框按 Ctrl+V 貼上。</li>
+      <li>下面「預設簽名」的寄件地址選 timepark@ciyulab.com，新郵件和回覆都選「樂園」，按最下面「儲存變更」。</li>
+    </ol>
+  </section>
+</main>
+<script>
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+let layout = '', button = '';
+const SIG = `<table cellpadding="0" cellspacing="0" border="0" style="font-family:'Noto Sans TC','PingFang TC','Microsoft JhengHei',sans-serif"><tr>
+<td valign="middle" style="padding-right:10px"><img src="https://timepark.ciyulab.com/img/mail/happy.png" width="48" alt="滴答" style="display:block;width:48px;height:auto;border:0"></td>
+<td valign="middle" style="font-size:14px;line-height:1.6;color:#6b3f1f"><b style="font-size:15px">時空冒險樂園 園長</b><br>
+<a href="https://timepark.ciyulab.com/" style="color:#1d7fbf">timepark.ciyulab.com</a> · timepark@ciyulab.com</td></tr></table>`;
+
+function bodyHtml(text) {
+  return text.trim().split(/\n\s*\n/).map((p) =>
+    `<p style="margin:0 0 14px">${esc(p).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/\n/g, '<br>')}</p>`).join('');
+}
+function build() {
+  const url = $('#bu').value.trim(), bt = $('#bt').value.trim();
+  const btn = bt && /^https:\/\//.test(url) ? button.replace('{{URL}}', esc(url)).replace('{{TEXT}}', esc(bt)) : '';
+  return layout.replaceAll('{{TITLE}}', esc($('#t').value)).replace('{{BODY}}', bodyHtml($('#b').value))
+    .replace('{{BUTTON}}', btn).replace('{{SIGN}}', esc($('#s').value)).replace('{{FOOT}}', '');
+}
+function paint() { $('#pv').srcdoc = build(); }
+function say(t) { $('#msg').textContent = t; }
+async function copyRich(html, text) {
+  if (window.ClipboardItem && navigator.clipboard?.write) {
+    await navigator.clipboard.write([new ClipboardItem({
+      'text/html': new Blob([html], { type: 'text/html' }), 'text/plain': new Blob([text], { type: 'text/plain' }) })]);
+    return;
+  }
+  // 舊瀏覽器：選起來再複製
+  const box = document.createElement('div');
+  box.innerHTML = html; box.style.position = 'fixed'; box.style.left = '-9999px';
+  document.body.appendChild(box);
+  const r = document.createRange(); r.selectNodeContents(box);
+  getSelection().removeAllRanges(); getSelection().addRange(r);
+  document.execCommand('copy'); getSelection().removeAllRanges(); box.remove();
+}
+function inner(html) { return html.replace(/^[\s\S]*<body[^>]*>/, '').replace(/<\/body>[\s\S]*$/, ''); }
+$('#copy').onclick = async () => {
+  try { await copyRich(inner(build()), $('#b').value); say('複製好了！到 Gmail 新郵件貼上。'); }
+  catch { say('瀏覽器不讓複製，請改用「複製 HTML 原始碼」。'); }
+};
+$('#copy-html').onclick = async () => {
+  try { await navigator.clipboard.writeText(build()); say('HTML 原始碼複製好了。'); } catch { say('瀏覽器不讓複製。'); }
+};
+$('#copy-sig').onclick = async () => {
+  try { await copyRich(SIG, '時空冒險樂園 園長｜timepark.ciyulab.com｜timepark@ciyulab.com'); say('簽名複製好了！到 Gmail 簽名設定貼上。'); }
+  catch { say('瀏覽器不讓複製。'); }
+};
+document.querySelectorAll('input,textarea').forEach((el) => el.addEventListener('input', paint));
+$('#sig').innerHTML = SIG;
+Promise.all([fetch('layout.html').then((r) => r.text()), fetch('button.html').then((r) => r.text())])
+  .then(([l, b]) => { layout = l; button = b.trim(); paint(); });
+</script>
+</body>
+</html>

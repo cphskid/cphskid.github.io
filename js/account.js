@@ -16,11 +16,13 @@ let onChange = () => {};
 let pending = null;          // requireLogin() 等著的那個 Promise
 
 // ?join=班級代碼：老師分享的連結，直接打開「第一次來」並把代碼填好
-const joinCode = (() => {
+// ?join=TRYIT（家長介紹頁的「免費試玩」）：不用代碼，直接進公共交誼廳（supabase/park_lounge.sql），代碼欄留空
+const joinRaw = (() => {
   const raw = new URLSearchParams(location.search).get('join') ?? '';
   return /^[A-Za-z0-9]{3,12}$/.test(raw) ? raw.toUpperCase() : '';
 })();
-export const hasJoinLink = joinCode !== '';
+const joinCode = joinRaw === 'TRYIT' ? '' : joinRaw;
+export const hasJoinLink = joinRaw !== '';
 
 export function current() { return who; }
 // 帳號功能有沒有載入（supabase.js 載不到時，地圖照常可以逛，只是不能登入）
@@ -148,7 +150,7 @@ export async function requireLogin() {
   let resolve;
   const promise = new Promise((r) => { resolve = r; });
   pending = { promise, resolve };
-  openLogin(joinCode ? 'register' : 'login');
+  openLogin(joinRaw ? 'register' : 'login');
   return promise;
 }
 async function loggedIn() {
@@ -172,7 +174,7 @@ function openLogin(tab = 'login') {
       <button type="button" role="tab" class="${reg ? 'on' : ''}" data-tab="register">第一次來</button>
     </div>
     <form class="form" novalidate>
-      ${reg ? `<label>班級代碼<input name="code" value="${esc(joinCode)}" maxlength="12" autocomplete="off" autocapitalize="characters" placeholder="老師給你的代碼"></label>` : ''}
+      ${reg ? `<label>班級代碼${joinCode ? '' : '（選填）'}<input name="code" value="${esc(joinCode)}" maxlength="12" autocomplete="off" autocapitalize="characters" placeholder="老師或爸媽給的代碼，沒有就空著"></label>` : ''}
       <label>帳號<input name="id" maxlength="16" autocomplete="username" autocapitalize="off" spellcheck="false" placeholder="英文或數字，例如 ming123"></label>
       <label>密碼<input name="pw" type="password" maxlength="32" autocomplete="${reg ? 'new-password' : 'current-password'}" placeholder="6 個以上的英文或數字"></label>
       ${reg ? `<label>暱稱<input name="nick" maxlength="16" autocomplete="off" placeholder="大家看得到的名字，例如 小雷"></label>` : ''}
@@ -180,7 +182,7 @@ function openLogin(tab = 'login') {
       <button class="btn go" type="submit">${reg ? '建立帳號' : '進入樂園'}</button>
     </form>
     <p class="tip">${reg
-      ? (joinCode ? '班級代碼已經幫你填好了。' : '') + '帳號是登入用的，暱稱是大家看得到的名字。不用真實姓名，也不用 email。'
+      ? (joinCode ? '班級代碼已經幫你填好了。' : '沒有班級代碼也能玩，以後拿到代碼再到「我的資料」加入。') + '帳號是登入用的，暱稱是大家看得到的名字。不用真實姓名，也不用 email。'
       : '在守護異世界註冊過的，直接用同一組帳號密碼。'}</p>
     ${reg ? '' : '<button type="button" class="link" data-forgot>忘記密碼？</button>'}
     <button type="button" class="link" data-staff>我是老師／家長 ›</button>`, { tick: reg ? 'cheer' : 'wave' });
@@ -195,7 +197,7 @@ function openLogin(tab = 'login') {
   f.elements.code?.addEventListener('input', (e) => { e.target.value = e.target.value.replace(/[^A-Za-z0-9]/g, '').toUpperCase(); });
 
   onSubmit(f, () => {
-    if (reg && v('code').length < 3) return '要填老師給你的班級代碼';
+    if (reg && v('code') && v('code').length < 3) return '班級代碼至少 3 個字，沒有代碼就空著';
     const id = v('id');
     if (!id) return '要先填帳號喔';
     if (id.length < 3) return '帳號太短了，至少 3 個字';
@@ -339,6 +341,10 @@ function openStaffHome() {
 
 // ---------- 學生：我的資料 ----------
 function classRow(c) {
+  if (c.code === 'TRYIT') {   // 公共交誼廳（supabase/park_lounge.sql）：不算班，不能退、不寫開班的人
+    const r = auth.lounge.state;
+    return `<li><div><b>${esc(c.name || '公共交誼廳')}</b><small>每週一和同年級的夥伴分成同伴圈${r?.lounge ? `・這週同伴圈 ${r.size} 人` : ''}</small></div>${c.primary ? '<span class="chip open" title="守護異世界的排行榜用這個班">主要班級</span>' : ''}</li>`;
+  }
   const right = c.primary
     ? '<span class="chip open" title="守護異世界的排行榜用這個班">主要班級</span>'
     : `<span class="row"><button type="button" class="ghost small" data-primary="${esc(c.code)}" title="守護異世界的排行榜會改用這個班">設成主要班級</button><button type="button" class="ghost small" data-leave="${esc(c.code)}">退出</button></span>`;
