@@ -85,7 +85,7 @@ if (q.get('deco')) {
     pets: [{ species: 'kitten', stage: 2, name: '咪咪' }, { species: 'puppy', stage: 1, name: '豆豆' }], mine: null }));
   Object.assign(auth.isle, {
     me: async () => JSON.parse(JSON.stringify(I)), seen: async () => {}, save: async (t, n, l) => { Object.assign(I, { theme: t, name: n, layout: l, saved: true }); return { ok: true }; },
-    featured: async () => isles, mates: async () => isles.slice(0, 4),
+    featured: async () => isles, explore: async (seed) => isles.map((x, i) => isles[(i + seed) % 6]).map((x, i) => ({ ...x, nickname: x.nickname + '・' + (seed * 6 + i) })), mates: async () => isles.slice(0, 4),
     // 我們班的島（一頁 12 座、可以找）：假裝班上有 30 座＋一個還沒打開寵物島的「小新」
     matesPage: async (q, page) => {
       const all = Array.from({ length: 30 }, (_, i) => ({ ...isles[i % 6], id: isles[i % 6].id, nickname: isles[i % 6].nickname + (i >= 6 ? i : '') }));

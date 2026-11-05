@@ -6,7 +6,7 @@
 -- 島的風格：spring 春日花園大家都有；beach 夕陽海灘、autumn 楓葉、snow 雪夜（冬天才上架）在商店用時光幣買；
 --   stars 星空要拿到臺灣島終章的章（今天的島嶼）；candy 糖果樂園是之後週末活動的獎勵。
 --   買到的記在 park_student_furniture（item＝'theme-<code>'），跟傢俱同一張表。
--- 拜訪：同班同學的島隨時可以去看（試玩班 TRYIT 原本不列，2026-11-02 Chuck 改成也列，同班可以自己找來看）；
+-- 拜訪：同班同學的島隨時可以去看；別班的島從「逛逛別的島」隨機看到（2026-11-05 起）（試玩班 TRYIT 原本不列，2026-11-02 Chuck 改成也列，同班可以自己找來看）；
 --   每座島每天可以留一個正面圖示（6 種），只能看、不能搬、不能打字。
 -- 今日精選島：每天（臺灣時間）第一個人來看時選出 6 座：擺了 5 件以上的東西，
 --   最近 7 天收到的圖示越多越容易選到，最近 14 天上過的先讓給別人。所有班級（含試玩班）一起選，只顯示暱稱和島名。
@@ -95,12 +95,20 @@ returns boolean language sql stable security definer set search_path = public, p
                   where a.student_id = p_me and b.student_id = p_other and not public.park_isle_open_class(a.class_code));
 $$;
 
--- 同班，或是今天、昨天上過精選
+-- 「逛逛別的島」會出現的島：擺了 5 件以上、30 天內動過（2026-11-05 Chuck：要能跨班拜訪，家庭班只有 1、2 個人）
+create or replace function public.park_isle_explorable(p_student uuid)
+returns boolean language sql stable security definer set search_path = public, pg_temp as $$
+  select exists (select 1 from public.park_isle i
+                  where i.student_id = p_student and i.placed >= 5 and i.updated_at > now() - interval '30 days');
+$$;
+
+-- 同班、今天昨天上過精選，或是「逛逛別的島」會出現的島
 create or replace function public.park_isle_can_see(p_me uuid, p_other uuid)
 returns boolean language sql stable security definer set search_path = public, pg_temp as $$
   select p_me = p_other or public.park_isle_classmate(p_me, p_other)
       or exists (select 1 from public.park_isle_featured f
-                  where f.student_id = p_other and f.day >= public.park_today() - 1);
+                  where f.student_id = p_other and f.day >= public.park_today() - 1)
+      or public.park_isle_explorable(p_other);
 $$;
 
 -- 收到的圖示，6 種各幾個（全部時間）
@@ -259,6 +267,22 @@ begin
 end;
 $$;
 
+-- 逛逛別的島：別班的島隨機 12 座（不含自己、同班）。p_seed 換一批就 +1；同一天同一個 seed 給的一樣
+-- 只給卡片（暱稱、島名、擺法、寵物），不給班級、學校、年級
+create or replace function public.park_isle_explore(p_seed int default 0)
+returns jsonb language plpgsql stable security definer set search_path = public, pg_temp as $$
+declare v_me uuid := public.current_student_id();
+begin
+  if v_me is null then raise exception '請先登入學生帳號'; end if;
+  return coalesce((select jsonb_agg(public.park_isle_card(x.student_id) order by x.k) from (
+    select i.student_id, md5(i.student_id::text || ':' || coalesce(p_seed, 0) || ':' || public.park_today() || ':' || v_me) as k
+      from public.park_isle i
+     where i.student_id <> v_me and i.placed >= 5 and i.updated_at > now() - interval '30 days'
+       and not public.park_isle_classmate(v_me, i.student_id)
+     order by k limit 12) x), '[]'::jsonb);
+end;
+$$;
+
 -- 今日精選：今天還沒選就先選（同一時間只有一個人在選）
 create or replace function public.park_isle_featured_today()
 returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
@@ -292,7 +316,7 @@ returns jsonb language plpgsql stable security definer set search_path = public,
 declare v_me uuid := public.current_student_id(); v_i public.park_isle;
 begin
   if v_me is null then raise exception '請先登入學生帳號'; end if;
-  if not public.park_isle_can_see(v_me, p_student) then raise exception '只能參觀同班同學或今日精選的島'; end if;
+  if not public.park_isle_can_see(v_me, p_student) then raise exception '這座島現在不能參觀'; end if;
   select * into v_i from public.park_isle where student_id = p_student;
   return public.park_isle_card(p_student) || jsonb_build_object(
     'layout', coalesce(v_i.layout, '{}'::jsonb),
@@ -310,7 +334,7 @@ begin
   if v_me is null then raise exception '請先登入學生帳號'; end if;
   if p_student = v_me then raise exception '自己的島不用按喔'; end if;
   if p_kind is null or p_kind not between 0 and 5 then raise exception '沒有這個圖示'; end if;
-  if not public.park_isle_can_see(v_me, p_student) then raise exception '只能參觀同班同學或今日精選的島'; end if;
+  if not public.park_isle_can_see(v_me, p_student) then raise exception '這座島現在不能參觀'; end if;
   insert into public.park_isle_reacts (from_id, to_id, day, kind) values (v_me, p_student, public.park_today(), p_kind)
   on conflict do nothing;
   if not found then raise exception '今天已經留過了，明天可以再來'; end if;
@@ -322,14 +346,14 @@ $$;
 -- 6. 權限
 -- -----------------------------------------------------------------------------
 revoke all on function
-  public.park_isle_themes(uuid), public.park_isle_open_class(text), public.park_isle_classmate(uuid, uuid),
+  public.park_isle_themes(uuid), public.park_isle_open_class(text), public.park_isle_explorable(uuid), public.park_isle_classmate(uuid, uuid),
   public.park_isle_can_see(uuid, uuid), public.park_isle_love(uuid), public.park_isle_card(uuid),
   public.park_isle_me(), public.park_isle_seen(), public.park_isle_save(text, int[], jsonb, text[]),
   public.park_isle_class(), public.park_isle_featured_today(), public.park_isle_view(uuid), public.park_isle_react(uuid, int),
-  public.park_isle_class_page(text, int)
+  public.park_isle_class_page(text, int), public.park_isle_explore(int)
   from public, anon, authenticated;
 grant execute on function
   public.park_isle_me(), public.park_isle_seen(), public.park_isle_save(text, int[], jsonb, text[]),
   public.park_isle_class(), public.park_isle_featured_today(), public.park_isle_view(uuid), public.park_isle_react(uuid, int),
-  public.park_isle_class_page(text, int)
+  public.park_isle_class_page(text, int), public.park_isle_explore(int)
   to authenticated;

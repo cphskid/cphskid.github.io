@@ -336,6 +336,7 @@ export const isle = {
   mates:    () => icall('park_isle_class'),
   matesPage: (q, page) => icall('park_isle_class_page', { p_q: q ?? '', p_page: page ?? 0 }),
   featured: () => icall('park_isle_featured_today'),
+  explore:  (seed) => icall('park_isle_explore', { p_seed: seed ?? 0 }),
   view:     (id) => icall('park_isle_view', { p_student: id }),
   react:    (id, kind) => icall('park_isle_react', { p_student: id, p_kind: kind }),
 };
