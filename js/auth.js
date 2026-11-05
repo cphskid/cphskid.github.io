@@ -334,6 +334,7 @@ export const isle = {
   seen:     () => icall('park_isle_seen'),
   save:     (theme, name, layout, stored) => icall('park_isle_save', { p_theme: theme, p_name: name, p_layout: layout, p_stored: stored }),
   mates:    () => icall('park_isle_class'),
+  matesPage: (q, page) => icall('park_isle_class_page', { p_q: q ?? '', p_page: page ?? 0 }),
   featured: () => icall('park_isle_featured_today'),
   view:     (id) => icall('park_isle_view', { p_student: id }),
   react:    (id, kind) => icall('park_isle_react', { p_student: id, p_kind: kind }),

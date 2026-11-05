@@ -1,7 +1,7 @@
 // 寵物島裝扮、拜訪、今日精選島（資料庫在 supabase/park_isle.sql；規劃 doc「寵物島 2.0 規劃」第 1 期）。
 //
 // 裝扮：島的風格（主題地面）、島名（三組字各挑一個，不能自己打字），傢俱擺在哪由 js/pet.js 管，這裡負責存到伺服器。
-// 拜訪：「今日精選」（全部班級一起選 6 座）和「我們班的島」（試玩班也列，人多時可以打暱稱找）。別人的島只能看，
+// 拜訪：「今日精選」（全部班級一起選 6 座）和「我們班的島」（一頁 12 座、可以打暱稱或島名找）。清單縮圖畫出每座島真的擺法（不會動），點進去才會動。別人的島只能看，
 //   每座島每天可以留一個正面圖示，對方下次打開寵物島會看到。
 // 資料庫還沒裝（missing）時：裝扮照舊存在這台裝置，拜訪鈕不出現。
 import * as auth from './auth.js';
@@ -137,69 +137,148 @@ export function openVisit(c) {
 }
 export function closeVisit(host) { $('.isle-visit', host)?.remove(); }
 
+// 「我們班的島」：伺服器一次給一頁 12 座，可以打暱稱或島名找（找得到還沒打開寵物島的同學）
+let mq = '', mpage = 0;
 async function paintList(box) {
   box.innerHTML = `<div class="iv-panel" role="dialog" aria-label="去拜訪別人的寵物島">
     <button class="x" data-iv-close aria-label="關閉"></button>
     <h3>去拜訪</h3>
     <div class="iv-tabs"><button type="button" data-iv-tab="feat" class="${tab === 'feat' ? 'on' : ''}">⭐ 今日精選</button>
       <button type="button" data-iv-tab="mates" class="${tab === 'mates' ? 'on' : ''}">🏫 我們班的島</button></div>
+    ${tab === 'mates' ? `<input type="search" class="iv-find" placeholder="🔍 打同學的暱稱或島名找找看" aria-label="找同學的島" maxlength="20" value="${esc(mq)}">` : ''}
     <div class="iv-list"><p class="tip">讀取中…</p></div></div>`;
-  $('[data-iv-close]', box).onclick = () => box.remove();
+  $('[data-iv-close]', box).onclick = () => { unwatchThumbs(); box.remove(); };
   box.querySelectorAll('[data-iv-tab]').forEach((b) => { b.onclick = () => { tab = b.dataset.ivTab; paintList(box); }; });
-  const list = $('.iv-list', box);
-  let rows;
-  try { rows = tab === 'feat' ? await auth.isle.featured() : await auth.isle.mates(); } catch (e) { list.innerHTML = `<p class="tip bad">${esc(e.message)}</p>`; return; }
-  if (!box.isConnected) return;
-  const sum = (a) => (a ?? []).reduce((x, y) => x + y, 0);
-  list.innerHTML = rows.length ? `<div class="iv-cards">${rows.map((r) => `<button type="button" class="iv-card" data-iv-go="${esc(r.id)}">
-      <span class="th"><img src="${thumb(r.theme)}" alt="">${r.pet ? `<img class="pet" src="${ctx.art(r.pet.species, r.pet.stage, 'idle')}" alt="">` : ''}</span>
-      <b>${esc(nameText(r.name))}</b><small>${esc(r.nickname)} 的島・收到 ${sum(r.love)} 個圖示</small></button>`).join('')}</div>`
-    : `<p class="tip">${tab === 'feat' ? '今天還沒有精選島。把自己的島擺上 5 件以上的東西，就有機會被選上！'
-      : '班上的同學還沒有人打開寵物島。先去「今日精選」逛逛吧！'}</p>`;
-  // 同學很多（像試玩班）時，上面多一格打暱稱或島名找
-  if (tab === 'mates' && rows.length > 8) {
-    list.insertAdjacentHTML('afterbegin', `<input type="search" class="iv-find" placeholder="🔍 打同學的暱稱或島名找找看" aria-label="找同學的島">`);
-    const cards = [...list.querySelectorAll('.iv-card')];
-    $('.iv-find', list).oninput = (e) => {
-      const k = e.target.value.trim().toLowerCase();
-      cards.forEach((c) => { c.hidden = !!k && !c.textContent.toLowerCase().includes(k); });
-    };
+  const find = $('.iv-find', box);
+  if (find) {
+    let t = 0;
+    find.oninput = () => { clearTimeout(t); t = setTimeout(() => { mq = find.value.trim(); mpage = 0; paintRows(box); }, 350); };
   }
-  if (tab === 'feat') list.insertAdjacentHTML('beforeend', '<p class="note">每天早上換一批。島上擺 5 件以上、收到的圖示越多，越有機會上精選。</p>');
-  list.querySelectorAll('[data-iv-go]').forEach((b) => { b.onclick = () => paintVisit(box, b.dataset.ivGo); });
+  paintRows(box);
 }
 
-async function paintVisit(box, id) {
-  let v;
-  try { v = await auth.isle.view(id); } catch (e) { toast(box, e.message); return; }
+let rowsSeq = 0;
+async function paintRows(box) {
+  const list = $('.iv-list', box);
+  if (!list) return;
+  const seq = ++rowsSeq;
+  let rows, page = null;
+  try {
+    if (tab === 'feat') rows = await auth.isle.featured();
+    else { page = await auth.isle.matesPage(mq, mpage); rows = page.rows ?? []; }
+  } catch (e) { if (seq === rowsSeq) list.innerHTML = `<p class="tip bad">${esc(e.message)}</p>`; return; }
+  if (!box.isConnected || seq !== rowsSeq) return;
+  const sum = (a) => (a ?? []).reduce((x, y) => x + y, 0);
+  const card = (r) => r.none
+    ? `<div class="iv-card none"><span class="th"><img class="empty" src="${thumb('spring')}" alt=""><em>還沒有島</em></span>
+        <b>${esc(r.nickname)}</b><small>還沒打開寵物島，等等再來看看</small></div>`
+    : `<button type="button" class="iv-card" data-iv-go="${esc(r.id)}">
+        <span class="th mini" data-th="${esc(r.id)}">${miniHtml(r)}</span>
+        <b>${esc(nameText(r.name))}</b><small>${esc(r.nickname)} 的島・收到 ${sum(r.love)} 個圖示</small></button>`;
+  const empty = tab === 'feat' ? '今天還沒有精選島。把自己的島擺上 5 件以上的東西，就有機會被選上！'
+    : mq ? `找不到「${esc(mq)}」。換個字試試看，或是把字刪掉看全部。`
+      : '班上的同學還沒有人打開寵物島。先去「今日精選」逛逛吧！';
+  list.innerHTML = rows.length ? `<div class="iv-cards">${rows.map(card).join('')}</div>` : `<p class="tip">${empty}</p>`;
+  if (page && page.total > page.size) {
+    const pages = Math.ceil(page.total / page.size);
+    list.insertAdjacentHTML('beforeend', `<div class="iv-pager">
+      <button type="button" class="ghost small" data-pg="-1" ${page.page <= 0 ? 'disabled' : ''}>‹ 上一頁</button>
+      <span>第 ${page.page + 1} / ${pages} 頁・共 ${page.total} 座</span>
+      <button type="button" class="ghost small" data-pg="1" ${page.page + 1 >= pages ? 'disabled' : ''}>下一頁 ›</button></div>`);
+    list.querySelectorAll('[data-pg]').forEach((b) => { b.onclick = () => { mpage = Math.max(0, page.page + +b.dataset.pg); paintRows(box); list.scrollIntoView?.({ block: 'nearest' }); }; });
+  } else if (page && page.total) {
+    list.insertAdjacentHTML('beforeend', `<p class="note">共 ${page.total} 座${mq ? '' : '，最近有改過的排前面'}。</p>`);
+  }
+  if (tab === 'feat') list.insertAdjacentHTML('beforeend', '<p class="note">每天早上換一批。島上擺 5 件以上、收到的圖示越多，越有機會上精選。</p>');
+  list.querySelectorAll('[data-iv-go]').forEach((b) => { b.onclick = () => { unwatchThumbs(); paintVisit(box, b.dataset.ivGo); }; });
+  watchThumbs(list);
+}
+
+// ---------- 畫一座島（參觀用會動；清單縮圖用不動的） ----------
+// 回傳 { html, box }：box＝擺了東西的範圍（島座標 px），縮圖靠它把鏡頭對準有裝潢的地方
+function islandParts(v, { still = false } = {}) {
   const { GW, GH, N } = W;
   // 舊的擺法（還沒打開過新的大島）：照舊位置搬過來看
   const items = W.unpack(v.layout) ?? W.migrate(v.layout, Object.keys(v.layout ?? {}), {});
   const occ = W.occupancy(items);
   const free = [];
   for (let c = 0; c < N * N; c++) if (!occ.solid[c]) free.push(c);
-  const pets = (v.pets ?? []).map((p) => { const c = free[Math.floor(Math.random() * free.length)] ?? 0; return { ...p, ...W.center(c % N, Math.floor(c / N)) }; });
+  // 縮圖：寵物站在固定的空格（同一座島每次看都一樣），參觀時隨便站
+  const pick = (k) => free[still ? (k * 97 + 331) % Math.max(free.length, 1) : Math.floor(Math.random() * free.length)] ?? 0;
+  const petList = still ? (v.pet ? [{ ...v.pet, name: '' }] : []) : (v.pets ?? []);
+  const pets = petList.map((p, k) => { const c = pick(k); return { ...p, ...W.center(c % N, Math.floor(c / N)) }; });
   const z = (y) => Math.round(y * 1000);
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  const grow = (x, y) => { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); };
   const fences = items.filter((o) => ['fence', 'gate'].includes(W.kindOf(o.id))).map((o) => {
     const f = W.fenceEl(o.id, o.i, o.j, W.fenceNb(items, occ, o.i, o.j));
+    const c = W.center(o.i, o.j); grow(c.x * GW, c.y * GH);
     return `<span class="fence" style="left:${f.left}px;top:${f.top}px;z-index:${f.z}">${f.html}</span>`;
   }).join('');
+  for (const o of items) if (W.kindOf(o.id) === 'path') { const c = W.center(o.i, o.j); grow(c.x * GW, c.y * GH); }
   const props = items.filter((o) => ['furn', 'house', 'bowl', 'tile'].includes(W.kindOf(o.id))).map((o) => {
     const c = W.CAT[o.id], at = W.spot(o.id, o.i, o.j, o.f);
+    grow(at.x * GW - c.w / 2, at.y * GH - c.w); grow(at.x * GW + c.w / 2, at.y * GH);
     return `<span class="iv-prop" style="left:${at.x * GW}px;top:${at.y * GH}px;width:${c.w}px;z-index:${z(at.y) - 2};--base:${-c.base * 100}%">
       <img src="img/pet/furniture/${esc(o.id)}.webp" alt=""${o.f ? ' style="transform:scaleX(-1)"' : ''}></span>`;
   }).join('');
   const trees = W.trees(v.theme).map((t) => `<span class="tree" style="left:${t.x * GW}px;top:${t.y * GH}px;width:${t.w}px;z-index:${z(t.y)};--base:${-t.base * 100}%">
     <img src="img/pet/tree/${t.id}.webp" alt=""></span>`).join('');
+  const petHtml = pets.map((p, i) => {
+    if (still) grow(p.x * GW, p.y * GH);
+    return `<span class="iv-pet${still ? ' still' : ''}" style="left:${p.x * GW}px;top:${p.y * GH}px;width:${[0, 84, 98, 112][p.stage] ?? 98}px;z-index:${z(p.y)};--d:${rnd(0, 2).toFixed(2)}s;--k:${i % 2 ? -1 : 1}">
+      <img src="${ctx.art(p.species, p.stage, 'idle')}" alt="${esc(p.name)}"></span>`;
+  }).join('');
+  const html = `<img class="land" src="${landSrc(v.theme)}" alt="">
+    <svg class="floor" viewBox="0 0 ${GW} ${GH}" width="${GW}" height="${GH}" aria-hidden="true">${W.floorSvg(items)}</svg>
+    ${trees}${fences}${props}${petHtml}`;
+  return { html, box: x0 < x1 ? { x0, y0, x1, y1 } : null };
+}
+
+// 清單縮圖：整座島太大（卡片裡傢俱會變一粒米），鏡頭對準擺了東西的地方，至少看得到島寬的 22%
+function miniHtml(r) {
+  const { GW, GH } = W;
+  const { html, box } = islandParts(r, { still: true });
+  const pad = 70, aspect = 4 / 3, minW = GW * .22;
+  let cx = GW / 2, cy = GH * .55, w = minW;
+  if (box) {
+    cx = (box.x0 + box.x1) / 2; cy = (box.y0 + box.y1) / 2;
+    w = Math.max(minW, box.x1 - box.x0 + pad * 2, (box.y1 - box.y0 + pad * 2) * aspect);
+  }
+  w = Math.min(w, GW);
+  const h = w / aspect;
+  const x = Math.min(Math.max(cx - w / 2, 0), GW - w), y = Math.min(Math.max(cy - h / 2, 0), Math.max(GH - h, 0));
+  return `<span class="iv-ground" data-cw="${w.toFixed(0)}" style="width:${GW}px;height:${GH}px;--x:${(-x).toFixed(0)}px;--y:${(-y).toFixed(0)}px">${html}</span>`;
+}
+
+// 縮圖照卡片寬度縮放（卡片寬度會跟著視窗變）
+let thumbRO = null;
+function fitThumb(th) {
+  const g = th.firstElementChild;
+  if (!g) return;
+  const k = th.clientWidth / +g.dataset.cw;
+  g.style.transform = `scale(${k}) translate(var(--x), var(--y))`;
+}
+function watchThumbs(list) {
+  unwatchThumbs();
+  const ths = [...list.querySelectorAll('.th.mini')];
+  ths.forEach(fitThumb);
+  if (typeof ResizeObserver === 'function') {
+    thumbRO = new ResizeObserver((es) => es.forEach((e) => fitThumb(e.target)));
+    ths.forEach((t) => thumbRO.observe(t));
+  }
+}
+function unwatchThumbs() { thumbRO?.disconnect(); thumbRO = null; }
+
+async function paintVisit(box, id) {
+  let v;
+  try { v = await auth.isle.view(id); } catch (e) { toast(box, e.message); return; }
+  const { GW, GH } = W;
   box.innerHTML = `<div class="iv-view" role="dialog" aria-label="參觀 ${esc(v.nickname)} 的島">
     <div class="iv-top"><button type="button" class="ghost small" data-iv-back>‹ 回清單</button>
       <p><b>${esc(nameText(v.name))}</b><small>${esc(v.nickname)} 的島</small></p></div>
     <div class="iv-stage"><div class="iv-ground" style="width:${GW}px;height:${GH}px">
-      <img class="land" src="${landSrc(v.theme)}" alt="">
-      <svg class="floor" viewBox="0 0 ${GW} ${GH}" width="${GW}" height="${GH}" aria-hidden="true">${W.floorSvg(items)}</svg>
-      ${trees}${fences}${props}
-      ${pets.map((p, i) => `<span class="iv-pet" style="left:${p.x * GW}px;top:${p.y * GH}px;width:${[0, 84, 98, 112][p.stage] ?? 98}px;z-index:${z(p.y)};--d:${rnd(0, 2).toFixed(2)}s;--k:${i % 2 ? -1 : 1}">
-        <img src="${ctx.art(p.species, p.stage, 'idle')}" alt="${esc(p.name)}"></span>`).join('')}
+      ${islandParts(v).html}
     </div></div>
     <div class="iv-react"></div>
     <p class="note iv-note"></p></div>`;
