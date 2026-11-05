@@ -407,6 +407,14 @@ async function parentcall(fn, args) {
   check(error);
   return data;
 }
+// 信裡的連結要帶回同一個站（正式站或 /dev/ 測試站）；資料庫只接受樂園自己的網址
+const siteBase = () => new URL('./', location.href.split(/[?#]/)[0]).href;
+// 忘記密碼：寄設新密碼的連結給爸媽（還沒登入也能叫）
+export const forgot = {
+  send:  (login) => call('park_forgot_password', { p_login: login.trim().toLowerCase(), p_base: siteBase() }),
+  info:  (token) => call('park_reset_info', { p_token: token }),
+  reset: (token, pw) => call('park_reset_with_token', { p_token: token, p_password: pw }),
+};
 export const parent = {
   me:          () => parentcall('park_parent_me'),
   code:        () => parentcall('park_parent_code'),
@@ -417,6 +425,16 @@ export const parent = {
   sticker:     (id, s) => parentcall('park_parent_sticker', { p_student: id, p_sticker: s }),
   goal:        (id, g) => parentcall('park_parent_goal', { p_student: id, p_goal: g }),
   sign:        (id) => parentcall('park_parent_sign', { p_student: id }),
+  // 雙向同意、解除（park_bind.sql）
+  links:        () => parentcall('park_parent_links_me'),                                   // 孩子：等我確認的大人、已連起來的
+  answer:       (guardian, yes) => parentcall('park_parent_answer', { p_guardian: guardian, p_yes: yes }),
+  notMine:      (guardian, note) => parentcall('park_parent_not_mine', { p_guardian: guardian, p_note: note ?? null }),
+  invite:       (email) => parentcall('park_parent_invite', { p_email: email, p_base: siteBase() }),
+  inviteInfo:   (token) => parentcall('park_parent_invite_info', { p_token: token }),
+  inviteAccept: (token) => parentcall('park_parent_invite_accept', { p_token: token }),
+  waiting:      () => parentcall('park_parent_waiting'),                                    // 大人：等孩子確認中的
+  others:       (id) => parentcall('park_parent_others', { p_student: id }),
+  unbind:       (id, guardian = null) => parentcall('park_parent_unbind', { p_student: id, p_guardian: guardian }),
 };
 
 // ---------- 新手冒險手冊（supabase/park_starter.sql） ----------

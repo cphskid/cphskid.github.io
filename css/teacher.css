@@ -656,3 +656,5 @@ tr.old td{opacity:.6}
 }
 .bar .help.has-dot{position:relative}
 .bar .help.has-dot::after{content:"";position:absolute;top:2px;right:2px;width:10px;height:10px;border-radius:50%;background:var(--red);box-shadow:0 0 0 2px #fff}
+.parent .wait,.parent-mini .wait{margin:8px 0;padding:10px 14px;border-radius:12px;background:#e9f6ff;font-weight:700;color:var(--sea-deep)}
+.kid header .linkish{margin-left:auto;font-size:14px}

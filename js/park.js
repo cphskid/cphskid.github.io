@@ -806,6 +806,11 @@ if (route && me.kind === 'guest') {
   title.hidden = false;
   setScene('title');
   if (account.hasJoinLink && me.kind === 'guest') $('#start').click();   // 老師分享的「帶代碼連結」
+  const reset = new URLSearchParams(location.search).get('reset');   // 爸媽信裡「設新密碼」的連結
+  if (reset && account.available) {
+    history.replaceState(null, '', location.pathname + location.hash);
+    account.openReset(reset);
+  }
   const staff = new URLSearchParams(location.search).get('staff');
   if (staff !== null && account.available) {                                // 老師後台的「建立開班帳號」
     if (me.kind === 'staff') location.replace('teacher.html');

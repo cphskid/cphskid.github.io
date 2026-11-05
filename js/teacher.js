@@ -145,7 +145,8 @@ function ask({ title, body = '', fields = [], ok = '確定', danger = false, onO
 // ---------- 登入 ----------
 function renderLogin(note = '') {
   const parentFirst = !!pendingCode() || WANT_CHILD;
-  if (!note && pendingCode()) note = `收到孩子的家長碼 <b class="pc">${esc(pendingCode())}</b>！已經有帳號就登入；第一次來就在下面建立家長帳號。完成後會自動和孩子連起來。`;
+  if (!note && pendingCode()?.length > 9) note = '孩子寄了邀請給你！已經有帳號就登入；第一次來就在下面建立家長帳號。登入後按「確認」就和孩子連起來。';
+  else if (!note && pendingCode()) note = `收到孩子的家長碼 <b class="pc">${esc(pendingCode())}</b>！已經有帳號就登入；第一次來就在下面建立家長帳號。完成後請孩子在樂園按「是我的爸媽」，就連起來了。`;
   else if (!note && WANT_CHILD) note = '先建立家長帳號（只要 email 和密碼，不用收確認信），接著就能幫孩子開帳號。已經有帳號的直接登入。';
   $('#tabs').hidden = true;
   $('#hero').hidden = true;
@@ -229,7 +230,7 @@ async function start() {
   $('#help').hidden = false;
   $('#mailbox').hidden = false;
   const linking = !!pendingCode();      // 拿著孩子的家長碼進來的：先讓他看到連好的孩子，導覽不要擋在前面
-  await redeemPending(toast);
+  await redeemPending(toast, () => show());
   await show();
   loadInbox(true);
   // 第一次進來跑一次導覽，看過就不再自己跳；家長還沒連孩子時先讓「和孩子連起來」露出來（導覽按「說明」可以再看）
@@ -1630,7 +1631,7 @@ function wireAct(p) {
 }
 
 // ---------- 管理員：家長綁定（park_admin_guardians）：哪個孩子綁了哪個家長 ----------
-const VIA = { create: '家長幫孩子開帳號', code: '孩子給家長碼' };
+const VIA = { create: '家長幫孩子開帳號', code: '孩子給家長碼', email: '孩子寄邀請信' };
 function guardianPanel(links) {
   const head = `<div class="head">${h2('home', `家長綁定${Array.isArray(links) ? `（${new Set(links.map((l) => l.student_id)).size} 個孩子）` : ''}`)}</div>`;
   if (!Array.isArray(links)) {
@@ -1646,17 +1647,18 @@ function guardianPanel(links) {
   const findText = (k) => [k.nickname, k.login, k.class_code, k.class_name, ...k.parents.flatMap((p) => [p.guardian_name, p.guardian_email])]
     .filter(Boolean).join(' ').toLowerCase();
   return `<section class="panel" id="p-guard">${head}
-    <p class="lead">孩子和爸媽連起來之後（家長幫孩子開帳號，或孩子把家長碼給爸媽），這位家長就是孩子的監護人，可以重設密碼、改暱稱、看孩子在哪些班。一個孩子最多兩位。「最近看報告」是那位家長最後一次打開孩子的冒險紀錄。</p>
+    <p class="lead">孩子和爸媽連起來之後（家長幫孩子開帳號、孩子給家長碼後按「是我的爸媽」、或孩子寄邀請信後大人按確認），這位家長就是孩子的監護人，可以重設密碼、改暱稱、看孩子在哪些班。一個孩子最多兩位。「等孩子確認」的還不是監護人。孩子說「不是我的爸媽」超過 7 天的，會出現在「紀錄 → 問題回報」，確認後在這裡按「解除」。</p>
     ${rows.length ? `<form class="form grid" onsubmit="return false"><label>找人<input id="gq" type="search" autocomplete="off" spellcheck="false" placeholder="孩子暱稱、帳號、班級代碼、家長稱呼或 email"></label></form>
     <div class="tablewrap"><table class="adm">
-      <thead><tr><th>孩子</th><th>主要班級</th><th>家長</th><th>怎麼連的</th><th>連起來</th><th>最近看報告</th></tr></thead>
+      <thead><tr><th>孩子</th><th>主要班級</th><th>家長</th><th>怎麼連的</th><th>連起來</th><th>最近看報告</th><th></th></tr></thead>
       <tbody>${rows.map((k) => k.parents.map((p, i) => `<tr data-find="${esc(findText(k))}">
         ${i ? '' : `<td rowspan="${k.parents.length}"><b>${esc(k.nickname)}</b><small class="mono">${esc(k.login)}</small></td>
         <td rowspan="${k.parents.length}">${esc(k.class_name || k.class_code || '沒有班級')}${k.class_code ? `<small class="mono">${esc(k.class_code)}</small>` : ''}</td>`}
         <td><b>${esc(p.guardian_name ?? '')}</b>${p.guardian_active === false ? '<span class="tag bad">已停用</span>' : ''}<small class="mono">${esc(p.guardian_email ?? '')}</small></td>
-        <td>${esc(VIA[p.via] ?? p.via)}</td>
+        <td>${esc(VIA[p.via] ?? p.via)}${p.status === 'pending' ? '<span class="tag">等孩子確認</span>' : ''}</td>
         <td class="nowrap">${esc(when(p.linked_at))}</td>
-        <td class="nowrap">${p.last_view ? esc(ago(p.last_view)) : '<span class="tip">還沒看過</span>'}</td></tr>`).join('')).join('')}</tbody></table></div>
+        <td class="nowrap">${p.last_view ? esc(ago(p.last_view)) : '<span class="tip">還沒看過</span>'}</td>
+        <td><button class="ghost small danger" data-unbind="${esc(k.student_id)}" data-g="${esc(p.guardian)}" data-who="${esc(`${p.guardian_name ?? ''} 和 ${k.nickname}`)}">解除</button></td></tr>`).join('')).join('')}</tbody></table></div>
     <p class="tip" id="gq-none" hidden>找不到符合的人。</p>`
     : '<div class="empty small"><img src="img/admin/tick-empty.webp" alt=""><p>還沒有孩子和爸媽連起來。</p></div>'}
   </section>`;
@@ -1861,6 +1863,14 @@ async function renderAdminParts(parts, host) {
     $$('#p-guard tr[data-find]').forEach((tr) => { const hit = !k || tr.dataset.find.includes(k); tr.hidden = !hit; n += hit; });
     $('#gq-none').hidden = n > 0;
   };
+
+  // 家長綁定：管理員解除（孩子說不是他的爸媽、超過 7 天的）
+  $$('[data-unbind]', host).forEach((b) => {
+    b.onclick = () => {
+      if (!confirm(`解除 ${b.dataset.who} 的連結？雙方的家長都會收到通知信。`)) return;
+      run(b, async () => { await auth.parent.unbind(b.dataset.unbind, b.dataset.g); toast('解除了'); await show(); });
+    };
+  });
 
   // 暱稱禁用字
   $$('tr[data-flag]').forEach((tr) => {

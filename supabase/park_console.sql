@@ -11,6 +11,8 @@
 -- -----------------------------------------------------------------------------
 -- 1. 家長的家庭班
 -- -----------------------------------------------------------------------------
+-- 確認過的監護人才算（status 欄位在 park_bind.sql 也會加，這裡先加好，兩份誰先套都可以）
+alter table public.park_guardians add column if not exists status text not null default 'active';
 -- 孩子所在的班裡，由他的監護人開的家庭班（有好幾個取最早開的）。沒有就是 null。
 create or replace function public.park_home_class_of(p_student uuid)
 returns text language sql stable security definer set search_path = public, pg_temp as $$
@@ -18,7 +20,7 @@ returns text language sql stable security definer set search_path = public, pg_t
     from public.park_class_members m
     join public.classes c on c.code = m.class_code
     join public.park_class_settings s on s.class_code = m.class_code and s.kind = 'home'
-    join public.park_guardians g on g.student_id = m.student_id and g.guardian = c.owner
+    join public.park_guardians g on g.student_id = m.student_id and g.guardian = c.owner and g.status = 'active'
    where m.student_id = p_student
    order by c.created_at nulls last, c.code
    limit 1;

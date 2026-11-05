@@ -1,7 +1,8 @@
 // 後台的爸媽任務（資料庫在 supabase/park_parent.sql）：
 //   「孩子在等你」：我是監護人的每個孩子，還沒做的爸媽任務一格一個按鈕（看冒險、送貼紙、訂本週目標、簽週末聯絡簿）
 //   「幫孩子開帳號」：帳號直接開在家長的家庭班、自動連起來，給一張登入卡
-//   孩子給的家長碼（網址 ?parent=XXXXXX）：登入或註冊後自動連起來
+//   孩子給的家長碼（網址 ?parent=XXXXXX）：登入或註冊後送出，孩子在樂園按「是我的爸媽」才連起來
+//   孩子寄的邀請信（網址 ?invite=…）：登入後大人按確認就連起來
 // 每一項做完孩子下次打開樂園就拿到禮物（伺服器判斷）。
 import * as auth from './auth.js';
 
@@ -12,9 +13,19 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '
 const STICKERS = [['great', '好棒'], ['cheer', '加油'], ['better', '有進步'], ['careful', '好認真'], ['love', '爸媽愛你'], ['play', '一起玩']];
 const GOALS = [['days3', '這週來玩 3 天'], ['stamp2', '這週拿到 2 個護照章'], ['min60', '這週玩滿 60 分鐘']];
 const PENDING = 'park.parent.code';
+const INVITE = 'park.parent.invite';
+// 家長碼連起來之後要等孩子按「是我的爸媽」
+const linkedText = (r) => (r.pending
+  ? `送出了！請「${r.nickname}」打開樂園的「爸媽任務」按「是我的爸媽」，按了才會連起來（孩子確認前你還看不到他的資料）`
+  : `已經和「${r.nickname}」連起來了！孩子下次打開樂園就會拿到神秘蛋`);
 
 // 網址帶的家長碼先記起來（要先登入或註冊），登入後 redeemPending 用掉
 export function rememberCode() {
+  const inv = new URLSearchParams(location.search).get('invite');   // 孩子寄的邀請信（park_bind.sql）
+  if (inv) {
+    try { sessionStorage.setItem(INVITE, inv); } catch { /* 無痕模式 */ }
+    history.replaceState(null, '', location.pathname + location.hash);
+  }
   const code = new URLSearchParams(location.search).get('parent');
   if (!code) return null;
   try { sessionStorage.setItem(PENDING, code.toUpperCase()); } catch { /* 無痕模式 */ }
@@ -25,15 +36,41 @@ export function setPendingCode(code) {
   try { sessionStorage.setItem(PENDING, normCode(code)); return true; } catch { return false; }
 }
 export function pendingCode() {
-  try { return sessionStorage.getItem(PENDING); } catch { return null; }
+  try { return sessionStorage.getItem(PENDING) ?? sessionStorage.getItem(INVITE); } catch { return null; }
 }
-export async function redeemPending(toast) {
-  const code = pendingCode();
+// 登入後：打開孩子寄來的邀請，給大人看是哪個孩子，按確認才連起來
+async function openInvite(token, toast, done) {
+  try { sessionStorage.removeItem(INVITE); } catch { /* 無痕模式 */ }
+  const dlg = $('#dlg');
+  let info;
+  try { info = await auth.parent.inviteInfo(token); } catch (e) { toast(e.message, true); return; }
+  if (info.used) { toast(info.mine ? `你已經和「${info.nickname}」連起來了` : '這個邀請已經用過了', !info.mine); return; }
+  dlg.innerHTML = `<div class="dlg"><h3>「${esc(info.nickname)}」想和你連起來</h3>
+    <p class="lead">孩子的帳號是 <b>${esc(info.login)}</b>，邀請寄到 ${esc(info.email)}。</p>
+    <p>確認以後，你可以看孩子每天玩了什麼、送貼紙、出測驗卷、設定寵物島時間；孩子忘記密碼時，設新密碼的連結也會寄給你。</p>
+    <p class="tip">不認識這個孩子的話，按「不是我的孩子」就好，什麼都不會發生。</p>
+    <p class="msg" hidden></p>
+    <div class="row end"><button type="button" class="ghost" data-no>不是我的孩子</button><button type="button" class="btn go" data-yes>確認，我是爸媽</button></div></div>`;
+  $('[data-no]', dlg).onclick = () => dlg.close();
+  $('[data-yes]', dlg).onclick = async (e) => {
+    const b = e.currentTarget;
+    b.disabled = true;
+    try { const r = await auth.parent.inviteAccept(token); dlg.close(); toast(linkedText(r)); await done?.(); }
+    catch (err) { const m = $('.msg', dlg); m.textContent = err.message; m.hidden = false; b.disabled = false; }
+  };
+  dlg.showModal();
+}
+export async function redeemPending(toast, done) {
+  let inv = null;
+  try { inv = sessionStorage.getItem(INVITE); } catch { /* 無痕模式 */ }
+  if (inv) { openInvite(inv, toast, done); return null; }
+  let code = null;
+  try { code = sessionStorage.getItem(PENDING); } catch { /* 無痕模式 */ }
   if (!code) return null;
   try { sessionStorage.removeItem(PENDING); } catch { /* 無痕模式 */ }
   try {
     const r = await auth.parent.redeem(code);
-    toast(`已經和「${r.nickname}」連起來了！孩子下次打開樂園就會拿到神秘蛋`);
+    toast(linkedText(r));
     return r;
   } catch (e) { toast(e.message, true); return null; }
 }
@@ -58,7 +95,7 @@ function bindCodeForm(box, { toast, reload }) {
     b.disabled = true; msg.hidden = true;
     try {
       const r = await auth.parent.redeem(code);
-      toast(`已經和「${r.nickname}」連起來了！孩子下次打開樂園就會拿到神秘蛋`);
+      toast(linkedText(r));
       await reload();
     } catch (err) { msg.textContent = err.message; msg.hidden = false; b.disabled = false; }
   });
@@ -74,16 +111,19 @@ const STEPS = `<ol class="how">
 export async function renderParent(box, { toast, run, openPlay, homeOnly, refresh, reload, suggestPassword }) {
   let kids;
   try { kids = await auth.parent.kids(); } catch (e) { if (e.missing) { box.innerHTML = ''; return; } throw e; }
+  const waiting = await auth.parent.waiting().catch(() => []);
+  const wait = waiting.length ? `<p class="wait">${waiting.map((w) => `⏳ 等「${esc(w.nickname)}」在樂園「爸媽任務」按「是我的爸媽」`).join('<br>')}</p>` : '';
   const again = reload ?? refresh;
   if (!kids.length && !homeOnly) {
-    box.innerHTML = `<details class="panel parent-mini"><summary><img src="img/parent/letter.webp" alt="">家長要和孩子連起來？輸入孩子給的家長碼 ›</summary>
-      ${STEPS}${codeForm(true)}</details>`;
+    box.innerHTML = `<details class="panel parent-mini" ${waiting.length ? 'open' : ''}><summary><img src="img/parent/letter.webp" alt="">家長要和孩子連起來？輸入孩子給的家長碼 ›</summary>
+      ${wait}${STEPS}${codeForm(true)}</details>`;
     bindCodeForm(box, { toast, reload: again });
     return;
   }
   box.innerHTML = `<section class="panel parent">
     <div class="head"><h2><img class="hi" src="img/parent/letter.webp" alt="">${kids.length ? '孩子在等你' : '和孩子連起來'}</h2>
       ${kids.length ? '<span class="row"><button class="btn small ghost" data-more>＋ 再連一個孩子</button><button class="btn small go" data-child>＋ 幫孩子開帳號</button></span>' : ''}</div>
+    ${wait}
     ${kids.length ? `<div class="link-more" hidden>${STEPS}${codeForm(true)}</div>
       <p class="lead">每做一項，孩子下次打開樂園就會收到禮物。什麼時候做都可以，不會過期。</p>` : `<div class="link-two">
       <div class="way"><h3><span class="n">A</span>孩子已經在玩</h3>${STEPS}${codeForm()}</div>
@@ -109,6 +149,7 @@ export async function renderParent(box, { toast, run, openPlay, homeOnly, refres
     $$('[data-goal]', card).forEach((b) => {
       b.onclick = () => run(b, async () => { await auth.parent.goal(k.id, b.dataset.goal); toast('本週目標訂好了'); await refresh(); });
     });
+    $('[data-adults]', card).onclick = () => adults(k, { toast, refresh: again });
     const sign = $('[data-sign]', card);
     if (sign) sign.onclick = () => run(sign, async () => { await auth.parent.sign(k.id); toast('聯絡簿簽好了，孩子會收到 30 時光幣'); await refresh(); });
   }
@@ -120,7 +161,7 @@ function kidCard(k) {
   const places = (w.places ?? []).slice(0, 4).map(esc).join('、');
   const todo = [!k.viewed, !k.stickers, !k.goal, !k.signed].filter(Boolean).length;
   return `<article class="kid" data-kid="${esc(k.id)}">
-    <header><b>${esc(k.nickname)}</b><small>帳號 ${esc(k.login)}</small>${todo ? `<span class="chip warn">${todo} 件等你</span>` : '<span class="chip ok">這週都做完了</span>'}</header>
+    <header><b>${esc(k.nickname)}</b><small>帳號 ${esc(k.login)}</small><button class="linkish" data-adults>連起來的大人</button>${todo ? `<span class="chip warn">${todo} 件等你</span>` : '<span class="chip ok">這週都做完了</span>'}</header>
     <p class="wk">這週：來玩 <b>${w.days ?? 0}</b> 天、玩了 <b>${w.minutes ?? 0}</b> 分鐘、拿到 <b>${w.stamps ?? 0}</b> 個護照章${places ? `；去了${places}` : ''}</p>
     <ol class="steps">
       <li class="${k.viewed ? 'done' : ''}"><span>看看孩子的冒險</span><small>${k.viewed ? '孩子拿到 100 時光幣了' : '看完孩子拿到 100 時光幣'}</small>
@@ -133,6 +174,33 @@ function kidCard(k) {
         ${k.signed ? '' : '<button class="btn small" data-sign>簽名</button>'}</li>
     </ol>
   </article>`;
+}
+
+// 連起來的大人：解除自己、移除不認識的另一位（雙方都會收到信）
+async function adults(k, { toast, refresh }) {
+  const dlg = $('#dlg');
+  let list;
+  try { list = await auth.parent.others(k.id); } catch (e) { toast(e.message, true); return; }
+  dlg.innerHTML = `<div class="dlg"><h3>和「${esc(k.nickname)}」連起來的大人</h3>
+    <ul class="qt-gcls">${list.map((g) => `<li><b>${esc(g.name)}${g.mine ? '（你）' : ''}</b>
+      <small>${g.status === 'pending' ? '等孩子確認' : '已連起來'}</small>
+      <button type="button" class="ghost small danger" data-off="${esc(g.id)}" data-mine="${g.mine ? 1 : ''}">${g.mine ? '解除我和孩子的連結' : '移除這位大人'}</button></li>`).join('')}</ul>
+    <p class="tip">解除以後就看不到孩子的資料，孩子也會離開你的家庭班。不認識的大人可以直接移除，孩子的爸媽都會收到通知信。</p>
+    <div class="row end"><button type="button" class="btn" data-close>關起來</button></div></div>`;
+  $('[data-close]', dlg).onclick = () => dlg.close();
+  dlg.querySelectorAll('[data-off]').forEach((b) => {
+    b.onclick = async () => {
+      if (!b.dataset.sure) { b.dataset.sure = '1'; b.textContent = '確定嗎？再按一次'; return; }
+      b.disabled = true;
+      try {
+        await auth.parent.unbind(k.id, b.dataset.mine ? null : b.dataset.off);
+        dlg.close();
+        toast(b.dataset.mine ? `解除了，你和 ${k.nickname} 不再連在一起` : '移除了');
+        await refresh();
+      } catch (err) { toast(err.message, true); b.disabled = false; }
+    };
+  });
+  if (!dlg.open) dlg.showModal();
 }
 
 // 幫孩子開帳號：開好給一張登入卡（帳號、密碼、樂園網址的 QR）
