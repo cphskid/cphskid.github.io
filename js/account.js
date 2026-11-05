@@ -181,11 +181,13 @@ function openLogin(tab = 'login') {
     </form>
     <p class="tip">${reg
       ? (joinCode ? '班級代碼已經幫你填好了。' : '') + '帳號是登入用的，暱稱是大家看得到的名字。不用真實姓名，也不用 email。'
-      : '在守護異世界註冊過的，直接用同一組帳號密碼。忘記密碼請老師幫你重設。'}</p>
+      : '在守護異世界註冊過的，直接用同一組帳號密碼。'}</p>
+    ${reg ? '' : '<button type="button" class="link" data-forgot>忘記密碼？</button>'}
     <button type="button" class="link" data-staff>我是老師／家長 ›</button>`, { tick: reg ? 'cheer' : 'wave' });
 
   layer.querySelectorAll('[data-tab]').forEach((b) => { b.onclick = () => openLogin(b.dataset.tab); });
   $('[data-staff]', layer).onclick = () => openStaff();
+  $('[data-forgot]', layer)?.addEventListener('click', () => openForgot($('form', layer).elements.id.value.trim()));
   const f = $('form', layer);
   const v = (n) => (f.elements[n]?.value ?? '').trim();
   // 帳號只留英數底線、轉小寫；代碼轉大寫（跟守護異世界一樣）
@@ -203,6 +205,65 @@ function openLogin(tab = 'login') {
   }, async () => {
     if (reg) await auth.studentRegister(v('id'), f.elements.pw.value, v('nick'), v('code'));
     else await auth.studentLogin(v('id'), f.elements.pw.value);
+    await loggedIn();
+  });
+}
+
+// ---------- 忘記密碼：寄設新密碼的連結給爸媽（supabase/park_bind.sql） ----------
+function openForgot(id = '') {
+  show(`
+    <h2>忘記密碼</h2>
+    <p class="lead">打你的帳號，我們會寄一封信給和你連起來的爸媽，請爸媽陪你設一組新密碼。</p>
+    <form class="form" novalidate>
+      <label>帳號<input name="id" maxlength="16" value="${esc(id)}" autocomplete="username" autocapitalize="off" spellcheck="false" placeholder="英文或數字，例如 ming123"></label>
+      <p class="msg" hidden></p>
+      <button class="btn go" type="submit">寄信給爸媽</button>
+    </form>
+    <button type="button" class="link" data-back>‹ 回登入</button>`, { tick: 'thinking' });
+  $('[data-back]', layer).onclick = () => openLogin();
+  const f = $('form', layer);
+  f.elements.id.addEventListener('input', (e) => { e.target.value = e.target.value.replace(/[^A-Za-z0-9_]/g, '').toLowerCase(); });
+  onSubmit(f, () => (f.elements.id.value.trim().length < 3 ? '要先填你的帳號喔' : null), async () => {
+    const r = await auth.forgot.send(f.elements.id.value);
+    show(r?.sent?.length ? `
+      <h2>信寄出去了</h2>
+      <p class="lead">寄到爸媽的信箱：<b>${r.sent.map(esc).join('、')}</b></p>
+      <p>請爸媽打開信，按「設新密碼」，陪你設一組新的。30 分鐘內有效。沒看到信的話，請爸媽看一下垃圾信件匣。</p>
+      <div class="row"><button class="btn" data-back>回登入</button></div>` : `
+      <h2>請老師幫你重設</h2>
+      <p class="lead">這個帳號還沒有和爸媽連起來，沒辦法寄信。</p>
+      <p>請老師（或在後台和你連起來的爸媽）幫你重設密碼。登入以後到「爸媽任務」和爸媽連起來，下次忘記密碼就能寄信給爸媽了。</p>
+      <div class="row"><button class="btn" data-back>回登入</button></div>`, { tick: r?.sent?.length ? 'cheer' : 'thinking' });
+    $('[data-back]', layer).onclick = () => openLogin();
+  });
+}
+// 爸媽信裡的連結（/?reset=…）：設新密碼，設好直接登入
+export async function openReset(token) {
+  let info;
+  try { info = await auth.forgot.info(token); } catch (e) { info = { ok: false, reason: e.message }; }
+  if (!info?.ok) {
+    show(`<h2>連結不能用了</h2><p class="lead">${esc(info?.reason ?? '這個連結過期或用過了')}</p>
+      <div class="row"><button class="btn" data-back>回登入</button></div>`, { tick: 'thinking' });
+    $('[data-back]', layer).onclick = () => openLogin();
+    return;
+  }
+  show(`
+    <h2>幫 ${esc(info.nickname)} 設新密碼</h2>
+    <p class="lead">帳號 <b>${esc(info.login)}</b>。設好就會直接登入。</p>
+    <form class="form" novalidate>
+      <label>新密碼<input name="pw" type="password" maxlength="32" autocomplete="new-password" placeholder="6 個以上的英文或數字"></label>
+      <label>再打一次<input name="pw2" type="password" maxlength="32" autocomplete="new-password"></label>
+      <p class="msg" hidden></p>
+      <button class="btn go" type="submit">設好了，進入樂園</button>
+    </form>`, { tick: 'point' });
+  const f = $('form', layer);
+  onSubmit(f, () => {
+    if (f.elements.pw.value.length < 6) return `密碼至少要 6 個字（現在 ${f.elements.pw.value.length} 個）`;
+    if (f.elements.pw.value !== f.elements.pw2.value) return '兩次打的不一樣，再打一次';
+    return null;
+  }, async () => {
+    const login = await auth.forgot.reset(token, f.elements.pw.value);
+    await auth.studentLogin(login, f.elements.pw.value);
     await loggedIn();
   });
 }

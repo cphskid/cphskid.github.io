@@ -160,6 +160,7 @@ function show(html) {
 export function close() {
   if (layer.hidden) return;
   stopScene();
+  clearInterval(limitTimer); limitTimer = 0;
   layer.hidden = true;
   layer.innerHTML = '';
   playlog.at('gate', '樂園大廳');
@@ -178,9 +179,37 @@ function problem(msg) {
     <div class="row"><button class="btn small" data-close>好</button></div></div></div>`);
 }
 
+// ---------- 每天可以玩幾分鐘（老師後台「設定」→ 寵物島時間；家長設的優先，park_console.sql） ----------
+let limitTimer = 0;
+async function petLimit() {
+  try { return (await api.limit?.()) ?? null; } catch { return null; }   // 沒裝 SQL、斷線：不擋
+}
+function tired(lim) {
+  clearInterval(limitTimer); limitTimer = 0;
+  const who = lim.by === 'home' ? '爸媽' : '老師';
+  show(`<div class="den small" role="dialog" aria-modal="true" aria-label="寵物島">
+    <button class="x" data-close aria-label="關閉"></button>
+    <img class="tick" src="img/tick/thinking.webp" alt="">
+    <div><h2>今天的寵物島時間到囉</h2><p class="lead">${who}設定每天可以在寵物島玩 ${Number(lim.min)} 分鐘，夥伴們也要休息了。明天再來看牠們吧！</p>
+    <div class="row"><button class="btn small" data-close>好</button></div></div></div>`);
+  playlog.at('gate', '樂園大廳');
+}
+function watchLimit(lim) {
+  clearInterval(limitTimer); limitTimer = 0;
+  if (lim?.min == null) return;
+  limitTimer = setInterval(async () => {
+    if (layer.hidden) { clearInterval(limitTimer); limitTimer = 0; return; }
+    const now = await petLimit();
+    if (now?.min != null && now.left_sec <= 0) tired(now);
+  }, 60000);
+}
+
 export async function open() {
   if (hooks.me().kind !== 'student') return;
+  const lim = await petLimit();
+  if (lim?.min != null && lim.left_sec <= 0) return tired(lim);
   playlog.at('pet', '寵物島');
+  watchLimit(lim);
   if (!state) {
     try { state = await api.me(); } catch (e) { problem(e.missing ? '夥伴們很快就會搬進寵物島，再等一下下！' : e.message); return; }
   }

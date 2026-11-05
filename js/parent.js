@@ -2,7 +2,7 @@
 //
 // 不強制綁家長：孩子用禮物拜託爸媽，爸媽做一次就送孩子東西，任務不限天數、什麼時候做都可以。
 // 功能列的「爸媽任務」打開卡片：5 項一次性任務＋每週的週末聯絡簿；還沒連起來的，按「拿給爸媽看」
-// 秀 QR（帶一次性家長碼），爸媽掃了在後台註冊就連起來。做沒做到是伺服器判斷的，打開卡片時自動發獎。
+// 秀 QR（帶一次性家長碼），爸媽掃了在後台註冊，孩子再按「是我的爸媽」才連起來；也可以填爸媽信箱寄邀請信。做沒做到是伺服器判斷的，打開卡片時自動發獎。
 import * as auth from './auth.js';
 import { wrapWallet } from './wallet-scroll.js';
 import { guide as installGuide } from './install.js';
@@ -16,6 +16,8 @@ const layer = $('#shop');          // 跟錢包、商店、新手手冊共用一
 const SEEN = 'park-parent-seen';   // 今天打開過卡片就不再亮紅點
 let hooks = { me: () => ({ kind: 'guest' }), toast: () => {}, coins: () => {}, pets: () => {} };
 let st = null;
+let links = { pending: [], guardians: [] };   // 等我確認的大人、已經連起來的（park_bind.sql）
+let asked = false;                           // 有大人等確認：這次打開樂園自動跳一次
 
 const TASKS = {
   link:    { name: '和爸媽連起來', gift: '神秘蛋', art: 'img/parent/egg.webp' },
@@ -35,9 +37,11 @@ export async function load(w = hooks.me()) {
   st = null;
   if (w.kind === 'student') {
     try { st = await auth.parent.me(); } catch { st = null; }
+    try { links = (await auth.parent.links()) ?? links; } catch { links = { pending: [], guardians: [] }; }
   }
   paint();
   if (st?.fresh?.length) announce(st.fresh);
+  if (st && links.pending.length && !asked) { asked = true; setTimeout(() => { if (layer.hidden) open(); }, 1200); }
   return st;
 }
 
@@ -56,14 +60,14 @@ function paint() {
   const left = st.tasks.filter((t) => !t.done).length;
   let seen = '';
   try { seen = localStorage.getItem(SEEN) ?? ''; } catch { /* 無痕模式 */ }
-  $('.dot', btn).hidden = (left === 0 && st.signed) || seen === today();
+  $('.dot', btn).hidden = !links.pending.length && ((left === 0 && st.signed) || seen === today());
 }
 
 // 下一個動作：每一格都寫現在要做什麼（不要讓孩子不知道怎麼辦）
 function next(code) {
-  if (!st.linked && code === 'link') return '按上面的「拿給爸媽看」';
+  if (!st.linked && code === 'link') return '按上面的「拿給爸媽看」。連起來以後，忘記密碼可以寄信給爸媽幫你找回來';
   if (!st.linked && code !== 'app') return '和爸媽連起來之後就能做';
-  if (code === 'link') return `已經和 ${st.parents.map(esc).join('、')} 連起來了`;
+  if (code === 'link') return `已經和 ${st.parents.map(esc).join('、')} 連起來了。忘記密碼時，可以寄信給爸媽幫你設新密碼`;
   const done = st.tasks.find((t) => t.code === code)?.done;
   if (code === 'view') return done ? '爸媽看過了，拿到 100 時光幣' : '請爸媽打開後台，看看你的冒險';
   if (code === 'sticker') return done ? '收到貼紙了！親子長椅在寵物島的佈置裡' : '請爸媽在後台送你一張貼紙';
@@ -104,6 +108,9 @@ export function open() {
     <button class="x" data-close aria-label="關閉"></button>
     <h2><img src="img/parent/letter.webp" alt="">爸媽任務</h2>
     <p class="lead">請爸媽幫你完成，每一項都送你禮物。什麼時候做都可以，不會過期。</p>
+    ${links.pending.map((g) => `<div class="link-box ask" data-ask="${esc(g.id)}"><img src="img/parent/letter.webp" alt="">
+      <p><b>「${esc(g.name)}」說是你的爸媽</b><span>是你的爸爸、媽媽或家人嗎？按「是」才會連起來；不認識就按「不是」。</span></p>
+      <span class="row"><button type="button" class="btn small go" data-yes>是我的爸媽</button><button type="button" class="ghost small" data-no>不是</button></span></div>`).join('')}
     ${st.linked ? '' : `<div class="link-box"><img src="img/parent/egg.webp" alt=""><p><b>和爸媽連起來，送你神秘蛋！</b><span>按下面的按鈕，把畫面拿給爸媽掃一下。</span></p>
       <button type="button" class="btn small go" data-show>拿給爸媽看</button></div>`}
     <ul class="daily">${rows}</ul>
@@ -111,12 +118,61 @@ export function open() {
     <p class="week ${st.signed ? 'ok' : ''}">${st.signed ? '✓ 這週爸媽已經簽名了，+30 時光幣' : st.linked ? '請爸媽在後台看這週的冒險、按「簽名」，送你 30 時光幣' : '和爸媽連起來之後，每週爸媽簽名就送 30 時光幣'}</p>
     <div class="photo"><img src="img/pet/furniture/family-photo.webp" alt=""><p>簽滿 4 次送「全家福相框」<span class="bar"><i style="width:${Math.min(100, signs * 25)}%"></i></span><small>${Math.min(signs, 4)}/4</small></p></div>
     ${stickers ? `<h3>爸媽送的貼紙</h3><p class="stks">${stickers}</p>` : ''}
-    ${st.linked && (st.parents?.length ?? 0) < 2 ? '<p class="tip"><button type="button" class="link" data-show>再連一位爸媽 ›</button></p>' : ''}
+    ${links.guardians.length ? `<h3>和我連起來的大人</h3><ul class="glist">${links.guardians.map((g) => `<li><b>${esc(g.name)}</b>
+      <button type="button" class="link" data-notmine="${esc(g.id)}" data-name="${esc(g.name)}">這不是我的爸媽</button></li>`).join('')}</ul>` : ''}
+    ${(st.parents?.length ?? 0) < 2 ? `<p class="tip">${st.linked ? '<button type="button" class="link" data-show>再連一位爸媽 ›</button>　' : ''}<button type="button" class="link" data-mail>爸媽不在旁邊？寄信給爸媽 ›</button></p>` : ''}
     <div class="row end"><button type="button" class="ghost" data-close>關閉</button></div>
   </div>`);
   layer.querySelectorAll('[data-show]').forEach((b) => { b.onclick = () => showCode(); });
+  layer.querySelectorAll('[data-ask]').forEach((box) => {
+    const answer = async (yes) => {
+      box.querySelectorAll('button').forEach((b) => { b.disabled = true; });
+      try {
+        hooks.toast(await auth.parent.answer(box.dataset.ask, yes));
+        await load();
+        open();
+      } catch (e) { hooks.toast(e.message); box.querySelectorAll('button').forEach((b) => { b.disabled = false; }); }
+    };
+    $('[data-yes]', box).onclick = () => answer(true);
+    $('[data-no]', box).onclick = () => answer(false);
+  });
+  layer.querySelectorAll('[data-notmine]').forEach((b) => {
+    b.onclick = async () => {
+      if (!b.dataset.sure) { b.dataset.sure = '1'; b.textContent = `確定「${b.dataset.name}」不是你的爸媽？再按一次`; return; }
+      b.disabled = true;
+      try { hooks.toast(await auth.parent.notMine(b.dataset.notmine)); await load(); open(); }
+      catch (e) { hooks.toast(e.message); b.disabled = false; }
+    };
+  });
+  $('[data-mail]', layer)?.addEventListener('click', () => showMail());
   const app = $('[data-app]', layer);
   if (app) app.onclick = () => { close(); installGuide(); };
+}
+
+// 寄信給爸媽：填爸媽的信箱，爸媽在信裡按確認才會連起來
+function showMail() {
+  show(`<div class="wallet parent-card code" role="dialog" aria-modal="true" aria-label="寄信給爸媽">
+    <button class="x" data-close aria-label="關閉"></button>
+    <h2>寄信給爸媽</h2>
+    <p class="lead">請爸媽告訴你他的 email。我們寄一封信過去，爸媽在信裡按「確認」就和你連起來。</p>
+    <form class="pmail" novalidate><input name="email" type="email" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="例如 mom@gmail.com">
+      <button class="btn small go" type="submit">寄出</button><p class="msg" hidden></p></form>
+    <p class="tip">要填爸爸、媽媽或家人自己的信箱。寄錯了也沒關係，對方不按確認就不會連起來。</p>
+    <div class="row end"><button type="button" class="ghost" data-back>回爸媽任務</button></div>
+  </div>`);
+  $('[data-back]', layer).onclick = () => open();
+  const f = $('form.pmail', layer);
+  f.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const msg = $('.msg', f), b = $('button', f), v = f.elements.email.value.trim();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)) { msg.textContent = '信箱看起來不太對，請爸媽幫你看一下'; msg.hidden = false; return; }
+    b.disabled = true; msg.hidden = true;
+    try {
+      const masked = await auth.parent.invite(v);
+      f.innerHTML = `<p class="lead">寄出去了！寄到 <b>${esc(masked)}</b>。請爸媽打開信按「確認我是爸媽」，連起來你就會拿到神秘蛋。</p>`;
+      sfx('SE-18');
+    } catch (err) { msg.textContent = err.message; msg.hidden = false; b.disabled = false; }
+  });
 }
 
 // 給爸媽掃的 QR：網址帶一次性家長碼，爸媽掃了直接到後台「連起來」
@@ -144,14 +200,14 @@ async function showCode() {
   } catch { /* QR 載不到就只給代碼 */ }
   const back = new URL('teacher.html', location.href.split('#')[0]);
   const backShort = back.host + back.pathname;
-  const text = `我在玩「時空冒險樂園」，幫我完成爸媽任務好嗎？打開這個連結就能和我連起來：${url}\n（或打開 ${backShort} 登入後台，在「我的班級」最上面輸入家長碼 ${c.code}）`;
+  const text = `我在玩「時空冒險樂園」，幫我完成爸媽任務好嗎？打開這個連結就能和我連起來：${url}\n（或打開 ${backShort} 登入後台，在「首頁」最上面輸入家長碼 ${c.code}）`;
   show(`<div class="wallet parent-card code" role="dialog" aria-modal="true" aria-label="拿給爸媽看">
     <button class="x" data-close aria-label="關閉"></button>
     <h2>拿給爸媽看</h2>
     <p class="lead">請爸媽用手機相機掃這個 QR，登入或建立家長帳號後就和你連起來。</p>
     <div class="qr">${svg}</div>
     <p class="pcode">家長碼 <b>${esc(c.code)}</b><small>14 天內有效，用過一次就換新的</small></p>
-    <p class="tip">不能掃？爸媽打開 <b>${esc(backShort)}</b> 登入，在「我的班級」最上面輸入這 6 碼。</p>
+    <p class="tip">不能掃？爸媽打開 <b>${esc(backShort)}</b> 登入，在「首頁」最上面輸入這 6 碼。</p>
     <div class="row center"><button type="button" class="btn small go" data-share>傳給爸媽</button></div>
     <p class="tip">爸媽不在旁邊？按「傳給爸媽」用 LINE 或簡訊傳過去。</p>
     <div class="row end"><button type="button" class="ghost" data-back>回爸媽任務</button></div>

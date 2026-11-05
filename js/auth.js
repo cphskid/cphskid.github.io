@@ -257,6 +257,10 @@ export const feedback = {
   triage: (id, status) => call('triage_feedback', { p_id: id, p_status: status, p_note: '' }),
   reply:  (id, text) => call('reply_feedback', { p_id: id, p_reply: text }),
   hide:   (id, hidden) => call('hide_feedback', { p_id: id, p_hidden: hidden }),
+  // 大人在後台送的建議（「？」→ 功能建議），和自己送過的、管理員的回覆
+  submit: (kind, text, screen, ctx) => call('submit_feedback', { p_kind: kind, p_message: text, p_screen: screen, p_context: ctx }),
+  mine:   () => call('my_feedback'),
+  seen:   () => call('seen_my_feedback'),
 };
 
 // 許願池（park_wish.sql）：還沒開幕的設施，大家選「多想玩」。回傳 { counts:[四段票數], mine }
@@ -314,6 +318,9 @@ export const pet = {
   bowl:          () => petcall('park_pet_bowl_fill'),      // 飼料盆放一份時光飼料（park_pet.sql）
   classQuiet:    (code) => petcall('park_pet_class_quiet', { p_code: code }),
   setClassQuiet: (code, on) => petcall('park_pet_set_class_quiet', { p_code: code, p_quiet: on }),
+  limit:         () => petcall('park_pet_limit_me'),                       // 今天寵物島還能玩多久（park_console.sql）
+  classConfig:   (code) => petcall('park_class_config', { p_code: code }),
+  setClassLimit: (code, min) => petcall('park_class_set_pet_limit', { p_code: code, p_min: min }),
 };
 
 // ---------- 寵物島裝扮、拜訪、今日精選（supabase/park_isle.sql） ----------
@@ -400,6 +407,14 @@ async function parentcall(fn, args) {
   check(error);
   return data;
 }
+// 信裡的連結要帶回同一個站（正式站或 /dev/ 測試站）；資料庫只接受樂園自己的網址
+const siteBase = () => new URL('./', location.href.split(/[?#]/)[0]).href;
+// 忘記密碼：寄設新密碼的連結給爸媽（還沒登入也能叫）
+export const forgot = {
+  send:  (login) => call('park_forgot_password', { p_login: login.trim().toLowerCase(), p_base: siteBase() }),
+  info:  (token) => call('park_reset_info', { p_token: token }),
+  reset: (token, pw) => call('park_reset_with_token', { p_token: token, p_password: pw }),
+};
 export const parent = {
   me:          () => parentcall('park_parent_me'),
   code:        () => parentcall('park_parent_code'),
@@ -410,6 +425,16 @@ export const parent = {
   sticker:     (id, s) => parentcall('park_parent_sticker', { p_student: id, p_sticker: s }),
   goal:        (id, g) => parentcall('park_parent_goal', { p_student: id, p_goal: g }),
   sign:        (id) => parentcall('park_parent_sign', { p_student: id }),
+  // 雙向同意、解除（park_bind.sql）
+  links:        () => parentcall('park_parent_links_me'),                                   // 孩子：等我確認的大人、已連起來的
+  answer:       (guardian, yes) => parentcall('park_parent_answer', { p_guardian: guardian, p_yes: yes }),
+  notMine:      (guardian, note) => parentcall('park_parent_not_mine', { p_guardian: guardian, p_note: note ?? null }),
+  invite:       (email) => parentcall('park_parent_invite', { p_email: email, p_base: siteBase() }),
+  inviteInfo:   (token) => parentcall('park_parent_invite_info', { p_token: token }),
+  inviteAccept: (token) => parentcall('park_parent_invite_accept', { p_token: token }),
+  waiting:      () => parentcall('park_parent_waiting'),                                    // 大人：等孩子確認中的
+  others:       (id) => parentcall('park_parent_others', { p_student: id }),
+  unbind:       (id, guardian = null) => parentcall('park_parent_unbind', { p_student: id, p_guardian: guardian }),
 };
 
 // ---------- 新手冒險手冊（supabase/park_starter.sql） ----------
@@ -439,4 +464,5 @@ export const quiz = {
   adminBank: () => call('park_quiz_admin_bank'),
   review:    (item, status, body = null, note = null) => call('park_quiz_review', { p_item: item, p_status: status, p_body: body, p_note: note }),
   flagDone:  (id, wrong) => call('park_quiz_flag_done', { p_id: id, p_wrong: wrong }),
+  adminPapers: () => call('park_quiz_admin_papers'),                       // 管理員：全站測驗卷（park_console.sql）
 };
