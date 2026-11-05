@@ -16,7 +16,34 @@ let ctx = null;          // { view, classes, active, setActive, toast, admin }
 let sub = 'new';         // new 出新卷／papers 出過的卷／map 學習地圖／bank 題庫審核
 let cache = { code: null, bank: null, klass: null };
 let draft = null;        // 出卷中：{ kids:[id], mode, n, subjects, places, plan:{kid:[{item,bucket}]}, at }
-let stale = false;       // 題庫審核改過題目：回到出卷頁要重讀題庫
+let stale = false;
+// 人多的班（試玩班上千人）：孩子清單只列 40 個，其他打字找；出卷預設不勾任何人，避免一按就寄給全班
+const BIG = 40;
+function kidFilter(root) {
+  $$('.kidpick', root).forEach((wrap) => {
+    const items = [...wrap.children];
+    if (items.length <= BIG) return;
+    const keep = (el) => el.classList.contains('on') || !!el.querySelector('input:checked');
+    const q = document.createElement('input');
+    q.type = 'search'; q.className = 'kidq'; q.placeholder = `這班有 ${items.length} 人，打暱稱找`;
+    const more = document.createElement('small');
+    more.className = 'tip';
+    const show = () => {
+      const k = q.value.trim().toLowerCase();
+      let n = 0, hid = 0;
+      for (const el of items) {
+        let hit = keep(el);
+        if (!hit && (!k || el.textContent.toLowerCase().includes(k)) && n < BIG) { hit = true; n++; }
+        el.hidden = !hit;
+        if (!hit) hid++;
+      }
+      more.textContent = hid ? `還有 ${hid} 人沒列出來，打暱稱找。` : '';
+    };
+    q.oninput = show;
+    wrap.before(q); wrap.after(more);
+    show();
+  });
+}       // 題庫審核改過題目：回到出卷頁要重讀題庫
 
 export async function renderQuiz(view, c) {
   ctx = { ...c, view };
@@ -87,7 +114,7 @@ function paintNew(box) {
   }
   if (!draft) {
     const home = cache.klass.kind === 'home';
-    draft = { kids: kids.map((k) => k.id), mode: home || kids.length <= 3 ? 'each' : 'same', n: 20,
+    draft = { kids: kids.length > BIG ? [] : kids.map((k) => k.id), mode: home || kids.length <= 3 ? 'each' : 'same', n: 20,
               subjects: new Set(['soc', 'sci']), places: null, plan: null, at: kids[0].id, title: `試煉卷 ${date(Date.now())}` };
   }
   const live = cache.bank.items.length;
@@ -106,8 +133,9 @@ function paintNew(box) {
     <div class="qt-form">
       <label>卷名<input id="qt-title" maxlength="30" value="${esc(draft.title)}"></label>
       <div><b>給誰寫</b> <small id="qt-kidn">選了 ${draft.kids.length}／${kids.length} 人</small>
-        ${kids.length > 1 ? '<span class="qt-all"><button type="button" class="ghost small" data-all="1">全選</button><button type="button" class="ghost small" data-all="0">全部取消</button></span>' : ''}
-        <div class="chips">${kids.map((k) => `<label class="chip"><input type="checkbox" data-kid="${k.id}" ${draft.kids.includes(k.id) ? 'checked' : ''}>${esc(k.nickname)}</label>`).join('')}</div></div>
+        ${kids.length > 1 ? `<span class="qt-all"><button type="button" class="ghost small" data-all="1">${kids.length > BIG ? '勾選列出來的' : '全選'}</button><button type="button" class="ghost small" data-all="0">全部取消</button></span>` : ''}
+        ${kids.length > BIG ? '<small class="tip">這班人很多，先找到要出卷的孩子再勾。</small>' : ''}
+        <div class="chips kidpick">${kids.map((k) => `<label class="chip"><input type="checkbox" data-kid="${k.id}" ${draft.kids.includes(k.id) ? 'checked' : ''}>${esc(k.nickname)}</label>`).join('')}</div></div>
       <div><b>怎麼挑</b><div class="chips">
         <label class="chip"><input type="radio" name="mode" value="each" ${draft.mode === 'each' ? 'checked' : ''}>每個孩子照自己的錯題挑（建議）</label>
         <label class="chip"><input type="radio" name="mode" value="same" ${draft.mode === 'same' ? 'checked' : ''}>大家同一份</label></div></div>
@@ -153,7 +181,8 @@ function paintNew(box) {
   $('#qt-title').onchange = read;
   const kidCount = () => { $('#qt-kidn').textContent = `選了 ${$$('[data-kid]:checked', box).length}／${kids.length} 人`; };
   $$('[data-kid]', box).forEach((x) => { x.onchange = kidCount; });
-  $$('[data-all]', box).forEach((b) => { b.onclick = () => { $$('[data-kid]', box).forEach((x) => { x.checked = b.dataset.all === '1'; }); kidCount(); }; });
+  $$('[data-all]', box).forEach((b) => { b.onclick = () => { $$('[data-kid]', box).filter((x) => b.dataset.all === '0' || !x.closest('label').hidden).forEach((x) => { x.checked = b.dataset.all === '1'; }); kidCount(); }; });
+  kidFilter(box);
   $('#qt-reload')?.addEventListener('click', async () => { await load(true); paintNew(box); });
   $('#qt-pick').onclick = () => {
     read();
@@ -239,6 +268,7 @@ function paintPlan(box) {
     if (lens.size > 1) return ctx.toast('每個孩子的題數要一樣，請調整一下', true);
     if (!plan[0]?.items.length) return ctx.toast('卷上還沒有題目', true);
     if (plan[0].items.length > 30) return ctx.toast('一張卷最多 30 題', true);
+    if (kids.length > BIG && !confirm(`這張卷會寄給 ${kids.length} 個孩子，每個人都會收到信鴿信。確定要寄嗎？`)) return;
     e.target.disabled = true;
     try {
       await quiz.create(ctx.active, draft.title, plan);
@@ -372,7 +402,7 @@ async function paintReport(box, paperId) {
   const kd = kidsOf().find((x) => x.id === repKid) ?? { played: [], game: [] };
   const played = new Set(kd.played), game = new Map(kd.game.map(([kp, ok]) => [kp, ok]));
   const head = `<section class="panel"><div class="head"><h2>${esc(r.title)}</h2><button class="ghost small" data-back>← 出過的卷</button></div>
-    <div class="chips">${kids.map((x) => `<button class="chip${x.id === repKid ? ' on' : ''}" data-kid="${x.id}">${esc(x.nickname)} ${x.done ? x.score + ' 分' : '還沒交'}</button>`).join('')}</div></section>`;
+    <div class="chips kidpick">${kids.map((x) => `<button class="chip${x.id === repKid ? ' on' : ''}" data-kid="${x.id}">${esc(x.nickname)} ${x.done ? x.score + ' 分' : '還沒交'}</button>`).join('')}</div></section>`;
   if (!k?.done) {
     box.innerHTML = head + `<section class="panel"><div class="empty"><img src="img/admin/tick-empty.webp" alt=""><p>${esc(k?.nickname ?? '')} 還沒交卷。交了以後這裡會有每一題的分析。</p></div></section>`;
     return wire();
@@ -416,6 +446,7 @@ async function paintReport(box, paperId) {
   function wire() {
     $('[data-back]', box).onclick = () => { sub = 'papers'; paint(); };
     $$('[data-kid]', box).forEach((b) => { b.onclick = () => { repKid = b.dataset.kid; paintReport(box, paperId); }; });
+    kidFilter(box);
   }
 }
 
@@ -432,7 +463,7 @@ function paintMap(box) {
   for (const k of cache.bank.kps) (groups.get(k.place) ?? groups.set(k.place, []).get(k.place)).push(k);
   const count = (s) => Object.values(st).filter((x) => x.state === s).length;
   box.innerHTML = `<section class="panel">
-    <div class="chips">${kids.map((k) => `<button class="chip${k.id === mapKid ? ' on' : ''}" data-kid="${k.id}">${esc(k.nickname)}</button>`).join('')}</div>
+    <div class="chips kidpick">${kids.map((k) => `<button class="chip${k.id === mapKid ? ' on' : ''}" data-kid="${k.id}">${esc(k.nickname)}</button>`).join('')}</div>
     <p class="qt-legend">${Object.entries(STATE_NAME).map(([s, t]) => `<span class="qt-kp s-${s}">${t} ${count(s)}</span>`).join('')}</p>
     <p class="tip"><b>學會</b>＝同一個知識點，在不同的兩天、用不同的題目答對（遊戲裡第一次就答對也算一次），而且最近一次是對的。學會的就不再出題。
       覺得孩子其實還不熟，點那一格改回「待加強」，之後的卷會再出。</p>
@@ -441,6 +472,7 @@ function paintMap(box) {
         title="${esc(k.book)}｜${STATE_NAME[s.state]}${s.game ? `｜遊戲裡第一次${s.game.ok ? '答對' : '答錯'}` : ''}${s.quizTries ? `｜卷上考過 ${s.quizTries} 次` : ''}">${esc(k.name)}${s.marked ? ' 📌' : ''}</button>`; }).join('')}</div>`).join('')}
   </section>`;
   $$('[data-kid]', box).forEach((b) => { b.onclick = () => { mapKid = b.dataset.kid; paintMap(box); }; });
+  kidFilter(box);
   $$('[data-kp]', box).forEach((b) => {
     b.onclick = async () => {
       const on = b.dataset.marked !== '1';

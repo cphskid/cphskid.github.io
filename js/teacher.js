@@ -371,9 +371,9 @@ async function renderClass() {
   const box = $('#cls');
   box.innerHTML = `
   <section class="panel notice" id="p-week" hidden></section>
+  <section class="panel" id="p-ov"><p class="loading"><img src="img/tick/map.webp" alt="">整理全班進度中…</p></section>
   <section class="panel" id="p-info"></section>
-  <section class="panel" id="p-fac"></section>
-  <section class="panel" id="p-ov"><p class="loading"><img src="img/tick/map.webp" alt="">整理全班進度中…</p></section>`;
+  <section class="panel" id="p-fac"></section>`;
   paintInfo(c);
   paintFacilities(c);
   await paintOverview(c);
@@ -391,14 +391,14 @@ function paintWeek(c) {
   const names = (list) => list.slice(0, 5).map((s) => esc(s.nickname)).join('、') + (list.length > 5 ? ` 等 ${list.length} 位` : '');
   const items = [
     away.length
-      ? `<b>${away.length} 位 3 天以上沒來</b>：${names(away)}。可以在「樂園公告」寄封信鴿信提醒。`
+      ? `<b>${away.length} 位 3 天以上沒來</b>：${names(away)}。在下面總覽點「3 天以上沒來」看名單，可以在「樂園公告」寄封信鴿信提醒。`
       : '<b>全班最近 3 天都有來</b>，很棒！',
     att.length
       ? `<b>${att.length} 位需要注意</b>：${names(att)}。在下面總覽點「只看需要注意」看原因。`
       : '<b>沒有需要注意的孩子</b>，進度都正常。',
     ov.games.length
       ? '<b>看看哪裡常錯</b>：點總覽欄位上的「細節頁」，先看紅色（答對率不到 60%）的章，陪孩子對照課本。'
-      : '<b>還沒開放任何島</b>：在上面「開放哪些島」勾選。',
+      : '<b>還沒開放任何島</b>：在下面「開放的遊戲」勾選。',
   ];
   p.innerHTML = `<div class="hello"><img src="img/tick/map.webp" alt=""><div><h3>本週該看的三件事</h3>
     <ol class="week">${items.map((t) => `<li>${t}</li>`).join('')}</ol></div></div>`;
@@ -503,7 +503,8 @@ function paintFacilities(c) {
     .filter((f) => f.status !== 'hidden' && f.code !== 'quiz')   // 時光試煉島不用開放，出卷就能寫
     .map((f) => ({ ...f, fit: fits(f, gradesOf(c)) }))
     .sort((a, b) => (b.fit - a.fit) || 0);
-  p.innerHTML = `<div class="head">${h2('park', '開放的遊戲')}</div>
+  const nOn = list.filter((f) => on.has(f.code)).length;
+  p.innerHTML = `<details class="fac-fold" ${c.facilities.length ? '' : 'open'}><summary>${h2('park', '開放的遊戲')}<span class="tip">已開放 ${nOn} 個・點開調整</span></summary>
     <p class="lead">勾起來的遊戲，班上的小朋友在樂園地圖上才進得去。${gradesOf(c).length ? `適合班上 ${gradesOf(c).join('、')} 年級孩子的排在前面。` : '在全班總覽幫孩子設年級，適合的遊戲就會排在前面。'}</p>
     <ul class="facs">${list.map((f) => {
       const trialMine = f.status === 'trial' && c.trials.includes(f.code);
@@ -517,7 +518,7 @@ function paintFacilities(c) {
         <span><b>${esc(f.name)}</b><small>${[f.subject, gradeText(f.grade_min, f.grade_max)].filter(Boolean).map(esc).join('・')}</small>
         ${note ? `<em>${esc(note)}</em>` : ''}</span>
         <span class="chips">${f.fit ? '<span class="chip fit">適合班上的年級</span>' : ''}<span class="chip st-${f.status}">${STATUS[f.status]}</span></span></label></li>`;
-    }).join('')}</ul>`;
+    }).join('')}</ul></details>`;
   let saving = Promise.resolve();
   $$('[data-fac]', p).forEach((box) => {
     box.onchange = () => {
@@ -540,6 +541,12 @@ function paintFacilities(c) {
 
 // ---------- 全班總覽 ----------
 let lastOverview = null;
+// 全班總覽的篩選：人多的班（試玩班上千人）一次畫完會拉很長，所以搜尋＋分類＋每頁 30 人
+const OV_PAGE = 30;
+let ovWho = 'all';       // all 全部 / week 7 天內有來 / away 3 天以上沒來 / never 從沒玩過
+let ovQuery = '';
+let ovPage = 0;
+let ovCode = null;
 async function paintOverview(c) {
   const p = $('#p-ov');
   if (!p) return;
@@ -558,19 +565,32 @@ async function paintOverview(c) {
   const avs = new Map((await avatarsP ?? []).map((a) => [a.student_id, { ...a, look: looks.get(a.student_id) }]));
   const plays = new Map((await playsP ?? []).map((r) => [r.student_id, r]));
   const guides = new Map((await starterP ?? []).map((r) => [r.student_id, r]));
-  lastOverview = { cls: c, ...ov, plays };
-  const games = ov.games;
   // 最後活動：資料庫有給（park_class_last_active）就用，沒有就拿各遊戲的最後遊玩時間
-  const lastOf = (s) => [s.last_active, ...games.map((g) => g.rows[s.id]?.last_played)]
+  const lastOf = (s) => [s.last_active, ...ov.games.map((g) => g.rows[s.id]?.last_played)]
     .filter(Boolean).map((t) => new Date(t).getTime()).reduce((a, b) => Math.max(a, b), 0);
+  if (ovCode !== c.code) { ovCode = c.code; ovWho = 'all'; ovQuery = ''; ovPage = 0; }
+  lastOverview = { cls: c, ...ov, plays, avs, guides, students: ov.students.map((s) => ({ ...s, last: lastOf(s) })) };
+  drawOverview(c);
+}
+
+// 用 lastOverview 畫（排序、篩選、翻頁不用重新讀資料庫）
+function drawOverview(c) {
+  const p = $('#p-ov');
+  const ov = lastOverview;
+  if (!p || ov?.cls?.code !== c.code) return;
+  const { games, plays, avs, guides } = ov;
   const name = (a, b) => a.nickname.localeCompare(b.nickname, 'zh-TW') || a.login_id.localeCompare(b.login_id);
-  const students = ov.students.map((s) => ({ ...s, last: lastOf(s) }))
-    .sort(byName ? name : (a, b) => (b.last - a.last) || name(a, b));
-  const week = students.filter((s) => s.last > Date.now() - 7 * 86400000).length;
-  lastOverview.students = students;
+  const students = ov.students.sort(byName ? name : (a, b) => (b.last - a.last) || name(a, b));
+  const now = Date.now(), day = 86400000;
+  const week = students.filter((s) => s.last > now - 7 * day).length;
   const flagged = (s) => s.locked || games.some((g) => g.rows[s.id]?.attention);
   const nFlag = students.filter(flagged).length;
-  const shown = onlyAttention ? students.filter(flagged) : students;
+  const WHO = [
+    ['all', '全部', () => true],
+    ['week', '7 天內有來', (s) => s.last > now - 7 * day],
+    ['away', '3 天以上沒來', (s) => !s.last || s.last < now - 3 * day],
+    ['never', '從沒玩過', (s) => !s.last],
+  ];
 
   if (!students.length) {
     p.innerHTML = `<div class="head">${h2('chart', '全班總覽')}</div><div class="empty"><img src="img/admin/tick-empty.webp" alt="">
@@ -593,17 +613,10 @@ async function paintOverview(c) {
       <div class="pct">${r.progress}%<span>${esc(ago(r.last_played) || '還沒玩')}</span></div>
       <div class="st">${esc(r.status ?? '')}</div>${r.attention && r.reason ? `<div class="why">${ico('st-attention')}${esc(r.reason)}</div>` : ''}</td>`;
   };
-  p.innerHTML = `<div class="head">${h2('chart', '全班總覽')}
-      <div class="row"><button class="toggle small ${byName ? '' : 'on'}" data-sort title="打開：最近有在玩的排前面；關掉：依名字排"><i></i>有在玩的排前面</button>
-      <button class="toggle small ${onlyAttention ? 'on' : ''}" data-att><i></i>只看需要注意（${nFlag}）</button>
-      <button class="ghost small" data-csv>${ico('export')}匯出 CSV</button><button class="ghost small" data-reload>${ico('clock')}重新整理</button></div></div>
-    <p class="lead">${students.length} 位學生，<b>最近 7 天有 ${week} 位來玩</b>${nFlag ? `，<b class="warn">${nFlag} 位需要注意</b>` : ''}。${games.length ? '每一欄是這個班有開放的遊戲。' : '這個班還沒有開放任何遊戲，在上面勾選。'}</p>
-    <div class="tablewrap"><table class="ov">
-      <thead><tr><th class="stu">學生</th>${head}<th class="ops">學生管理</th></tr></thead>
-      <tbody>${shown.map((s) => `<tr>
+  const row = (s) => `<tr>
         <td class="stu">${avCell(avs.get(s.id))}<b>${esc(s.nickname)}</b><small>${esc(s.login_id)}</small>
           <button class="grade-chip ${s.grade ? '' : 'none'}" data-grade="${s.id}" title="年級記在孩子身上，在每個班都一樣">${s.grade ? `${s.grade} 年級` : '設年級'}</button>
-          <small class="seen ${s.last > Date.now() - 7 * 86400000 ? 'on' : ''}" title="在任何遊戲或樂園裡最後一次動作的時間">${s.last ? `最後活動 ${esc(ago(s.last))}` : '還沒玩過'}</small>
+          <small class="seen ${s.last > now - 7 * day ? 'on' : ''}" title="在任何遊戲或樂園裡最後一次動作的時間">${s.last ? `最後活動 ${esc(ago(s.last))}` : '還沒玩過'}</small>
           ${plays.get(s.id) ? `<small class="now" title="最近 60 天最後玩的地方">在玩：${esc(playText(plays.get(s.id)))}</small>` : ''}
           ${guides.get(s.id) ? `<small class="now" title="新註冊的孩子前七天照新手手冊走，一天開一頁">${guides.get(s.id).finished ? '新手手冊：七頁都完成了' : `新手手冊：做完 ${guides.get(s.id).pages} / 7 頁`}</small>` : ''}
           ${s.primary ? '' : `<span class="tag" title="這個班不是他的主要班級；守護異世界的排行榜在他的主要班級">${ico('st-info')}另外加入</span>`}
@@ -615,22 +628,54 @@ async function paintOverview(c) {
           <button class="ghost small" data-nick="${s.id}">${ico('edit')}改暱稱</button>
           ${s.primary ? '' : `<button class="ghost small" data-primary="${s.id}">${ico('class')}設成主要班級</button>`}`}
           ${s.guardian ? `<button class="ghost small" data-gcls="${s.id}">${ico('class')}孩子的所有班</button>` : ''}
-          <button class="ghost small danger" data-rm="${s.id}">${ico('delete')}移出</button></td></tr>`).join('')}
-      </tbody></table></div>
-    ${shown.length ? '' : `<div class="empty small"><img src="img/admin/tick-done.webp" alt=""><p>目前沒有需要注意的學生。</p></div>`}`;
+          <button class="ghost small danger" data-rm="${s.id}">${ico('delete')}移出</button></td></tr>`;
+  const many = students.length > OV_PAGE;
+  p.innerHTML = `<div class="head">${h2('chart', '全班總覽')}
+      <div class="row"><button class="toggle small ${byName ? '' : 'on'}" data-sort title="打開：最近有在玩的排前面；關掉：依名字排"><i></i>有在玩的排前面</button>
+      <button class="toggle small ${onlyAttention ? 'on' : ''}" data-att><i></i>只看需要注意（${nFlag}）</button>
+      <button class="ghost small" data-csv>${ico('export')}匯出 CSV</button><button class="ghost small" data-reload>${ico('clock')}重新整理</button></div></div>
+    <p class="lead">${students.length} 位學生，<b>最近 7 天有 ${week} 位來玩</b>${nFlag ? `，<b class="warn">${nFlag} 位需要注意</b>` : ''}。${games.length ? '每一欄是這個班有開放的遊戲。' : '這個班還沒有開放任何遊戲，在下面「開放的遊戲」勾選。'}</p>
+    ${many ? `<div class="ov-filter">
+      <input type="search" data-q value="${esc(ovQuery)}" placeholder="搜尋暱稱或帳號" aria-label="搜尋暱稱或帳號">
+      <div class="chips">${WHO.map(([k, t, f]) => `<button class="chip ${ovWho === k ? 'on' : ''}" data-who="${k}">${t}（${students.filter(f).length}）</button>`).join('')}</div></div>` : ''}
+    <div id="ov-body"></div>`;
 
-  $('[data-sort]', p).onclick = () => { byName = !byName; paintOverview(c); };
-  $('[data-att]', p).onclick = () => { onlyAttention = !onlyAttention; paintOverview(c); };
+  const body = $('#ov-body', p);
+  const paintBody = () => {
+    const k = ovQuery.trim().toLowerCase();
+    const test = WHO.find((w) => w[0] === ovWho)[2];
+    const list = students.filter((s) => (!onlyAttention || flagged(s)) && test(s)
+      && (!k || s.nickname.toLowerCase().includes(k) || s.login_id.toLowerCase().includes(k)));
+    const pages = Math.max(1, Math.ceil(list.length / OV_PAGE));
+    ovPage = Math.min(ovPage, pages - 1);
+    const shown = list.slice(ovPage * OV_PAGE, (ovPage + 1) * OV_PAGE);
+    const pager = pages > 1 ? `<div class="row pager">
+        <button class="ghost small" data-pg="-1" ${ovPage ? '' : 'disabled'}>‹ 上一頁</button>
+        <span>第 ${ovPage + 1} / ${pages} 頁・共 ${list.length} 人</span>
+        <button class="ghost small" data-pg="1" ${ovPage < pages - 1 ? '' : 'disabled'}>下一頁 ›</button></div>` : '';
+    body.innerHTML = shown.length ? `<div class="tablewrap"><table class="ov">
+      <thead><tr><th class="stu">學生</th>${head}<th class="ops">學生管理</th></tr></thead>
+      <tbody>${shown.map(row).join('')}</tbody></table></div>${pager}`
+      : `<div class="empty small"><img src="img/admin/tick-done.webp" alt=""><p>${k ? `找不到「${esc(ovQuery.trim())}」。` : onlyAttention ? '目前沒有需要注意的學生。' : '這一類目前沒有人。'}</p></div>`;
+    const byId = new Map(shown.map((s) => [s.id, s]));
+    $$('[data-pg]', body).forEach((b) => { b.onclick = () => { ovPage += Number(b.dataset.pg); paintBody(); p.scrollIntoView({ block: 'start' }); }; });
+    $$('[data-tl]', body).forEach((b) => { b.onclick = () => openPlay(c.code, b.dataset.tl); });
+    $$('[data-pw]', body).forEach((b) => { b.onclick = () => resetPassword(byId.get(b.dataset.pw)); });
+    $$('[data-nick]', body).forEach((b) => { b.onclick = () => renameStudent(c, byId.get(b.dataset.nick)); });
+    $$('[data-rm]', body).forEach((b) => { b.onclick = () => removeStudent(c, byId.get(b.dataset.rm)); });
+    $$('[data-primary]', body).forEach((b) => { b.onclick = () => setPrimary(c, byId.get(b.dataset.primary)); });
+    $$('[data-gcls]', body).forEach((b) => { b.onclick = () => guardianClasses(byId.get(b.dataset.gcls)); });
+    $$('[data-grade]', body).forEach((b) => { b.onclick = () => setGrade(c, byId.get(b.dataset.grade)); });
+  };
+  paintBody();
+
+  $('[data-sort]', p).onclick = () => { byName = !byName; drawOverview(c); };
+  $('[data-att]', p).onclick = () => { onlyAttention = !onlyAttention; ovPage = 0; drawOverview(c); };
   $('[data-reload]', p).onclick = (e) => run(e.currentTarget, () => paintOverview(c));
   $('[data-csv]', p).onclick = () => exportCsv();
-  const byId = new Map(students.map((s) => [s.id, s]));
-  $$('[data-tl]', p).forEach((b) => { b.onclick = () => openPlay(c.code, b.dataset.tl); });
-  $$('[data-pw]', p).forEach((b) => { b.onclick = () => resetPassword(byId.get(b.dataset.pw)); });
-  $$('[data-nick]', p).forEach((b) => { b.onclick = () => renameStudent(c, byId.get(b.dataset.nick)); });
-  $$('[data-rm]', p).forEach((b) => { b.onclick = () => removeStudent(c, byId.get(b.dataset.rm)); });
-  $$('[data-primary]', p).forEach((b) => { b.onclick = () => setPrimary(c, byId.get(b.dataset.primary)); });
-  $$('[data-gcls]', p).forEach((b) => { b.onclick = () => guardianClasses(byId.get(b.dataset.gcls)); });
-  $$('[data-grade]', p).forEach((b) => { b.onclick = () => setGrade(c, byId.get(b.dataset.grade)); });
+  const q = $('[data-q]', p);
+  if (q) q.oninput = () => { ovQuery = q.value; ovPage = 0; paintBody(); };
+  $$('[data-who]', p).forEach((b) => { b.onclick = () => { ovWho = b.dataset.who; ovPage = 0; drawOverview(c); }; });
 }
 
 // ---------- 遊玩紀錄（park_playlog.sql） ----------
