@@ -600,8 +600,19 @@ $$;
 --   medals 勳章牆＝總共拿到幾枚勳章（樂園護照上的章）
 -- 每人旁邊掛代表勳章。同班同學或這班的老師才看得到。只列前 10 名（0 分的不列），
 -- 另外回傳自己的名次，避免墊底的人被看見。算之前先幫全班補帳（通知照樣留給本人看）。
--- 回傳 {kind, code, name, rows:[{rank, id, nickname, look, frame, medal:{name, art, rarity}, score, me}], me:{rank, score}|null, total}
+-- 公共交誼廳（TRYIT，park_lounge.sql）：孩子看到的是這週自己的同伴圈；代碼 '*'＝全樂園前 50 名（交誼廳的孩子和管理員看得到）
+-- 回傳 {kind, code, name, rows:[{rank, id, nickname, look, frame, medal:{name, art, rarity}, score, me}], me:{rank, score}|null, total, circle?, site?}
 drop function if exists public.park_class_board(text);
+-- 排行要比的人：'*' 全樂園、交誼廳的孩子比同伴圈、其他整班
+create or replace function public.park_board_members(p_code text, p_me uuid, p_ring smallint)
+returns setof uuid language sql stable security definer set search_path = public, pg_temp as $$
+  select s.id from public.students s where p_code = '*'
+  union all
+  select r from public.park_lounge_ring(p_me) r where p_code <> '*' and p_ring is not null
+  union all
+  select m.student_id from public.park_class_members m where p_code <> '*' and p_ring is null and m.class_code = p_code;
+$$;
+revoke all on function public.park_board_members(text, uuid, smallint) from public, anon, authenticated;
 create or replace function public.park_class_board(p_code text, p_kind text default 'week')
 returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
 declare
@@ -611,13 +622,28 @@ declare
   v_m uuid;
   v_ws timestamptz := public.park_week_start();
   v_out jsonb;
+  v_site boolean := v_code = '*';
+  v_ring smallint;
+  v_top int := 10;
+  v_name text;
 begin
-  if not (public.is_teacher_of(v_code)
-          or exists (select 1 from public.park_class_members where class_code = v_code and student_id = v_me)) then
-    raise exception '你不在這個班';
+  if v_site then
+    if not (public.is_admin() or exists (select 1 from public.park_class_members where class_code = 'TRYIT' and student_id = v_me)) then
+      raise exception '全樂園排行只有交誼廳看得到';
+    end if;
+    v_top := 50;
+    v_name := '全樂園';
+    if v_me is not null and v_kind <> 'medals' then perform public.park_coin_sync(v_me); end if;
+  else
+    if not (public.is_teacher_of(v_code)
+            or exists (select 1 from public.park_class_members where class_code = v_code and student_id = v_me)) then
+      raise exception '你不在這個班';
+    end if;
+    if v_code = 'TRYIT' and v_me is not null then v_ring := public.park_lounge_assign(v_me); end if;
+    v_name := case when v_ring is not null then '我的同伴圈' else (select c.name from public.classes c where c.code = v_code) end;
   end if;
-  if v_kind <> 'medals' then
-    for v_m in select student_id from public.park_class_members where class_code = v_code loop
+  if v_kind <> 'medals' and not v_site then
+    for v_m in select x from public.park_board_members(v_code, v_me, v_ring) x loop
       perform public.park_coin_sync(v_m);
     end loop;
   end if;
@@ -631,15 +657,16 @@ begin
                                            and l.created_at >= v_ws - interval '7 days' and l.created_at < v_ws), 0)::int
              else (select count(*) from public.park_student_stamps x where x.student_id = m.student_id)::int
            end as score
-      from public.park_class_members m join public.students st on st.id = m.student_id
-     where m.class_code = v_code
+      from public.park_board_members(v_code, v_me, v_ring) m(student_id) join public.students st on st.id = m.student_id
   ), r as (
     select w.*, case when w.score > 0 then rank() over (order by w.score desc) end as rank from w
   )
   select jsonb_build_object(
     'kind', v_kind,
     'code', v_code,
-    'name', (select c.name from public.classes c where c.code = v_code),
+    'name', v_name,
+    'circle', v_ring,
+    'site', v_site,
     'total', (select count(*) from w),
     'rows', coalesce((select jsonb_agg(jsonb_build_object(
                 'rank', r.rank, 'id', r.student_id, 'nickname', r.nickname, 'score', r.score, 'me', r.student_id = v_me,
@@ -651,7 +678,7 @@ begin
               order by r.rank, r.nickname)
               from r left join public.park_profiles p on p.student_id = r.student_id
                      left join public.park_travellers t on t.student_id = r.student_id
-             where r.rank is not null and r.rank <= 10), '[]'::jsonb),
+             where r.rank is not null and r.rank <= v_top), '[]'::jsonb),
     'me', (select jsonb_build_object('rank', r.rank, 'score', r.score) from r where r.student_id = v_me))
   into v_out;
   return v_out;

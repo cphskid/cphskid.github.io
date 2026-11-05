@@ -137,6 +137,8 @@ export function openVisit(c) {
 }
 export function closeVisit(host) { $('.isle-visit', host)?.remove(); }
 
+// 只在公共交誼廳、沒有真的班：「我們班」改叫「同伴圈」（這週同年級分在一起的夥伴，supabase/park_lounge.sql）
+const ringOnly = () => auth.lounge.state?.lounge && !auth.lounge.state.real;
 // 「我們班的島」：伺服器一次給一頁 12 座，可以打暱稱或島名找（找得到還沒打開寵物島的同學）
 let mq = '', mpage = 0;
 let eseed = 0;   // 逛逛別的島：按「換一批」就 +1
@@ -145,7 +147,7 @@ async function paintList(box) {
     <button class="x" data-iv-close aria-label="關閉"></button>
     <h3>去拜訪</h3>
     <div class="iv-tabs"><button type="button" data-iv-tab="feat" class="${tab === 'feat' ? 'on' : ''}">⭐ 今日精選</button>
-      <button type="button" data-iv-tab="mates" class="${tab === 'mates' ? 'on' : ''}">🏫 我們班</button>
+      <button type="button" data-iv-tab="mates" class="${tab === 'mates' ? 'on' : ''}">${ringOnly() ? '👥 同伴圈' : '🏫 我們班'}</button>
       <button type="button" data-iv-tab="explore" class="${tab === 'explore' ? 'on' : ''}">🧭 去逛逛</button></div>
     ${tab === 'mates' ? `<input type="search" class="iv-find" placeholder="🔍 打同學的暱稱或島名找找看" aria-label="找同學的島" maxlength="20" value="${esc(mq)}">` : ''}
     <div class="iv-list"><p class="tip">讀取中…</p></div></div>`;
@@ -181,7 +183,8 @@ async function paintRows(box) {
   const empty = tab === 'feat' ? '今天還沒有精選島。把自己的島擺上 5 件以上的東西，就有機會被選上！'
     : tab === 'explore' ? '現在還沒有別的島可以逛，晚一點再來看看。'
     : mq ? `找不到「${esc(mq)}」。換個字試試看，或是把字刪掉看全部。`
-      : '班上的同學還沒有人打開寵物島。先去「今日精選」逛逛吧！';
+      : ringOnly() ? '這週同伴圈的夥伴還沒有人打開寵物島。先去「今日精選」逛逛吧！'
+        : '班上的同學還沒有人打開寵物島。先去「今日精選」逛逛吧！';
   list.innerHTML = rows.length ? `<div class="iv-cards">${rows.map(card).join('')}</div>` : `<p class="tip">${empty}</p>`;
   if (page && page.total > page.size) {
     const pages = Math.ceil(page.total / page.size);

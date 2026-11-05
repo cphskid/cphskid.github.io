@@ -25,8 +25,9 @@ export function init(h) { hooks = { ...hooks, ...h }; }
 
 export async function load(w = hooks.me()) {
   st = null;
+  auth.lounge.state = null;
   if (w.kind === 'student') {
-    try { st = await auth.coins.me(); } catch { st = null; }
+    [st] = await Promise.all([auth.coins.me().catch(() => null), auth.lounge.me()]);   // 交誼廳這週第一次來就分同伴圈
   }
   paintHud();
   if (st?.fresh?.length) announce(st.fresh);
@@ -173,12 +174,20 @@ const KINDS = [
   { id: 'medals', name: '勳章牆', tip: '樂園護照上總共拿到幾枚勳章。', unit: (n) => `<em class="md-n">🏅${n}</em>`,
     mine: (r) => `你有 ${r.score} 枚勳章，全班第 ${r.rank} 名！`, none: '還沒有勳章，去島上過一關就能拿到第一枚！' },
 ];
-export async function openBoard(code = boardCode ?? myClasses().find((c) => c.primary)?.code ?? myClasses()[0]?.code, kind = boardKind) {
+// 公共交誼廳（TRYIT）的孩子：交誼廳那一格比的是這週的同伴圈，另外多一格「全樂園」前 50 名
+const LOUNGE = 'TRYIT';
+function boardTabs() {
+  const list = myClasses().map((c) => ({ code: c.code, name: c.code === LOUNGE ? '同伴圈' : (c.name || c.code), primary: c.primary }));
+  if (list.some((c) => c.code === LOUNGE)) list.push({ code: '*', name: '全樂園' });
+  return list;
+}
+export async function openBoard(code = boardCode ?? boardTabs().find((c) => c.primary && c.code !== LOUNGE)?.code ?? boardTabs()[0]?.code, kind = boardKind) {
   if (!code) return;
   boardCode = code;
   boardKind = kind;
   const k = KINDS.find((x) => x.id === kind) ?? KINDS[0];
-  const cls = myClasses().length > 1 ? `<nav class="tabs cls" aria-label="班級">${myClasses().map((c) => `<button type="button" class="tab${c.code === code ? ' on' : ''}" data-cls="${esc(c.code)}">${esc(c.name || c.code)}</button>`).join('')}</nav>` : '';
+  const tabs = boardTabs();
+  const cls = tabs.length > 1 ? `<nav class="tabs cls" aria-label="班級">${tabs.map((c) => `<button type="button" class="tab${c.code === code ? ' on' : ''}" data-cls="${esc(c.code)}">${esc(c.name)}</button>`).join('')}</nav>` : '';
   const kinds = `<nav class="tabs kinds" role="tablist" aria-label="比什麼">${KINDS.map((x) => `<button type="button" role="tab" class="tab${x.id === k.id ? ' on' : ''}" aria-selected="${x.id === k.id}" data-kind="${x.id}">${x.name}</button>`).join('')}</nav>`;
   const head = `<button class="x" data-close aria-label="關閉"></button><h2>🏆 班級排行</h2>${cls}${kinds}`;
   show(`<div class="wallet board" role="dialog" aria-modal="true" aria-label="班級排行">${head}<p class="tip">排行載入中…</p></div>`);
@@ -186,15 +195,18 @@ export async function openBoard(code = boardCode ?? myClasses().find((c) => c.pr
   let b;
   try { b = await auth.coins.board(code, k.id); } catch (err) { show(`<div class="wallet board">${head}<p class="note bad">${esc(err.message)}</p></div>`); bindBoard(); return; }
   if (boardCode !== code || boardKind !== kind) return;   // 等的時候又切到別的分頁
-  const rows = b.rows.map((r) => `<li class="${r.me ? 'me' : ''}" data-card="${esc(r.id)}">
+  // 全樂園榜不能點開別人的名片（名片只給同學看）；名次的「全班」換成這個榜的名字
+  const where = b.site ? '全樂園' : b.circle ? '同伴圈' : '全班';
+  const rows = b.rows.map((r) => `<li class="${r.me ? 'me' : ''}" ${b.site && !r.me ? '' : `data-card="${esc(r.id)}"`}>
       <span class="rk">${PODIUM[r.rank - 1] ?? r.rank}</span>
       ${passport.avatarHtml(r.look, r.frame, '', r.medal)}
       <b>${esc(r.nickname)}${r.me ? '<small>（你）</small>' : ''}</b>
       <small class="md">${r.medal ? esc(r.medal.name) : ''}</small>
       <span class="pt">${k.unit(r.score)}</span></li>`).join('');
-  const mine = b.me && !b.rows.some((r) => r.me) ? `<p class="note">${b.me.rank ? k.mine(b.me) : k.none}</p>` : '';
+  const mine = b.me && !b.rows.some((r) => r.me) ? `<p class="note">${b.me.rank ? k.mine(b.me).replace('全班', where) : k.none}</p>` : '';
+  const about = b.site ? '全樂園前 50 名・' : b.circle ? `這週的同伴圈（${b.total} 人，每週一重新分）・` : `${esc(b.name || b.code)}・`;
   show(`<div class="wallet board" role="dialog" aria-modal="true" aria-label="班級排行">${head}
-    <p class="tip">${esc(b.name || b.code)}・${k.tip}頭像旁邊是每個人的代表勳章，點一下看名片。</p>
+    <p class="tip">${about}${k.tip}頭像旁邊是每個人的代表勳章${b.site ? '' : '，點一下看名片'}。</p>
     ${rows ? `<ol class="rank">${rows}</ol>` : '<p class="tip">還沒有人上榜，第一個就是你！</p>'}
     ${mine}
   </div>`);

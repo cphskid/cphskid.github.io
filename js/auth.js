@@ -236,6 +236,7 @@ export const admin = {
   guardians:      () => call('park_admin_guardians'),                       // 哪個孩子綁了哪個家長
   activity:       (days = 7) => call('park_admin_activity', { p_days: days }),   // 全站動態
   insights:       (days = 14) => call('park_admin_insights', { p_days: days }),  // 要改善的地方
+  lounge:         () => call('park_lounge_admin'),                          // 公共交誼廳這週的同伴圈
 };
 // 樂園公告（park_news.sql）：管理員四種方式都能發；老師只能寄信給自己的班
 export const news = {
@@ -392,6 +393,13 @@ export const coins = {
   furniture: () => ccall('park_my_furniture'),
   board:     (code, kind) => ccall('park_class_board', { p_code: code, p_kind: kind }),
   home:      () => ccall('park_app_home'),
+};
+
+// ---------- 公共交誼廳＋同伴圈（supabase/park_lounge.sql） ----------
+// 孩子打開樂園時叫一次（這週第一次來就分圈）。state：{lounge, grade, no, size, real}；沒裝 SQL、不是學生是 null
+export const lounge = {
+  state: null,
+  me: async () => { try { lounge.state = await ccall('park_lounge_me'); } catch { lounge.state = null; } return lounge.state; },
 };
 
 // ---------- 爸媽任務與監護人（supabase/park_parent.sql） ----------
