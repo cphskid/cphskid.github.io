@@ -1456,5 +1456,415 @@
    "講義沒有星座盤「對準日期時間」的操作，改考講義有寫的星座盤特性（面向北方好辨識、透明片標方位和高度角）",
    "錯誤說法改成講義查得到是錯的敘述"
   ]
+ },
+ "sci-eat-1": {
+  "light": "green",
+  "at": "2026-11-06",
+  "by": "claude"
+ },
+ "sci-eat-2": {
+  "light": "green",
+  "at": "2026-11-06",
+  "by": "claude"
+ },
+ "sci-eat-3": {
+  "light": "green",
+  "at": "2026-11-06",
+  "by": "claude"
+ },
+ "sci-disguise-1": {
+  "light": "yellow",
+  "at": "2026-11-06",
+  "by": "claude",
+  "fixed": [
+   "正解改成「讓天敵以為牠是蜜蜂」，講義沒說蜜蜂會螫人"
+  ]
+ },
+ "sci-disguise-2": {
+  "light": "green",
+  "at": "2026-11-06",
+  "by": "claude"
+ },
+ "sci-temp-1": {
+  "light": "green",
+  "at": "2026-11-06",
+  "by": "claude"
+ },
+ "sci-temp-2": {
+  "light": "green",
+  "at": "2026-11-06",
+  "by": "claude"
+ },
+ "sci-temp-3": {
+  "light": "green",
+  "at": "2026-11-06",
+  "by": "claude",
+  "sample": true
+ },
+ "sci-temp-4": {
+  "light": "green",
+  "at": "2026-11-06",
+  "by": "claude"
+ },
+ "sci-social-1": {
+  "light": "green",
+  "at": "2026-11-06",
+  "by": "claude"
+ },
+ "sci-social-2": {
+  "light": "green",
+  "at": "2026-11-06",
+  "by": "claude"
+ },
+ "sci-social-3": {
+  "light": "yellow",
+  "at": "2026-11-06",
+  "by": "claude",
+  "fixed": [
+   "講義沒有蜜蜂分工表（盲審紅燈），整題換成講義原句：蜜蜂和螞蟻、獼猴一樣有社會行為"
+  ]
+ },
+ "sci-social-4": {
+  "light": "green",
+  "at": "2026-11-06",
+  "by": "claude"
+ },
+ "sci-social-5": {
+  "light": "yellow",
+  "at": "2026-11-06",
+  "by": "claude",
+  "fixed": [
+   "臺灣黑熊講義沒提、又近似否定問法，改成正面問法、正解臺灣獼猴"
+  ]
+ },
+ "sci-breed-1": {
+  "light": "green",
+  "at": "2026-11-06",
+  "by": "claude"
+ },
+ "sci-breed-2": {
+  "light": "green",
+  "at": "2026-11-06",
+  "by": "claude",
+  "sample": true
+ },
+ "sci-breed-3": {
+  "light": "green",
+  "at": "2026-11-06",
+  "by": "claude"
+ },
+ "sci-gene-1": {
+  "light": "green",
+  "at": "2026-11-06",
+  "by": "claude"
+ },
+ "sci-gene-2": {
+  "light": "green",
+  "at": "2026-11-06",
+  "by": "claude"
+ },
+ "sci-gene-3": {
+  "light": "green",
+  "at": "2026-11-06",
+  "by": "claude"
+ },
+ "sci-db-1": {
+  "light": "green",
+  "at": "2026-11-06",
+  "by": "claude"
+ },
+ "sci-db-2": {
+  "light": "green",
+  "at": "2026-11-06",
+  "by": "claude"
+ },
+ "sci-db-3": {
+  "light": "green",
+  "at": "2026-11-06",
+  "by": "claude"
+ },
+ "sci-db-4": {
+  "light": "green",
+  "at": "2026-11-06",
+  "by": "claude"
+ },
+ "sci-flute-1": {
+  "light": "green",
+  "at": "2026-11-06",
+  "by": "claude",
+  "sample": true
+ },
+ "sci-flute-2": {
+  "light": "green",
+  "at": "2026-11-06",
+  "by": "claude"
+ },
+ "sci-flute-3": {
+  "light": "green",
+  "at": "2026-11-06",
+  "by": "claude"
+ },
+ "sci-flute-4": {
+  "light": "green",
+  "at": "2026-11-06",
+  "by": "claude"
+ },
+ "sci-timbre-1": {
+  "light": "green",
+  "at": "2026-11-06",
+  "by": "claude"
+ },
+ "sci-timbre-2": {
+  "light": "green",
+  "at": "2026-11-06",
+  "by": "claude"
+ },
+ "sci-timbre-3": {
+  "light": "green",
+  "at": "2026-11-06",
+  "by": "claude"
+ },
+ "sci-soundbox-1": {
+  "light": "green",
+  "at": "2026-11-06",
+  "by": "claude"
+ },
+ "sci-soundbox-2": {
+  "light": "green",
+  "at": "2026-11-06",
+  "by": "claude"
+ },
+ "sci-soundbox-3": {
+  "light": "yellow",
+  "at": "2026-11-06",
+  "by": "claude",
+  "fixed": [
+   "題目先補「聲音是由物體振動產生的」，講義自製鼓沒寫振動"
+  ]
+ },
+ "sci-instr-1": {
+  "light": "green",
+  "at": "2026-11-06",
+  "by": "claude"
+ },
+ "sci-instr-2": {
+  "light": "green",
+  "at": "2026-11-06",
+  "by": "claude"
+ },
+ "sci-reflect-1": {
+  "light": "green",
+  "at": "2026-11-06",
+  "by": "claude"
+ },
+ "sci-reflect-2": {
+  "light": "green",
+  "at": "2026-11-06",
+  "by": "claude"
+ },
+ "sci-fast-1": {
+  "light": "green",
+  "at": "2026-11-06",
+  "by": "claude",
+  "sample": true
+ },
+ "sci-fast-2": {
+  "light": "green",
+  "at": "2026-11-06",
+  "by": "claude"
+ },
+ "sci-angle-1": {
+  "light": "green",
+  "at": "2026-11-06",
+  "by": "claude"
+ },
+ "sci-angle-2": {
+  "light": "green",
+  "at": "2026-11-06",
+  "by": "claude"
+ },
+ "sci-angle-3": {
+  "light": "green",
+  "at": "2026-11-06",
+  "by": "claude",
+  "sample": true
+ },
+ "sci-angle-4": {
+  "light": "green",
+  "at": "2026-11-06",
+  "by": "claude"
+ },
+ "sci-season-sun-1": {
+  "light": "green",
+  "at": "2026-11-06",
+  "by": "claude"
+ },
+ "sci-season-sun-2": {
+  "light": "green",
+  "at": "2026-11-06",
+  "by": "claude",
+  "sample": true
+ },
+ "sci-season-sun-3": {
+  "light": "green",
+  "at": "2026-11-06",
+  "by": "claude"
+ },
+ "sci-season-sun-4": {
+  "light": "green",
+  "at": "2026-11-06",
+  "by": "claude"
+ },
+ "sci-star-sun-1": {
+  "light": "green",
+  "at": "2026-11-06",
+  "by": "claude"
+ },
+ "sci-star-sun-2": {
+  "light": "green",
+  "at": "2026-11-06",
+  "by": "claude"
+ },
+ "sci-mag-1": {
+  "light": "green",
+  "at": "2026-11-06",
+  "by": "claude"
+ },
+ "sci-mag-2": {
+  "light": "green",
+  "at": "2026-11-06",
+  "by": "claude"
+ },
+ "sci-mag-3": {
+  "light": "green",
+  "at": "2026-11-06",
+  "by": "claude"
+ },
+ "sci-mag-4": {
+  "light": "green",
+  "at": "2026-11-06",
+  "by": "claude"
+ },
+ "sci-sky-season-1": {
+  "light": "green",
+  "at": "2026-11-06",
+  "by": "claude"
+ },
+ "sci-sky-season-2": {
+  "light": "green",
+  "at": "2026-11-06",
+  "by": "claude"
+ },
+ "sci-var-1": {
+  "light": "green",
+  "at": "2026-11-06",
+  "by": "claude",
+  "sample": true
+ },
+ "sci-var-2": {
+  "light": "green",
+  "at": "2026-11-06",
+  "by": "claude"
+ },
+ "sci-var-3": {
+  "light": "green",
+  "at": "2026-11-06",
+  "by": "claude"
+ },
+ "sci-air-1": {
+  "light": "green",
+  "at": "2026-11-06",
+  "by": "claude"
+ },
+ "sci-air-2": {
+  "light": "green",
+  "at": "2026-11-06",
+  "by": "claude"
+ },
+ "sci-air-3": {
+  "light": "green",
+  "at": "2026-11-06",
+  "by": "claude"
+ },
+ "sci-air-4": {
+  "light": "green",
+  "at": "2026-11-06",
+  "by": "claude"
+ },
+ "sci-oxygen-1": {
+  "light": "green",
+  "at": "2026-11-06",
+  "by": "claude"
+ },
+ "sci-oxygen-2": {
+  "light": "green",
+  "at": "2026-11-06",
+  "by": "claude"
+ },
+ "sci-oxygen-3": {
+  "light": "green",
+  "at": "2026-11-06",
+  "by": "claude"
+ },
+ "sci-oxygen-4": {
+  "light": "green",
+  "at": "2026-11-06",
+  "by": "claude"
+ },
+ "sci-ignite-1": {
+  "light": "green",
+  "at": "2026-11-06",
+  "by": "claude"
+ },
+ "sci-ignite-2": {
+  "light": "green",
+  "at": "2026-11-06",
+  "by": "claude"
+ },
+ "sci-ignite-3": {
+  "light": "green",
+  "at": "2026-11-06",
+  "by": "claude"
+ },
+ "sci-home-fire-1": {
+  "light": "green",
+  "at": "2026-11-06",
+  "by": "claude"
+ },
+ "sci-home-fire-2": {
+  "light": "green",
+  "at": "2026-11-06",
+  "by": "claude"
+ },
+ "sci-home-fire-3": {
+  "light": "green",
+  "at": "2026-11-06",
+  "by": "claude"
+ },
+ "sci-rust-more-1": {
+  "light": "green",
+  "at": "2026-11-06",
+  "by": "claude"
+ },
+ "sci-rust-more-2": {
+  "light": "green",
+  "at": "2026-11-06",
+  "by": "claude",
+  "sample": true
+ },
+ "sci-rust-more-3": {
+  "light": "green",
+  "at": "2026-11-06",
+  "by": "claude"
+ },
+ "sci-rust-more-4": {
+  "light": "green",
+  "at": "2026-11-06",
+  "by": "claude"
+ },
+ "sci-rust-more-5": {
+  "light": "green",
+  "at": "2026-11-06",
+  "by": "claude"
  }
 }

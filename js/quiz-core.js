@@ -16,6 +16,7 @@ export const PLACE_NAME = {
   'a-forest': '祕境島・森林', 'a-nest': '祕境島・螞蟻地下城', 'a-harbor': '祕境島・海港工坊', 'a-town': '祕境島・劇場小鎮', 'a-sky': '祕境島・山頂天文台',
   'a-pond': '祕境島・池塘', 'a-beacon': '祕境島・海港燈塔', 'a-stage': '祕境島・光的魔術舞台',
   'a-book-animal': '課本・動物世界（遊戲裡還沒有）', 'a-book-sky': '課本・神祕的天空（遊戲裡還沒有）',
+  'a-book-sound': '課本・探索聲光世界（遊戲裡還沒有）', 'a-book-burn': '課本・燃燒與生鏽（遊戲裡還沒有）',
 };
 // 課本有、遊戲裡還沒有關卡的地方（地方 id 有 -book-）：報告不叫孩子「回去玩」
 export const noGame = (place) => String(place).includes('-book-');
@@ -27,9 +28,9 @@ export const SUBJECTS = [
 // 依考試圈範圍：照康軒一般教學進度推的預設範圍，按科目分開（各校不同，出卷時可以再加減章節）
 // 五上社會先上地理和法律、期中後才進臺灣史；五上自然前兩單元是動物世界、探索聲光世界
 export const EXAMS = [
-  { id: '5a-1', name: '五上 第一次段考', by: { soc: ['pro', 'town', 'isles', 'sky', 'village', 'h-book-home', 'h-book-geo'], sci: ['a-forest', 'a-nest', 'a-book-animal', 'a-town', 'a-stage'] } },
-  { id: '5a-2', name: '五上 第二次段考', by: { soc: ['ch1', 'ch2', 'ch3', 'ch4', 'h-book-his', 'post'], sci: ['a-sky', 'a-book-sky', 'a-harbor', 'a-beacon'] } },
-  { id: '5a', name: '五上 整學期', by: { soc: ['pro', 'town', 'isles', 'sky', 'village', 'h-book-home', 'h-book-geo', 'ch1', 'ch2', 'ch3', 'ch4', 'h-book-his', 'post'], sci: ['a-forest', 'a-nest', 'a-book-animal', 'a-town', 'a-stage', 'a-sky', 'a-book-sky', 'a-harbor', 'a-beacon'] } },
+  { id: '5a-1', name: '五上 第一次段考', by: { soc: ['pro', 'town', 'isles', 'sky', 'village', 'h-book-home', 'h-book-geo'], sci: ['a-forest', 'a-nest', 'a-book-animal', 'a-town', 'a-stage', 'a-book-sound'] } },
+  { id: '5a-2', name: '五上 第二次段考', by: { soc: ['ch1', 'ch2', 'ch3', 'ch4', 'h-book-his', 'post'], sci: ['a-sky', 'a-book-sky', 'a-harbor', 'a-beacon', 'a-book-burn'] } },
+  { id: '5a', name: '五上 整學期', by: { soc: ['pro', 'town', 'isles', 'sky', 'village', 'h-book-home', 'h-book-geo', 'ch1', 'ch2', 'ch3', 'ch4', 'h-book-his', 'post'], sci: ['a-forest', 'a-nest', 'a-book-animal', 'a-town', 'a-stage', 'a-book-sound', 'a-sky', 'a-book-sky', 'a-harbor', 'a-beacon', 'a-book-burn'] } },
   { id: '4a', name: '四上 整學期', by: { sci: ['a-pond'] } },
   { id: '5b-1', name: '五下 第一次段考', by: { soc: ['ch5', 'ch6'] } },
   { id: '5b-2', name: '五下 第二次段考', by: { soc: ['ch7'] } },
