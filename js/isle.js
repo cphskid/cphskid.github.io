@@ -78,8 +78,43 @@ export function inboxHtml() {
   return `<div class="isle-inbox" role="status"><h4>有人來拜訪了！</h4><ul>${list.slice(0, 5).map((r) =>
     `<li>${reactImg(r.kind)}<span><b>${esc(r.nickname)}</b> 覺得你的島${REACTS[r.kind][1]}</span></li>`).join('')}</ul>
     ${list.length > 5 ? `<small>還有 ${list.length - 5} 個人也來過</small>` : ''}
+    <small>點島名旁邊的愛心，可以看大家送的全部圖示</small>
     <button type="button" class="ghost small" data-inbox-ok>好開心！</button></div>`;
 }
+// ---------- 自己的島收到的讚：島名牌旁邊的小愛心＋點開看 6 種圖示各幾個、最近誰來過 ----------
+// 2026-11-06 Chuck：寵物島看不到大家按了多少讚、累積了哪些圖示
+const total = (a) => (a ?? []).reduce((x, y) => x + y, 0);
+export const loveTotal = () => total(me?.love);
+export function loveChipHtml() {
+  if (!me) return '';
+  const n = total(me.love);
+  return `<button type="button" class="isle-love" data-love aria-label="大家送給我的島 ${n} 個圖示，點了看是哪些">${reactImg(0)}<b>${n}</b></button>`;
+}
+const ago = (at) => {
+  if (!at) return '';
+  const day = (d) => new Date(d).toLocaleDateString('sv', { timeZone: 'Asia/Taipei' });
+  const n = Math.round((Date.parse(day(Date.now())) - Date.parse(day(at))) / 864e5);
+  return n <= 0 ? '今天' : n === 1 ? '昨天' : n < 30 ? `${n} 天前` : `${Math.floor(n / 30)} 個月前`;
+};
+// 回傳面板的 HTML（先拿伺服器的明細，拿不到就只用手上的 6 種數字）
+export async function loveBoxHtml() {
+  let f = null;
+  try { f = await auth.isle.fans(); } catch { /* 資料庫還沒裝新的：只顯示數字 */ }
+  const love = f?.love ?? me?.love ?? [0, 0, 0, 0, 0, 0];
+  if (me && f?.love) me.love = f.love;
+  const n = total(love);
+  const recent = f?.recent ?? [];
+  const head = n
+    ? `<p class="sum">一共收到 <b>${n}</b> 個圖示${f?.visitors ? `，來自 <b>${f.visitors}</b> 位朋友` : ''}！</p>`
+    : `<p class="sum">還沒有人留圖示。<br>把島佈置得更漂亮，或是先去逛逛別人的島、留個圖示，大家也會來看你喔！</p>`;
+  return `<div class="isle-lovebox" role="dialog" aria-label="大家送給我的島">
+    <h4>大家送給我的島</h4>${head}
+    <ul class="grid">${REACTS.map(([, t], k) => `<li class="${love[k] ? '' : 'none'}">${reactImg(k)}<b>${t}</b><span>× ${love[k] ?? 0}</span></li>`).join('')}</ul>
+    ${recent.length ? `<p class="lab">最近來拜訪的朋友</p><ul class="who">${recent.map((r) =>
+      `<li>${reactImg(r.kind)}<span><b>${esc(r.nickname)}</b> 覺得${REACTS[r.kind][1]}</span><small>${ago(r.at)}</small></li>`).join('')}</ul>` : ''}
+    <button type="button" class="ghost small" data-love-ok>知道了</button></div>`;
+}
+
 export function inboxSeen() {
   if (!me?.inbox?.length) return;
   me.inbox = [];
