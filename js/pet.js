@@ -524,6 +524,16 @@ function openScene({ select, say: first } = {}) {
   const feat = isle.greet();
   $('[data-inbox-ok]', layer)?.addEventListener('click', (e) => { e.currentTarget.closest('.isle-inbox').remove(); isle.inboxSeen(); });
   $('[data-love]', layer)?.addEventListener('click', openLove);
+  // 「去看看」：來拜訪、留圖示的朋友，點了直接參觀他的島（從愛心面板來的，回去時再打開面板）
+  $('.pisle', layer).addEventListener('click', (e) => {
+    const b = e.target.closest('[data-fan]');
+    if (!b) return;
+    const fromLove = !!b.closest('.isle-lovebox');
+    b.closest('.isle-lovebox,.isle-inbox')?.remove();
+    if (!fromLove) isle.inboxSeen();
+    closeBag(); if (deco) exitDeco();
+    isle.openVisit({ host: $('.pisle', layer), art, id: b.dataset.fan, onBack: fromLove ? openLove : () => {} });
+  });
   if (first) say(first, selected);
   else if (feat && home) say(feat, home.id);
   else if (fresh.length && home) say(`哇！新的傢俱：${fresh.map((id) => FURN_NAME[id]).join('、')}！謝謝你去過關～`, home.id);
@@ -551,7 +561,7 @@ async function openLove() {
   const chip = $('.isle-love b', pl);
   if (chip) chip.textContent = isle.loveTotal();
   $('[data-love-ok]', box).addEventListener('click', () => box.remove());
-  $('[data-love-ok]', box).focus();
+  $('[data-love-ok]', box).focus({ preventScroll: true });
 }
 
 // ---------- 島的底圖：畫在固定解析度的 canvas 上，日夜天氣的顏色和影子先算好 ----------
