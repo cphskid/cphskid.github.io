@@ -321,9 +321,10 @@ export const pet = {
   bowl:          () => petcall('park_pet_bowl_fill'),
   // 寵物島 C 期小遊戲（park_pet.sql 5b 段）
   fish:          (size) => petcall('park_pet_fish', { p_size: size }),
-  water:         (tree) => petcall('park_pet_water', { p_tree: tree }),
+  water:         (tree, fert) => petcall('park_pet_water', { p_tree: tree, p_fert: !!fert }),
+  bait:          () => petcall('park_pet_bait'),
   harvest:       (tree) => petcall('park_pet_harvest', { p_tree: tree }),
-  bake:          (recipe, good) => petcall('park_pet_bake', { p_recipe: recipe, p_good: !!good }),      // 飼料盆放一份時光飼料（park_pet.sql）
+  bake:          (recipe, good, deco, top) => petcall('park_pet_bake', { p_recipe: recipe, p_good: !!good, p_deco: !!deco, p_top: top ?? null }),      // 飼料盆放一份時光飼料（park_pet.sql）
   classQuiet:    (code) => petcall('park_pet_class_quiet', { p_code: code }),
   setClassQuiet: (code, on) => petcall('park_pet_set_class_quiet', { p_code: code, p_quiet: on }),
   limit:         () => petcall('park_pet_limit_me'),                       // 今天寵物島還能玩多久（park_console.sql）

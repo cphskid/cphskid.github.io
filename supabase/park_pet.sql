@@ -125,6 +125,11 @@ create index if not exists park_pet_skill_log_day on public.park_pet_skill_log (
 alter table public.park_pet_items add column if not exists buff text;
 alter table public.park_pets add column if not exists buff       text;
 alter table public.park_pets add column if not exists buff_until timestamptz;
+-- 2026-11-06 烤爐改版：裝飾過的點心效果 3 小時、加了食材攤配料的 4 小時（buff_hours）；
+-- kind 多一種 cook＝食材攤買的材料（配料、魚餌、肥料），不能直接餵
+alter table public.park_pet_items add column if not exists buff_hours int not null default 2;
+alter table public.park_pet_items drop constraint if exists park_pet_items_kind_check;
+alter table public.park_pet_items add constraint park_pet_items_kind_check check (kind in ('food', 'special', 'cook'));
 -- 果樹：每種一棵（擺在島上的 tree-<種類>），澆水 3 天（不用連續）就結果；grow 3＝熟了可以收
 create table if not exists public.park_pet_trees (
   student_id uuid not null references public.students(id) on delete cascade,
@@ -195,6 +200,36 @@ insert into public.park_pet_items (code, kind, name, icon, xp, facility, sort, b
   ('bake-fish',    'special', '鮮魚餅乾',   '🍘', 6, null, 53, 'swim')
 on conflict (code) do update
   set kind = excluded.kind, name = excluded.name, icon = excluded.icon, xp = excluded.xp, sort = excluded.sort, buff = excluded.buff;
+
+-- 裝飾過的點心（-deco 3 小時）、裝飾時加了配料（-gold 4 小時）；圖跟原本的點心共用，畫面加角標
+insert into public.park_pet_items (code, kind, name, icon, xp, facility, sort, buff, buff_hours)
+select b.code || v.suf, 'special', v.pre || b.name, b.icon, b.xp + v.xp, null, b.sort * 10 + v.n, b.buff, v.h
+  from (values ('bake-orange', '橘子小蛋糕', '🧁', 6, 50, 'run'), ('bake-apple', '蘋果派', '🥧', 6, 51, 'jump'),
+               ('bake-mango', '芒果布丁', '🍮', 6, 52, 'happy'), ('bake-fish', '鮮魚餅乾', '🍘', 6, 53, 'swim'))
+       b(code, name, icon, xp, sort, buff),
+       (values ('-deco', '裝飾', 1, 3, 1), ('-gold', '豪華', 2, 4, 2)) v(suf, pre, xp, h, n)
+on conflict (code) do update
+  set kind = excluded.kind, name = excluded.name, icon = excluded.icon, xp = excluded.xp, sort = excluded.sort,
+      buff = excluded.buff, buff_hours = excluded.buff_hours;
+
+-- 食材攤（商店 cat pet，ref 這些道具）：配料裝飾點心時用、魚餌釣魚用、肥料澆水用
+insert into public.park_pet_items (code, kind, name, icon, xp, facility, sort) values
+  ('cook-honey', 'cook', '蜂蜜',   '🍯', 0, null, 60),
+  ('cook-cream', 'cook', '鮮奶油', '🍦', 0, null, 61),
+  ('cook-choco', 'cook', '巧克力', '🍫', 0, null, 62),
+  ('cook-bait',  'cook', '魚餌',   '🪱', 0, null, 63),
+  ('cook-fert',  'cook', '肥料',   '🌱', 0, null, 64)
+on conflict (code) do update
+  set kind = excluded.kind, name = excluded.name, icon = excluded.icon, xp = excluded.xp, sort = excluded.sort;
+insert into public.park_shop_items (code, cat, ref, name, art, blurb, price, months, sort) values
+  ('cook-honey', 'pet', 'cook-honey', '蜂蜜',   'img/pet/food/cook-honey.webp', '裝飾點心時加一份，效果變 4 小時', 10, null, 60),
+  ('cook-cream', 'pet', 'cook-cream', '鮮奶油', 'img/pet/food/cook-cream.webp', '裝飾點心時加一份，效果變 4 小時', 10, null, 61),
+  ('cook-choco', 'pet', 'cook-choco', '巧克力', 'img/pet/food/cook-choco.webp', '裝飾點心時加一份，效果變 4 小時', 12, null, 62),
+  ('cook-bait',  'pet', 'cook-bait',  '魚餌',   'img/pet/food/cook-bait.webp',  '釣魚時用，接下來 5 條從中魚開始', 8, null, 63),
+  ('cook-fert',  'pet', 'cook-fert',  '肥料',   'img/pet/food/cook-fert.webp',  '澆水時加一份，果樹多長一天', 15, null, 64)
+on conflict (code) do update
+  set cat = excluded.cat, ref = excluded.ref, name = excluded.name, art = excluded.art, blurb = excluded.blurb,
+      price = excluded.price, months = excluded.months, sort = excluded.sort;
 
 insert into public.park_pet_items (code, kind, name, icon, xp, facility, sort) values
   ('kibble',      'food',    '時光飼料',     '🥣', 1, null,             1),
@@ -392,7 +427,7 @@ returns jsonb language sql stable security definer set search_path = public, pg_
     'fish_coins', coalesce((select g.coins from public.park_pet_game_log g where g.student_id = p_student and g.game = 'fish'
                              and g.day = (now() at time zone 'Asia/Taipei')::date), 0),
     'items', (select jsonb_agg(jsonb_build_object('code', i.code, 'kind', i.kind, 'name', i.name, 'icon', i.icon, 'xp', i.xp, 'buff', i.buff,
-                                                  'facility', i.facility,
+                                                  'buff_hours', i.buff_hours, 'facility', i.facility,
                                                   'facility_name', (select f.name from public.park_facilities f where f.code = i.facility))
                                order by i.sort) from public.park_pet_items i),
     'quiet', public.park_pet_quiet(p_student),
@@ -636,6 +671,7 @@ begin
   if v_mood = 'asleep' then raise exception '牠在睡覺，先點一下叫醒牠'; end if;
   select * into v_i from public.park_pet_items i where i.code = p_item;
   if v_i.code is null then raise exception '沒有這種食物'; end if;
+  if v_i.kind = 'cook' then raise exception '這是烤點心或釣魚用的材料，不能直接吃'; end if;
   if v_i.kind = 'food' and now() - v.fed_at < interval '1 hour' then raise exception '牠吃得飽飽的，等一下再餵'; end if;
   if v_i.kind = 'food' and v.ate_at is not null and now() - v.ate_at < interval '15 minutes' then
     raise exception '牠還在消化，等一下再餵'; end if;
@@ -649,8 +685,8 @@ begin
                                + case when v_i.kind = 'food' then interval '6 hours' else interval '10 hours' end),
          ate_at = case when v_i.kind = 'food' then now() else ate_at end, xp = xp + v_i.xp,
          sulky = (v_mood = 'angry'),       -- 餓到生氣：吃飽了還在鬧脾氣
-         buff = coalesce(v_i.buff, buff),  -- 烤好的點心：2 小時的能力
-         buff_until = case when v_i.buff is not null then now() + interval '2 hours' else buff_until end
+         buff = coalesce(v_i.buff, buff),  -- 烤好的點心：2 小時的能力（裝飾 3、豪華 4）
+         buff_until = case when v_i.buff is not null then now() + make_interval(hours => v_i.buff_hours) else buff_until end
    where id = v.id;
   perform public.park_pet_add_joy(v.id, case when p_item in ('pumpkin-pie', 'candy', 'bat-cookie') then 3
                                              when v_i.buff = 'happy' then 8 else 1 end);
@@ -777,6 +813,18 @@ begin
 end;
 $$;
 
+-- 用一個魚餌（食材攤買）：畫面記著接下來 5 條從中魚開始算
+create or replace function public.park_pet_bait()
+returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
+declare v_me uuid := public.current_student_id();
+begin
+  if v_me is null then raise exception '請先登入學生帳號'; end if;
+  update public.park_pet_inventory set qty = qty - 1 where student_id = v_me and item = 'cook-bait' and qty > 0;
+  if not found then raise exception '背包裡沒有魚餌了，可以去商店的食材攤買'; end if;
+  return public.park_pet_state(v_me) || jsonb_build_object('did', 'bait', 'bait', 5);
+end;
+$$;
+
 -- 收成：熟了（grow 3）才能收；3 顆果子，有黑熊多 1 顆，有黃金鼠多撿 1 份葵花子
 create or replace function public.park_pet_reap(p_student uuid, p_tree text)
 returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
@@ -793,8 +841,9 @@ end;
 $$;
 
 -- 澆果樹：島上要擺著這棵樹；每棵一天澆一次，澆 3 天就熟。
--- 小獨角獸：每天第一次澆水多長一階；小蟻公主：熟了自動收成。
-create or replace function public.park_pet_water(p_tree text)
+-- 小獨角獸：每天第一次澆水多長一階；小蟻公主：熟了自動收成。p_fert：加一份肥料（食材攤買）多長一階。
+drop function if exists public.park_pet_water(text);
+create or replace function public.park_pet_water(p_tree text, p_fert boolean default false)
 returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
 declare v_me uuid := public.current_student_id(); v_day date := (now() at time zone 'Asia/Taipei')::date;
         t public.park_pet_trees; v_add int := 1; v_magic boolean := false; v_reap jsonb;
@@ -814,12 +863,17 @@ begin
     v_add := 2; v_magic := true;
     insert into public.park_pet_skill_log (student_id, skill, day, item) values (v_me, 'unicorn', v_day, p_tree);
   end if;
+  if p_fert then
+    update public.park_pet_inventory set qty = qty - 1 where student_id = v_me and item = 'cook-fert' and qty > 0;
+    if not found then raise exception '背包裡沒有肥料了，可以去商店的食材攤買'; end if;
+    v_add := v_add + 1;
+  end if;
   update public.park_pet_trees set grow = least(3, grow + v_add), last_water = v_day
    where student_id = v_me and tree = p_tree returning * into t;
   if t.grow = 3 and exists (select 1 from public.park_pets p where p.student_id = v_me and p.species = 'ant-princess') then
     v_reap := public.park_pet_reap(v_me, p_tree);
   end if;
-  return public.park_pet_state(v_me) || jsonb_build_object('did', 'water', 'tree', p_tree, 'grow', t.grow, 'magic', v_magic, 'reap', v_reap);
+  return public.park_pet_state(v_me) || jsonb_build_object('did', 'water', 'tree', p_tree, 'grow', t.grow, 'magic', v_magic, 'fert', p_fert, 'reap', v_reap);
 end;
 $$;
 
@@ -833,10 +887,13 @@ begin
 end;
 $$;
 
--- 烤點心：照食譜用兩樣材料，烤得剛剛好出兩個、太早太晚出一個（不會烤失敗）
-create or replace function public.park_pet_bake(p_recipe text, p_good boolean)
+-- 烤點心：照食譜用兩樣材料，顧火候顧得好出兩個、不好出一個（不會烤失敗）。
+-- p_deco：烤好後有幫它裝飾（-deco，效果 3 小時）；p_top：裝飾時加的配料（食材攤買，-gold，效果 4 小時）
+drop function if exists public.park_pet_bake(text, boolean);
+create or replace function public.park_pet_bake(p_recipe text, p_good boolean, p_deco boolean default false, p_top text default null)
 returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
 declare v_me uuid := public.current_student_id(); v_need text[]; v_k text; v_left int; v_n int := case when p_good then 2 else 1 end;
+        v_item text := p_recipe;
 begin
   if v_me is null then raise exception '請先登入學生帳號'; end if;
   v_need := case p_recipe when 'bake-orange' then array['fruit-orange', 'fruit-orange']
@@ -854,8 +911,17 @@ begin
     returning qty into v_left;
     if v_left is null then raise exception '材料不夠，再去收成或釣魚'; end if;
   end loop;
-  perform public.park_pet_give(v_me, p_recipe, v_n);
-  return public.park_pet_state(v_me) || jsonb_build_object('did', 'bake', 'item', p_recipe, 'n', v_n);
+  if p_top is not null then
+    if not coalesce(p_deco, false) then raise exception '配料要在裝飾的時候加'; end if;
+    if p_top not in ('cook-honey', 'cook-cream', 'cook-choco') then raise exception '沒有這種配料'; end if;
+    update public.park_pet_inventory set qty = qty - 1 where student_id = v_me and item = p_top and qty > 0;
+    if not found then raise exception '背包裡沒有這種配料了'; end if;
+    v_item := p_recipe || '-gold';
+  elsif coalesce(p_deco, false) then
+    v_item := p_recipe || '-deco';
+  end if;
+  perform public.park_pet_give(v_me, v_item, v_n);
+  return public.park_pet_state(v_me) || jsonb_build_object('did', 'bake', 'item', v_item, 'n', v_n);
 end;
 $$;
 
@@ -897,11 +963,12 @@ revoke all on function
   public.park_pet_bowl_eat(uuid), public.park_pet_bowl_fill(),
   public.park_pet_egg_give(uuid, text, text), public.park_pet_egg_check(uuid), public.park_pet_hatch(uuid),
   public.park_pet_game_tick(uuid, text), public.park_pet_give(uuid, text, int), public.park_pet_reap(uuid, text),
-  public.park_pet_fish(int), public.park_pet_water(text), public.park_pet_harvest(text), public.park_pet_bake(text, boolean)
+  public.park_pet_fish(int), public.park_pet_water(text, boolean), public.park_pet_harvest(text),
+  public.park_pet_bake(text, boolean, boolean, text), public.park_pet_bait()
   from public, anon, authenticated;
 grant execute on function
   public.park_pet_me(), public.park_pet_adopt(text, text), public.park_pet_feed(text), public.park_pet_swap(bigint),
-  public.park_pet_rest(bigint, boolean), public.park_pet_fish(int), public.park_pet_water(text), public.park_pet_harvest(text),
-  public.park_pet_bake(text, boolean), public.park_pet_pat(), public.park_pet_play(text), public.park_pet_rename(text),
+  public.park_pet_rest(bigint, boolean), public.park_pet_fish(int), public.park_pet_water(text, boolean), public.park_pet_harvest(text),
+  public.park_pet_bake(text, boolean, boolean, text), public.park_pet_bait(), public.park_pet_pat(), public.park_pet_play(text), public.park_pet_rename(text),
   public.park_pet_class_quiet(text), public.park_pet_set_class_quiet(text, boolean), public.park_pet_bowl_fill()
   to authenticated;
