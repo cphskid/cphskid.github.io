@@ -114,7 +114,13 @@ park.map.slots.forEach((s, i) => {
   b.style.cssText = `left:${s.left}px;top:${s.top}px;width:${s.width}px;--in:${(i * .05).toFixed(2)}s;--delay:${-i * 1.3}s`;
   const z = bySlot.get(s.slot);
   if (s.slot === park.map.repair_slot && !z) return; // 時光修理站自己畫（js/repair.js）
-  if (s.slot === park.map.pet_slot && !z) {
+  if (s.slot === park.map.lab_slot && !z) {
+    // 時光實驗室：書櫃裡的互動書＋時光祕境島過關點亮的工具（lab/，supabase/park_lab.sql）
+    b.classList.add('pet-isle', 'lab-isle');
+    b.setAttribute('aria-label', '時光實驗室');
+    b.innerHTML = `<div class="bob"><div class="lift"><div class="foam"></div><img class="art" src="img/l-09.webp" alt=""></div></div><div class="plate"><b>時光實驗室</b><span>互動書・實驗工具</span></div>`;
+    b.addEventListener('click', () => { if (!dragged) location.href = 'lab/'; });
+  } else if (s.slot === park.map.pet_slot && !z) {
     b.classList.add('pet-isle');
     b.setAttribute('aria-label', '寵物島');
     b.innerHTML = `<div class="bob"><div class="lift"><div class="foam"></div><img class="art" src="img/l-07.webp" alt=""></div></div><div class="plate"><b>寵物島</b><span>夥伴們住的地方</span></div>`;
