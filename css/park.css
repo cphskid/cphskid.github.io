@@ -1506,6 +1506,28 @@ body[data-starter="on"][data-scene="map"] #tick .bubble{display:none}
 .isle-inbox li{display:flex;gap:8px;align-items:center;font:700 15px/1.3 var(--f-body);color:var(--ink)}
 .isle-inbox li img{width:30px;height:30px;object-fit:contain;flex:none}
 .isle-inbox small{display:block;margin:-4px 0 8px;color:#8a6a4a;font-weight:700}
+.pisle .isle-sign{display:flex;align-items:center;gap:10px}
+.pisle .isle-sign>span{overflow:hidden;text-overflow:ellipsis}
+.pisle .isle-love{pointer-events:auto;flex:none;display:inline-flex;align-items:center;gap:3px;margin:-3px -10px -3px 0;padding:2px 10px 2px 3px;border:0;border-radius:99px;background:#fff8e6;color:var(--wood);font:900 16px/1 var(--f-body);font-variant-numeric:tabular-nums;cursor:pointer;box-shadow:inset 0 -2px 0 rgba(0,0,0,.12)}
+.pisle .isle-love img{width:26px;height:26px;object-fit:contain}
+.pisle .isle-love:active{transform:scale(.94)}
+.pisle .isle-lovebox{position:absolute;left:50%;top:calc(env(safe-area-inset-top) + 64px);transform:translateX(-50%);z-index:27;width:min(380px,calc(100% - 24px));max-height:calc(100dvh - env(safe-area-inset-top) - 90px);overflow:auto;overscroll-behavior:contain;background:#fff8e6;border:4px solid var(--wood);border-radius:18px;padding:12px 14px;box-shadow:0 6px 0 var(--wood-2),0 12px 24px rgba(0,0,0,.25);animation:pop .3s ease-out}
+.isle-lovebox h4{margin:0 0 4px;font:900 18px/1.2 var(--f-body);color:var(--wood)}
+.isle-lovebox .sum{margin:0 0 10px;font:700 15px/1.4 var(--f-body);color:var(--ink)}
+.isle-lovebox .sum b{color:#e0643c}
+.isle-lovebox ul{list-style:none;margin:0;padding:0}
+.isle-lovebox .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.isle-lovebox .grid li{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 4px;border-radius:14px;background:#fff;box-shadow:inset 0 0 0 2px #f0dcb8;font:800 13px/1.2 var(--f-body);color:var(--wood)}
+.isle-lovebox .grid li img{width:44px;height:44px;object-fit:contain}
+.isle-lovebox .grid li span{font:900 16px/1 var(--f-body);color:#e0643c;font-variant-numeric:tabular-nums}
+.isle-lovebox .grid li.none{opacity:.45;filter:grayscale(.7)}
+.isle-lovebox .grid li.none span{color:#8a6a4a}
+.isle-lovebox .lab{margin:0 0 6px;font:900 15px/1.2 var(--f-body);color:var(--wood)}
+.isle-lovebox .who{display:grid;gap:4px;margin-bottom:10px}
+.isle-lovebox .who li{display:flex;gap:8px;align-items:center;font:700 14px/1.3 var(--f-body);color:var(--ink)}
+.isle-lovebox .who li img{width:26px;height:26px;object-fit:contain;flex:none}
+.isle-lovebox .who li span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.isle-lovebox .who li small{flex:none;color:#8a6a4a;font-weight:700}
 #petroom .furn .lab{margin:12px 0 6px;font:900 15px/1.2 var(--f-body);color:var(--wood)}
 #petroom .furn .lab small{font:700 13px/1 var(--f-body);color:#8a6a4a;margin-left:6px}
 .isle-deco .lab:first-child{margin-top:0}
@@ -1579,7 +1601,10 @@ body[data-starter="on"][data-scene="map"] #tick .bubble{display:none}
 .iv-view .note{text-align:center}
 .iv-toast{position:absolute;left:50%;bottom:24px;transform:translateX(-50%);margin:0;padding:10px 18px;border-radius:99px;background:var(--wood);color:#fff8e6;font:900 15px/1.3 var(--f-body);box-shadow:0 6px 18px rgba(0,0,0,.25);z-index:5;text-align:center;max-width:calc(100% - 32px)}
 @media (max-width:520px){
-  .pisle .isle-sign{font-size:15px;top:auto;bottom:calc(env(safe-area-inset-bottom) + 156px);max-width:calc(100% - 40px);overflow:hidden;text-overflow:ellipsis}
+  .pisle .isle-sign{font-size:15px;top:auto;bottom:calc(env(safe-area-inset-bottom) + 156px);max-width:calc(100% - 40px)}
+  .pisle .isle-love{font-size:15px}
+  .pisle .isle-love img{width:22px;height:22px}
+  .isle-lovebox .grid li img{width:36px;height:36px}
   .iv-stage{height:42dvh}
   .iv-react button{font-size:13px;padding:4px 10px 4px 4px}
   .iv-react button img{width:28px;height:28px}
@@ -1617,7 +1642,7 @@ body[data-starter="on"][data-scene="map"] #tick .bubble{display:none}
 .pisle .bagpop .bowl-row img{width:56px;height:auto}
 .pisle .bagpop .note{margin:8px 0 0;font:700 13px/1.4 var(--f-body);color:#8a6a4a}
 /* 裝扮模式：上面一排（復原、全部收起、完成），下面的清單；其他照顧的東西先收起來 */
-.pisle.decorating :is(.dock,aside.care,.skychip,.isle-sign,.hint,.isle-inbox){display:none}
+.pisle.decorating :is(.dock,aside.care,.skychip,.isle-sign,.hint,.isle-inbox,.isle-lovebox){display:none}
 .pisle .deco-top{position:absolute;left:calc(env(safe-area-inset-left) + 10px);right:calc(env(safe-area-inset-right) + 76px);top:calc(env(safe-area-inset-top) + 10px);z-index:26;
   display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 10px;border-radius:18px;background:rgba(255,248,230,.95);border:3px solid var(--wood);box-shadow:0 4px 0 var(--wood-2)}
 .pisle .deco-top[hidden]{display:none}

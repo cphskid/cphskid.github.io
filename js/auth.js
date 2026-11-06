@@ -340,6 +340,7 @@ async function icall(fn, args) {
 export const isle = {
   me:       () => icall('park_isle_me'),
   seen:     () => icall('park_isle_seen'),
+  fans:     () => icall('park_isle_fans'),     // 自己的島收到的圖示明細
   save:     (theme, name, layout, stored) => icall('park_isle_save', { p_theme: theme, p_name: name, p_layout: layout, p_stored: stored }),
   mates:    () => icall('park_isle_class'),
   matesPage: (q, page) => icall('park_isle_class_page', { p_q: q ?? '', p_page: page ?? 0 }),

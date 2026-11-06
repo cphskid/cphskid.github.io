@@ -85,7 +85,9 @@ if (q.get('deco')) {
     layout: { bed: { x: .78, y: .72 }, slide: { x: .3, y: .7, f: i % 2 }, pool: { x: .26, y: .52 }, swing: { x: .46, y: .64 }, fountain: { x: .62, y: .8 }, tent: { x: .88, y: .62 }, flowers: { x: .4, y: .82 } },
     pets: [{ species: 'kitten', stage: 2, name: '咪咪' }, { species: 'puppy', stage: 1, name: '豆豆' }], mine: null }));
   Object.assign(auth.isle, {
-    me: async () => JSON.parse(JSON.stringify(I)), seen: async () => {}, save: async (t, n, l) => { Object.assign(I, { theme: t, name: n, layout: l, saved: true }); return { ok: true }; },
+    me: async () => JSON.parse(JSON.stringify(I)), seen: async () => {},
+    fans: async () => ({ love: I.love, visitors: 5, recent: [['小維', 2, 0], ['阿哲', 0, 0], ['Mia', 4, 1], ['芸芸', 0, 3], ['小樹', 1, 3], ['小維', 0, 6], ['阿哲', 2, 40]]
+      .map(([nickname, kind, d]) => ({ nickname, kind, at: new Date(Date.now() - d * 864e5).toISOString() })) }), save: async (t, n, l) => { Object.assign(I, { theme: t, name: n, layout: l, saved: true }); return { ok: true }; },
     featured: async () => isles, explore: async (seed) => isles.map((x, i) => isles[(i + seed) % 6]).map((x, i) => ({ ...x, nickname: x.nickname + '・' + (seed * 6 + i) })), mates: async () => isles.slice(0, 4),
     // 我們班的島（一頁 12 座、可以找）：假裝班上有 30 座＋一個還沒打開寵物島的「小新」
     matesPage: async (q, page) => {

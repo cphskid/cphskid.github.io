@@ -156,6 +156,22 @@ begin
 end;
 $$;
 
+-- 自己的島收到的圖示明細：{love:[6 種各幾個], visitors:幾個不同的人, recent:[{nickname, kind, at}] 最近 30 個}
+-- 2026-11-06 Chuck：寵物島要看得到大家按了多少讚、累積了哪些圖示
+create or replace function public.park_isle_fans()
+returns jsonb language plpgsql stable security definer set search_path = public, pg_temp as $$
+declare v_me uuid := public.current_student_id();
+begin
+  if v_me is null then raise exception '請先登入學生帳號'; end if;
+  return jsonb_build_object(
+    'love', to_jsonb(public.park_isle_love(v_me)),
+    'visitors', (select count(distinct from_id) from public.park_isle_reacts where to_id = v_me),
+    'recent', coalesce((select jsonb_agg(jsonb_build_object('nickname', st.nickname, 'kind', r.kind, 'at', r.at) order by r.at desc)
+                          from (select * from public.park_isle_reacts where to_id = v_me order by at desc limit 30) r
+                          join public.students st on st.id = r.from_id), '[]'::jsonb));
+end;
+$$;
+
 create or replace function public.park_isle_seen()
 returns void language sql security definer set search_path = public, pg_temp as $$
   update public.park_isle_reacts set seen = true where to_id = public.current_student_id() and not seen;
@@ -394,13 +410,13 @@ $$;
 revoke all on function
   public.park_isle_themes(uuid), public.park_isle_open_class(text), public.park_isle_explorable(uuid), public.park_isle_classmate(uuid, uuid),
   public.park_isle_can_see(uuid, uuid), public.park_isle_love(uuid), public.park_isle_card(uuid),
-  public.park_isle_me(), public.park_isle_seen(), public.park_isle_save(text, int[], jsonb, text[]),
+  public.park_isle_me(), public.park_isle_seen(), public.park_isle_fans(), public.park_isle_save(text, int[], jsonb, text[]),
   public.park_isle_class(), public.park_isle_featured_today(), public.park_isle_view(uuid), public.park_isle_react(uuid, int),
   public.park_isle_class_page(text, int), public.park_isle_explore(int),
   public.park_isle_gift(uuid), public.park_isle_find(uuid)
   from public, anon, authenticated;
 grant execute on function
-  public.park_isle_me(), public.park_isle_seen(), public.park_isle_save(text, int[], jsonb, text[]),
+  public.park_isle_me(), public.park_isle_seen(), public.park_isle_fans(), public.park_isle_save(text, int[], jsonb, text[]),
   public.park_isle_class(), public.park_isle_featured_today(), public.park_isle_view(uuid), public.park_isle_react(uuid, int),
   public.park_isle_class_page(text, int), public.park_isle_explore(int),
   public.park_isle_gift(uuid), public.park_isle_find(uuid)

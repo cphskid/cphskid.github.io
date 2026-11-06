@@ -482,7 +482,7 @@ function openScene({ select, say: first } = {}) {
     <div class="haze" aria-hidden="true"></div>
     <aside class="care"></aside>
     <p class="skychip">${SKY_NAME.wx[sky.wx]}・${SKY_NAME.season[sky.season]}・${SKY_NAME.tod[sky.tod]}</p>
-    <p class="isle-sign">${esc(isle.nameText(isle.name()))}</p>
+    <div class="isle-sign"><span>${esc(isle.nameText(isle.name()))}</span>${isle.loveChipHtml()}</div>
     ${isle.inboxHtml()}
     <p class="hint">拖曳可以看整座島，兩指或滾輪放大縮小；按住寵物可以拎起來</p>
     <div class="zoom" aria-label="放大縮小"><button type="button" data-zoom="1.25" aria-label="放大">＋</button><button type="button" data-zoom="0.8" aria-label="縮小">－</button></div>
@@ -523,6 +523,7 @@ function openScene({ select, say: first } = {}) {
   revealScene();
   const feat = isle.greet();
   $('[data-inbox-ok]', layer)?.addEventListener('click', (e) => { e.currentTarget.closest('.isle-inbox').remove(); isle.inboxSeen(); });
+  $('[data-love]', layer)?.addEventListener('click', openLove);
   if (first) say(first, selected);
   else if (feat && home) say(feat, home.id);
   else if (fresh.length && home) say(`哇！新的傢俱：${fresh.map((id) => FURN_NAME[id]).join('、')}！謝謝你去過關～`, home.id);
@@ -535,6 +536,22 @@ function openScene({ select, say: first } = {}) {
   last = performance.now();
   raf = requestAnimationFrame(tick);
   if (isle.ready() && (!isle.saved() || !W.unpack(isle.layout()))) saveIsle();     // 第一次打開、舊的擺法：存成新的樣子
+}
+
+// 收到的讚：點島名牌旁的愛心，打開「大家送給我的島」
+async function openLove() {
+  const pl = $('.pisle', layer);
+  if (!pl || $('.isle-lovebox', pl)) return;
+  $('.isle-inbox', pl)?.remove();
+  isle.inboxSeen();
+  const html = await isle.loveBoxHtml();
+  if (!layer || $('.pisle', layer) !== pl || $('.isle-lovebox', pl)) return;
+  pl.insertAdjacentHTML('beforeend', html);
+  const box = $('.isle-lovebox', pl);
+  const chip = $('.isle-love b', pl);
+  if (chip) chip.textContent = isle.loveTotal();
+  $('[data-love-ok]', box).addEventListener('click', () => box.remove());
+  $('[data-love-ok]', box).focus();
 }
 
 // ---------- 島的底圖：畫在固定解析度的 canvas 上，日夜天氣的顏色和影子先算好 ----------
@@ -1076,7 +1093,7 @@ function paintDeco() {
         paintDeco();
         if (tryTheme) decoMsg(`試套「${isle.THEMES.find((x) => x.id === t).name}」看看：${isle.THEMES.find((x) => x.id === t).how}就能換上`);
       },
-      onName: () => { $('.isle-sign', layer).textContent = isle.nameText(isle.name()); },
+      onName: () => { $('.isle-sign span', layer).textContent = isle.nameText(isle.name()); },
     });
   }
 }
