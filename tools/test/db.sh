@@ -105,6 +105,9 @@ run -f supabase/test/park_isle_test.sql 2>&1 | grep -E "✓|✗|ERROR|──" | 
 echo "── 寵物島 B 期：新夥伴的蛋與本事"
 run -f supabase/test/park_pet_egg_test.sql 2>&1 | grep -E "✓|✗|ERROR|──" | sed 's/^psql:[^ ]* NOTICE:  //'
 
+echo "── 寵物島 C 期：釣魚、澆果樹、烤點心"
+run -f supabase/test/park_pet_game_test.sql 2>&1 | grep -E "✓|✗|ERROR|──" | sed 's/^psql:[^ ]* NOTICE:  //'
+
 # 島嶼開拓者的 SQL（有給 ISLAND_REPO 才跑）：確定它疊在樂園上面套得進去、護照接得到
 if [ -n "${ISLAND_REPO:-}" ]; then
   echo "── 島嶼開拓者 island_pioneer.sql"
