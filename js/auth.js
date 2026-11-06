@@ -216,6 +216,7 @@ export const teacher = {
   lastPlay:       (code) => call('park_class_last_play', { p_code: code }),
   activity:       (id, days = 30) => call('park_student_activity', { p_student: id, p_days: days }),
   days:           (code, days = 7) => call('park_class_days', { p_code: code, p_days: days }),   // 遊玩紀錄分頁：全班每人每天
+  daysPage:       (code, days, q, who, page) => call('park_class_days_page', { p_code: code, p_days: days, p_q: q ?? '', p_who: who ?? 'came', p_page: page ?? 0, p_size: 30 }),   // 同上，可以找、篩、翻頁（park_console.sql）
 };
 export const admin = {
   facilities:     () => call('park_admin_facilities'),
