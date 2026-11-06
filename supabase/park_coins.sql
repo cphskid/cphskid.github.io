@@ -601,7 +601,7 @@ $$;
 -- 每人旁邊掛代表勳章。同班同學或這班的老師才看得到。只列前 10 名（0 分的不列），
 -- 另外回傳自己的名次，避免墊底的人被看見。算之前先幫全班補帳（通知照樣留給本人看）。
 -- 同伴圈（park_lounge.sql）：代碼 '~'（或交誼廳 TRYIT）＝孩子這週自己的同伴圈；'*'＝全樂園前 50 名（加入同伴圈的孩子和管理員看得到）
--- 回傳 {kind, code, name, rows:[{rank, id, nickname, look, frame, medal:{name, art, rarity}, score, me}], me:{rank, score}|null, total, circle?, site?}
+-- 回傳 {kind, code, name, rows:[{rank, id, nickname, card, look, frame, medal:{name, art, rarity}, score, me}], me:{rank, score}|null, total, circle?, site?}
 drop function if exists public.park_class_board(text);
 -- 排行要比的人：'*' 全樂園、交誼廳的孩子比同伴圈、其他整班
 create or replace function public.park_board_members(p_code text, p_me uuid, p_ring smallint)
@@ -673,6 +673,8 @@ begin
     'total', (select count(*) from w),
     'rows', coalesce((select jsonb_agg(jsonb_build_object(
                 'rank', r.rank, 'id', r.student_id, 'nickname', r.nickname, 'score', r.score, 'me', r.student_id = v_me,
+                -- 全樂園榜：對方也有加入同伴圈才點得開名片（park_student_card 同一條規則）
+                'card', not v_site or r.student_id = v_me or public.is_admin() or public.park_lounge_on(r.student_id),
                 'look', t.look, 'frame', coalesce(p.frame, 'plain'),
                 'medal', (select jsonb_build_object('name', s.name, 'art', s.art, 'rarity', s.rarity)
                             from public.park_stamps s

@@ -182,23 +182,45 @@ function boardTabs() {
   if (auth.lounge.state?.lounge) list.push({ code: '~', name: '同伴圈' }, { code: '*', name: '全樂園' });
   return list;
 }
+// 切分頁不重建對話框（2026-11-06 Chuck：每點一下都像關掉再打開）：外框只在第一次打開時彈出來，
+// 之後只換分頁的亮暗和下面的名單；載入時舊名單留著變淡。看過的分頁留 1 分鐘，切回去馬上出來。
+const boardCache = new Map();   // 'code|kind' → { b, at }
+const BOARD_TTL = 60_000;
+const boardOpen = () => !layer.hidden && !!layer.querySelector(':scope > .wallet.board');
 export async function openBoard(code = boardCode ?? boardTabs().find((c) => c.primary)?.code ?? boardTabs()[0]?.code, kind = boardKind) {
   if (!code) return;
   boardCode = code;
   boardKind = kind;
   const k = KINDS.find((x) => x.id === kind) ?? KINDS[0];
   const tabs = boardTabs();
-  const cls = tabs.length > 1 ? `<nav class="tabs cls" aria-label="班級">${tabs.map((c) => `<button type="button" class="tab${c.code === code ? ' on' : ''}" data-cls="${esc(c.code)}">${esc(c.name)}</button>`).join('')}</nav>` : '';
-  const kinds = `<nav class="tabs kinds" role="tablist" aria-label="比什麼">${KINDS.map((x) => `<button type="button" role="tab" class="tab${x.id === k.id ? ' on' : ''}" aria-selected="${x.id === k.id}" data-kind="${x.id}">${x.name}</button>`).join('')}</nav>`;
-  const head = `<button class="x" data-close aria-label="關閉"></button><h2>🏆 班級排行</h2>${cls}${kinds}`;
-  show(`<div class="wallet board" role="dialog" aria-modal="true" aria-label="班級排行">${head}<p class="tip">排行載入中…</p></div>`);
-  bindBoard();
-  let b;
-  try { b = await auth.coins.board(code, k.id); } catch (err) { show(`<div class="wallet board">${head}<p class="note bad">${esc(err.message)}</p></div>`); bindBoard(); return; }
-  if (boardCode !== code || boardKind !== kind) return;   // 等的時候又切到別的分頁
-  // 全樂園榜不能點開別人的名片（名片只給同學看）；名次的「全班」換成這個榜的名字
+  if (!boardOpen()) {
+    const cls = tabs.length > 1 ? `<nav class="tabs cls" aria-label="班級">${tabs.map((c) => `<button type="button" class="tab" data-cls="${esc(c.code)}">${esc(c.name)}</button>`).join('')}</nav>` : '';
+    const kinds = `<nav class="tabs kinds" role="tablist" aria-label="比什麼">${KINDS.map((x) => `<button type="button" role="tab" class="tab" data-kind="${x.id}">${x.name}</button>`).join('')}</nav>`;
+    show(`<div class="wallet board" role="dialog" aria-modal="true" aria-label="班級排行"><button class="x" data-close aria-label="關閉"></button><h2>🏆 班級排行</h2>${cls}${kinds}<div class="bbody"><p class="tip">排行載入中…</p></div></div>`);
+    bindBoard();
+  }
+  layer.querySelectorAll('[data-cls]').forEach((t) => t.classList.toggle('on', t.dataset.cls === code));
+  layer.querySelectorAll('[data-kind]').forEach((t) => { const on = t.dataset.kind === k.id; t.classList.toggle('on', on); t.setAttribute('aria-selected', on); });
+  const body = layer.querySelector('.bbody');
+  const key = `${code}|${k.id}`;
+  const hit = boardCache.get(key);
+  let b = hit && Date.now() - hit.at < BOARD_TTL ? hit.b : null;
+  if (!b) {
+    body.classList.add('busy');
+    try { b = await auth.coins.board(code, k.id); } catch (err) {
+      if (boardCode !== code || boardKind !== kind || !boardOpen()) return;
+      body.classList.remove('busy');
+      body.innerHTML = `<p class="note bad">${esc(err.message)}</p>`;
+      return;
+    }
+    boardCache.set(key, { b, at: Date.now() });
+    if (boardCode !== code || boardKind !== kind || !boardOpen()) return;   // 等的時候又切到別的分頁或關掉了
+  }
+  body.classList.remove('busy');
+  // 全樂園榜：兩邊都有加入同伴圈的才點得開名片（伺服器給 card；舊伺服器沒給就都不能點）；名次的「全班」換成這個榜的名字
   const where = b.site ? '全樂園' : b.circle ? '同伴圈' : '全班';
-  const rows = b.rows.map((r) => `<li class="${r.me ? 'me' : ''}" ${b.site && !r.me ? '' : `data-card="${esc(r.id)}"`}>
+  const canCard = (r) => r.me || !b.site || r.card;
+  const rows = b.rows.map((r) => `<li class="${r.me ? 'me' : ''}${canCard(r) ? '' : ' nocard'}" ${canCard(r) ? `data-card="${esc(r.id)}"` : ''}>
       <span class="rk">${PODIUM[r.rank - 1] ?? r.rank}</span>
       ${passport.avatarHtml(r.look, r.frame, '', r.medal)}
       <b>${esc(r.nickname)}${r.me ? '<small>（你）</small>' : ''}</b>
@@ -206,17 +228,14 @@ export async function openBoard(code = boardCode ?? boardTabs().find((c) => c.pr
       <span class="pt">${k.unit(r.score)}</span></li>`).join('');
   const mine = b.me && !b.rows.some((r) => r.me) ? `<p class="note">${b.me.rank ? k.mine(b.me).replace('全班', where) : k.none}</p>` : '';
   const about = b.site ? '全樂園前 50 名・' : b.circle ? `這週的同伴圈（${b.total} 人，每週一重新分）・` : `${esc(b.name || b.code)}・`;
-  show(`<div class="wallet board" role="dialog" aria-modal="true" aria-label="班級排行">${head}
-    <p class="tip">${about}${k.tip}頭像旁邊是每個人的代表勳章${b.site ? '' : '，點一下看名片'}。</p>
+  body.innerHTML = `<p class="tip">${about}${k.tip}頭像旁邊是每個人的代表勳章，點一下看名片。</p>
     ${rows ? `<ol class="rank">${rows}</ol>` : '<p class="tip">還沒有人上榜，第一個就是你！</p>'}
-    ${mine}
-  </div>`);
-  bindBoard();
+    ${mine}`;
+  body.querySelectorAll('[data-card]').forEach((li) => { li.onclick = () => { close(); passport.openCard(li.dataset.card); }; });
 }
 function bindBoard() {
   layer.querySelectorAll('[data-cls]').forEach((t) => { t.onclick = () => openBoard(t.dataset.cls, boardKind); });
   layer.querySelectorAll('[data-kind]').forEach((t) => { t.onclick = () => openBoard(boardCode, t.dataset.kind); });
-  layer.querySelectorAll('[data-card]').forEach((li) => { li.onclick = () => { close(); passport.openCard(li.dataset.card); }; });
 }
 
 // ---------- 商店 ----------

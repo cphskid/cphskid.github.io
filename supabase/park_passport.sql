@@ -549,8 +549,11 @@ begin
   if p_student is null then return null; end if;
   if not (p_student = v_me
           or public.park_teaches_student(p_student)
-          or (v_me is not null and p_student in (select public.park_classmates(v_me)))) then
-    raise exception '只能看同班同學的名片';
+          or (v_me is not null and p_student in (select public.park_classmates(v_me)))
+          -- 全樂園排行（2026-11-06 Chuck）：自己和對方都有加入同伴圈就看得到（park_lounge.sql 的 park_lounge_on）
+          or (v_me is not null and public.park_lounge_on(v_me) and public.park_lounge_on(p_student))
+          or public.is_admin()) then
+    raise exception '只能看同學和同伴圈夥伴的名片';
   end if;
   select * into v_p from public.park_profiles p where p.student_id = p_student;
   begin
