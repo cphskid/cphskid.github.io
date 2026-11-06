@@ -600,13 +600,14 @@ $$;
 --   medals 勳章牆＝總共拿到幾枚勳章（樂園護照上的章）
 -- 每人旁邊掛代表勳章。同班同學或這班的老師才看得到。只列前 10 名（0 分的不列），
 -- 另外回傳自己的名次，避免墊底的人被看見。算之前先幫全班補帳（通知照樣留給本人看）。
--- 同伴圈（park_lounge.sql）：代碼 '~'（或交誼廳 TRYIT）＝孩子這週自己的同伴圈；'*'＝全樂園前 50 名（加入同伴圈的孩子和管理員看得到）
+-- 同伴圈（park_lounge.sql）：代碼 '~'（或交誼廳 TRYIT）＝孩子這週自己的同伴圈；'*'＝全樂園前 50 名（只列加入同伴圈的孩子；加入同伴圈的孩子和管理員看得到）
 -- 回傳 {kind, code, name, rows:[{rank, id, nickname, card, look, frame, medal:{name, art, rarity}, score, me}], me:{rank, score}|null, total, circle?, site?}
 drop function if exists public.park_class_board(text);
 -- 排行要比的人：'*' 全樂園、交誼廳的孩子比同伴圈、其他整班
 create or replace function public.park_board_members(p_code text, p_me uuid, p_ring smallint)
 returns setof uuid language sql stable security definer set search_path = public, pg_temp as $$
-  select s.id from public.students s where p_code = '*'
+  -- 全樂園只算有加入同伴圈的孩子（2026-11-06 Chuck：爸媽或老師關掉同伴圈，多半是不想讓孩子進入比較）
+  select s.id from public.students s where p_code = '*' and public.park_lounge_on(s.id)
   union all
   select r from public.park_lounge_ring(p_me) r where p_code <> '*' and p_ring is not null
   union all
