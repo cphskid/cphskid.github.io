@@ -70,10 +70,15 @@ export const CAT = {
   's-hedge': { kind: 'tile', w: 94, aspect: .962, base: .74 },
   's-flowerbed': { kind: 'tile', w: 92, aspect: .726, base: .656 },
   's-veg': { kind: 'tile', w: 92, aspect: .671, base: .627 },
+  // C 期小遊戲的設施：果樹（點了澆水、收成）、烤點心爐（點了烤點心）；擋路
+  'tree-orange': { kind: 'farm', w: 118, aspect: 1.17, base: .93, foot: [2, 2], max: 1 },
+  'tree-apple':  { kind: 'farm', w: 118, aspect: 1.2, base: .93, foot: [2, 2], max: 1 },
+  'tree-mango':  { kind: 'farm', w: 118, aspect: 1.12, base: .93, foot: [2, 2], max: 1 },
+  oven:          { kind: 'farm', w: 84, aspect: .96, base: .8, foot: [1, 1], max: 1 },
 };
 export const isBuild = (id) => id.startsWith('s-');                    // 圍籬小路這類（另外算 150 格）
 export const kindOf = (id) => CAT[id]?.kind;
-const SOLID = new Set(['house', 'tile', 'fence']);
+const SOLID = new Set(['house', 'tile', 'fence', 'farm']);
 const footOf = (id, f) => { const [a, b] = CAT[id]?.foot ?? [1, 1]; return f ? [b, a] : [a, b]; };
 export function cellsOf(id, i, j, f) {
   const [a, b] = footOf(id, f), out = [];
@@ -273,7 +278,7 @@ export function migrate(old, ids, dflt) {
 // 新的島（還沒有小屋、盆子）：小屋、飼料盆、水盆擺在中間
 export function starter(items) {
   const out = [...items];
-  for (const [id, i, j] of [['house-basic', 14, 12], ['bowl-food', 13, 15], ['bowl-water', 15, 15]]) {
+  for (const [id, i, j] of [['house-basic', 14, 12], ['bowl-food', 13, 15], ['bowl-water', 15, 15], ['tree-orange', 18, 11], ['oven', 11, 16]]) {
     if (out.some((o) => o.id === id)) continue;
     const occ = occupancy(out), p = nearestFree(occ, id, i, j, 0);
     if (p) out.push({ id, i: p.i, j: p.j, f: 0 });

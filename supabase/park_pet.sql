@@ -120,6 +120,34 @@ create table if not exists public.park_pet_skill_log (
 );
 create index if not exists park_pet_skill_log_day on public.park_pet_skill_log (student_id, skill, day);
 
+-- 寵物島 C 期：小遊戲（釣魚、澆果樹、烤點心）
+-- 道具多一欄 buff：烤好的點心吃了會短暫得到能力（run 跑得快、jump 跳得高、swim 游得快、happy 心情超好）
+alter table public.park_pet_items add column if not exists buff text;
+alter table public.park_pets add column if not exists buff       text;
+alter table public.park_pets add column if not exists buff_until timestamptz;
+-- 果樹：每種一棵（擺在島上的 tree-<種類>），澆水 3 天（不用連續）就結果；grow 3＝熟了可以收
+create table if not exists public.park_pet_trees (
+  student_id uuid not null references public.students(id) on delete cascade,
+  tree       text not null check (tree in ('orange', 'apple', 'mango')),
+  grow       smallint not null default 0 check (grow between 0 and 3),
+  last_water date,
+  harvests   int not null default 0,
+  primary key (student_id, tree)
+);
+-- 小遊戲每天的紀錄：玩幾次、今天拿了幾個時光幣（釣魚一天最多 10 幣）、上一次的時間（擋連點）
+create table if not exists public.park_pet_game_log (
+  student_id uuid not null references public.students(id) on delete cascade,
+  game       text not null,
+  day        date not null,
+  n          int not null default 0,
+  coins      int not null default 0,
+  last_at    timestamptz not null default now(),
+  primary key (student_id, game, day)
+);
+alter table public.park_pet_trees    enable row level security;
+alter table public.park_pet_game_log enable row level security;
+revoke all on public.park_pet_trees, public.park_pet_game_log from anon, authenticated;
+
 -- 班級設定多一欄：上課時間桌寵休息
 alter table public.park_class_settings add column if not exists pet_quiet boolean not null default false;
 
@@ -135,22 +163,38 @@ on conflict (code) do update
 
 -- 寵物島 B 期：九隻新夥伴（不能直接領養，要拿蛋）
 insert into public.park_pet_species (code, name, series, starter, sort, egg_src, egg_hint, skill, skill_on) values
-  ('bear',           '臺灣黑熊', 'taiwan',  false, 11, 'stamp:island_pioneer:ch2', '島嶼開拓者「山林與部落」過關', '收成果樹時多一顆果子', false),
+  ('bear',           '臺灣黑熊', 'taiwan',  false, 11, 'stamp:island_pioneer:ch2', '島嶼開拓者「山林與部落」過關', '收成果樹時多一顆果子', true),
   ('magpie',         '臺灣藍鵲', 'taiwan',  false, 12, 'stamp:island_pioneer:ch3', '島嶼開拓者「大航海時代」過關', '去別人的島玩，每天會叼一份小禮物回來', true),
   ('deer',           '梅花鹿',   'taiwan',  false, 13, 'stamp:island_pioneer:ch4', '島嶼開拓者「東寧屯田」過關',   '跳得特別高，運動會跳躍項目有加分', false),
   ('pangolin',       '穿山甲',   'taiwan',  false, 14, 'stamp:island_pioneer:ch7', '島嶼開拓者「縱貫與大圳」過關', '每天在島上挖到一樣小東西', true),
-  ('leopard-cat',    '石虎',     'taiwan',  false, 15, 'stamp:island_pioneer:end', '島嶼開拓者最後一章「今天的島嶼」過關', '晚上釣魚會釣到夜行魚', false),
-  ('dragon',         '小火龍',   'fantasy', false, 21, 'stamp:guardian:ch1',       '守護異世界「草地城堡」全破',   '烤點心時「剛剛好」的範圍比較大', false),
-  ('unicorn',        '小獨角獸', 'fantasy', false, 22, 'stamp:guardian:a-boss-slayer', '守護異世界第一次打倒魔王', '每天讓一棵果樹一下子長大一階', false),
+  ('leopard-cat',    '石虎',     'taiwan',  false, 15, 'stamp:island_pioneer:end', '島嶼開拓者最後一章「今天的島嶼」過關', '晚上釣魚會釣到夜行魚', true),
+  ('dragon',         '小火龍',   'fantasy', false, 21, 'stamp:guardian:ch1',       '守護異世界「草地城堡」全破',   '烤點心時「剛剛好」的範圍比較大', true),
+  ('unicorn',        '小獨角獸', 'fantasy', false, 22, 'stamp:guardian:a-boss-slayer', '守護異世界第一次打倒魔王', '每天讓一棵果樹一下子長大一階', true),
   ('leaf-butterfly', '枯葉蝶',   'forest',  false, 31, 'animal:forest',            '時光動物祕境「森林」過關',     '會假裝成島上的一片葉子，同學來你的島找到牠，兩個人都有獎勵', true),
-  ('ant-princess',   '小蟻公主', 'forest',  false, 32, 'animal:nest',              '時光動物祕境「螞蟻地下城」過關', '果子熟了會自動幫你收成', false)
+  ('ant-princess',   '小蟻公主', 'forest',  false, 32, 'animal:nest',              '時光動物祕境「螞蟻地下城」過關', '果子熟了會自動幫你收成', true)
 on conflict (code) do update
   set name = excluded.name, series = excluded.series, starter = excluded.starter, sort = excluded.sort,
       egg_src = excluded.egg_src, egg_hint = excluded.egg_hint, skill = excluded.skill, skill_on = excluded.skill_on;
-update public.park_pet_species set skill = v.skill, egg_hint = '一開始就能領養'
+update public.park_pet_species set skill = v.skill, egg_hint = '一開始就能領養', skill_on = v.code in ('kitten', 'hamster')
   from (values ('puppy', '跑得快，運動會賽跑有加分'), ('kitten', '釣魚高手，魚上鉤會停比較久'),
                ('hamster', '愛收集，收成時多撿一顆種子')) v(code, skill)
  where park_pet_species.code = v.code;
+
+-- C 期小遊戲拿到的：魚（釣魚）、果子（果樹）、烤好的點心（烤點心爐，有 buff）
+insert into public.park_pet_items (code, kind, name, icon, xp, facility, sort, buff) values
+  ('fish-s',       'special', '小溪魚',     '🐟', 2, null, 30, null),
+  ('fish-m',       'special', '胖胖魚',     '🐠', 3, null, 31, null),
+  ('fish-l',       'special', '大鯉魚',     '🎏', 5, null, 32, null),
+  ('fish-night',   'special', '夜光魚',     '✨', 6, null, 33, null),
+  ('fruit-orange', 'special', '橘子',       '🍊', 2, null, 40, null),
+  ('fruit-apple',  'special', '蘋果',       '🍎', 2, null, 41, null),
+  ('fruit-mango',  'special', '芒果',       '🥭', 2, null, 42, null),
+  ('bake-orange',  'special', '橘子小蛋糕', '🧁', 6, null, 50, 'run'),
+  ('bake-apple',   'special', '蘋果派',     '🥧', 6, null, 51, 'jump'),
+  ('bake-mango',   'special', '芒果布丁',   '🍮', 6, null, 52, 'happy'),
+  ('bake-fish',    'special', '鮮魚餅乾',   '🍘', 6, null, 53, 'swim')
+on conflict (code) do update
+  set kind = excluded.kind, name = excluded.name, icon = excluded.icon, xp = excluded.xp, sort = excluded.sort, buff = excluded.buff;
 
 insert into public.park_pet_items (code, kind, name, icon, xp, facility, sort) values
   ('kibble',      'food',    '時光飼料',     '🥣', 1, null,             1),
@@ -266,6 +310,7 @@ returns jsonb language sql stable set search_path = public, pg_temp as $$
   )
   select jsonb_build_object(
     'id', p.id, 'species', p.species, 'name', p.name, 'active', p.active, 'resting', p.resting and not p.active,
+    'buff', case when p.buff_until > now() then p.buff end, 'buff_until', case when p.buff_until > now() then p.buff_until end,
     'xp', p.xp, 'stage', public.park_pet_stage(p.xp),
     'next_xp', case public.park_pet_stage(p.xp) when 1 then 12 when 2 then 40 else null end,
     'mood', case when p.active then m.mood else 'island' end, 'fed_at', p.fed_at,
@@ -341,7 +386,12 @@ returns jsonb language sql stable security definer set search_path = public, pg_
                                  order by s.sort) from public.park_pet_species s),
     'eggs', coalesce((select jsonb_agg(jsonb_build_object('species', e.species, 'source', e.source, 'hatch_on', e.hatch_on) order by e.got_at)
                         from public.park_pet_eggs e where e.student_id = p_student and e.hatched_at is null), '[]'::jsonb),
-    'items', (select jsonb_agg(jsonb_build_object('code', i.code, 'kind', i.kind, 'name', i.name, 'icon', i.icon, 'xp', i.xp,
+    'trees', coalesce((select jsonb_object_agg(t.tree, jsonb_build_object('grow', t.grow,
+                          'watered', t.last_water = (now() at time zone 'Asia/Taipei')::date, 'harvests', t.harvests))
+                         from public.park_pet_trees t where t.student_id = p_student), '{}'::jsonb),
+    'fish_coins', coalesce((select g.coins from public.park_pet_game_log g where g.student_id = p_student and g.game = 'fish'
+                             and g.day = (now() at time zone 'Asia/Taipei')::date), 0),
+    'items', (select jsonb_agg(jsonb_build_object('code', i.code, 'kind', i.kind, 'name', i.name, 'icon', i.icon, 'xp', i.xp, 'buff', i.buff,
                                                   'facility', i.facility,
                                                   'facility_name', (select f.name from public.park_facilities f where f.code = i.facility))
                                order by i.sort) from public.park_pet_items i),
@@ -598,9 +648,12 @@ begin
      set fed_at = least(now(), greatest(fed_at, now() - interval '1 day')
                                + case when v_i.kind = 'food' then interval '6 hours' else interval '10 hours' end),
          ate_at = case when v_i.kind = 'food' then now() else ate_at end, xp = xp + v_i.xp,
-         sulky = (v_mood = 'angry')        -- 餓到生氣：吃飽了還在鬧脾氣
+         sulky = (v_mood = 'angry'),       -- 餓到生氣：吃飽了還在鬧脾氣
+         buff = coalesce(v_i.buff, buff),  -- 烤好的點心：2 小時的能力
+         buff_until = case when v_i.buff is not null then now() + interval '2 hours' else buff_until end
    where id = v.id;
-  perform public.park_pet_add_joy(v.id, case when p_item in ('pumpkin-pie', 'candy', 'bat-cookie') then 3 else 1 end);
+  perform public.park_pet_add_joy(v.id, case when p_item in ('pumpkin-pie', 'candy', 'bat-cookie') then 3
+                                             when v_i.buff = 'happy' then 8 else 1 end);
   return public.park_pet_state(v_me) || jsonb_build_object('did', 'feed', 'was', v_mood, 'xp', v_i.xp);
 end;
 $$;
@@ -675,6 +728,138 @@ end;
 $$;
 
 -- -----------------------------------------------------------------------------
+-- 5b. 寵物島 C 期小遊戲（2026-11-06 Chuck 開工；不限次數，但獎勵有上限）
+-- -----------------------------------------------------------------------------
+-- 小遊戲紀錄：擋 1.5 秒內連點，回傳今天這一筆
+create or replace function public.park_pet_game_tick(p_student uuid, p_game text)
+returns public.park_pet_game_log language plpgsql security definer set search_path = public, pg_temp as $$
+declare v_day date := (now() at time zone 'Asia/Taipei')::date; v public.park_pet_game_log;
+begin
+  select * into v from public.park_pet_game_log where student_id = p_student and game = p_game and day = v_day for update;
+  if v.student_id is not null and v.last_at > now() - interval '1.5 seconds' then raise exception '慢慢來，等一下再試'; end if;
+  insert into public.park_pet_game_log as g (student_id, game, day, n, last_at) values (p_student, p_game, v_day, 1, now())
+  on conflict (student_id, game, day) do update set n = g.n + 1, last_at = now()
+  returning * into v;
+  return v;
+end;
+$$;
+
+create or replace function public.park_pet_give(p_student uuid, p_item text, p_qty int)
+returns void language sql security definer set search_path = public, pg_temp as $$
+  insert into public.park_pet_inventory as v (student_id, item, qty) values (p_student, p_item, p_qty)
+  on conflict (student_id, item) do update set qty = v.qty + excluded.qty;
+$$;
+
+-- 釣魚：p_size 0 沒釣到、1 小、2 中、3 大（連續釣到越來越大，畫面算）。
+-- 晚上（18:00～06:00）有石虎、釣到中大魚時有機會變成夜光魚；大魚 +2 幣、中魚 +1 幣，一天最多 10 幣。
+create or replace function public.park_pet_fish(p_size int)
+returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
+declare v_me uuid := public.current_student_id(); v public.park_pet_game_log; v_item text; v_coin int := 0; v_got int := 0;
+        v_h int := extract(hour from now() at time zone 'Asia/Taipei');
+begin
+  if v_me is null then raise exception '請先登入學生帳號'; end if;
+  if p_size is null or p_size not between 0 and 3 then raise exception '沒有這種魚'; end if;
+  v := public.park_pet_game_tick(v_me, 'fish');
+  if p_size > 0 then
+    v_item := case p_size when 1 then 'fish-s' when 2 then 'fish-m' else 'fish-l' end;
+    if p_size >= 2 and (v_h >= 18 or v_h < 6) and random() < .4
+       and exists (select 1 from public.park_pets p where p.student_id = v_me and p.species = 'leopard-cat') then
+      v_item := 'fish-night';
+    end if;
+    perform public.park_pet_give(v_me, v_item, 1);
+    v_coin := least(case p_size when 3 then 2 when 2 then 1 else 0 end, greatest(0, 10 - v.coins));
+    if v_coin > 0 then
+      v_got := public.park_coin_grant(v_me, 'fish:' || v.day || ':' || v.n, v_coin, null, '寵物島釣魚');
+      update public.park_pet_game_log set coins = coins + v_got where student_id = v_me and game = 'fish' and day = v.day;
+    end if;
+  end if;
+  return public.park_pet_state(v_me) || jsonb_build_object('did', 'fish', 'item', v_item, 'coins', v_got);
+end;
+$$;
+
+-- 收成：熟了（grow 3）才能收；3 顆果子，有黑熊多 1 顆，有黃金鼠多撿 1 份葵花子
+create or replace function public.park_pet_reap(p_student uuid, p_tree text)
+returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
+declare v_n int := 3; v_seed int := 0;
+begin
+  if exists (select 1 from public.park_pets p where p.student_id = p_student and p.species = 'bear') then v_n := v_n + 1; end if;
+  if exists (select 1 from public.park_pets p where p.student_id = p_student and p.species = 'hamster') then v_seed := 1; end if;
+  update public.park_pet_trees set grow = 0, harvests = harvests + 1 where student_id = p_student and tree = p_tree and grow = 3;
+  if not found then raise exception '還沒結果喔，再澆幾天水'; end if;
+  perform public.park_pet_give(p_student, 'fruit-' || p_tree, v_n);
+  if v_seed > 0 then perform public.park_pet_give(p_student, 'seeds', v_seed); end if;
+  return jsonb_build_object('fruit', 'fruit-' || p_tree, 'n', v_n, 'seeds', v_seed);
+end;
+$$;
+
+-- 澆果樹：島上要擺著這棵樹；每棵一天澆一次，澆 3 天就熟。
+-- 小獨角獸：每天第一次澆水多長一階；小蟻公主：熟了自動收成。
+create or replace function public.park_pet_water(p_tree text)
+returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
+declare v_me uuid := public.current_student_id(); v_day date := (now() at time zone 'Asia/Taipei')::date;
+        t public.park_pet_trees; v_add int := 1; v_magic boolean := false; v_reap jsonb;
+begin
+  if v_me is null then raise exception '請先登入學生帳號'; end if;
+  if p_tree not in ('orange', 'apple', 'mango') then raise exception '沒有這種果樹'; end if;
+  if not exists (select 1 from public.park_isle i, jsonb_array_elements(coalesce(i.layout -> 'items', '[]'::jsonb)) e
+                  where i.student_id = v_me and e ->> 0 = 'tree-' || p_tree) then
+    raise exception '先把果樹種在島上'; end if;
+  perform public.park_pet_game_tick(v_me, 'water');
+  insert into public.park_pet_trees (student_id, tree) values (v_me, p_tree) on conflict do nothing;
+  select * into t from public.park_pet_trees where student_id = v_me and tree = p_tree for update;
+  if t.grow >= 3 then raise exception '果子熟了，先收成吧'; end if;
+  if t.last_water = v_day then raise exception '今天喝飽了，明天再來澆'; end if;
+  if exists (select 1 from public.park_pets p where p.student_id = v_me and p.species = 'unicorn')
+     and not exists (select 1 from public.park_pet_skill_log l where l.student_id = v_me and l.skill = 'unicorn' and l.day = v_day) then
+    v_add := 2; v_magic := true;
+    insert into public.park_pet_skill_log (student_id, skill, day, item) values (v_me, 'unicorn', v_day, p_tree);
+  end if;
+  update public.park_pet_trees set grow = least(3, grow + v_add), last_water = v_day
+   where student_id = v_me and tree = p_tree returning * into t;
+  if t.grow = 3 and exists (select 1 from public.park_pets p where p.student_id = v_me and p.species = 'ant-princess') then
+    v_reap := public.park_pet_reap(v_me, p_tree);
+  end if;
+  return public.park_pet_state(v_me) || jsonb_build_object('did', 'water', 'tree', p_tree, 'grow', t.grow, 'magic', v_magic, 'reap', v_reap);
+end;
+$$;
+
+create or replace function public.park_pet_harvest(p_tree text)
+returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
+declare v_me uuid := public.current_student_id(); v_reap jsonb;
+begin
+  if v_me is null then raise exception '請先登入學生帳號'; end if;
+  v_reap := public.park_pet_reap(v_me, p_tree);
+  return public.park_pet_state(v_me) || jsonb_build_object('did', 'harvest', 'reap', v_reap);
+end;
+$$;
+
+-- 烤點心：照食譜用兩樣材料，烤得剛剛好出兩個、太早太晚出一個（不會烤失敗）
+create or replace function public.park_pet_bake(p_recipe text, p_good boolean)
+returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
+declare v_me uuid := public.current_student_id(); v_need text[]; v_k text; v_left int; v_n int := case when p_good then 2 else 1 end;
+begin
+  if v_me is null then raise exception '請先登入學生帳號'; end if;
+  v_need := case p_recipe when 'bake-orange' then array['fruit-orange', 'fruit-orange']
+                          when 'bake-apple'  then array['fruit-apple', 'fruit-apple']
+                          when 'bake-mango'  then array['fruit-mango', 'fruit-mango']
+                          when 'bake-fish'   then array['fish-s', 'fish-s'] end;
+  if v_need is null then raise exception '沒有這個食譜'; end if;
+  if not exists (select 1 from public.park_isle i, jsonb_array_elements(coalesce(i.layout -> 'items', '[]'::jsonb)) e
+                  where i.student_id = v_me and e ->> 0 = 'oven') then
+    raise exception '先把烤點心爐擺到島上'; end if;
+  perform public.park_pet_game_tick(v_me, 'bake');
+  foreach v_k in array (select array_agg(distinct x) from unnest(v_need) x) loop
+    update public.park_pet_inventory set qty = qty - (select count(*) from unnest(v_need) y where y = v_k)
+     where student_id = v_me and item = v_k and qty >= (select count(*) from unnest(v_need) y where y = v_k)
+    returning qty into v_left;
+    if v_left is null then raise exception '材料不夠，再去收成或釣魚'; end if;
+  end loop;
+  perform public.park_pet_give(v_me, p_recipe, v_n);
+  return public.park_pet_state(v_me) || jsonb_build_object('did', 'bake', 'item', p_recipe, 'n', v_n);
+end;
+$$;
+
+-- -----------------------------------------------------------------------------
 -- 6. 給老師後台叫的：上課時間桌寵休息
 -- -----------------------------------------------------------------------------
 create or replace function public.park_pet_class_quiet(p_code text)
@@ -710,10 +895,13 @@ revoke all on function
   public.park_pet_feed(text), public.park_pet_pat(), public.park_pet_rename(text),
   public.park_pet_class_quiet(text), public.park_pet_set_class_quiet(text, boolean),
   public.park_pet_bowl_eat(uuid), public.park_pet_bowl_fill(),
-  public.park_pet_egg_give(uuid, text, text), public.park_pet_egg_check(uuid), public.park_pet_hatch(uuid)
+  public.park_pet_egg_give(uuid, text, text), public.park_pet_egg_check(uuid), public.park_pet_hatch(uuid),
+  public.park_pet_game_tick(uuid, text), public.park_pet_give(uuid, text, int), public.park_pet_reap(uuid, text),
+  public.park_pet_fish(int), public.park_pet_water(text), public.park_pet_harvest(text), public.park_pet_bake(text, boolean)
   from public, anon, authenticated;
 grant execute on function
   public.park_pet_me(), public.park_pet_adopt(text, text), public.park_pet_feed(text), public.park_pet_swap(bigint),
-  public.park_pet_rest(bigint, boolean), public.park_pet_pat(), public.park_pet_play(text), public.park_pet_rename(text),
+  public.park_pet_rest(bigint, boolean), public.park_pet_fish(int), public.park_pet_water(text), public.park_pet_harvest(text),
+  public.park_pet_bake(text, boolean), public.park_pet_pat(), public.park_pet_play(text), public.park_pet_rename(text),
   public.park_pet_class_quiet(text), public.park_pet_set_class_quiet(text, boolean), public.park_pet_bowl_fill()
   to authenticated;

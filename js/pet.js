@@ -15,6 +15,7 @@ import { span } from './perf.js';
 import * as playlog from './playlog.js';
 import * as isle from './isle.js';
 import * as W from './isleworld.js';
+import * as games from './petgames.js';
 
 const $ = (s, root = document) => root.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -45,6 +46,7 @@ let hooks = { me: () => ({ kind: 'guest' }), host: () => null, island: () => nul
 let state = null;            // park_pet_me() 的結果；null＝不是學生或資料庫還沒裝
 let news = [];               // 剛拿到的道具（顯示一次）
 let bought = [];             // 商店買的傢俱 id
+let farmNew = false;         // 這次打開才自動種好橘子樹和烤點心爐（要存到伺服器、讓寵物介紹一下）
 
 const layer = $('#petroom');
 
@@ -67,7 +69,8 @@ const EXTRA_STAGES = [1, 2, 3];
 const art = (species, stage = 1, pose = 'idle') =>
   `img/pet/${esc(species)}/${stage}-${EXTRA[pose] && !EXTRA_STAGES.includes(stage) ? EXTRA[pose] : pose}.webp`;
 const POSE = { normal: 'idle', happy: 'cheer', hungry: 'hungry', angry: 'angry', asleep: 'sleep', quiet: 'sleep', island: 'idle' };
-const FOOD_IMG = new Set(['kibble', 'rice-ball', 'magic-fruit', 'apple', 'carrot', 'seeds', 'biscuit', 'fish', 'mooncake', 'pumpkin-pie', 'candy', 'bat-cookie']);           // 有 PT-10 圖的道具，其他先用表情符號
+const FOOD_IMG = new Set(['kibble', 'rice-ball', 'magic-fruit', 'apple', 'carrot', 'seeds', 'biscuit', 'fish', 'mooncake', 'pumpkin-pie', 'candy', 'bat-cookie',
+  'fish-s', 'fish-m', 'fish-l', 'fish-night', 'fruit-orange', 'fruit-apple', 'fruit-mango', 'bake-orange', 'bake-apple', 'bake-mango', 'bake-fish']);           // 有 PT-10 圖的道具，其他先用表情符號
 const icon = (i) => FOOD_IMG.has(i.code) ? `<img src="img/pet/food/${esc(i.code)}.webp" alt="">` : esc(i.icon);
 const owned = (code) => state?.pets?.some((p) => p.species === code);
 const freeStarters = () => (state?.species ?? []).filter((s) => s.starter && !owned(s.code));
@@ -502,6 +505,7 @@ function openScene({ select, say: first } = {}) {
   items = loadItems(fresh);
   rebuildWorld();
   addDecor(box);
+  addFishSpot(box);
   fresh.forEach((id) => props.find((o) => o.id === id)?.el.classList.add('new'));
   state.pets.filter((p) => !p.resting).forEach((p) => addActor(box, p));     // 在休息屋的不在島上走
   actors.forEach((a) => { if (Math.random() < .7) laterWish(a, rnd(2500, 9000)); });
@@ -545,7 +549,9 @@ function openScene({ select, say: first } = {}) {
   news = [];
   last = performance.now();
   raf = requestAnimationFrame(tick);
-  if (isle.ready() && (!isle.saved() || !W.unpack(isle.layout()))) saveIsle();     // 第一次打開、舊的擺法：存成新的樣子
+  if (isle.ready() && (!isle.saved() || !W.unpack(isle.layout()) || farmNew)) saveIsle();     // 第一次打開、舊的擺法、剛種好果樹：存成新的樣子
+  if (farmNew && home && !first) sceneTimers.push(setTimeout(() => say('島上種了一棵橘子樹，還有烤點心爐！點果樹澆水，點池塘的浮標可以釣魚喔', home.id), 2600));
+  farmNew = false;
 }
 
 // 收到的讚：點島名牌旁的愛心，打開「大家送給我的島」
@@ -833,7 +839,7 @@ const USE = {
 };
 // 一開始送三件；其他的蓋護照章解鎖（FURN_STAMP：蓋到第幾個章）。之後樂園商店再加只能用時光幣換的。網址加 ?furn=all 可以全部看
 const STARTER = ['bed', 'slide', 'pool'];
-const FREE = ['house-basic', 'bowl-food', 'bowl-water', 's-fence-white', 's-fence-wood', 's-gate', 's-path-stone', 's-path-wood', 's-path-brick', 's-hedge', 's-flowerbed', 's-veg'];
+const FREE = ['tree-orange', 'oven', 'house-basic', 'bowl-food', 'bowl-water', 's-fence-white', 's-fence-wood', 's-gate', 's-path-stone', 's-path-wood', 's-path-brick', 's-hedge', 's-flowerbed', 's-veg'];
 const FURN_STAMP = { tent: 1, swing: 2, fountain: 4, toybox: 5, bench: 7, tunnel: 8, flowers: 10, lantern: 12 };
 const FURN_NAME = { bed: '軟軟小床', tent: '露營帳篷', slide: '溜滑梯', fountain: '噴水池', pool: '小泳池', swing: '盪鞦韆',
                     bench: '野餐桌椅', tunnel: '鑽鑽隧道', toybox: '玩具箱', flowers: '花盆', lantern: '小燈籠',
@@ -842,7 +848,12 @@ const FURN_NAME = { bed: '軟軟小床', tent: '露營帳篷', slide: '溜滑梯
                     'house-basic': '小木屋', 'house-mushroom': '蘑菇屋', 'house-tree': '樹屋', 'house-igloo': '雪屋',
                     'bowl-food': '飼料盆', 'bowl-water': '水盆',
                     's-fence-white': '白圍籬', 's-fence-wood': '木圍籬', 's-gate': '小門', 's-path-stone': '石磚路', 's-path-wood': '木地板',
-                    's-path-brick': '紅磚路', 's-hedge': '矮樹叢', 's-flowerbed': '花圃', 's-veg': '菜園' };
+                    's-path-brick': '紅磚路', 's-hedge': '矮樹叢', 's-flowerbed': '花圃', 's-veg': '菜園',
+                    'tree-orange': '橘子樹', 'tree-apple': '蘋果樹', 'tree-mango': '芒果樹', oven: '烤點心爐' };
+// C 期小遊戲的設施：橘子樹和烤點心爐一開始就有（第一次進來自動種好），蘋果樹、芒果樹蓋章解鎖
+const FARM = ['tree-orange', 'tree-apple', 'tree-mango', 'oven'];
+const FARM_STAMP = { 'tree-apple': 3, 'tree-mango': 6 };
+const FARM_KEY = 'park-pet-farm-v1';
 const SHOP_FURN = { scratcher: 120, sandbox: 150, trampoline: 180, hammock: 200, 'rabbit-lamp': 250,
                     'pumpkin-lamp': 150, 'ghost-house': 250, 'candy-bucket': 180, 'web-swing': 220,
                     'house-mushroom': 250, 'house-tree': 300, 'house-igloo': 280 };   // 商店價（只給清單顯示，真的價錢看資料庫）
@@ -871,7 +882,8 @@ function ownedFurniture() {
   const stamps = state?.stamps ?? 0;
   return PROPS.map((d) => d.id).filter((id) => STARTER.includes(id) || stamps >= (FURN_STAMP[id] ?? 99) || bought.includes(id));
 }
-const owns = (id) => FREE.includes(id) || ownedFurniture().includes(id) || bought.includes(id) || (all() && HOUSES.includes(id));
+const owns = (id) => FREE.includes(id) || ownedFurniture().includes(id) || bought.includes(id) || (all() && (HOUSES.includes(id) || FARM.includes(id)))
+  || (FARM_STAMP[id] && (state?.stamps ?? 0) >= FARM_STAMP[id]);
 // 這次打開才解鎖的傢俱（記在這台電腦，只慶祝一次）
 function freshFurniture() {
   let seen = null;
@@ -892,6 +904,18 @@ function loadItems(fresh) {
     list = W.starter(W.migrate(old, ownedFurniture().filter((id) => !stored.includes(id)), dflt));
   }
   list = list.filter((o) => owns(o.id));
+  // C 期：第一次進來把橘子樹、烤點心爐種在島上（之後收起來就不再自動放）
+  let farmed = false;
+  try { farmed = !!localStorage.getItem(FARM_KEY); } catch { /* 讀不到就當沒放過 */ }
+  if (!farmed) {
+    for (const id of ['tree-orange', 'oven']) {
+      if (list.some((o) => o.id === id)) continue;
+      const o = occAdd(list, id);
+      if (o) list.push(o);
+    }
+    farmNew = true;
+    try { localStorage.setItem(FARM_KEY, '1'); } catch { /* 存不了下次再放一次 */ }
+  }
   for (const id of fresh) {
     if (list.some((o) => o.id === id)) continue;
     const o = occAdd(list, id);
@@ -973,8 +997,9 @@ function addProp(box, it) {
   el.type = 'button';
   el.className = `prop p-${it.id} k-${c.kind}${deco ? ' movable' : ''}`;
   el.setAttribute('aria-label', FURN_NAME[it.id] ?? '擺設');
-  el.innerHTML = `<span class="shadow"></span><img src="img/pet/furniture/${it.id}.webp" alt="">`;
+  el.innerHTML = `<span class="shadow"></span><img src="${propSrc(it.id)}" alt="">${c.kind === 'farm' ? '<i class="farm-tag" hidden></i>' : ''}`;
   const o = { id: it.id, it, el, x: at.x, y: at.y, w: c.w, f: !!it.f, users: [] };
+  if (c.kind === 'farm') farmTag(o);
   props.push(o);
   putProp(o);
   box.appendChild(el);
@@ -986,9 +1011,66 @@ function putProp(o) {
   o.el.style.cssText = `left:${o.x * GW}px;top:${o.y * GH}px;width:${o.w}px;z-index:${o.el.classList.contains('held') ? 2000 : propZ(o)};--base:${-c.base * 100}%`;
   $('img', o.el).style.transform = o.f ? 'scaleX(-1)' : '';
 }
-// 不是裝扮時點擺設：飼料盆可以先放飼料；小屋看看誰在睡
+// 果樹照長到哪換圖；頭上的小牌子：今天還沒澆 💧、熟了 ✨
+function propSrc(id) {
+  if (!id.startsWith('tree-')) return `img/pet/furniture/${id}.webp`;
+  const t = id.slice(5), grow = state?.trees?.[t]?.grow ?? 0;
+  return `img/pet/farm/${t}-${games.treeStage(grow)}.webp`;
+}
+function farmTag(o) {
+  const tag = $('.farm-tag', o.el);
+  if (!tag) return;
+  let txt = '';
+  if (o.id.startsWith('tree-')) {
+    const t = state?.trees?.[o.id.slice(5)];
+    txt = (t?.grow ?? 0) >= 3 ? '✨ 收成' : t?.watered ? '' : '💧 澆水';
+  } else if (o.id === 'oven') {
+    const inv = state?.inventory ?? {};
+    txt = games.RECIPES.some((r) => Object.entries(r.need).every(([k, n]) => (inv[k] ?? 0) >= n)) ? '🔥 可以烤' : '';
+  }
+  tag.textContent = txt;
+  tag.hidden = !txt;
+}
+function paintFarm() {
+  for (const o of props) {
+    if (W.kindOf(o.id) !== 'farm') continue;
+    const im = $('img', o.el);
+    const src = propSrc(o.id);
+    if (!im.src.endsWith(src)) im.src = src;
+    farmTag(o);
+  }
+}
+// 小遊戲要的東西（js/petgames.js）
+function gameCtx() {
+  return {
+    host: $('.pisle', layer), api,
+    state: () => state,
+    refresh: (s) => { refresh(s); paintFarm(); },
+    has: (sp) => state.pets.some((p) => p.species === sp),
+    onClose: () => { paintFarm(); const h = myPet(); if (h && Math.random() < .6) say(pick(['好好玩！', '下次也帶我去！', '肚子餓了，有點心嗎？']), h.id); },
+  };
+}
+function openFishing() {
+  closeBag(); if (deco) exitDeco();
+  games.openFish(gameCtx());
+}
+// 池塘碼頭的釣魚點（每座島都有）
+function addFishSpot(box) {
+  const el = document.createElement('button');
+  el.type = 'button';
+  el.className = 'fish-spot';
+  el.setAttribute('aria-label', '去池塘釣魚');
+  el.innerHTML = '<img src="img/pet/game/bobber.webp" alt=""><b>釣魚</b>';
+  const x = LAKE.x + LAKE.rx * .15, y = LAKE.y + LAKE.ry * .72;
+  el.style.cssText = `left:${x * GW}px;top:${y * GH}px;z-index:${Math.round(y * 1000) + 2}`;
+  el.addEventListener('click', (e) => { e.stopPropagation(); if (!deco && !panned) openFishing(); });
+  box.appendChild(el);
+}
+// 不是裝扮時點擺設：飼料盆可以先放飼料；小屋看看誰在睡；果樹澆水、烤點心爐烤點心
 function tapProp(o) {
   if (o.id === 'bowl-food') { openBowl(o); return; }
+  if (o.id.startsWith('tree-')) { closeBag(); games.openWater(gameCtx(), o.id.slice(5)); return; }
+  if (o.id === 'oven') { closeBag(); games.openBake(gameCtx()); return; }
   if (W.kindOf(o.id) === 'house') {
     const who = o.users.map((a) => a.p.name);
     const home = myPet();
@@ -1066,15 +1148,16 @@ function paintDeco() {
     decoMsg('全部收進背包了，按錯可以按「全部放回去」');
   };
   $('[data-done]', top).onclick = exitDeco;
-  const tabs = [['furn', '🪑 傢俱'], ['house', '🏠 小屋盆子'], ['build', '🧱 圍籬小路'], ['look', '🏝️ 島名風格']];
+  const tabs = [['furn', '🪑 傢俱'], ['house', '🏠 小屋盆子'], ['farm', '🌳 果樹烤爐'], ['build', '🧱 圍籬小路'], ['look', '🏝️ 島名風格']];
   const tile = (id, extra = '') => {
     const n = items.filter((o) => o.id === id).length, max = W.CAT[id].max;
     const have = owns(id);
-    if (!have) return `<span class="dt-i locked"><img src="img/pet/furniture/${id}.webp" alt=""><b>${FURN_NAME[id]}</b><small>🔒 ${SHOP_FURN[id] ? `商店 ${SHOP_FURN[id]}` : PARENT_FURN[id] ?? `${FURN_STAMP[id]} 個章`}</small></span>`;
+    if (!have) return `<span class="dt-i locked"><img src="img/pet/furniture/${id}.webp" alt=""><b>${FURN_NAME[id]}</b><small>🔒 ${SHOP_FURN[id] ? `商店 ${SHOP_FURN[id]}` : PARENT_FURN[id] ?? `${FURN_STAMP[id] ?? FARM_STAMP[id]} 個章`}</small></span>`;
     return `<button type="button" class="dt-i${n ? ' out' : ''}" data-add="${id}"${extra}><img src="img/pet/furniture/${id}.webp" alt=""><b>${FURN_NAME[id]}</b><small>${max > 1 ? `${n}/${max}` : n ? '在島上' : '＋ 擺出來'}</small></button>`;
   };
   let body = '';
   if (deco.tab === 'furn') body = PROPS.filter((d) => owns(d.id) || !LIMITED.has(d.id)).map((d) => tile(d.id)).join('');
+  else if (deco.tab === 'farm') body = FARM.map((id) => tile(id)).join('');
   else if (deco.tab === 'house') body = [...HOUSES.filter((id) => owns(id) || !LIMITED.has(id)), 'bowl-food', 'bowl-water'].map((id) => tile(id)).join('');
   else if (deco.tab === 'build') {
     body = BUILDS.map((id) => `<button type="button" class="dt-i tool${deco.tool === id ? ' on' : ''}" data-tool="${id}">${toolIcon(id)}<b>${FURN_NAME[id]}</b></button>`).join('');
@@ -1853,7 +1936,7 @@ function tick(now) {
     if (a.mode === 'walk' || a.mode === 'goeat') {
       const dx = (a.tx - a.x) * GW, dy = (a.ty - a.y) * GH;
       const d = Math.hypot(dx, dy);
-      const speed = (m === 'hungry' ? 28 : m === 'happy' ? 64 : 46) * depth(a.y);
+      const speed = (m === 'hungry' ? 28 : m === 'happy' ? 64 : 46) * depth(a.y) * (a.p.buff === 'run' ? 1.8 : 1);
       if (d < 3) {
         a.x = a.tx; a.y = a.ty;
         if (a.path?.length) { const p = a.path.shift(); a.tx = p.x; a.ty = p.y; }
@@ -2024,6 +2107,7 @@ function paintCare() {
       <p class="kind">${esc(speciesName(p.species))}・${STAGE[p.stage]}・<span class="mood m-${m}">${m === 'quiet' ? '上課時間在休息' : MOOD[m]}</span></p>
       ${gauges(p, m)}
       ${speciesOf(p.species)?.skill ? `<p class="note">本事：${esc(speciesOf(p.species).skill)}</p>` : ''}
+      ${p.buff ? `<p class="buff">${games.BUFF[p.buff] ?? ''}<small>吃了點心，還有 ${Math.max(1, Math.round((Date.parse(p.buff_until) - Date.now()) / 60000))} 分鐘</small></p>` : ''}
       <div class="xp" aria-label="長大進度"><i style="width:${pct}%"></i></div>
       <small class="xpt">${p.next_xp ? `再 ${p.next_xp - p.xp} 點長成${STAGE[p.stage + 1]}（吃點心長得最快）` : '已經是完全體了！'}</small>
       ${wish()}
