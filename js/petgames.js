@@ -71,7 +71,8 @@ function got(html, ms = 1600) {
 
 // ---------- 釣魚 ----------
 // 等浮標沉下去 → 按住「拉！」→ 量表的指針上下跑，在綠色區放開就釣到。連續釣到越來越大條。
-// 小貓：魚上鉤停比較久、綠色區比較大；石虎：晚上會釣到夜光魚（伺服器決定）。
+// 連續釣到：綠色區一條比一條小（22% → 每條少 12%，最小 10%），指針也跑快一點；沒釣到就回到最簡單。
+// 小貓：綠色區放大 30%、魚上鉤停久一點，畫面上一直看得到加成；石虎：晚上會釣到夜光魚（伺服器決定）。
 export function openFish(c) {
   ctx = c;
   const kitten = ctx.has('kitten');
@@ -80,17 +81,21 @@ export function openFish(c) {
       <div class="pf-bob"><img src="img/pet/game/bobber.webp" alt=""><i class="ring"></i><b class="bang" hidden>！</b></div>
       <div class="pf-meter" hidden><i class="zone"></i><i class="nail"></i></div>
       <p class="pf-streak"></p>
+      ${kitten ? '<p class="pf-buff">🐱 小貓加成：成功區間放大 30%</p>' : ''}
       <div class="pg-got" hidden></div>
     </div>
     <p class="pg-goal" aria-live="polite"></p>
     <button type="button" class="btn pf-pull" data-pull>拉！</button>
-    ${kitten ? '<p class="pg-help">🐱 小貓在旁邊幫忙：魚上鉤會停比較久</p>' : ''}`);
+    ${kitten ? '<p class="pg-help">🐱 小貓也讓魚上鉤停比較久</p>' : ''}`);
   const me = alive;
   const bob = $('.pf-bob', pop), meter = $('.pf-meter', pop), zone = $('.zone', meter), nail = $('.nail', meter), btn = $('[data-pull]', pop);
   let phase = 'wait', streak = 0, biteAt = 0, hold = null, z0 = 0, z1 = 0;
-  const BITE = kitten ? 2000 : 1300, ZONE = kitten ? .3 : .2;
+  const BITE = kitten ? 2000 : 1300, BOOST = kitten ? 1.3 : 1;
+  // 第幾條就多難：綠色區大小（小貓再放大 30%）、指針跑一趟要多久
+  const zoneFor = (n) => Math.max(.1, .22 * (1 - .12 * Math.min(n, 5))) * BOOST;
+  const speedFor = (n) => Math.max(950, 1500 - 110 * Math.min(n, 5));
   const size = () => (streak >= 4 ? 3 : streak >= 2 ? 2 : 1);
-  const paintStreak = () => { $('.pf-streak', pop).textContent = streak ? `連續釣到 ${streak} 條！${size() === 3 ? '現在會釣到大魚' : size() === 2 ? '再來會更大條' : ''}` : ''; };
+  const paintStreak = () => { $('.pf-streak', pop).textContent = streak ? `連續釣到 ${streak} 條！${size() === 3 ? '大魚來了，' : size() === 2 ? '魚變大了，' : ''}綠色區變小囉` : ''; };
   function cast() {
     if (me !== alive) return;
     phase = 'wait';
@@ -125,8 +130,10 @@ export function openFish(c) {
     if (phase !== 'bite') return;
     phase = 'reel';
     // 綠色區隨機放在量表的中上段
-    z0 = rnd(.3, .9 - ZONE); z1 = z0 + ZONE;
-    zone.style.cssText = `bottom:${z0 * 100}%;height:${ZONE * 100}%`;
+    const Z = zoneFor(streak), SPEED = speedFor(streak);
+    z0 = rnd(.3, .92 - Z); z1 = z0 + Z;
+    zone.style.cssText = `bottom:${z0 * 100}%;height:${Z * 100}%`;
+    meter.classList.toggle('boost', kitten);
     meter.hidden = false;
     bob.className = 'pf-bob reel';
     goal('指針跑到綠色的地方就放開', true);
@@ -134,7 +141,7 @@ export function openFish(c) {
     hold = { v: 0 };
     const step = () => {
       if (phase !== 'reel' || me !== alive) return;
-      const t = ((performance.now() - t0) / 1500) % 2;
+      const t = ((performance.now() - t0) / SPEED) % 2;
       hold.v = t < 1 ? t : 2 - t;
       nail.style.bottom = `${hold.v * 100}%`;
       requestAnimationFrame(step);
