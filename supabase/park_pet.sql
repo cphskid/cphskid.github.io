@@ -64,6 +64,8 @@ alter table public.park_pets add column if not exists played_at timestamptz;
 alter table public.park_pets add column if not exists play_day date;
 alter table public.park_pets add column if not exists play_n   int not null default 0;
 alter table public.park_pets add column if not exists ate_at   timestamptz;
+-- 在休息屋（2026-11-06 Chuck：夥伴多了島上管不動，要有休息屋的概念；不限隻數，照顧中的不能進去）
+alter table public.park_pets add column if not exists resting  boolean not null default false;
 
 -- 背包
 create table if not exists public.park_pet_inventory (
@@ -263,7 +265,7 @@ returns jsonb language sql stable set search_path = public, pg_temp as $$
            public.park_pet_joy_now(p) as joy_pts
   )
   select jsonb_build_object(
-    'id', p.id, 'species', p.species, 'name', p.name, 'active', p.active,
+    'id', p.id, 'species', p.species, 'name', p.name, 'active', p.active, 'resting', p.resting and not p.active,
     'xp', p.xp, 'stage', public.park_pet_stage(p.xp),
     'next_xp', case public.park_pet_stage(p.xp) when 1 then 12 when 2 then 40 else null end,
     'mood', case when p.active then m.mood else 'island' end, 'fed_at', p.fed_at,
@@ -549,8 +551,22 @@ begin
   if v_mood = 'angry' then raise exception '%', v.name || '還在生氣，先把牠照顧好才能換'; end if;
   update public.park_pets set active = false where id = v.id;
   -- 在島上自給自足：回到小窩時是吃飽的
-  update public.park_pets set active = true, fed_at = now(), sulky = false, patted_at = null, joy = 8, joy_at = now() where id = p_pet;
+  update public.park_pets set active = true, resting = false, fed_at = now(), sulky = false, patted_at = null, joy = 8, joy_at = now() where id = p_pet;
   return public.park_pet_state(v_me) || jsonb_build_object('did', 'swap');
+end;
+$$;
+
+-- 休息屋：p_rest true＝進去休息（不在島上走動），false＝出來玩。照顧中的那隻要留在身邊。
+create or replace function public.park_pet_rest(p_pet bigint, p_rest boolean)
+returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
+declare v_me uuid := public.current_student_id(); v public.park_pets;
+begin
+  if v_me is null then raise exception '請先登入學生帳號'; end if;
+  select * into v from public.park_pets where id = p_pet and student_id = v_me;
+  if v.id is null then raise exception '找不到這隻寵物'; end if;
+  if v.active and p_rest then raise exception '%', v.name || '是照顧中的夥伴，要留在你身邊喔'; end if;
+  update public.park_pets set resting = coalesce(p_rest, false) where id = p_pet;
+  return public.park_pet_state(v_me) || jsonb_build_object('did', 'rest');
 end;
 $$;
 
@@ -690,7 +706,7 @@ revoke all on function
   public.park_pet_joy_now(public.park_pets, timestamptz), public.park_pet_add_joy(bigint, int), public.park_pet_play(text),
   public.park_pet_grant(uuid), public.park_pet_state(uuid, jsonb), public.park_pet_name_ok(text),
   public.park_pet_mine(uuid), public.park_pet_me(), public.park_pet_adopt(text, text),
-  public.park_pet_slots(uuid), public.park_pet_swap(bigint),
+  public.park_pet_slots(uuid), public.park_pet_swap(bigint), public.park_pet_rest(bigint, boolean),
   public.park_pet_feed(text), public.park_pet_pat(), public.park_pet_rename(text),
   public.park_pet_class_quiet(text), public.park_pet_set_class_quiet(text, boolean),
   public.park_pet_bowl_eat(uuid), public.park_pet_bowl_fill(),
@@ -698,6 +714,6 @@ revoke all on function
   from public, anon, authenticated;
 grant execute on function
   public.park_pet_me(), public.park_pet_adopt(text, text), public.park_pet_feed(text), public.park_pet_swap(bigint),
-  public.park_pet_pat(), public.park_pet_play(text), public.park_pet_rename(text),
+  public.park_pet_rest(bigint, boolean), public.park_pet_pat(), public.park_pet_play(text), public.park_pet_rename(text),
   public.park_pet_class_quiet(text), public.park_pet_set_class_quiet(text, boolean), public.park_pet_bowl_fill()
   to authenticated;
