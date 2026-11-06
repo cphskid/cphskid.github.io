@@ -119,6 +119,8 @@ export function notice() {
 }
 
 // ---------- 地圖：寵物島上縮小的夥伴（或一顆時光蛋） ----------
+const MAP_PETS = 3;
+const mapKey = new Map();      // 這次打開樂園時隨機排一次（同一次不會一直換人）
 function paintMap() {
   $('#map-pet')?.remove();
   const host = hooks.host();
@@ -130,16 +132,28 @@ function paintMap() {
     box.id = 'isle-pets';
     host.appendChild(box);
   }
-  box.style.cssText = `left:${spot.left + spot.width * .42}px;top:${spot.top + spot.width * .27}px;width:${spot.width * .4}px`;   // 草原那一塊
+  // 草原那一塊（島的右半邊）。地圖上的島很小，夥伴再多也只放 3 隻（照顧中的那隻＋隨機 2 隻，下次打開樂園換人），
+  // 走路的距離算好不會超出草地；夥伴原本一隻排一格往右擺，十幾隻就排到海上去了
+  const bw = spot.width * .5;
+  box.style.cssText = `left:${spot.left + spot.width * .42}px;top:${spot.top + spot.width * .27}px;width:${bw}px`;
   const pets = state.pets;
   if (!pets.length) {
     box.innerHTML = `<button type="button" class="mini egg-wait" aria-label="時光蛋：領養你的桌寵"><span class="egg"></span><img class="glint" src="img/fx/sparkle.webp" alt=""></button>`;
   } else {
-    box.innerHTML = pets.map((p, i) => {
+    const care = pets.filter((p) => p.active);
+    const key = (p) => mapKey.get(p.id) ?? mapKey.set(p.id, Math.random()).get(p.id);
+    const rest = pets.filter((p) => !p.active).sort((a, b) => key(a) - key(b));
+    const shown = [...care, ...rest].slice(0, MAP_PETS);
+    const SLOT = [[.04, 8], [.5, 22], [.28, -4]];       // 每隻的起點（佔可走寬度的比例）、往下幾 px
+    box.innerHTML = shown.map((p, i) => {
       const m = moodOf(p);
       const still = ['asleep', 'quiet', 'angry'].includes(m);
       const mark = p.active ? (MARK[m] ?? (news.length ? '🎁' : '')) : '';
-      return `<button type="button" class="mini${still ? ' still' : ''}${p.active ? ' care' : ''}" style="--i:${i};--dist:${Math.round(spot.width * (.1 + .04 * i))}px;left:${i * 24}%;top:${(i % 2) * 14}px"
+      const size = p.active ? 62 : 46;
+      const room = Math.max(0, bw - size);
+      const left = room * SLOT[i][0];
+      const dist = Math.round(Math.min(spot.width * .14, room - left));
+      return `<button type="button" class="mini${still ? ' still' : ''}${p.active ? ' care' : ''}" style="--i:${i};--dist:${dist}px;left:${Math.round(left)}px;top:${SLOT[i][1]}px"
         aria-label="${esc(p.name)}${p.active ? `（${m === 'quiet' ? '上課時間在休息' : MOOD[m]}）` : '在寵物島上散步'}">${mark ? `<span class="mp-bub">${mark}</span>` : ''}${still
           ? `<img src="${art(p.species, p.stage, POSE[m])}" alt="">`
           : `<img src="${art(p.species, p.stage, 'walk1')}" alt=""><img class="w2" src="${art(p.species, p.stage, 'walk2')}" alt="">`}</button>`;
@@ -434,7 +448,14 @@ function stopScene() {
   actors.forEach((a) => (a.timers ?? []).forEach(clearTimeout));
   actors = [];
   props = [];
+  skyFx?.stop?.();
   skyFx = null;
+  // 島的底圖 canvas 也馬上放掉（iOS 的 canvas 記憶體不會馬上回收，開關幾次寵物島就超過上限、島畫不出來）
+  const land = layer && $('canvas.land', layer);
+  if (land) { land.width = 0; land.height = 0; }
+  landTurn++;
+  for (const [src] of loadQ) poseCache.delete(src);      // 還沒開始抓的動作圖不抓了
+  loadQ.length = 0;
   ball = null;
   deco = null;
   sceneTimers.forEach(clearTimeout);
@@ -539,14 +560,29 @@ async function tintTiles() {
   }));
   if (m === skyM && $('.floor', layer)) $('.floor', layer).innerHTML = W.floorSvg(items, { grid: !!deco, tint: skyTint, tile: skyTile });
 }
+// 島是這個畫面最重要的圖：最先抓、優先抓；抓失敗（網路不穩、記憶體緊）再抓一次
 async function paintLand(src) {
   const turn = ++landTurn, cv = $('canvas.land', layer);
-  const im = new Image();
-  im.src = src;
-  try { await im.decode(); } catch { return; }
-  if (turn !== landTurn || cv !== $('canvas.land', layer)) return;
+  if (!cv) { const fb = $('img.land', layer); if (fb) fb.src = src; return; }
+  let im = null;
+  for (let tries = 0; tries < 2 && !im; tries++) {
+    const one = new Image();
+    one.fetchPriority = 'high';
+    one.decoding = 'async';
+    one.src = tries ? `${src}${src.includes('?') ? '&' : '?'}r=${Date.now()}` : src;
+    try { await one.decode(); im = one; } catch { if (turn !== landTurn) return; await new Promise((ok) => setTimeout(ok, 400)); }
+  }
+  if (!im || turn !== landTurn || cv !== $('canvas.land', layer)) return;
   const k = cv.width / GW;      // 影子跟原本 CSS 的 drop-shadow(0 18px 18px) 一樣大
-  paintTinted(cv, im, skyM, { y: 18 * k, blur: 18 * k, color: 'rgba(0,40,80,.35)' });
+  try {
+    if (!cv.getContext('2d')) throw new Error('no canvas');
+    paintTinted(cv, im, skyM, { y: 18 * k, blur: 18 * k, color: 'rgba(0,40,80,.35)' });
+  } catch {
+    // canvas 開不出來（手機記憶體緊）：退回直接放原圖（不變色、不加影子），至少島看得到
+    const fb = document.createElement('img');
+    fb.className = 'land'; fb.alt = ''; fb.src = im.src;
+    cv.replaceWith(fb);
+  }
 }
 
 // ---------- 鏡頭：拖曳移動、兩指或滾輪縮放、＋－鈕 ----------
@@ -681,19 +717,27 @@ function bindCam() {
   });
 }
 
-// 先把島、擺出來的東西、每隻夥伴站著和走路的圖抓好再掀開（最多等 2.5 秒）；掀開後再在背景抓其他動作
+// 先抓島（最多等 6 秒，島沒出來就不掀開），再抓擺出來的東西和每隻夥伴站著、走路的圖（再等最多 2.5 秒）。
+// 夥伴多的時候（十幾隻）原本一次抓一百多張、背景再抓五六百張，島的圖被擠到後面出不來，手機記憶體也撐不住：
+// 現在選到的那隻抓 8 個基本動作，其他隻只抓站著和走路 3 張；其他動作等牠真的要做時才抓（loadImg 一次最多抓 4 張）。
 const FIRST_POSES = ['idle', 'walk1', 'walk2', 'sit', 'front1', 'front2', 'back1', 'back2'];
+const FEW_POSES = ['idle', 'walk1', 'walk2'];
 async function revealScene() {
   const t0 = performance.now();
   const pis = $('.pisle', layer);
+  const wait = (ms) => new Promise((ok) => setTimeout(ok, ms));
+  await Promise.race([landReady, wait(6000)]);
+  if (pis !== $('.pisle', layer)) return;
   const srcs = [...new Set(props.map((o) => `img/pet/furniture/${o.id}.webp`)),
     ...new Set(W.trees(curTheme()).map((t) => `img/pet/tree/${t.id}.webp`)),
-    ...actors.flatMap((a) => FIRST_POSES.map((pose) => art(a.p.species, a.p.stage, pose)))];
-  await Promise.race([Promise.all([...srcs.map(loadImg), landReady]), new Promise((ok) => setTimeout(ok, 2500))]);
+    ...actors.flatMap((a) => (a.p.id === selected || actors.length <= 3 ? FIRST_POSES : FEW_POSES).map((pose) => art(a.p.species, a.p.stage, pose)))];
+  await Promise.race([Promise.all(srcs.map(loadImg)), wait(2500)]);
   if (pis !== $('.pisle', layer)) return;
   pis.classList.remove('loading');
   span('寵物島掀開', t0);
-  warm(...new Set(actors.map((a) => `img/pet/${a.p.species}/${a.p.stage}-`)), 'img/pet/food/', 'img/pet/furniture/', 'img/pet/build/', 'img/pet/land2/');
+  // 背景只預讀選到的那隻（夥伴少的話全部）的其他動作；其他風格的大島圖不預讀（一張解開要 8MB），只抓小縮圖
+  const warmPets = actors.filter((a) => a.p.id === selected || actors.length <= 3);
+  warm(...new Set(warmPets.map((a) => `img/pet/${a.p.species}/${a.p.stage}-`)), 'img/pet/food/', 'img/pet/furniture/', 'img/pet/build/', 'img/pet/land2/s-');
   guideFirst();
 }
 
@@ -1716,17 +1760,30 @@ function dress(a) {
   } else if (a.mode === 'still') { a.mode = 'rest'; a.until = 0; }
 }
 // 動作圖先在背景抓好、解碼好才換上去；還沒好就先留著上一格（不會閃一下空白）
+// 一次最多抓 4 張，不跟島的底圖搶網路
 const poseCache = new Map();
-function loadImg(src) {
-  let p = poseCache.get(src);
-  if (!p) {
+const LOAD_MAX = 4;
+let loading = 0;
+const loadQ = [];
+function pumpLoad() {
+  while (loading < LOAD_MAX && loadQ.length) {
+    const [src, done] = loadQ.shift();
+    loading++;
     const im = new Image();
     im.decoding = 'async';
     im.src = src;
-    p = (im.decode ? im.decode() : new Promise((ok) => { im.onload = ok; im.onerror = ok; })).then(() => true, () => true);
+    (im.decode ? im.decode() : new Promise((ok) => { im.onload = ok; im.onerror = ok; }))
+      .catch(() => {}).then(() => { loading--; done(); pumpLoad(); });
+  }
+}
+function loadImg(src) {
+  let p = poseCache.get(src);
+  if (!p) {
+    p = new Promise((ok) => { loadQ.push([src, ok]); }).then(() => true);
     p.done = false;
     p.then(() => { p.done = true; });
     poseCache.set(src, p);
+    pumpLoad();
   }
   return p;
 }

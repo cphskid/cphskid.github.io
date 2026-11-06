@@ -538,7 +538,7 @@ ul.classes li .row{gap:8px;justify-content:flex-end}
 #isle-pets{position:absolute;height:60px;z-index:3;pointer-events:none}
 #isle-pets .mini{position:absolute;width:46px;height:46px;border:0;padding:0;background:none;cursor:pointer;pointer-events:auto;animation:miniWalk calc(9s + var(--i) * 2s) ease-in-out infinite;animation-delay:calc(var(--i) * -3s)}
 #isle-pets .mini img{width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 4px 3px rgba(20,50,30,.4));animation:petHop 1.2s ease-in-out infinite;transform-origin:50% 100%}
-#isle-pets .mini{width:54px;height:54px}
+#isle-pets .mini{width:46px;height:46px}
 #isle-pets .mini img{position:absolute;inset:0}
 #isle-pets .mini img:not(.w2):not(.glint){animation:walkStep .5s steps(1) -.25s infinite}
 #isle-pets .mini .w2{animation:walkStep .5s steps(1) infinite}
@@ -598,7 +598,9 @@ ul.classes li .row{gap:8px;justify-content:flex-end}
 .pisle .hint{position:absolute;left:50%;bottom:auto;top:calc(env(safe-area-inset-top) + 80px);animation:hintout 1s ease-in 7s forwards;transform:translateX(-50%);margin:0;padding:8px 18px;border-radius:99px;background:rgba(255,255,255,.85);font:700 16px/1 var(--f-body);color:var(--wood);white-space:nowrap;pointer-events:none}
 .actor{position:absolute;width:calc(var(--h) * var(--d));height:calc(var(--h) * var(--d));transform:translate(-50%,-92%);border:0;padding:0;background:none;cursor:grab;touch-action:none}
 .actor .body{position:absolute;inset:0;transform-origin:50% 100%;transition:transform .15s}
-.actor .body img{width:100%;height:100%;object-fit:contain;transform:scaleX(var(--f));pointer-events:none;-webkit-user-drag:none;filter:var(--tod) var(--wx) drop-shadow(0 4px 3px rgba(20,50,30,.3))}
+.actor .body img{width:100%;height:100%;object-fit:contain;transform:scaleX(var(--f));pointer-events:none;-webkit-user-drag:none;filter:var(--tod) var(--wx)}
+/* 夥伴多的時候每隻都掛 drop-shadow 很吃手機記憶體：腳下本來就有 .shadow 影子，拿掉；晴天白天連顏色濾鏡都不用 */
+.pisle[data-tod=day][data-wx=sunny] .actor .body img{filter:none}
 .actor .shadow{position:absolute;left:18%;right:18%;bottom:2%;height:14%;border-radius:50%;background:rgba(30,60,20,.28);transition:transform .15s,opacity .15s}
 .actor .tag{position:absolute;left:50%;top:100%;transform:translate(-50%,2px);font:900 14px/1 var(--f-body);color:#fff;background:rgba(107,63,31,.75);padding:4px 9px;border-radius:99px;white-space:nowrap;pointer-events:none}
 .actor.tending .tag{background:#2f7a1c}

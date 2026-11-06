@@ -31,12 +31,11 @@ export function readSky(now = new Date()) {
 }
 
 // 粒子畫在島上面的一張 canvas：雨、雪、花瓣、落葉、螢火蟲、湖面的雨滴漣漪
+// canvas 用一半解析度（座標照舊用整座島的大小，畫的時候縮一半）：整張 2640×1448 的 canvas 要 15MB，
+// 疊在會被放大的島上，iOS 很容易記憶體不夠。沒有粒子（晴天白天）就不建 canvas。
 export function makeSky(ground, sky, { w, h, lake }) {
-  const cv = document.createElement('canvas');
-  cv.className = 'sky';
-  cv.width = w; cv.height = h;
-  ground.appendChild(cv);
-  const ctx = cv.getContext('2d');
+  const RES = .5;
+  let cv = null, ctx = null;
   const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const parts = [];
   const add = (n, make) => { for (let i = 0; i < (calm ? Math.ceil(n / 4) : n); i++) parts.push(make(true)); };
@@ -60,9 +59,18 @@ export function makeSky(ground, sky, { w, h, lake }) {
     if (sky.season === 'autumn') add(14, leaf);
   }
   if (sky.tod !== 'day' && sky.season !== 'winter' && sky.wx !== 'rain') add(sky.tod === 'night' ? 22 : 8, fly);
+  if (parts.length) {
+    cv = document.createElement('canvas');
+    cv.className = 'sky';
+    cv.width = Math.round(w * RES); cv.height = Math.round(h * RES);
+    ground.appendChild(cv);
+    ctx = cv.getContext('2d');
+  }
   let t = 0;
   function step(dt) {
+    if (!ctx) return;
     t += dt;
+    ctx.setTransform(RES, 0, 0, RES, 0, 0);
     ctx.clearRect(0, 0, w, h);
     for (let i = 0; i < parts.length; i++) {
       const p = parts[i];
@@ -108,7 +116,9 @@ export function makeSky(ground, sky, { w, h, lake }) {
       }
     }
   }
-  return { step, empty: parts.length === 0 };
+  // 關掉寵物島時馬上放掉 canvas 的記憶體（iOS 不會馬上回收，開關幾次就會超過上限）
+  function stop() { if (cv) { cv.width = 0; cv.height = 0; cv.remove(); } cv = null; ctx = null; }
+  return { step, stop, empty: parts.length === 0 };
 }
 
 // ---------- 日夜天氣的顏色先算好（不用 CSS filter） ----------
