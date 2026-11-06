@@ -242,6 +242,7 @@ function bindBoard() {
 const TABS = [
   { id: 'wear', name: '主角', tip: '時空旅人的衣服配件，買了在換裝間穿上' },
   { id: 'pet', name: '寵物', tip: '點心放進寵物的背包，餵了長得快' },
+  { id: 'cook', name: '食材攤', tip: '寵物島烤點心、釣魚、澆果樹用的材料：配料讓點心效果變 4 小時、魚餌釣大魚、肥料讓果樹長快' },
   { id: 'furn', name: '傢俱', tip: '買了擺在寵物島上，寵物會去玩' },
   { id: 'theme', name: '島的風格', tip: '把整座寵物島換個樣子，買了在寵物島按「裝扮」換上' },
   { id: 'month', name: '本月限定', tip: '這個月才買得到，下個月就下架；買到的會一直留著' },
@@ -259,7 +260,9 @@ export async function openShop(msg = null, startTab = null) {
 }
 
 function paintShop(msg = null) {
-  const items = shop.items.filter((x) => x.cat === tab);
+  // 食材攤：資料庫裡跟寵物點心一樣是 cat pet（ref cook-…），畫面另開一個分頁
+  const catOf = (x) => (x.cat === 'pet' && String(x.ref ?? x.code).startsWith('cook-') ? 'cook' : x.cat);
+  const items = shop.items.filter((x) => catOf(x) === tab);
   const t = TABS.find((x) => x.id === tab);
   const look = traveller.state()?.look ?? null;
   const it = pick && items.find((x) => x.code === pick);

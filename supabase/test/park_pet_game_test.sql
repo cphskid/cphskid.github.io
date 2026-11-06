@@ -57,4 +57,23 @@ select test_denied($$select public.park_pet_bake('bake-cake', true)$$, '沒有�
 reset role; update public.park_pets set fed_at = now() - interval '20 hours' where student_id = 'e7100000-0000-0000-0000-000000000012' and active; set role authenticated;
 select public.park_pet_feed('bake-orange') as e \gset
 select test_ok(exists (select 1 from jsonb_array_elements(:'e'::jsonb -> 'pets') p where (p ->> 'active')::boolean and p ->> 'buff' = 'run'), '吃了橘子小蛋糕跑得快');
+
+\echo '── 裝飾、配料、魚餌、肥料（食材攤）'
+reset role; update public.park_pet_game_log set last_at = now() - interval '5 seconds'; set role authenticated;
+select test_ok((public.park_pet_bake('bake-orange', true, true) -> 'inventory' ->> 'bake-orange-deco')::int = 2, '裝飾過的點心是 -deco');
+reset role; update public.park_pet_game_log set last_at = now() - interval '5 seconds'; set role authenticated;
+select test_denied($$select public.park_pet_bake('bake-orange', true, true, 'cook-honey')$$, '沒買配料不能加');
+reset role; insert into public.park_pet_inventory (student_id, item, qty) values ('e7100000-0000-0000-0000-000000000012', 'cook-honey', 1), ('e7100000-0000-0000-0000-000000000012', 'cook-bait', 1), ('e7100000-0000-0000-0000-000000000012', 'cook-fert', 1), ('e7100000-0000-0000-0000-000000000012', 'fruit-orange', 4)
+  on conflict (student_id, item) do update set qty = excluded.qty;
+update public.park_pet_game_log set last_at = now() - interval '5 seconds'; set role authenticated;
+select public.park_pet_bake('bake-orange', false, true, 'cook-honey') as g \gset
+select test_ok((:'g'::jsonb -> 'inventory' ->> 'bake-orange-gold')::int = 1 and :'g'::jsonb -> 'inventory' -> 'cook-honey' is null, '加蜂蜜變豪華點心，蜂蜜用掉');
+select test_denied($$select public.park_pet_feed('cook-bait')$$, '材料不能直接餵');
+reset role; update public.park_pets set fed_at = now() - interval '20 hours' where student_id = 'e7100000-0000-0000-0000-000000000012' and active; set role authenticated;
+select public.park_pet_feed('bake-orange-gold') as e \gset
+select test_ok(exists (select 1 from jsonb_array_elements(:'e'::jsonb -> 'pets') p where (p ->> 'active')::boolean and (p ->> 'buff_until')::timestamptz > now() + interval '3 hours 50 minutes'), '豪華點心效果 4 小時');
+select test_ok((public.park_pet_bait() ->> 'bait')::int = 5, '用魚餌');
+select test_denied($$select public.park_pet_bait()$$, '魚餌用完了');
+reset role; update public.park_pet_trees set last_water = last_water - 1, grow = 0 where student_id = 'e7100000-0000-0000-0000-000000000012'; update public.park_pet_game_log set last_at = now() - interval '5 seconds'; set role authenticated;
+select test_ok((public.park_pet_water('orange', true) ->> 'grow')::int >= 2, '加肥料多長一階');
 reset role;

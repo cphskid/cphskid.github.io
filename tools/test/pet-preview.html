@@ -47,18 +47,21 @@ function joy(p, n) { p.pts = Math.min(20, (p.pts ?? 4) + n); p.joy = Math.max(1,
 const clone = () => JSON.parse(JSON.stringify(S));
 // C 期小遊戲（?farm=1：材料先給一些、橘子樹快熟了）
 S.trees = q.get('farm') ? { orange: { grow: 2, watered: false } } : {};
-if (q.get('farm')) Object.assign(S.inventory, { 'fruit-orange': 2, 'fish-s': 1 });
+if (q.get('farm')) Object.assign(S.inventory, { 'fruit-orange': 6, 'fish-s': 1, 'cook-honey': 1, 'cook-bait': 1, 'cook-fert': 1 });
 const add = (k, n) => { S.inventory[k] = (S.inventory[k] ?? 0) + n; };
 const T = (t) => (S.trees[t] ??= { grow: 0, watered: false });
 const games = {
   fish: async (size) => { await new Promise((r) => setTimeout(r, 200)); const item = ['fish-s', 'fish-s', 'fish-m', 'fish-l'][size]; if (item) add(item, 1);
     return { ...clone(), did: 'fish', item, coins: size === 3 ? 2 : size === 2 ? 1 : 0 }; },
-  water: async (t) => { const x = T(t); if (x.watered) throw new Error('今天喝飽了，明天再來澆'); x.grow = Math.min(3, x.grow + 1); x.watered = true;
-    return { ...clone(), did: 'water', tree: t, grow: x.grow }; },
+  water: async (t, fert) => { const x = T(t); if (x.watered) throw new Error('今天喝飽了，明天再來澆');
+    if (fert) S.inventory['cook-fert'] -= 1; x.grow = Math.min(3, x.grow + 1 + (fert ? 1 : 0)); x.watered = true;
+    return { ...clone(), did: 'water', tree: t, grow: x.grow, fert: !!fert }; },
+  bait: async () => { if (!S.inventory['cook-bait']) throw new Error('沒有魚餌'); S.inventory['cook-bait'] -= 1; return { ...clone(), did: 'bait', bait: 5 }; },
   harvest: async (t) => { const x = T(t); if (x.grow < 3) throw new Error('還沒結果喔'); x.grow = 0; add('fruit-' + t, 3);
     return { ...clone(), did: 'harvest', reap: { fruit: 'fruit-' + t, n: 3, seeds: 0 } }; },
-  bake: async (rec, good) => { const need = { 'bake-orange': 'fruit-orange', 'bake-apple': 'fruit-apple', 'bake-mango': 'fruit-mango', 'bake-fish': 'fish-s' }[rec];
-    if ((S.inventory[need] ?? 0) < 2) throw new Error('材料不夠'); S.inventory[need] -= 2; add(rec, good ? 2 : 1); return { ...clone(), did: 'bake', item: rec, n: good ? 2 : 1 }; },
+  bake: async (rec, good, deco, top) => { const need = { 'bake-orange': 'fruit-orange', 'bake-apple': 'fruit-apple', 'bake-mango': 'fruit-mango', 'bake-fish': 'fish-s' }[rec];
+    if ((S.inventory[need] ?? 0) < 2) throw new Error('材料不夠'); S.inventory[need] -= 2;
+    if (top) S.inventory[top] -= 1; const item = rec + (top ? '-gold' : deco ? '-deco' : ''); add(item, good ? 2 : 1); return { ...clone(), did: 'bake', item, n: good ? 2 : 1 }; },
 };
 if (q.get('resting')) S.pets.filter((p) => !p.active).slice(0, +q.get('resting')).forEach((p) => { p.resting = true; });
 const api = {

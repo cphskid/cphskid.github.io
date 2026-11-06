@@ -70,8 +70,12 @@ const art = (species, stage = 1, pose = 'idle') =>
   `img/pet/${esc(species)}/${stage}-${EXTRA[pose] && !EXTRA_STAGES.includes(stage) ? EXTRA[pose] : pose}.webp`;
 const POSE = { normal: 'idle', happy: 'cheer', hungry: 'hungry', angry: 'angry', asleep: 'sleep', quiet: 'sleep', island: 'idle' };
 const FOOD_IMG = new Set(['kibble', 'rice-ball', 'magic-fruit', 'apple', 'carrot', 'seeds', 'biscuit', 'fish', 'mooncake', 'pumpkin-pie', 'candy', 'bat-cookie',
-  'fish-s', 'fish-m', 'fish-l', 'fish-night', 'fruit-orange', 'fruit-apple', 'fruit-mango', 'bake-orange', 'bake-apple', 'bake-mango', 'bake-fish']);           // 有 PT-10 圖的道具，其他先用表情符號
-const icon = (i) => FOOD_IMG.has(i.code) ? `<img src="img/pet/food/${esc(i.code)}.webp" alt="">` : esc(i.icon);
+  'fish-s', 'fish-m', 'fish-l', 'fish-night', 'fruit-orange', 'fruit-apple', 'fruit-mango', 'bake-orange', 'bake-apple', 'bake-mango', 'bake-fish',
+  'cook-honey', 'cook-cream', 'cook-choco', 'cook-bait', 'cook-fert']);           // 有 PT-10 圖的道具，其他先用表情符號
+// 裝飾過（-deco）、豪華（-gold）的點心跟原本的共用一張圖，加一個角標
+const foodBase = (code) => String(code ?? '').replace(/-(deco|gold)$/, '');
+const foodTag = (code) => (/-gold$/.test(code) ? '<i class="fx">🌟</i>' : /-deco$/.test(code) ? '<i class="fx">✨</i>' : '');
+const icon = (i) => FOOD_IMG.has(foodBase(i.code)) ? `<img src="img/pet/food/${esc(foodBase(i.code))}.webp" alt="">${foodTag(i.code)}` : esc(i.icon);
 const owned = (code) => state?.pets?.some((p) => p.species === code);
 const freeStarters = () => (state?.species ?? []).filter((s) => s.starter && !owned(s.code));
 const isStarter = (code) => !!state?.species?.find((s) => s.code === code)?.starter;
@@ -1047,6 +1051,7 @@ function gameCtx() {
     state: () => state,
     refresh: (s) => { refresh(s); paintFarm(); },
     has: (sp) => state.pets.some((p) => p.species === sp),
+    pet: () => myPet(),
     onClose: () => { paintFarm(); const h = myPet(); if (h && Math.random() < .6) say(pick(['好好玩！', '下次也帶我去！', '肚子餓了，有點心嗎？']), h.id); },
   };
 }
@@ -2168,7 +2173,7 @@ function paintBag() {
   if (!pop || !home) return;
   const m = moodOf(home);
   const inv = state.inventory ?? {};
-  const bag = state.items.filter((i) => i.kind === 'food' || i.facility || inv[i.code]).map((i) => {
+  const bag = state.items.filter((i) => i.kind !== 'cook' && (i.kind === 'food' || i.facility || inv[i.code])).map((i) => {
     const n = inv[i.code] ?? 0;
     return `<button type="button" class="food${n ? '' : ' none'}" data-feed="${esc(i.code)}" ${n && m !== 'quiet' && !busy ? '' : 'disabled'}
       aria-label="餵${esc(i.name)}（還有 ${n} 個）"><span class="ic">${icon(i)}</span><b>${esc(i.name)}</b><small>× ${n}</small></button>`;
@@ -2253,7 +2258,7 @@ async function feed(code) {
   if (!walkable(spot.x, spot.y)) spot = { x: a.x, y: a.y + .02 };
   const bowl = document.createElement('div');
   bowl.className = 'bowl';
-  bowl.innerHTML = FOOD_IMG.has(code) ? `<img src="img/pet/food/${esc(code)}.webp" alt="">` : `<span>${esc(i?.icon ?? '🍽')}</span>`;
+  bowl.innerHTML = FOOD_IMG.has(foodBase(code)) ? `<img src="img/pet/food/${esc(foodBase(code))}.webp" alt="">` : `<span>${esc(i?.icon ?? '🍽')}</span>`;
   bowl.style.cssText = `left:${spot.x * GW}px;top:${spot.y * GH}px;z-index:${Math.round(spot.y * 1000) - 1};--d:${(depth(spot.y) * .6).toFixed(3)}`;
   $('.actors', layer).appendChild(bowl);
   const wasStill = a.mode === 'still';

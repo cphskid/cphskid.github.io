@@ -22,7 +22,16 @@ export const RECIPES = [
 export const BUFF = { run: '⚡ 跑得快', jump: '🦘 跳得高', happy: '💖 心情超好', swim: '🌊 游得快' };
 const NAME = { 'fish-s': '小溪魚', 'fish-m': '胖胖魚', 'fish-l': '大鯉魚', 'fish-night': '夜光魚',
                'fruit-orange': '橘子', 'fruit-apple': '蘋果', 'fruit-mango': '芒果', seeds: '葵花子' };
-const img = (code) => `img/pet/food/${code}.webp`;
+// 裝飾過的點心（-deco）、加了配料的豪華點心（-gold）跟原本的點心共用一張圖
+const baseCode = (code) => String(code ?? '').replace(/-(deco|gold)$/, '');
+const img = (code) => `img/pet/food/${baseCode(code)}.webp`;
+Object.assign(NAME, { 'cook-honey': '蜂蜜', 'cook-cream': '鮮奶油', 'cook-choco': '巧克力', 'cook-bait': '魚餌', 'cook-fert': '肥料' });
+export const TOPPINGS = ['cook-honey', 'cook-cream', 'cook-choco'];
+const inv = () => ctx.state().inventory ?? {};
+// 魚餌：用一個管接下來 5 條（關掉窗戶也記得，存在這台裝置）
+const BAIT_KEY = 'park-pet-bait-left';
+const baitLeft = () => { try { return Math.max(0, +localStorage.getItem(BAIT_KEY) || 0); } catch { return 0; } };
+const setBait = (n) => { try { localStorage.setItem(BAIT_KEY, String(Math.max(0, n))); } catch { /* 私密視窗 */ } };
 // 樹長到哪：0、1 小樹苗，2 開花，3 結果
 export const treeStage = (grow) => (grow >= 3 ? 3 : grow >= 2 ? 2 : 1);
 
@@ -82,6 +91,7 @@ export function openFish(c) {
       <div class="pf-meter" hidden><i class="zone"></i><i class="nail"></i></div>
       <p class="pf-streak"></p>
       ${kitten ? '<p class="pf-buff">🐱 小貓加成：成功區間放大 30%</p>' : ''}
+      <div class="pf-bait"></div>
       <div class="pg-got" hidden></div>
     </div>
     <p class="pg-goal" aria-live="polite"></p>
@@ -94,7 +104,19 @@ export function openFish(c) {
   // 第幾條就多難：綠色區大小（小貓再放大 30%）、指針跑一趟要多久
   const zoneFor = (n) => Math.max(.1, .22 * (1 - .12 * Math.min(n, 5))) * BOOST;
   const speedFor = (n) => Math.max(950, 1500 - 110 * Math.min(n, 5));
-  const size = () => (streak >= 4 ? 3 : streak >= 2 ? 2 : 1);
+  // 魚餌：接下來 5 條至少從中魚算（綠色區大小還是照真的連續條數）
+  const size = () => { const s = baitLeft() > 0 ? Math.max(streak, 2) : streak; return s >= 4 ? 3 : s >= 2 ? 2 : 1; };
+  const paintBait = () => {
+    const box = $('.pf-bait', pop), n = baitLeft(), have = inv()['cook-bait'] ?? 0;
+    if (n > 0) box.innerHTML = `<p class="pf-chip"><img src="${img('cook-bait')}" alt="">魚餌還管 ${n} 條：從中魚開始</p>`;
+    else if (have > 0) box.innerHTML = `<button type="button" class="pf-chip" data-bait><img src="${img('cook-bait')}" alt="">用魚餌（還有 ${have} 個）：接下來 5 條從中魚開始</button>`;
+    else box.innerHTML = '';
+    $('[data-bait]', box)?.addEventListener('click', async (e) => {
+      e.currentTarget.disabled = true;
+      try { const r = await ctx.api.bait(); ctx.refresh(r); setBait(baitLeft() + (r.bait ?? 5)); } catch (err) { goal(err.message); }
+      if (me === alive) { paintBait(); paintStreak(); }
+    });
+  };
   const paintStreak = () => { $('.pf-streak', pop).textContent = streak ? `連續釣到 ${streak} 條！${size() === 3 ? '大魚來了，' : size() === 2 ? '魚變大了，' : ''}綠色區變小囉` : ''; };
   function cast() {
     if (me !== alive) return;
@@ -160,7 +182,9 @@ export function openFish(c) {
     try { r = await ctx.api.fish(s); } catch (err) { if (me === alive) miss(err.message); return; }
     if (me !== alive) return;
     ctx.refresh(r);
+    if (baitLeft() > 0) setBait(baitLeft() - 1);
     paintStreak();
+    paintBait();
     bob.className = 'pf-bob';
     meter.hidden = true;
     got(`<img src="${img(r.item)}" alt=""><b>釣到${NAME[r.item] ?? '魚'}！</b>${r.coins ? `<small>＋${r.coins} 時光幣</small>` : ''}${r.item === 'fish-night' ? '<small>石虎說：晚上才有喔！</small>' : ''}`, 1800);
@@ -175,6 +199,7 @@ export function openFish(c) {
   btn.addEventListener('keydown', (e) => { if ((e.key === ' ' || e.key === 'Enter') && !e.repeat) press(e); });
   btn.addEventListener('keyup', (e) => { if (e.key === ' ' || e.key === 'Enter') release(e); });
   paintStreak();
+  paintBait();
   later(cast, 500);
 }
 
@@ -201,7 +226,9 @@ export function openWater(c, tree) {
     $('[data-pg-ok]', pop).onclick = close;
     return;
   }
-  frame('pg-water', TREES[tree], `${head}<div class="pw-bar"><i></i></div>`);
+  const fert = inv()['cook-fert'] ?? 0;
+  frame('pg-water', TREES[tree], `${head}<div class="pw-bar"><i></i></div>
+    ${fert ? `<label class="pf-chip pw-fert"><input type="checkbox" data-fert><img src="${img('cook-fert')}" alt="">澆水時加一份肥料，多長一天（還有 ${fert} 包）</label>` : ''}`);
   playRain(tree);
 }
 function playRain(tree) {
@@ -273,13 +300,16 @@ function playRain(tree) {
 async function water(tree) {
   const me = alive;
   let r;
-  try { r = await ctx.api.water(tree); } catch (err) { goal(err.message); return; }
+  const fert = !!$('[data-fert]', pop)?.checked;
+  try { r = await ctx.api.water(tree, fert); } catch (err) { goal(err.message); return; }
+  $('.pw-fert', pop)?.remove();
   if (me !== alive) return;
   ctx.refresh(r);
   const t = r.trees?.[tree] ?? { grow: r.grow };
   $('.pw-stage .tree', pop).src = `img/pet/farm/${tree}-${treeStage(r.reap ? 3 : t.grow)}.webp`;
   const left = Math.max(0, 3 - (r.grow ?? 0));
   let msg = r.grow >= 3 ? '結果子了！' : `長大了！再澆 ${left} 天就會結果`;
+  if (r.fert) msg = `🌱 肥料讓它多長一天！${msg}`;
   if (r.magic) msg = `🦄 小獨角獸施了魔法，多長一階！${msg}`;
   if (r.reap) msg = `🐜 小蟻公主幫你收成了 ${r.reap.n} 顆${FRUIT[tree]}！`;
   got(`<b>${msg}</b>`, 2400);
@@ -309,64 +339,194 @@ async function reap(tree, b) {
 }
 
 // ---------- 烤點心 ----------
-// 選食譜（材料夠才能選）→ 放進烤爐 → 進度條跑到「剛剛好」按「拿出來」：剛剛好 2 個，太早太晚 1 個。
-// 小火龍：剛剛好的範圍比較大。
+// 選食譜（材料夠才能選）→ 顧火候：按住「加柴」溫度上升、放開慢慢降，溫度停在綠色區累積 3 秒就烤熟。
+// 太燙（紅色區）待太久＝有點焦，只出 1 個；顧得好出 2 個（不會烤失敗）。
+// 烤好後可以「直接拿」，或「幫它裝飾」：照夥伴想要的樣子把 3 個裝飾擺上去，效果 2 → 3 小時；
+// 裝飾時加一份食材攤的配料（蜂蜜、鮮奶油、巧克力）變豪華點心，效果 4 小時。
+// 小火龍：綠色區比較大、風吹得溫度比較不會亂跳。
 export function openBake(c) {
   ctx = c;
-  const inv = ctx.state().inventory ?? {};
+  const have = inv();
   const card = (r) => {
-    const lack = Object.entries(r.need).filter(([k, n]) => (inv[k] ?? 0) < n);
-    const need = Object.entries(r.need).map(([k, n]) => `<span class="${(inv[k] ?? 0) >= n ? 'ok' : 'no'}"><img src="${img(k)}" alt="">${NAME[k]} ${inv[k] ?? 0}/${n}</span>`).join('');
+    const lack = Object.entries(r.need).filter(([k, n]) => (have[k] ?? 0) < n);
+    const need = Object.entries(r.need).map(([k, n]) => `<span class="${(have[k] ?? 0) >= n ? 'ok' : 'no'}"><img src="${img(k)}" alt="">${NAME[k]} ${have[k] ?? 0}/${n}</span>`).join('');
     return `<button type="button" class="pb-r${lack.length ? ' lack' : ''}" data-recipe="${r.code}" ${lack.length ? 'disabled' : ''}>
       <img class="snack" src="${img(r.code)}" alt=""><b>${r.name}</b><small class="bf">吃了${r.buff}</small>
       <span class="need">${need}</span>${lack.length ? `<small class="pb-hint">${lack[0][0].startsWith('fish') ? '去池塘釣魚' : `去澆${TREES[lack[0][0].slice(6)]}`}</small>` : ''}</button>`;
   };
-  frame('pg-bake', '烤點心', `<p class="lead">選一個食譜，材料夠的就能烤。烤好的點心給照顧中的夥伴吃，2 小時內會有特別的本事！</p>
+  frame('pg-bake', '烤點心', `<p class="lead">選一個食譜，材料夠的就能烤。烤好的點心給照顧中的夥伴吃，會有特別的本事！</p>
     <div class="pb-list">${RECIPES.map(card).join('')}</div>
     <p class="pg-goal" aria-live="polite"></p>`);
-  const any = RECIPES.some((r) => Object.entries(r.need).every(([k, n]) => (inv[k] ?? 0) >= n));
+  const any = RECIPES.some((r) => Object.entries(r.need).every(([k, n]) => (have[k] ?? 0) >= n));
   goal(any ? '點一個食譜開始烤' : '材料還不夠：先去收成果子或釣魚');
   pop.querySelectorAll('[data-recipe]').forEach((b) => { b.onclick = () => bakeRun(RECIPES.find((r) => r.code === b.dataset.recipe)); });
 }
+
 function bakeRun(rec) {
   const dragon = ctx.has('dragon');
-  const g0 = dragon ? .52 : .6, g1 = dragon ? .84 : .76;
+  const g0 = dragon ? .5 : .58, g1 = dragon ? .8 : .74, HOT = .9;
+  const NEED = 3, LIMIT = 20;            // 綠色區要累積 3 秒；20 秒還沒烤熟就先拿出來
   frame('pg-bake', `烤${rec.name}`, `
-    <div class="pb-stage"><img class="oven" src="img/pet/furniture/oven.webp" alt=""><img class="snack" src="${img(rec.code)}" alt="">
+    <div class="pb-stage"><img class="oven" src="img/pet/furniture/oven.webp" alt="">
+      <img class="flame" src="img/pet/game/flame.webp" alt=""><img class="snack" src="${img(rec.code)}" alt="">
+      ${dragon ? '<p class="pf-buff">🐉 小火龍加成：綠色區放大、溫度比較穩</p>' : ''}
       <div class="pg-got" hidden></div></div>
-    <div class="pb-heat"><i class="good" style="left:${g0 * 100}%;width:${(g1 - g0) * 100}%"></i><i class="fill"></i><span class="tag" style="left:${(g0 + g1) / 2 * 100}%">剛剛好</span></div>
+    <div class="pb-temp" aria-hidden="true"><i class="good" style="left:${g0 * 100}%;width:${(g1 - g0) * 100}%"></i><i class="hot" style="left:${HOT * 100}%"></i><i class="nail"></i></div>
+    <div class="pb-done"><span>烤熟</span><div class="pw-bar"><i></i></div></div>
     <p class="pg-goal" aria-live="polite"></p>
-    <button type="button" class="btn" data-take>拿出來！</button>
-    ${dragon ? '<p class="pg-help">🐉 小火龍幫忙看火：剛剛好的範圍比較大</p>' : ''}`);
-  const me = alive, fill = $('.pb-heat .fill', pop), take = $('[data-take]', pop), snack = $('.pb-stage .snack', pop);
-  const T = 4200, t0 = performance.now();
-  let v = 0, done = false;
-  goal('等進度跑到「剛剛好」，按「拿出來！」');
-  const step = () => {
+    <button type="button" class="btn pb-fire" data-fire><img src="img/pet/game/log.webp" alt="">按住加柴</button>`);
+  const me = alive, nail = $('.pb-temp .nail', pop), bar = $('.pb-done i', pop), fire = $('[data-fire]', pop);
+  const flame = $('.pb-stage .flame', pop), snack = $('.pb-stage .snack', pop);
+  let T = .2, prog = 0, burnt = 0, hold = false, last = performance.now(), t0 = last, done = false, gust = 0, nextGust = 1.5;
+  const say = (s, hot) => { if ($('.pg-goal', pop).textContent !== s) goal(s, hot); };
+  say('按住「加柴」，讓溫度升到綠色');
+  const step = (now) => {
     if (me !== alive || done) return;
-    v = Math.min(1, (performance.now() - t0) / T);
-    fill.style.width = `${v * 100}%`;
-    snack.style.filter = `brightness(${1.15 - Math.max(0, v - g1) * 1.6}) saturate(${.6 + v * .6})`;
-    if (v >= g0 && v <= g1) goal('剛剛好！快拿出來！', true);
-    else if (v > g1) goal('快焦了！拿出來！', true);
-    if (v >= 1) { finish(); return; }
+    const dt = Math.min(.05, (now - last) / 1000);
+    last = now;
+    const el = (now - t0) / 1000;
+    // 風：每 1.2～2.4 秒吹一下，溫度往上或往下飄（小火龍飄一半）
+    if (el > nextGust) { gust = (Math.random() < .5 ? -1 : 1) * rnd(.05, .12) * (dragon ? .5 : 1); nextGust = el + rnd(1.2, 2.4); }
+    T += (hold ? .36 : -.24) * dt + gust * dt * 3;
+    gust *= .9;
+    T = Math.max(0, Math.min(1, T));
+    const inZone = T >= g0 && T <= g1;
+    if (inZone) prog += dt / NEED;
+    if (T > HOT) burnt += dt;
+    nail.style.left = `${T * 100}%`;
+    bar.style.width = `${Math.min(100, prog * 100)}%`;
+    flame.style.transform = `translate(-50%, 0) scale(${.35 + T * .9})`;
+    flame.style.opacity = String(.35 + T * .65);
+    snack.style.filter = `saturate(${.5 + prog * .6}) brightness(${1.1 - Math.max(0, burnt - .3) * .15})`;
+    if (T > HOT) say('太燙了！放開讓它降溫', true);
+    else if (inZone) say('溫度剛剛好，保持住！', true);
+    else if (T > g1) say('有點燙，放開一下');
+    else if (T < .25 && el > 2) say('火快熄了，按住加柴', true);
+    else say('按住「加柴」，讓溫度升到綠色');
+    if (prog >= 1 || el >= LIMIT) { finish(); return; }
     requestAnimationFrame(step);
   };
-  async function finish() {
-    if (done) return;
+  const on = (e) => { e?.preventDefault(); hold = true; fire.classList.add('on'); };
+  const off = (e) => { e?.preventDefault(); hold = false; fire.classList.remove('on'); };
+  fire.addEventListener('pointerdown', on);
+  ['pointerup', 'pointerleave', 'pointercancel'].forEach((k) => fire.addEventListener(k, off));
+  fire.addEventListener('contextmenu', (e) => e.preventDefault());
+  fire.addEventListener('keydown', (e) => { if ((e.key === ' ' || e.key === 'Enter') && !e.repeat) on(e); });
+  fire.addEventListener('keyup', (e) => { if (e.key === ' ' || e.key === 'Enter') off(e); });
+  function finish() {
     done = true;
-    take.disabled = true;
-    const good = v >= g0 && v <= g1;
-    let r;
-    try { r = await ctx.api.bake(rec.code, good); } catch (err) { goal(err.message); return; }
-    if (me !== alive) return;
-    ctx.refresh(r);
-    got(`<img src="${img(rec.code)}" alt=""><b>${good ? `烤得剛剛好！${rec.name} ×2` : v < g0 ? `有點太早…${rec.name} ×1` : `有點焦…${rec.name} ×1`}</b><small>拿去「餵食」給夥伴吃，${rec.buff}</small>`, 60000);
-    take.textContent = '再烤一個';
-    take.disabled = false;
-    take.onclick = () => openBake(ctx);
-    goal('點「餵食」把點心給夥伴吃');
+    const good = prog >= 1 && burnt < 1;
+    const n = good ? 2 : 1;
+    const why = good ? '顧得剛剛好！' : prog < 1 ? '火候不太夠…' : '有點焦…';
+    $('.pb-temp', pop).remove();
+    $('.pb-done', pop).remove();
+    fire.remove();
+    flame.remove();
+    const row = document.createElement('div');
+    row.className = 'pb-pick';
+    row.innerHTML = `<p class="pb-res"><b>${why}烤好 ${rec.name} ×${n}</b></p>
+      <button type="button" class="btn" data-deco>✨ 幫它裝飾<small>效果變 3 小時，加配料 4 小時</small></button>
+      <button type="button" class="ghost" data-plain>直接拿（效果 2 小時）</button>`;
+    pop.querySelector('.pg').appendChild(row);
+    goal('要幫點心裝飾嗎？');
+    $('[data-plain]', row).onclick = () => bakeSave(rec, good, false, null);
+    $('[data-deco]', row).onclick = () => decorate(rec, good);
   }
-  take.onclick = finish;
-  requestAnimationFrame(step);
+  requestAnimationFrame((t) => { last = t0 = t; requestAnimationFrame(step); });
+}
+
+// 裝飾：夥伴想要的樣子先給你看 3 秒（可以再看），點下面的裝飾、再點點心上的圈圈放上去
+const DECO = { star: '星星糖', heart: '愛心糖', mint: '薄荷葉', cherry: '櫻桃', berry: '藍莓' };
+const SPOTS = [[24, 34], [50, 18], [76, 34]];
+function decorate(rec, good) {
+  const pet = ctx.pet?.() ?? null;
+  const who = pet?.name ?? '夥伴';
+  const keys = Object.keys(DECO);
+  const want = SPOTS.map(() => keys[Math.floor(Math.random() * keys.length)]);
+  const tops = TOPPINGS.filter((k) => (inv()[k] ?? 0) > 0);
+  const spotHtml = (arr, cls) => SPOTS.map(([x, y], k) => `<button type="button" class="pd-spot ${cls}" data-spot="${k}" style="left:${x}%;top:${y}%" aria-label="第 ${k + 1} 個位置">${arr[k] ? `<img src="img/pet/game/deco-${arr[k]}.webp" alt="${DECO[arr[k]]}">` : ''}</button>`).join('');
+  frame('pg-bake pg-deco', `裝飾${rec.name}`, `
+    <div class="pd-wrap">
+      <div class="pd-order"><b>${esc(who)}想要這樣：</b><div class="pd-cake mini"><img class="snack" src="${img(rec.code)}" alt="">${spotHtml(want, 'show')}</div>
+        <button type="button" class="ghost small" data-peek>再看一次</button></div>
+      <div class="pd-cake big"><img class="snack" src="${img(rec.code)}" alt=""><img class="pd-top" alt="" hidden>${spotHtml([], 'put')}<div class="pg-got" hidden></div></div>
+    </div>
+    <div class="pd-tray">${keys.map((k) => `<button type="button" class="pd-piece" data-piece="${k}" aria-label="${DECO[k]}"><img src="img/pet/game/deco-${k}.webp" alt=""><small>${DECO[k]}</small></button>`).join('')}</div>
+    <div class="pd-tops">${tops.length ? `<span>加配料（效果 4 小時）：</span>${tops.map((k) => `<button type="button" class="pf-chip" data-top="${k}"><img src="${img(k)}" alt="">${NAME[k]} ×${inv()[k]}</button>`).join('')}`
+      : '<span>商店的「食材攤」有賣配料，裝飾時加一份效果變 4 小時</span>'}</div>
+    <p class="pg-goal" aria-live="polite"></p>
+    <div class="row"><button type="button" class="btn" data-done disabled>完成裝飾</button></div>`);
+  const me = alive, order = $('.pd-order', pop);
+  const put = [null, null, null];
+  let pick = null, top = null, miss = 0;
+  const peek = (ms) => { order.classList.add('open'); later(() => order.classList.remove('open'), ms); };
+  peek(3200);
+  goal(`記住${who}想要的樣子，再把裝飾擺上去`);
+  $('[data-peek]', pop).onclick = () => peek(2200);
+  pop.querySelectorAll('[data-piece]').forEach((b) => {
+    b.onclick = () => {
+      pick = b.dataset.piece;
+      pop.querySelectorAll('[data-piece]').forEach((x) => x.classList.toggle('on', x === b));
+      goal(`點點心上的圈圈，把${DECO[pick]}放上去`);
+    };
+  });
+  pop.querySelectorAll('.pd-spot.put').forEach((s) => {
+    s.onclick = () => {
+      const k = +s.dataset.spot;
+      if (!pick) { goal('先點下面的一個裝飾', true); return; }
+      put[k] = pick;
+      s.innerHTML = `<img src="img/pet/game/deco-${pick}.webp" alt="${DECO[pick]}">`;
+      s.classList.remove('bad');
+      if (put.every(Boolean)) check();
+      else goal('再放下一個');
+    };
+  });
+  pop.querySelectorAll('[data-top]').forEach((b) => {
+    b.onclick = () => {
+      top = top === b.dataset.top ? null : b.dataset.top;
+      pop.querySelectorAll('[data-top]').forEach((x) => x.classList.toggle('on', x.dataset.top === top));
+      const im = $('.pd-top', pop);
+      im.hidden = !top;
+      if (top) im.src = img(top);
+    };
+  });
+  function check() {
+    const wrong = put.map((v, k) => v !== want[k]);
+    if (wrong.some(Boolean)) {
+      miss++;
+      wrong.forEach((w, k) => {
+        if (!w) return;
+        const s = pop.querySelector(`.pd-spot.put[data-spot="${k}"]`);
+        s.classList.add('bad');
+        later(() => { if (me === alive) { s.classList.remove('bad'); s.innerHTML = ''; } }, 700);
+        put[k] = null;
+      });
+      const n = wrong.filter(Boolean).length;
+      goal(`有 ${n} 個跟${who}想的不一樣，再試試`, true);
+      if (miss >= 2) peek(2200);   // 錯兩次自動再給看一次
+      return;
+    }
+    goal(top ? `完美！還加了${NAME[top]}，按「完成裝飾」` : '完美！按「完成裝飾」', true);
+    $('[data-done]', pop).disabled = false;
+  }
+  $('[data-done]', pop).onclick = (e) => { e.currentTarget.disabled = true; bakeSave(rec, good, true, top); };
+}
+
+async function bakeSave(rec, good, deco, top) {
+  const me = alive;
+  pop.querySelectorAll('.pb-pick button, [data-done]').forEach((b) => { b.disabled = true; });
+  let r;
+  try { r = await ctx.api.bake(rec.code, good, deco, top); } catch (err) { goal(err.message); pop.querySelectorAll('.pb-pick button').forEach((b) => { b.disabled = false; }); return; }
+  if (me !== alive) return;
+  ctx.refresh(r);
+  const hours = top ? 4 : deco ? 3 : 2;
+  const label = top ? `豪華${rec.name}` : deco ? `裝飾${rec.name}` : rec.name;
+  got(`<img src="${img(rec.code)}" alt=""><b>${label} ×${r.n ?? (good ? 2 : 1)}</b><small>拿去「餵食」給夥伴吃，${hours} 小時內${rec.buff}</small>`, 60000);
+  $('.pb-pick', pop)?.remove();
+  $('.pd-tray', pop)?.remove();
+  $('.pd-tops', pop)?.remove();
+  const row = $('.row', pop) ?? pop.querySelector('.pg').appendChild(Object.assign(document.createElement('div'), { className: 'row' }));
+  row.innerHTML = '<button type="button" class="btn" data-again>再烤一個</button>';
+  $('[data-again]', row).onclick = () => openBake(ctx);
+  goal('點「餵食」把點心給夥伴吃');
 }
