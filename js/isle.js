@@ -76,7 +76,7 @@ export function inboxHtml() {
   const list = me?.inbox ?? [];
   if (!list.length) return '';
   return `<div class="isle-inbox" role="status"><h4>有人來拜訪了！</h4><ul>${list.slice(0, 5).map((r) =>
-    `<li>${reactImg(r.kind)}<span><b>${esc(r.nickname)}</b> 覺得你的島${REACTS[r.kind][1]}</span></li>`).join('')}</ul>
+    `<li>${reactImg(r.kind)}<span><b>${esc(r.nickname)}</b> 覺得你的島${REACTS[r.kind][1]}</span>${goBtn(r)}</li>`).join('')}</ul>
     ${list.length > 5 ? `<small>還有 ${list.length - 5} 個人也來過</small>` : ''}
     <small>點島名旁邊的愛心，可以看大家送的全部圖示</small>
     <button type="button" class="ghost small" data-inbox-ok>好開心！</button></div>`;
@@ -90,6 +90,8 @@ export function loveChipHtml() {
   const n = total(me.love);
   return `<button type="button" class="isle-love" data-love aria-label="大家送給我的島 ${n} 個圖示，點了看是哪些">${reactImg(0)}<b>${n}</b></button>`;
 }
+// 來拜訪的人：有島就可以點「去看看」回訪
+const goBtn = (r) => r.id && r.has ? `<button type="button" class="go" data-fan="${esc(r.id)}">去看看</button>` : '';
 const ago = (at) => {
   if (!at) return '';
   const day = (d) => new Date(d).toLocaleDateString('sv', { timeZone: 'Asia/Taipei' });
@@ -111,7 +113,7 @@ export async function loveBoxHtml() {
     <h4>大家送給我的島</h4>${head}
     <ul class="grid">${REACTS.map(([, t], k) => `<li class="${love[k] ? '' : 'none'}">${reactImg(k)}<b>${t}</b><span>× ${love[k] ?? 0}</span></li>`).join('')}</ul>
     ${recent.length ? `<p class="lab">最近來拜訪的朋友</p><ul class="who">${recent.map((r) =>
-      `<li>${reactImg(r.kind)}<span><b>${esc(r.nickname)}</b> 覺得${REACTS[r.kind][1]}</span><small>${ago(r.at)}</small></li>`).join('')}</ul>` : ''}
+      `<li>${reactImg(r.kind)}<span><b>${esc(r.nickname)}</b> 覺得${REACTS[r.kind][1]}</span><small>${ago(r.at)}</small>${goBtn(r)}</li>`).join('')}</ul>` : ''}
     <button type="button" class="ghost small" data-love-ok>知道了</button></div>`;
 }
 
@@ -160,6 +162,7 @@ export function bindDecor(box, { onTheme, onTry, onName }) {
 // ctx：pet.js 給的 { host（寵物島的外框）, art(species, stage, pose)（寵物圖）}；島怎麼畫看 js/isleworld.js
 let ctx = null;
 let tab = 'feat';
+// c.id：直接參觀這座島（從「來拜訪的朋友」點過來）；c.onBack：按「回去」時叫（沒有就回清單）
 export function openVisit(c) {
   ctx = c;
   let box = $('.isle-visit', ctx.host);
@@ -168,7 +171,8 @@ export function openVisit(c) {
     box.className = 'isle-visit';
     ctx.host.appendChild(box);
   }
-  paintList(box);
+  if (c.id) paintVisit(box, c.id);
+  else paintList(box);
 }
 export function closeVisit(host) { $('.isle-visit', host)?.remove(); }
 
@@ -329,11 +333,18 @@ function unwatchThumbs() { thumbRO?.disconnect(); thumbRO = null; }
 
 async function paintVisit(box, id) {
   let v;
-  try { v = await auth.isle.view(id); } catch (e) { toast(box, e.message); return; }
+  try { v = await auth.isle.view(id); } catch (e) {
+    if (box.firstElementChild) { toast(box, e.message); return; }
+    // 直接點進來的（來拜訪的朋友）：看不到就留個說明＋回去
+    box.innerHTML = `<div class="iv-panel" role="dialog"><h3>去看看</h3><p class="tip">${esc(e.message)}</p>
+      <button type="button" class="ghost small" data-iv-back>‹ 回去</button></div>`;
+    $('[data-iv-back]', box).onclick = () => { const back = ctx?.onBack; box.remove(); back?.(); };
+    return;
+  }
   const { GW, GH } = W;
   const parts = islandParts(v), hide = parts.hide;
   box.innerHTML = `<div class="iv-view" role="dialog" aria-label="參觀 ${esc(v.nickname)} 的島">
-    <div class="iv-top"><button type="button" class="ghost small" data-iv-back>‹ 回清單</button>
+    <div class="iv-top"><button type="button" class="ghost small" data-iv-back>${ctx?.onBack ? '‹ 回去' : '‹ 回清單'}</button>
       <p><b>${esc(nameText(v.name))}</b><small>${esc(v.nickname)} 的島</small></p></div>
     <div class="iv-stage"><div class="iv-ground" style="width:${GW}px;height:${GH}px">
       ${parts.html}
@@ -352,7 +363,10 @@ async function paintVisit(box, id) {
   };
   fit();
   addEventListener('resize', fit);
-  $('[data-iv-back]', box).onclick = () => { removeEventListener('resize', fit); paintList(box); };
+  $('[data-iv-back]', box).onclick = () => {
+    removeEventListener('resize', fit);
+    if (ctx?.onBack) { const back = ctx.onBack; ctx = { ...ctx, id: null, onBack: null }; box.remove(); back(); } else paintList(box);
+  };
   paintReact(box, v);
   if (hide) {
     $('.iv-note', box).textContent = `${v.nickname} 的枯葉蝶假裝成一片葉子躲在島上，找到牠兩個人都有時光幣！`;

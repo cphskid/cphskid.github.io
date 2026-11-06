@@ -102,13 +102,15 @@ returns boolean language sql stable security definer set search_path = public, p
                   where i.student_id = p_student and i.placed >= 5 and i.updated_at > now() - interval '30 days');
 $$;
 
--- 同班、今天昨天上過精選，或是「逛逛別的島」會出現的島
+-- 同班、今天昨天上過精選、「逛逛別的島」會出現的島，或是來我的島留過圖示的人
 create or replace function public.park_isle_can_see(p_me uuid, p_other uuid)
 returns boolean language sql stable security definer set search_path = public, pg_temp as $$
   select p_me = p_other or public.park_isle_classmate(p_me, p_other)
       or exists (select 1 from public.park_isle_featured f
                   where f.student_id = p_other and f.day >= public.park_today() - 1)
-      or public.park_isle_explorable(p_other);
+      or public.park_isle_explorable(p_other)
+      -- 來過我的島、留過圖示的人，我可以回去看他的島（2026-11-06 Chuck：看到來拜訪的人可以連到他的島）
+      or exists (select 1 from public.park_isle_reacts r where r.from_id = p_other and r.to_id = p_me);
 $$;
 
 -- 收到的圖示，6 種各幾個（全部時間）
@@ -136,7 +138,7 @@ $$;
 -- -----------------------------------------------------------------------------
 -- 4. 自己的島
 -- -----------------------------------------------------------------------------
--- {saved, theme, name, layout, stored, themes, inbox:[{nickname, kind, at}], featured}
+-- {saved, theme, name, layout, stored, themes, inbox:[{id, nickname, kind, at, has}], featured}
 create or replace function public.park_isle_me()
 returns jsonb language plpgsql stable security definer set search_path = public, pg_temp as $$
 declare v_me uuid := public.current_student_id(); v_i public.park_isle;
@@ -149,14 +151,15 @@ begin
     'layout', coalesce(v_i.layout, '{}'::jsonb), 'stored', coalesce(to_jsonb(v_i.stored), '[]'::jsonb),
     'themes', to_jsonb(public.park_isle_themes(v_me)),
     'love', to_jsonb(public.park_isle_love(v_me)),
-    'inbox', coalesce((select jsonb_agg(jsonb_build_object('nickname', st.nickname, 'kind', r.kind, 'at', r.at) order by r.at desc)
+    'inbox', coalesce((select jsonb_agg(jsonb_build_object('id', r.from_id, 'nickname', st.nickname, 'kind', r.kind, 'at', r.at,
+                                                           'has', exists (select 1 from public.park_isle i where i.student_id = r.from_id)) order by r.at desc)
                          from (select * from public.park_isle_reacts where to_id = v_me and not seen order by at desc limit 20) r
                          join public.students st on st.id = r.from_id), '[]'::jsonb),
     'featured', exists (select 1 from public.park_isle_featured where student_id = v_me and day = public.park_today()));
 end;
 $$;
 
--- 自己的島收到的圖示明細：{love:[6 種各幾個], visitors:幾個不同的人, recent:[{nickname, kind, at}] 最近 30 個}
+-- 自己的島收到的圖示明細：{love:[6 種各幾個], visitors:幾個不同的人, recent:[{id, nickname, kind, at, has（有沒有島）}] 最近 30 個}
 -- 2026-11-06 Chuck：寵物島要看得到大家按了多少讚、累積了哪些圖示
 create or replace function public.park_isle_fans()
 returns jsonb language plpgsql stable security definer set search_path = public, pg_temp as $$
@@ -166,7 +169,8 @@ begin
   return jsonb_build_object(
     'love', to_jsonb(public.park_isle_love(v_me)),
     'visitors', (select count(distinct from_id) from public.park_isle_reacts where to_id = v_me),
-    'recent', coalesce((select jsonb_agg(jsonb_build_object('nickname', st.nickname, 'kind', r.kind, 'at', r.at) order by r.at desc)
+    'recent', coalesce((select jsonb_agg(jsonb_build_object('id', r.from_id, 'nickname', st.nickname, 'kind', r.kind, 'at', r.at,
+                                                            'has', exists (select 1 from public.park_isle i where i.student_id = r.from_id)) order by r.at desc)
                           from (select * from public.park_isle_reacts where to_id = v_me order by at desc limit 30) r
                           join public.students st on st.id = r.from_id), '[]'::jsonb));
 end;
