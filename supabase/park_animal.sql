@@ -56,11 +56,12 @@ returns text language sql immutable set search_path = public, pg_temp as $$
     when 'harbor' then '第三關 海港工坊' when 'town' then '第四關 劇場小鎮'
     when 'sky' then '第五關 山頂天文台' when 'pond' then '第六關 池塘'
     when 'beacon' then '第七關 海港燈塔' when 'stage' then '第八關 光的魔術舞台'
+    when 'stars' then '第九關 星空航行' when 'storm' then '終章 暴風雨夜'
     else p_level end;
 $$;
 -- 現在共幾關（總覽的進度％用）
 create or replace function public.animal_level_count()
-returns int language sql immutable as $$ select 8 $$;
+returns int language sql immutable as $$ select 10 $$;
 
 -- 學生：遊戲裡發生的事。不是學生（老師試玩、沒登入）就什麼都不記。
 --   start 開始一趟  step 走到下一步  miss 失誤一次  clear 過關（sec＝這趟花幾秒）  egg 撿到彩蛋（step＝彩蛋代碼）
