@@ -312,6 +312,7 @@ export const pet = {
   me:            () => petcall('park_pet_me'),
   adopt:         (species, name) => petcall('park_pet_adopt', { p_species: species, p_name: name }),
   swap:          (id) => petcall('park_pet_swap', { p_pet: id }),
+  rest:          (id, on) => petcall('park_pet_rest', { p_pet: id, p_rest: !!on }),   // 進出休息屋
   feed:          (item) => petcall('park_pet_feed', { p_item: item }),
   pat:           () => petcall('park_pet_pat'),
   play:          (kind) => petcall('park_pet_play', { p_kind: kind }),

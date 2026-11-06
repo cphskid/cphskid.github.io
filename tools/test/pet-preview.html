@@ -45,6 +45,7 @@ const S = {
 };
 function joy(p, n) { p.pts = Math.min(20, (p.pts ?? 4) + n); p.joy = Math.max(1, Math.ceil(p.pts / 4)); }
 const clone = () => JSON.parse(JSON.stringify(S));
+if (q.get('resting')) S.pets.filter((p) => !p.active).slice(0, +q.get('resting')).forEach((p) => { p.resting = true; });
 const api = {
   me: async () => clone(),
   adopt: async (sp, name) => { const free = S.species.filter((s) => !S.pets.some((p) => p.species === s.code));
@@ -54,8 +55,11 @@ const api = {
     return { ...clone(), adopted: code }; },
   swap: async (id) => { const cur = S.pets.find((p) => p.active);
     if (['hungry', 'angry', 'asleep'].includes(cur.mood)) throw new Error(`${cur.name}肚子餓了，不肯走，先餵牠吃東西`);
-    S.pets.forEach((p) => { p.active = p.id === id; p.mood = p.active ? 'normal' : 'island'; p.full = 5; p.joy = p.active ? 2 : 4; p.hungry_in = 1440; });
+    S.pets.forEach((p) => { p.active = p.id === id; if (p.active) p.resting = false; p.mood = p.active ? 'normal' : 'island'; p.full = 5; p.joy = p.active ? 2 : 4; p.hungry_in = 1440; });
     return clone(); },
+  // 休息屋：照顧中的不能進去（?resting=3：一開始就有 3 隻在休息屋）
+  rest: async (id, on) => { const p = S.pets.find((x) => x.id === id); if (p.active && on) throw new Error(`${p.name}是照顧中的夥伴，要留在你身邊喔`);
+    p.resting = !!on; return clone(); },
   // 跟資料庫一樣：一份飼料撐 6 小時（點心 10），摸摸 +2 心情點、願望 +4、丟球 +2（每 4 點一格，13 點以上開心）
   feed: async (code) => { const p = S.pets.find((x) => x.active); const was = p.mood; if (!S.inventory[code]) throw new Error('背包裡沒有了');
     if (code === 'kibble' && p.hungry_in > 1380) throw new Error('牠吃得飽飽的，等一下再餵');

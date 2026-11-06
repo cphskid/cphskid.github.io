@@ -142,7 +142,7 @@ function paintMap() {
   } else {
     const care = pets.filter((p) => p.active);
     const key = (p) => mapKey.get(p.id) ?? mapKey.set(p.id, Math.random()).get(p.id);
-    const rest = pets.filter((p) => !p.active).sort((a, b) => key(a) - key(b));
+    const rest = pets.filter((p) => !p.active && !p.resting).sort((a, b) => key(a) - key(b));   // 在休息屋的不出來
     const shown = [...care, ...rest].slice(0, MAP_PETS);
     const SLOT = [[.04, 8], [.5, 22], [.28, -4]];       // 每隻的起點（佔可走寬度的比例）、往下幾 px
     box.innerHTML = shown.map((p, i) => {
@@ -468,7 +468,7 @@ function stopScene() {
 function openScene({ select, say: first } = {}) {
   const home = myPet();
   selected = select ?? selected ?? home?.id ?? state.pets[0]?.id;
-  if (!petById(selected)) selected = home?.id ?? state.pets[0]?.id;
+  if (!petById(selected) || petById(selected).resting) selected = home?.id ?? state.pets.find((p) => !p.resting)?.id;
   sky = readSky();
   cardOpen = news.length > 0;
   bagOpen = false;
@@ -503,7 +503,7 @@ function openScene({ select, say: first } = {}) {
   rebuildWorld();
   addDecor(box);
   fresh.forEach((id) => props.find((o) => o.id === id)?.el.classList.add('new'));
-  state.pets.forEach((p) => addActor(box, p));
+  state.pets.filter((p) => !p.resting).forEach((p) => addActor(box, p));     // 在休息屋的不在島上走
   actors.forEach((a) => { if (Math.random() < .7) laterWish(a, rnd(2500, 9000)); });
   // 點空地丟球（拖地圖不算）
   $('.ground', layer).addEventListener('click', (e) => {
@@ -2008,11 +2008,13 @@ function paintCare() {
   const clears = state.clears ?? state.stamps ?? 0;     // 領養只看過關章（park_pet_clears）
   const left = freeStarters();
   const locked = (state.unlock_at ?? []).filter((n) => clears < n).slice(0, Math.max(0, left.length - (canAdopt() ? 1 : 0)));
-  $('.pals-s', layer).innerHTML = state.pets.map((x) => `<button type="button" class="pal-s${x.id === selected ? ' on' : ''}${x.active ? ' care' : ''}" data-sel="${x.id}" aria-label="${esc(x.name)}${x.active ? '（照顧中）' : ''}">
+  // 下面只放照顧中的、現在選到的，其他收進「夥伴們」（夥伴越來越多，2026-11-06 Chuck）
+  const dockPets = state.pets.filter((x) => x.active || x.id === selected);
+  $('.pals-s', layer).innerHTML = dockPets.map((x) => `<button type="button" class="pal-s${x.id === selected ? ' on' : ''}${x.active ? ' care' : ''}" data-sel="${x.id}" aria-label="${esc(x.name)}${x.active ? '（照顧中）' : ''}">
       <img src="${art(x.species, x.stage)}" alt="">${x.active ? '<i>照顧中</i>' : ''}</button>`).join('')
     + (canAdopt() ? '<button type="button" class="pal-s new" data-adopt aria-label="新的時光蛋：領養一隻新夥伴"><span class="egg"></span><i>新的蛋！</i></button>' : '')
-    + locked.map((n) => `<span class="pal-s locked" title="過關章蓋到 ${n} 個就能領養"><img src="${art(left[0]?.code ?? 'puppy')}" alt=""><i>過 ${n} 關</i></span>`).join('')
-    + `<button type="button" class="pal-s dex-b" data-dex aria-label="夥伴圖鑑"><span>📖</span><i>圖鑑 ${state.pets.length}/${state.species?.length ?? 0}</i></button>`;
+    + `<button type="button" class="pal-s roster-b" data-roster aria-label="夥伴們和休息屋"><img src="img/pet/rest-house-s.webp" alt=""><i>夥伴們 ${state.pets.length}</i></button>`;
+  rosterLocked = locked.map((n) => ({ n, code: left[0]?.code ?? 'puppy' }));
   let top = '', body = '';
   if (p?.active) {
     const m = moodOf(p);
@@ -2026,13 +2028,18 @@ function paintCare() {
       <small class="xpt">${p.next_xp ? `再 ${p.next_xp - p.xp} 點長成${STAGE[p.stage + 1]}（吃點心長得最快）` : '已經是完全體了！'}</small>
       ${wish()}
       <div class="nm"><button type="button" class="ghost small" data-rename>改名</button></div>`;
+  } else if (p?.resting) {
+    top = `<b>${esc(p.name)}</b><small>在休息屋</small>`;
+    body = `<p class="kind">${esc(speciesName(p.species))}・${STAGE[p.stage]}</p>
+      <p class="lead">${esc(p.name)}在休息屋泡溫泉、睡午覺，不會餓也不會不開心。</p>
+      <div class="row"><button type="button" class="btn small" data-rest-out="${p.id}">叫牠出來玩</button></div>`;
   } else if (p) {
     const home = myPet();
     top = `<b>${esc(p.name)}</b><small>在島上玩</small>`;
     body = `<p class="kind">${esc(speciesName(p.species))}・${STAGE[p.stage]}</p>
       ${speciesOf(p.species)?.skill ? `<p class="note">本事：${esc(speciesOf(p.species).skill)}</p>` : ''}
       <p class="lead">${esc(p.name)}在島上自己找東西吃，不用餵。可是只有「照顧中」的那一隻會長大喔。</p>
-      <div class="row"><button type="button" class="btn small" data-swap="${p.id}">換牠照顧</button></div>
+      <div class="row"><button type="button" class="btn small" data-swap="${p.id}">換牠照顧</button><button type="button" class="ghost small" data-rest-in="${p.id}">去休息屋</button></div>
       ${home ? `<p class="note">換了以後，${esc(home.name)}會回到島上自己玩。</p>` : ''}`;
   }
   box.classList.toggle('open', cardOpen);
@@ -2042,7 +2049,9 @@ function paintCare() {
   $('[data-card]', box)?.addEventListener('click', () => { cardOpen = !cardOpen; paintCare(); });
   layer.querySelectorAll('[data-sel]').forEach((b) => { b.onclick = () => { const a = actors.find((x) => x.p.id === +b.dataset.sel); if (a) tap(a); }; });
   $('[data-adopt]', layer)?.addEventListener('click', () => openAdopt({ more: true }));
-  $('[data-dex]', layer)?.addEventListener('click', openDex);
+  $('[data-roster]', layer)?.addEventListener('click', openRoster);
+  $('[data-rest-out]', box)?.addEventListener('click', (e) => setRest(+e.currentTarget.dataset.restOut, false, e.currentTarget));
+  $('[data-rest-in]', box)?.addEventListener('click', (e) => setRest(+e.currentTarget.dataset.restIn, true, e.currentTarget));
   $('[data-rename]', box)?.addEventListener('click', rename);
   $('[data-swap]', box)?.addEventListener('click', (e) => swap(+e.currentTarget.dataset.swap, e.currentTarget));
   paintBar();
@@ -2122,6 +2131,7 @@ function cared(s) { refresh(s); dispatchEvent(new Event('park:pet-care')); }
 // 資料庫回來的新狀態套到島上的每一隻
 function refresh(s) {
   state = { ...state, ...s, granted: [] };
+  syncResting();
   for (const a of actors) {
     const p = petById(a.p.id);
     if (!p) continue;
@@ -2234,6 +2244,105 @@ function reply(r, p, code) {
   if ((r.was === 'hungry' || r.was === 'angry') && p.mood !== 'happy') return r.was === 'angry' ? pick(LINES.angry) + '（先餵我啦）' : '肚子好餓…先餵我吃東西嘛';
   if (r.was === 'angry') return '好啦好啦，原諒你了！';
   return pick(LINES.happy);
+}
+
+// ---------- 夥伴們＋休息屋 ----------
+// 夥伴很多時，島上管不動：下面一排只放照顧中的和選到的，其他都在「夥伴們」名冊。
+// 不想讓牠在島上走的，可以送去休息屋（泡溫泉、睡午覺，不會餓、心情不掉）；不限幾隻，照顧中的要留在身邊。
+let rosterLocked = [];
+function rosterCard(x) {
+  const tag = x.active ? '<i class="care">照顧中</i>' : x.resting ? '<i class="zz">休息中</i>' : '';
+  const btn = x.active ? '' : x.resting
+    ? `<button type="button" class="btn small" data-r-out="${x.id}">出來玩</button>`
+    : `<button type="button" class="ghost small" data-r-in="${x.id}">去休息</button>`;
+  return `<div class="ro-c${x.id === selected ? ' on' : ''}${x.resting ? ' resting' : ''}">
+    <button type="button" class="pic" data-r-sel="${x.id}" aria-label="${esc(x.name)}"><img src="${art(x.species, x.stage, x.resting ? 'sleep' : 'idle')}" alt="">${tag}</button>
+    <b>${esc(x.name)}</b>${btn}</div>`;
+}
+function paintRoster(box) {
+  const out = state.pets.filter((x) => !x.resting), rest = state.pets.filter((x) => x.resting);
+  box.innerHTML = `<div class="roster"><button class="x" data-ro-x aria-label="關閉"></button>
+    <h2>夥伴們 <small>${state.pets.length} 隻</small></h2>
+    <p class="lab">在島上玩 <small>${out.length} 隻・點頭像可以找到牠</small></p>
+    <div class="ro-g">${out.map(rosterCard).join('')}</div>
+    <section class="ro-rest">
+      <div class="ro-head"><img src="img/pet/rest-house.webp" alt=""><div><h3>休息屋</h3>
+        <p>想讓島上安靜一點，就請夥伴來這裡泡溫泉、睡午覺。在休息屋不會餓，也不會不開心，想牠了隨時叫牠出來玩。</p></div></div>
+      ${rest.length ? `<div class="ro-g">${rest.map(rosterCard).join('')}</div>` : '<p class="tip">現在大家都在島上玩。</p>'}
+    </section>
+    <div class="ro-more">${rosterLocked.map((l) => `<span class="pal-s locked" title="過關章蓋到 ${l.n} 個就能領養"><img src="${art(l.code)}" alt=""><i>過 ${l.n} 關</i></span>`).join('')}
+      <button type="button" class="pal-s dex-b" data-dex aria-label="夥伴圖鑑"><span>📖</span><i>圖鑑 ${state.pets.length}/${state.species?.length ?? 0}</i></button></div>
+  </div>`;
+  $('[data-ro-x]', box).onclick = () => box.remove();
+  $('[data-dex]', box).onclick = openDex;
+  box.querySelectorAll('[data-r-sel]').forEach((b) => { b.onclick = () => {
+    const id = +b.dataset.rSel, x = petById(id);
+    if (x?.resting) { selected = id; actors.forEach(dress); paintCare(); paintRoster(box); return; }
+    box.remove();
+    const a = actors.find((y) => y.p.id === id);
+    if (a) { if (selected !== id) tap(a); lookAt({ x: a.x, y: a.y - .03 }); }
+  }; });
+  box.querySelectorAll('[data-r-out]').forEach((b) => { b.onclick = () => setRest(+b.dataset.rOut, false, b); });
+  box.querySelectorAll('[data-r-in]').forEach((b) => { b.onclick = () => setRest(+b.dataset.rIn, true, b); });
+}
+function openRoster() {
+  closeBag(); if (deco) exitDeco();
+  const host = $('.pisle', layer);
+  if (!host) return;
+  let box = $('.roster-pop', host);
+  if (!box) {
+    box = document.createElement('div');
+    box.className = 'roster-pop';
+    box.setAttribute('role', 'dialog');
+    box.setAttribute('aria-label', '夥伴們和休息屋');
+    box.addEventListener('click', (e) => { if (e.target === box) box.remove(); });
+    host.appendChild(box);
+  }
+  paintRoster(box);
+}
+async function setRest(id, on, b) {
+  if (busy) return;
+  if (b) b.disabled = true;
+  try {
+    const s = await api.rest(id, on);
+    const p0 = petById(id);
+    refresh(s);
+    const p = petById(id);
+    if (!on && p) {
+      selected = id;
+      actors.forEach(dress);
+      paintCare();
+      say(pick([`泡完溫泉好舒服！我來玩囉～`, `睡飽了！${p.name}出發！`, `哇，好久沒來島上了！`]), id);
+    } else if (on) {
+      const home = myPet();
+      if (home) say(`${p0?.name ?? '牠'}去休息屋泡溫泉了，晚點見～`, home.id);
+    }
+    paintMap();
+    const pop = $('.roster-pop', layer);
+    if (pop) paintRoster(pop);
+  } catch (err) {
+    oops(err.message);
+    if (b) b.disabled = false;
+  }
+}
+// 休息屋進出後：島上的夥伴跟著加減（進去的從島上走掉、出來的出現在島上）
+function syncResting() {
+  if (!layer || !$('.pisle', layer)) return;
+  const box = $('.actors', layer);
+  if (!box) return;
+  for (const a of [...actors]) {
+    const p = petById(a.p.id);
+    if (p && !p.resting) continue;
+    (a.timers ?? []).forEach(clearTimeout);
+    a.el.remove();
+    actors.splice(actors.indexOf(a), 1);
+  }
+  for (const p of state.pets) {
+    if (p.resting || actors.some((a) => a.p.id === p.id)) continue;
+    const a = addActor(box, p);
+    a.el.classList.add('pop-in');
+  }
+  if (!petById(selected)) selected = myPet()?.id ?? state.pets[0]?.id;
 }
 
 // ---------- 換照顧的那隻 ----------

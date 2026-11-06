@@ -1835,3 +1835,40 @@ button.dt-i:hover,button.dt-i:focus-visible{border-color:var(--wood);outline:non
 .parent-card .pmail{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:10px 0}
 .parent-card .pmail input{flex:1;min-width:200px;font:500 17px/1.2 var(--f-body);padding:10px 12px;border-radius:12px;border:2px solid var(--cream-2,#f6dfb4)}
 .parent-card .pmail .msg{flex-basis:100%;color:#c8432e;margin:0}
+
+/* ---------- 夥伴們名冊＋休息屋（js/pet.js openRoster，2026-11-06） ---------- */
+.pal-s.roster-b{border-color:#f0b860;background:#fff6e2;overflow:visible}
+.pal-s.roster-b img{width:100%;height:100%;object-fit:contain;min-width:0}
+.roster-pop{position:absolute;inset:0;z-index:58;display:grid;place-items:center;background:rgba(40,30,20,.45);padding:12px}
+.roster{position:relative;background:var(--cream,#fff8ea);border-radius:22px;border:4px solid var(--wood,#8a5a2b);width:min(720px,100%);max-height:calc(100dvh - 24px);overflow:auto;overscroll-behavior:contain;padding:16px 18px;box-shadow:0 8px 0 rgba(107,63,31,.35)}
+#petroom .roster>.x,.roster>.x{position:absolute;right:10px;top:10px;left:auto;bottom:auto;width:44px;height:44px;transform:none;z-index:2}
+.roster h2{margin:0 0 6px;font:900 24px/1.2 var(--f-body);color:var(--wood)}
+.roster h2 small{font-size:16px;opacity:.7}
+.roster .lab{margin:8px 0 6px;font:900 16px/1.2 var(--f-body);color:var(--wood)}
+.roster .lab small{font:700 13px/1 var(--f-body);color:#8a6a4a;margin-left:6px}
+.ro-g{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:10px}
+.ro-c{background:#fff;border-radius:16px;border:3px solid var(--cream-2,#ecdcc0);padding:6px 6px 8px;display:flex;flex-direction:column;align-items:center;gap:4px;min-width:0}
+.ro-c.on{border-color:var(--gold)}
+.ro-c .pic{position:relative;border:0;background:none;padding:0;cursor:pointer;width:100%;display:grid;place-items:center}
+.ro-c .pic img{height:76px;width:auto;max-width:100%;object-fit:contain}
+.ro-c .pic i{position:absolute;left:50%;bottom:-4px;transform:translateX(-50%);font:900 11px/1 var(--f-body);font-style:normal;color:#fff;padding:3px 7px;border-radius:99px;white-space:nowrap;background:var(--wood)}
+.ro-c .pic i.care{background:#2f7a1c}
+.ro-c .pic i.zz{background:#6a7fb8}
+.ro-c b{font:900 15px/1.2 var(--f-body);color:var(--ink);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ro-c :is(.btn,.ghost),#petroom .ro-c :is(.btn,.ghost).small{min-height:36px;width:auto;min-width:0;padding:6px 14px;font-size:15px;white-space:nowrap}
+.ro-c.resting{background:#f3f6ff;border-color:#c9d4f0}
+.ro-rest{margin-top:14px;padding:12px;border-radius:18px;background:linear-gradient(#fff1d8,#ffe6c4);border:3px solid #f0c890}
+.ro-head{display:flex;gap:12px;align-items:center;margin-bottom:10px}
+.ro-head img{width:120px;height:auto;flex:none;filter:drop-shadow(0 4px 6px rgba(107,63,31,.25))}
+.ro-head h3{margin:0 0 4px;font:900 20px/1.2 var(--f-body);color:var(--wood)}
+.ro-head p{margin:0;font:700 14px/1.45 var(--f-body);color:#6b4a2b}
+.ro-rest .tip{margin:0;font:700 14px/1.4 var(--f-body);color:#8a6a4a;text-align:center}
+.ro-more{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;padding-bottom:10px}
+.actor.pop-in{animation:pop .4s ease-out}
+@media (max-width:520px){
+  .roster{padding:14px 12px}
+  .ro-g{grid-template-columns:repeat(3,1fr);gap:8px}
+  .ro-c .pic img{height:60px}
+  .ro-head img{width:84px}
+  .ro-head p{font-size:13px}
+}
