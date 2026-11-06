@@ -358,20 +358,36 @@ begin
     $q$ into v_island;
   end if;
 
+  -- 守護異世界每一關。2026-11-06：原本每一關都把全部作答掃一遍找「最遠停在哪」，正式庫作答多了會逾時
+  -- （canceling statement due to statement timeout），改成先算好每個人打過哪些關、最遠一關，再一次對到每一關
+  with pairs as materialized (
+    select a.student_id, a.level_id from public.answer_events a group by 1, 2
+  ), far as (
+    select distinct on (x.student_id) x.student_id, x.level_id
+      from pairs x join public.levels l2 on l2.id = x.level_id
+     order by x.student_id, l2.chapter desc, l2.no desc
+  ), played as (
+    select x.level_id, count(*) n from pairs x group by 1
+  ), cleared as (
+    select p.level_id, count(*) n from public.level_progress p where p.cleared_at is not null group by 1
+  ), stopped as (
+    select f.level_id, count(*) n from far f
+     where not exists (select 1 from public.level_progress p
+                        where p.student_id = f.student_id and p.level_id = f.level_id and p.cleared_at is not null)
+     group by 1
+  ), recent as (
+    select a.level_id, count(*) n, count(*) filter (where a.correct) ok
+      from public.answer_events a where a.at >= v_since group by 1
+  )
   select coalesce(jsonb_agg(x order by (x ->> 'ord')::int), '[]') into v_guard from (
     select jsonb_build_object('level', l.id, 'ord', row_number() over (order by l.chapter, l.no), 'chapter', l.chapter, 'no', l.no, 'name', l.name,
-             'played', (select count(distinct a.student_id) from public.answer_events a where a.level_id = l.id),
-             'cleared', (select count(*) from public.level_progress p where p.level_id = l.id and p.cleared_at is not null),
-             'stopped', (select count(*) from (
-                           select distinct on (a.student_id) a.student_id, a.level_id
-                             from public.answer_events a join public.levels l2 on l2.id = a.level_id
-                            order by a.student_id, l2.chapter desc, l2.no desc) f
-                          where f.level_id = l.id
-                            and not exists (select 1 from public.level_progress p where p.student_id = f.student_id and p.level_id = l.id and p.cleared_at is not null)),
-             'n', count(a.*), 'ok', count(a.*) filter (where a.correct)) as x
+             'played', coalesce(pl.n, 0), 'cleared', coalesce(cl.n, 0), 'stopped', coalesce(st.n, 0),
+             'n', coalesce(rc.n, 0), 'ok', coalesce(rc.ok, 0)) as x
       from public.levels l
-      left join public.answer_events a on a.level_id = l.id and a.at >= v_since
-     group by l.id, l.chapter, l.no, l.name) t
+      left join played pl on pl.level_id = l.id
+      left join cleared cl on cl.level_id = l.id
+      left join stopped st on st.level_id = l.id
+      left join recent rc on rc.level_id = l.id) t
    where (x ->> 'played')::int > 0;
 
   select coalesce(jsonb_agg(x), '[]') into v_words from (

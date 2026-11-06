@@ -325,7 +325,8 @@ async function renderClasses() {
 }
 async function loadClasses() {
   [classes, facilities] = await Promise.all([ownClasses(), auth.teacher.facilities()]);
-  if (!classes.some((c) => c.code === active)) active = classes[0]?.code ?? null;
+  // 管理員在孩子頁選了別人的班（含公共交誼廳）就留著，不要跳回自己的第一班
+  if (!classes.some((c) => c.code === active) && !(allClasses ?? []).some((c) => c.code === active)) active = classes[0]?.code ?? null;
   paintHero();
 }
 // 各頁共用的「選一個班」：一個班就不畫；管理員在孩子頁可以另外選全站的班
@@ -334,11 +335,13 @@ function classPicker(extra = []) {
   return `<div class="classtabs" role="tablist">${classes.map((c) => `
       <button role="tab" data-code="${esc(c.code)}" class="${c.code === active ? 'on' : ''}">
         <b>${esc(c.name || c.code)}</b><small>${c.kind === 'home' ? '家庭班' : '學校班'}・${c.members} 人</small></button>`).join('')}</div>
+    ${extra.some((x) => x.code === LOUNGE) ? `<button class="ghost small lounge-pick${active === LOUNGE ? ' on' : ''}" data-lounge>${ico('students')}公共交誼廳（${extra.find((x) => x.code === LOUNGE).members} 人）</button>` : ''}
     ${extra.length ? `<label class="inline all-cls">管理員：看全站其他班 <select data-other><option value="">選一班…</option>
       ${extra.map((x) => `<option value="${esc(x.code)}" ${x.code === active ? 'selected' : ''}>${esc(x.name || x.code)}（${esc(x.owner_name ?? '')}・${x.members} 人）</option>`).join('')}</select></label>` : ''}`;
 }
 function wirePicker(root, onPick) {
   $$('.classtabs [data-code]', root).forEach((b) => { b.onclick = () => { active = b.dataset.code; onPick(); }; });
+  $('[data-lounge]', root)?.addEventListener('click', () => { active = LOUNGE; onPick(); });
   $('[data-other]', root)?.addEventListener('change', (e) => { if (e.target.value) { active = e.target.value; onPick(); } });
 }
 const subNav = (list, cur, attr) => `<div class="subnav" role="tablist">${list.map(([k, t]) =>
@@ -403,14 +406,21 @@ function classForm(c = {}) {
     <label>類型<select name="kind">
       <option value="school" ${kind === 'school' ? 'selected' : ''}>學校班</option>
       <option value="home" ${kind === 'home' ? 'selected' : ''}>家庭班</option></select></label>
-    <label>新加入孩子的年級（選填）<select name="grade"><option value="">不指定，每個孩子自己設</option>
+    <label data-grade-row ${kind === 'home' ? 'hidden' : ''}>新加入孩子的年級（選填）<select name="grade"><option value="">不指定，每個孩子自己設</option>
       ${GRADES.map((g) => `<option value="${g}" ${c.grade === g ? 'selected' : ''}>${g} 年級</option>`).join('')}</select>
       <small class="tip">年級記在每個孩子身上，可以在全班總覽改。全班同年級的話選這裡，新加入的孩子就先填這個年級。</small></label>`;
 }
+// 類型換成家庭班就把年級收起來
+document.addEventListener('change', (e) => {
+  if (e.target?.name !== 'kind' || !e.target.form) return;
+  const row = e.target.form.querySelector('[data-grade-row]');
+  if (row) row.hidden = e.target.value === 'home';
+});
 function readClassForm(f) {
   const name = f.elements.name.value.trim();
   const kind = f.elements.kind.value;
-  const grade = f.elements.grade.value ? Number(f.elements.grade.value) : null;
+  // 家庭班不用選年級：年級記在每個孩子身上（2026-11-06 Chuck）
+  const grade = kind !== 'home' && f.elements.grade.value ? Number(f.elements.grade.value) : null;
   if (!name) throw new Error('填一下班級名稱');
   return { name, kind, grade };
 }
@@ -927,52 +937,68 @@ async function renderPlay() {
   if (!host) return;
   const c = classes.find((x) => x.code === active) ?? (allClasses ?? []).find((x) => x.code === active);
   if (!c) return;
+  if (playNames.code !== c.code) { playNames = { code: c.code, list: [] }; playQ = ''; playWho = 'came'; playPage = 0; }
   host.innerHTML = `<div class="head">${h2('clock', '每天玩多久')}
       <label class="inline">看最近 <select data-days>${[7, 14, 28].map((d) => `<option value="${d}" ${d === playDays ? 'selected' : ''}>${d} 天</option>`).join('')}</select></label></div>
     <div id="play-body"><p class="loading"><img src="img/tick/map.webp" alt="">整理中…</p></div>`;
-  $('[data-days]', host).onchange = (e) => { playDays = Number(e.target.value); renderPlay(); };
-  if (playNames.code !== c.code) {
-    const ov = lastOverview?.cls?.code === c.code ? lastOverview : await auth.teacher.overview(c.code);
-    playNames = { code: c.code, list: ov.students.map((s) => ({ id: s.id, nickname: s.nickname })) };
-  }
+  $('[data-days]', host).onchange = (e) => { playDays = Number(e.target.value); playPage = 0; renderPlay(); };
   if (playKid) return paintKidDays(c, playNames.list.find((s) => s.id === playKid) ?? { id: playKid, nickname: '' });
   await paintClassDays(c);
 }
 
+// 全班每人每天：伺服器一次給一頁 30 人（玩最久的排前面），可以打暱稱／帳號找、篩「有來玩／沒來／全部」
+// （2026-11-06 Chuck：公共交誼廳一千多人，不要一次全列）
+let playQ = '', playWho = 'came', playPage = 0;
 async function paintClassDays(c) {
   const box = $('#play-body');
-  let rows;
-  try { rows = await auth.teacher.days(c.code, playDays); }
-  catch (e) { box.innerHTML = `<div class="empty"><img src="img/admin/tick-error.webp" alt=""><p>${esc(/park_class_days|schema cache/.test(e.message) ? '遊玩紀錄分頁還沒裝到資料庫。' : e.message)}</p></div>`; return; }
+  box.innerHTML = `<div class="row play-tools">
+      <input type="search" data-pq placeholder="🔍 找暱稱或帳號" maxlength="20" value="${esc(playQ)}" aria-label="找孩子">
+      <select data-pw class="auto"><option value="came">這段時間有來玩</option><option value="idle">沒來玩</option><option value="all">全部</option></select></div>
+    <div id="play-table"><p class="loading"><img src="img/tick/map.webp" alt="">整理中…</p></div>`;
+  $('[data-pw]', box).value = playWho;
+  $('[data-pw]', box).onchange = (e) => { playWho = e.target.value; playPage = 0; paintDaysTable(c); };
+  let t = 0;
+  $('[data-pq]', box).oninput = (e) => { clearTimeout(t); t = setTimeout(() => { playQ = e.target.value.trim(); playPage = 0; paintDaysTable(c); }, 350); };
+  await paintDaysTable(c);
+}
+
+let daysSeq = 0;
+async function paintDaysTable(c) {
+  const box = $('#play-table');
+  if (!box) return;
+  const seq = ++daysSeq;
+  let pg;
+  try { pg = await auth.teacher.daysPage(c.code, playDays, playQ, playWho, playPage); }
+  catch (e) { if (seq === daysSeq) box.innerHTML = `<div class="empty"><img src="img/admin/tick-error.webp" alt=""><p>${esc(/park_class_days|schema cache/.test(e.message) ? '遊玩紀錄分頁還沒裝到資料庫。' : e.message)}</p></div>`; return; }
+  if (seq !== daysSeq || !box.isConnected) return;
+  playNames.list = pg.kids;
   const days = dayList(playDays);
-  // 學生 → 日期 → { sec, plays, stamps, games: [{facility, game, sec}] }
   const by = new Map();
-  for (const r of rows) {
+  for (const r of pg.rows) {
     const k = by.get(r.student_id) ?? new Map(); by.set(r.student_id, k);
-    const d = k.get(r.day) ?? { sec: 0, plays: 0, stamps: 0, games: [] }; k.set(r.day, d);
-    d.sec += r.seconds; d.plays += r.plays; d.stamps += r.stamps;
+    const d = k.get(r.day) ?? { sec: 0, plays: 0, games: [] }; k.set(r.day, d);
+    d.sec += r.seconds; d.plays += r.plays;
     if (r.seconds || r.plays) d.games.push(r);
   }
-  const tot = (id) => [...(by.get(id)?.values() ?? [])].reduce((a, d) => a + d.sec, 0);
-  const cnt = (id) => [...(by.get(id)?.values() ?? [])].filter((d) => d.sec || d.plays).length;
-  const kids = [...playNames.list].sort((a, b) => tot(b.id) - tot(a.id) || cnt(b.id) - cnt(a.id) || a.nickname.localeCompare(b.nickname, 'zh-TW'));
-  const came = kids.filter((k) => cnt(k.id)).length;
-  const idle = kids.length - came;
-  const rowOf = (k) => `<tr class="${cnt(k.id) ? '' : 'idle'}"><td><button class="linkish" data-kid="${esc(k.id)}">${esc(k.nickname)}</button></td>
+  const rowOf = (k) => `<tr class="${k.days ? '' : 'idle'}"><td><button class="linkish" data-kid="${esc(k.id)}">${esc(k.nickname)}</button></td>
         ${days.map((d) => { const x = by.get(k.id)?.get(d); if (!x || !(x.sec || x.plays)) return '<td></td>';
           const tip = x.games.map((g) => `${g.game} ${g.seconds ? mins(g.seconds) : `${g.plays} 次`}`).join('、');
           return `<td class="hx${heat(x.sec, x.plays)}" title="${esc(tip)}">${x.sec ? minText(x.sec) : '✓'}</td>`; }).join('')}
-        <td class="sum">${tot(k.id) ? `${Math.max(1, Math.round(tot(k.id) / 60))} 分` : cnt(k.id) ? `${cnt(k.id)} 天` : '沒來'}</td></tr>`;
+        <td class="sum">${k.sec ? `${Math.max(1, Math.round(k.sec / 60))} 分` : k.days ? `${k.days} 天` : '沒來'}</td></tr>`;
+  const pages = Math.max(1, Math.ceil(pg.total / pg.size));
   box.innerHTML = `
-    <p class="lead">最近 ${playDays} 天有 <b>${came}</b> / ${kids.length} 人來玩。每一格是那天在遊戲裡玩了幾分鐘（只待在樂園大廳、寵物島不算），顏色越深玩越久；「✓」是有玩但沒記到時間（2026-10-23 以前的紀錄）。點名字看那個孩子每天玩了什麼。</p>
+    <p class="lead">最近 ${playDays} 天有 <b>${pg.came}</b> / ${pg.came + pg.idle} 人來玩${playQ ? `，找「${esc(playQ)}」有 ${pg.total} 人` : ''}。每一格是那天在遊戲裡玩了幾分鐘（只待在樂園大廳、寵物島不算），顏色越深玩越久；「✓」是有玩但沒記到時間（2026-10-23 以前的紀錄）。點名字看那個孩子每天玩了什麼。</p>
     <p class="heat-legend"><span class="hx1">1–14</span><span class="hx2">15–29</span><span class="hx3">30–59</span><span class="hx4">60+ 分鐘</span></p>
-    <div class="tablewrap"><table class="heat ${playDays > 14 ? 'many' : ''}">
+    ${pg.kids.length ? `<div class="tablewrap"><table class="heat ${playDays > 14 ? 'many' : ''}">
       <thead><tr><th>暱稱</th>${days.map((d) => `<th>${dayHead(d)}</th>`).join('')}<th>合計</th></tr></thead>
-      <tbody>${kids.filter((k) => cnt(k.id)).map(rowOf).join('')}</tbody>
-      ${idle ? `<tbody class="idle-rows" hidden>${kids.filter((k) => !cnt(k.id)).map(rowOf).join('')}</tbody>` : ''}
-    </table></div>
-    ${idle ? `<p class="row"><button class="linkish" data-idle>還有 ${idle} 人這 ${playDays} 天沒來玩，點這裡列出來</button></p>` : ''}`;
-  $('[data-idle]', box)?.addEventListener('click', (e) => { $('.idle-rows', box).hidden = false; e.currentTarget.remove(); });
+      <tbody>${pg.kids.map(rowOf).join('')}</tbody>
+    </table></div>` : `<p class="tip">${playQ ? '找不到這個孩子，換個字試試看。' : playWho === 'idle' ? '每個人都有來玩！' : '這段時間還沒有人來玩。'}</p>`}
+    ${pages > 1 ? `<div class="row pager"><button class="ghost small" data-pp="-1" ${playPage <= 0 ? 'disabled' : ''}>‹ 上一頁</button>
+      <span class="tip">第 ${playPage + 1} / ${pages} 頁・共 ${pg.total} 人</span>
+      <button class="ghost small" data-pp="1" ${playPage >= pages - 1 ? 'disabled' : ''}>下一頁 ›</button></div>` : ''}
+    ${playWho === 'came' && !playQ && pg.idle ? `<p class="row"><button class="linkish" data-idle>還有 ${pg.idle} 人這 ${playDays} 天沒來玩，點這裡列出來</button></p>` : ''}`;
+  $$('[data-pp]', box).forEach((b) => { b.onclick = () => { playPage += Number(b.dataset.pp); paintDaysTable(c); }; });
+  $('[data-idle]', box)?.addEventListener('click', () => { playWho = 'idle'; playPage = 0; const s = $('[data-pw]'); if (s) s.value = 'idle'; paintDaysTable(c); });
   $$('[data-kid]', box).forEach((b) => { b.onclick = () => { playKid = b.dataset.kid; renderPlay(); }; });
 }
 

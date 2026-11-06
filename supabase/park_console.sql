@@ -214,3 +214,62 @@ grant execute on function public.park_facility_list() to anon, authenticated;
 grant execute on function public.park_can_enter(text) to anon, authenticated;
 grant execute on function public.park_pet_limit_me(), public.park_class_config(text), public.park_class_set_pet_limit(text, int),
   public.park_quiz_admin_papers(int) to authenticated;
+
+-- -----------------------------------------------------------------------------
+-- 5. 「每天玩多久」分頁版（2026-11-06 Chuck：公共交誼廳一千多人，要能找、篩、翻頁）
+-- -----------------------------------------------------------------------------
+-- p_q 找暱稱或帳號；p_who：came 這段時間有來玩（預設）／idle 沒來／all 全部；一頁 p_size 人（玩最久的排前面）
+-- 回傳 {total, came, idle, page, size, kids:[{id, nickname, sec, days}], rows:[{student_id, day, facility, game, seconds, plays, stamps}]}
+create or replace function public.park_class_days_page(p_code text, p_days int default 7, p_q text default '',
+                                                       p_who text default 'came', p_page int default 0, p_size int default 30)
+returns jsonb language plpgsql stable security definer set search_path = public, pg_temp as $$
+declare
+  v_code  text := upper(btrim(coalesce(p_code, '')));
+  v_days  int := least(greatest(coalesce(p_days, 7), 1), 35);
+  v_today date := (now() at time zone 'Asia/Taipei')::date;
+  v_q     text := lower(left(nullif(btrim(coalesce(p_q, '')), ''), 20));
+  v_who   text := case when p_who in ('came', 'idle', 'all') then p_who else 'came' end;
+  v_size  int := least(greatest(coalesce(p_size, 30), 5), 100);
+  v_page  int := greatest(coalesce(p_page, 0), 0);
+  v_ids   uuid[];
+  v_out   jsonb;
+begin
+  if not public.is_teacher_of(v_code) then raise exception '這不是你的班'; end if;
+  select array_agg(m.student_id) into v_ids from public.park_class_members m where m.class_code = v_code;
+  if v_ids is null then
+    return jsonb_build_object('total', 0, 'came', 0, 'idle', 0, 'page', 0, 'size', v_size, 'kids', '[]'::jsonb, 'rows', '[]'::jsonb);
+  end if;
+  with act as (
+    select r.student_id, (r.started_at at time zone 'Asia/Taipei')::date as day, r.facility, public.park_facility_name(r.facility) as game,
+           coalesce(sum(r.seconds) filter (where r.kind = 'play'), 0)::int as seconds,
+           (count(*) filter (where r.kind in ('level', 'save') or (r.kind = 'play' and r.place <> 'enter')))::int as plays,
+           (count(*) filter (where r.kind = 'stamp'))::int as stamps
+      from public.park_activity_rows(((v_today - (v_days - 1))::timestamp at time zone 'Asia/Taipei'), v_ids) r
+     where r.facility <> 'park'
+     group by 1, 2, 3
+  ), tot as (
+    select a.student_id, sum(a.seconds)::int as sec, count(distinct a.day) filter (where a.seconds > 0 or a.plays > 0)::int as days
+      from act a group by 1
+  ), lst as (
+    select s.id, s.nickname, coalesce(t.sec, 0) as sec, coalesce(t.days, 0) as days
+      from public.students s left join tot t on t.student_id = s.id
+     where s.id = any(v_ids)
+       and (v_q is null or strpos(lower(s.nickname), v_q) > 0 or strpos(lower(s.login_id), v_q) > 0)
+  ), f as (
+    select * from lst where v_who = 'all' or (v_who = 'came') = (days > 0)
+  ), pg as (
+    select * from f order by sec desc, days desc, nickname, id offset v_page * v_size limit v_size
+  )
+  select jsonb_build_object(
+    'total', (select count(*) from f),
+    'came', (select count(*) from lst where days > 0),
+    'idle', (select count(*) from lst where days = 0),
+    'page', v_page, 'size', v_size,
+    'kids', coalesce((select jsonb_agg(jsonb_build_object('id', pg.id, 'nickname', pg.nickname, 'sec', pg.sec, 'days', pg.days)
+                                       order by pg.sec desc, pg.days desc, pg.nickname, pg.id) from pg), '[]'::jsonb),
+    'rows', coalesce((select jsonb_agg(to_jsonb(a)) from act a where a.student_id in (select id from pg)), '[]'::jsonb))
+  into v_out;
+  return v_out;
+end;
+$$;
+grant execute on function public.park_class_days_page(text, int, text, text, int, int) to authenticated;
