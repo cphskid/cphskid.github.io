@@ -449,6 +449,7 @@ let tryTheme = null;        // 裝扮時試套的風格（還沒拿到的），�
 const curTheme = () => tryTheme ?? isle.theme();
 let deco = null;            // 裝扮模式 { tab, tool, sel, back }（back：按「全部收起來」之前的樣子，可以放回去）
 
+const visiting = () => !!layer?.querySelector('.pisle>.isle-visit');
 function stopScene() {
   cancelAnimationFrame(raf);
   raf = 0;
@@ -1922,6 +1923,8 @@ function place(a) {
 function tick(now) {
   const dt = Math.min(.05, (now - last) / 1000);
   last = now;
+  // 正在拜訪別人的島：自己的島藏起來了（css .pisle:has(>.isle-visit)），夥伴先停著不算
+  if (visiting()) { raf = requestAnimationFrame(tick); return; }
   skyFx?.step(dt);
   stepBall(now);
   for (const a of actors) {

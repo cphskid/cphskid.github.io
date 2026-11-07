@@ -309,7 +309,7 @@ function miniHtml(r) {
   w = Math.min(w, GW);
   const h = w / aspect;
   const x = Math.min(Math.max(cx - w / 2, 0), GW - w), y = Math.min(Math.max(cy - h / 2, 0), Math.max(GH - h, 0));
-  return `<span class="iv-ground" data-cw="${w.toFixed(0)}" style="width:${GW}px;height:${GH}px;--x:${(-x).toFixed(0)}px;--y:${(-y).toFixed(0)}px">${html}</span>`;
+  return `<span class="iv-ground" data-cw="${w.toFixed(0)}" style="width:${GW}px;height:${GH}px;left:${(-x).toFixed(0)}px;top:${(-y).toFixed(0)}px">${html}</span>`;
 }
 
 // 縮圖照卡片寬度縮放（卡片寬度會跟著視窗變）
@@ -317,8 +317,9 @@ let thumbRO = null;
 function fitThumb(th) {
   const g = th.firstElementChild;
   if (!g) return;
-  const k = th.clientWidth / +g.dataset.cw;
-  g.style.transform = `scale(${k}) translate(var(--x), var(--y))`;
+  // 用 zoom 不用 transform：transform 放大縮小時 iPhone 會照「原本 2640×1448」的大小準備畫布，十幾張縮圖＋參觀畫面一起就把記憶體吃光、網頁被關掉
+  //（zoom 是照縮好的大小排版和畫，left/top 也會跟著乘 k）
+  g.style.zoom = th.clientWidth / +g.dataset.cw;
 }
 function watchThumbs(list) {
   unwatchThumbs();
@@ -346,9 +347,9 @@ async function paintVisit(box, id) {
   box.innerHTML = `<div class="iv-view" role="dialog" aria-label="參觀 ${esc(v.nickname)} 的島">
     <div class="iv-top"><button type="button" class="ghost small" data-iv-back>${ctx?.onBack ? '‹ 回去' : '‹ 回清單'}</button>
       <p><b>${esc(nameText(v.name))}</b><small>${esc(v.nickname)} 的島</small></p></div>
-    <div class="iv-stage"><div class="iv-ground" style="width:${GW}px;height:${GH}px">
+    <div class="iv-stage"><div class="iv-fit"><div class="iv-ground" style="width:${GW}px;height:${GH}px">
       ${parts.html}
-    </div></div>
+    </div></div></div>
     <div class="iv-react"></div>
     <p class="note iv-note"></p></div>`;
   // 整座島放進畫面；手機直拿太小的話放大一點、可以左右滑
@@ -356,10 +357,10 @@ async function paintVisit(box, id) {
     const st = $('.iv-stage', box);
     if (!st) return;
     const k = Math.max(Math.min(st.clientWidth / GW, st.clientHeight / GH), Math.min(.55, st.clientHeight / GH));
-    const g = $('.iv-ground', box);
-    g.style.transform = `scale(${k})`;
-    g.parentElement.style.setProperty('--w', `${GW * k}px`);
-    g.parentElement.style.setProperty('--h', `${GH * k}px`);
+    // 用 zoom 不用 transform（原因看 fitThumb）：整座島照畫面上的大小畫，寵物走來走去也不會讓 iPhone 準備一張超大畫布
+    $('.iv-ground', box).style.zoom = k;
+    st.style.setProperty('--w', `${GW * k}px`);
+    st.style.setProperty('--h', `${GH * k}px`);
   };
   fit();
   addEventListener('resize', fit);
