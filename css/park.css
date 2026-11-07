@@ -1568,7 +1568,6 @@ body[data-starter="on"][data-scene="map"] #tick .bubble{display:none}
 .iv-card .th>img.pet{position:absolute;right:6px;bottom:4px;width:34%;height:auto;aspect-ratio:auto}
 /* 縮圖：畫出這座島真的擺法（不會動），js 依卡片寬度縮放、對準擺了東西的地方 */
 .iv-card .th.mini{aspect-ratio:4/3;overflow:hidden;background:linear-gradient(#bfe3fb,#e3f4ff)}
-.iv-card .th.mini .iv-ground{left:0;top:0}
 .iv-pet.still{animation:none}
 .iv-card.none{cursor:default;opacity:.8}
 .iv-card.none .th>img{filter:grayscale(.7) opacity(.5)}
@@ -1589,7 +1588,12 @@ body[data-starter="on"][data-scene="map"] #tick .bubble{display:none}
 .iv-top small{font:700 13px/1.2 var(--f-body);color:#8a6a4a}
 .iv-stage{position:relative;height:min(56dvh,560px);border-radius:16px;background:linear-gradient(#bfe3fb,#e3f4ff);overflow:auto;scrollbar-width:thin}
 .iv-stage::before{content:"";display:block;width:var(--w,100%);height:var(--h,100%)}
-.iv-ground{position:absolute;left:max(0px,calc(50% - var(--w,0px) / 2));top:max(0px,calc(50% - var(--h,0px) / 2));transform-origin:0 0}
+.iv-ground{position:absolute;left:0;top:0}
+/* 參觀畫面：外框照縮好的大小置中，島本身用 zoom 縮（js/isle.js paintVisit） */
+.iv-fit{position:absolute;left:max(0px,calc(50% - var(--w,0px) / 2));top:max(0px,calc(50% - var(--h,0px) / 2));width:var(--w,0px);height:var(--h,0px)}
+/* 拜訪別人的島時，自己的島先藏起來不畫（兩座大島＋十幾隻夥伴同時畫，iPhone 記憶體不夠會整頁關掉） */
+.pisle:has(>.isle-visit)>.view,.pisle:has(>.isle-visit)>.haze{visibility:hidden}
+.pisle:has(>.isle-visit)>.isle-visit{background:linear-gradient(#bfe3fb,#e3f4ff)}
 .iv-ground .floor,.iv-ground .fence{position:absolute;left:0;top:0;pointer-events:none}
 .iv-ground .fence svg{display:block}
 .iv-ground .land{position:absolute;inset:0;width:100%;height:100%}
