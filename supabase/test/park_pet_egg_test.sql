@@ -75,3 +75,16 @@ select test_as('e7000000-0000-0000-0000-000000000012', true);
 select test_ok((public.park_coins_me() ->> 'balance')::int >= 10, '島主也 +10');
 select test_denied($$select public.park_isle_find('e7100000-0000-0000-0000-000000000011')$$, '沒有枯葉蝶的島找不到');
 reset role;
+
+\echo '── 神秘蛋孵出起始夥伴也不佔領養名額（問題回報 #55）'
+delete from public.park_pets where student_id = 'e7100000-0000-0000-0000-000000000012';
+delete from public.park_pet_eggs where student_id = 'e7100000-0000-0000-0000-000000000012';
+select public.park_pet_egg_give('e7100000-0000-0000-0000-000000000012', 'kitten', 'parent');
+select public.park_pet_hatch('e7100000-0000-0000-0000-000000000012');
+select test_ok((select via from public.park_pets where student_id = 'e7100000-0000-0000-0000-000000000012' and species = 'kitten') = 'egg', '神秘蛋孵出的小貓標成 egg');
+set role authenticated;
+select test_as('e7000000-0000-0000-0000-000000000012', true);
+select test_ok((public.park_pet_me() ->> 'adopted')::int = 0, '畫面拿到 adopted = 0');
+select test_ok(public.park_pet_adopt('puppy', null) ? 'adopted', '有神秘蛋的小貓，還是能領養第一隻起始夥伴');
+select test_denied($$select public.park_pet_adopt('hamster', null)$$, '第二隻要等過關（名額只有 1）');
+reset role;

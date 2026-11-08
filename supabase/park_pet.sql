@@ -66,6 +66,9 @@ alter table public.park_pets add column if not exists play_n   int not null defa
 alter table public.park_pets add column if not exists ate_at   timestamptz;
 -- 在休息屋（2026-11-06 Chuck：夥伴多了島上管不動，要有休息屋的概念；不限隻數，照顧中的不能進去）
 alter table public.park_pets add column if not exists resting  boolean not null default false;
+-- 怎麼來的：adopt 自己領養（佔領養名額）／egg 蛋孵出來的（過關的蛋、爸媽的神秘蛋，不佔名額）
+-- 2026-11-08 問題回報 #55：神秘蛋孵出起始夥伴時被算進領養名額，孩子等於少領一隻
+alter table public.park_pets add column if not exists via text not null default 'adopt';
 
 -- 背包
 create table if not exists public.park_pet_inventory (
@@ -109,6 +112,20 @@ create table if not exists public.park_pet_eggs (
   hatched_at timestamptz,
   primary key (student_id, species)
 );
+-- 補標舊資料：蛋孵出來的夥伴標 via = 'egg'（重跑沒關係）
+do $$
+begin
+  update public.park_pets p set via = 'egg'
+   where p.via = 'adopt'
+     and exists (select 1 from public.park_pet_eggs e where e.student_id = p.student_id and e.species = p.species and e.hatched_at is not null);
+  -- B 期以前的神秘蛋直接孵成起始夥伴、沒有蛋的紀錄：跟「和爸媽連起來」同一刻出現的那隻
+  if to_regclass('public.park_parent_rewards') is not null then
+    update public.park_pets p set via = 'egg'
+     where p.via = 'adopt'
+       and exists (select 1 from public.park_parent_rewards r where r.student_id = p.student_id and r.task = 'link'
+                      and abs(extract(epoch from p.created_at - r.at)) < 2);
+  end if;
+end $$;
 -- 每天一次的本事（穿山甲挖寶、藍鵲帶禮物、枯葉蝶被找到）
 create table if not exists public.park_pet_skill_log (
   student_id uuid not null references public.students(id) on delete cascade,
@@ -281,6 +298,14 @@ returns int language sql stable security definer set search_path = public, pg_te
 $$;
 revoke all on function public.park_pet_clears(uuid) from public, anon, authenticated;
 
+-- 已經用掉幾個領養名額
+create or replace function public.park_pet_adopted(p_student uuid)
+returns int language sql stable security definer set search_path = public, pg_temp as $$
+  select count(*)::int from public.park_pets p join public.park_pet_species s on s.code = p.species
+   where p.student_id = p_student and s.starter and p.via = 'adopt';
+$$;
+revoke all on function public.park_pet_adopted(uuid) from public, anon, authenticated;
+
 create or replace function public.park_pet_slots(p_student uuid)
 returns int language sql stable security definer set search_path = public, pg_temp as $$
   -- 只算「過關」章（kind = clear）：守護異世界一場就可能一次拿好幾個成就章，
@@ -432,6 +457,7 @@ returns jsonb language sql stable security definer set search_path = public, pg_
                                order by i.sort) from public.park_pet_items i),
     'quiet', public.park_pet_quiet(p_student),
     'slots', public.park_pet_slots(p_student),
+    'adopted', public.park_pet_adopted(p_student),
     'stamps', (select count(*) from public.park_student_stamps x where x.student_id = p_student),
     'clears', public.park_pet_clears(p_student),
     'unlock_at', jsonb_build_array(3, 6),
@@ -559,9 +585,9 @@ begin
   for r in select e.species from public.park_pet_eggs e
             where e.student_id = p_student and e.hatched_at is null and e.hatch_on <= public.park_pet_today()
             order by e.got_at for update loop
-    insert into public.park_pets (student_id, species, name, active)
+    insert into public.park_pets (student_id, species, name, active, via)
     values (p_student, r.species, (select name from public.park_pet_species where code = r.species),
-            not exists (select 1 from public.park_pets p where p.student_id = p_student and p.active))
+            not exists (select 1 from public.park_pets p where p.student_id = p_student and p.active), 'egg')
     on conflict (student_id, species) do nothing;
     update public.park_pet_eggs set hatched_at = now() where student_id = p_student and species = r.species;
     v_out := v_out || to_jsonb(r.species);
@@ -595,9 +621,8 @@ returns jsonb language plpgsql security definer set search_path = public, pg_tem
 declare v_me uuid := public.current_student_id(); v_sp text; v_name text; v_have int;
 begin
   if v_me is null then raise exception '請先登入學生帳號'; end if;
-  -- 只算起始夥伴（拿蛋孵出來的新夥伴不佔領養名額）
-  select count(*) into v_have from public.park_pets p join public.park_pet_species s on s.code = p.species
-   where p.student_id = v_me and s.starter;
+  -- 只算自己領養的起始夥伴（蛋孵出來的，連神秘蛋孵出的起始夥伴，都不佔領養名額）
+  v_have := public.park_pet_adopted(v_me);
   if v_have >= public.park_pet_slots(v_me) then
     raise exception '%', case when v_have = 0 then '現在不能領養' when v_have >= 3 then '起始夥伴都領養完了'
                               else '再多過幾關，就能領養下一隻夥伴' end;

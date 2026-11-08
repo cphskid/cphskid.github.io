@@ -79,8 +79,9 @@ const icon = (i) => FOOD_IMG.has(foodBase(i.code)) ? `<img src="img/pet/food/${e
 const owned = (code) => state?.pets?.some((p) => p.species === code);
 const freeStarters = () => (state?.species ?? []).filter((s) => s.starter && !owned(s.code));
 const isStarter = (code) => !!state?.species?.find((s) => s.code === code)?.starter;
-// 領養名額只算起始夥伴（拿蛋孵出來的新夥伴不佔名額）
-const canAdopt = () => !!state && state.pets.filter((p) => isStarter(p.species)).length < (state.slots ?? 1) && freeStarters().length > 0;
+// 領養名額只算自己領養的起始夥伴（蛋孵出來的不佔名額，連爸媽神秘蛋孵出的起始夥伴也不算；問題回報 #55）
+const adoptedN = () => state.adopted ?? state.pets.filter((p) => isStarter(p.species)).length;
+const canAdopt = () => !!state && adoptedN() < (state.slots ?? 1) && freeStarters().length > 0;
 const speciesOf = (code) => state?.species?.find((s) => s.code === code);
 let hatchQ = [];             // 剛孵出來、還沒給小朋友看的新夥伴（種類）
 function moodOf(p) {
