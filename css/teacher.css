@@ -245,6 +245,7 @@ select.auto{width:auto}
 .fb .row{gap:8px}
 .fb small.mono{margin-left:6px;color:var(--muted)}
 .fb-msg{margin:0;white-space:pre-wrap;word-break:break-word;font-size:17px;line-height:1.6}
+.fb-shot img{display:block;max-width:min(100%,420px);max-height:260px;border-radius:10px;border:2px solid var(--cream-2);cursor:zoom-in;background:#f4efe6}
 .fb-answer{margin:0;padding:8px 12px;border-radius:10px;background:var(--green-bg);color:var(--green);font-weight:700}
 .fb-reply input{flex:1;min-width:200px}
 .fb .tip{margin:0}

@@ -6,7 +6,8 @@
 // context.game 記是哪個遊戲送的（舊的守護異世界回報沒有這欄）。
 //
 // 小朋友描述 bug 通常只會寫「壞掉了」，所以真正有用的是自動附上的東西：
-// 哪個遊戲、哪個畫面、網址、裝置、螢幕大小、最近按過的按鈕、最近跳出的錯誤。
+// 哪個遊戲、哪個畫面、網址、裝置、螢幕大小、最近按過的按鈕、最近跳出的錯誤，
+// 和打開回報那一刻的畫面截圖（2026-11-08，見下面「畫面截圖」與 supabase/park_feedback_shots.sql）。
 //
 // 用法：
 //   ParkFeedback.mount({
@@ -49,6 +50,73 @@
   const keep = (m) => { errors.push(`${hhmmss()} ${m}`.slice(0, 200)); if (errors.length > 5) errors.shift(); };
   window.addEventListener('error', (e) => keep(e.message || String(e.error)));
   window.addEventListener('unhandledrejection', (e) => keep(e.reason instanceof Error ? e.reason.message : String(e.reason)));
+
+  // ---------- 畫面截圖（2026-11-08） ----------
+  // 打開回報視窗那一刻拍下目前畫面（回報視窗和浮動鈕不拍），縮到最寬 960px 存 WebP（Safari 舊版存 JPEG），
+  // 送出時上傳到私密空間 feedback-shots/<user id>/，只有管理員在後台看得到，30 天自動刪。
+  // 截圖只是加分：載不到、太慢（超過 SHOT_WAIT）、太大、上傳失敗，都照樣把文字送出去。
+  // 小朋友不用選要不要附（Chuck：多一個選擇反而困惑）。
+  const SHOT_W = 960;
+  const SHOT_WAIT = 4000;
+  const SHOT_MAX = 550000;
+  let h2c = null;
+  function loadH2c() {
+    if (window.html2canvas) return Promise.resolve(window.html2canvas);
+    if (h2c) return h2c;
+    h2c = new Promise((ok, no) => {
+      const s = document.createElement('script');
+      s.src = `${BASE}js/vendor/html2canvas-pro.min.js`;
+      s.onload = () => (window.html2canvas ? ok(window.html2canvas) : no(new Error('no html2canvas')));
+      s.onerror = () => { h2c = null; no(new Error('load failed')); };
+      document.head.appendChild(s);
+    });
+    return h2c;
+  }
+  const toBlob = (c, type, q) => new Promise((ok) => { try { c.toBlob(ok, type, q); } catch { ok(null); } });
+  async function shoot() {
+    // 記憶體很小的手機不拍（iOS 大畫面拍照容易把網頁擠掉）
+    if (navigator.deviceMemory && navigator.deviceMemory < 2) return null;
+    const w = innerWidth, h = innerHeight, x = scrollX, y = scrollY;
+    const lib = await loadH2c();
+    const fn = typeof lib === 'function' ? lib : (lib.default || lib.html2canvas);
+    const canvas = await fn(document.documentElement, {
+      x, y, width: w, height: h, windowWidth: document.documentElement.clientWidth, windowHeight: document.documentElement.clientHeight,
+      scale: Math.min(1, SHOT_W / w), useCORS: true, logging: false, imageTimeout: 2000,
+      backgroundColor: getComputedStyle(document.body).backgroundColor || '#ffffff',
+      ignoreElements: (el) => !!(el.classList && el.classList.contains('pfb')) || el.hasAttribute?.('data-pfb'),
+    });
+    let blob = await toBlob(canvas, 'image/webp', 0.6);
+    if (!blob || blob.type !== 'image/webp') blob = await toBlob(canvas, 'image/jpeg', 0.6);
+    canvas.width = canvas.height = 0;   // 早點放掉記憶體
+    if (!blob || blob.size > SHOT_MAX) return null;
+    return blob;
+  }
+  // 拍照，最多等 SHOT_WAIT；逾時或失敗都回 null
+  function shootSoon() {
+    return Promise.race([
+      shoot().catch(() => null),
+      new Promise((ok) => setTimeout(() => ok(null), SHOT_WAIT)),
+    ]);
+  }
+  function uidOf(t) {
+    try { return JSON.parse(atob(t.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))).sub || null; } catch { return null; }
+  }
+  // 上傳截圖，成功回傳路徑（記在 context.shot），失敗回 null
+  async function uploadShot(blob) {
+    try {
+      const t = await token();
+      const uid = t && uidOf(t);
+      if (!uid) return null;
+      const ext = blob.type === 'image/webp' ? 'webp' : blob.type === 'image/png' ? 'png' : 'jpg';
+      const path = `${uid}/${Date.now()}.${ext}`;
+      const res = await fetch(`${P.url}/storage/v1/object/feedback-shots/${path}`, {
+        method: 'POST',
+        headers: { apikey: P.key, Authorization: `Bearer ${t}`, 'Content-Type': blob.type, 'x-upsert': 'false' },
+        body: blob,
+      });
+      return res.ok ? path : null;
+    } catch { return null; }
+  }
 
   // ---------- 資料庫 ----------
   async function token() {
@@ -208,6 +276,8 @@
     let state = 'edit';
     let error = '';
     let login = false;
+    // 寫新的才拍：先開拍（回報視窗不會被拍進去），送出時再等它
+    const shot = cur === 'write' ? shootSoon() : null;
 
     veil = document.createElement('div');
     veil.className = 'pfb pfb-veil pop';
@@ -240,7 +310,7 @@
             + `<div class="pfb-btns">${loginLink()}<button class="b" data-close>關閉</button></div>`
           : `<div class="pfb-kinds">${KINDS.map((k) => `<button class="b${k.id === kind ? ' on' : ''}" data-kind="${k.id}">${k.label}</button>`).join('')}</div>
             <textarea maxlength="500" rows="4" placeholder="${esc(KINDS.find((k) => k.id === kind).hint)}">${esc(text)}</textarea>
-            <p class="note">會自動附上你在哪個遊戲、哪個畫面和用什麼裝置，不用另外寫。</p>
+            <p class="note">會自動附上你在哪個遊戲、現在的畫面和用什麼裝置，不用另外寫。</p>
             ${error ? `<p class="err">${esc(error)}</p>` : ''}
             <div class="pfb-btns">${loginLink()}<button class="b" data-close>取消</button>
               <button class="b go" data-send ${!text.trim() || state === 'sending' ? 'disabled' : ''}>${state === 'sending' ? '送出中…' : '送出'}</button></div>`;
@@ -290,6 +360,8 @@
       let extra = {};
       try { extra = (opts.context && opts.context()) || {}; } catch { /* 遊戲給的資料壞了照樣送 */ }
       const { screen, ...rest } = extra;
+      const blob = shot ? await shot : null;
+      const shotPath = blob ? await uploadShot(blob) : null;
       try {
         await rpc('submit_feedback', {
           p_kind: kind,
@@ -303,6 +375,7 @@
             errors: [...errors],
             ua: navigator.userAgent.slice(0, 200),
             view: `${innerWidth}x${innerHeight}`,
+            ...(shotPath ? { shot: shotPath } : {}),
           },
         });
         state = 'done';
@@ -315,7 +388,8 @@
       paint();
     }
     showTab();
-    if (cur === 'write') setTimeout(focusText, 50);
+    // 等拍完再叫出鍵盤：手機鍵盤一出來畫面會被擠矮，拍到的就不是剛剛的樣子
+    if (cur === 'write') shot.then(() => { if (veil && !text) focusText(); });
   }
 
   function mount(o) {
