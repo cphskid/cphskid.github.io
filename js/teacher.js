@@ -1282,6 +1282,7 @@ async function renderFeedback(host = $('#sub-body') ?? view) {
           ? `<select data-status class="auto">${Object.entries(FB_STATUS).map(([k, v]) => `<option value="${k}" ${r.status === k ? 'selected' : ''}>${v}</option>`).join('')}</select>`
           : `<span class="chip">${esc(FB_STATUS[r.status] ?? r.status)}</span>`}</div>
       <p class="fb-msg">${esc(r.message)}</p>
+      ${manage && typeof r.context?.shot === 'string' ? `<div class="fb-shot" data-shot="${esc(r.context.shot)}"><span class="tip">📷 畫面截圖讀取中…</span></div>` : ''}
       ${manage && r.triage_note ? `<p class="tip">內部筆記：${esc(r.triage_note)}</p>` : ''}
       ${manage && !hidden ? `<form class="row fb-reply" data-reply><input name="reply" maxlength="300" value="${esc(r.reply ?? '')}" placeholder="回覆給本人（他看得到）">
         <button class="btn small" type="submit">${r.reply ? '改回覆' : '回覆'}</button></form>`
@@ -1303,6 +1304,7 @@ async function renderFeedback(host = $('#sub-body') ?? view) {
   if (wsel) { wsel.value = fbWho; wsel.onchange = () => { fbWho = wsel.value; show(); }; }
   $('[data-idea]', host)?.addEventListener('click', () => openIdea());
   const reload = () => renderFeedback(host).catch((e) => toast(e.message, true));
+  loadFbShots(host);
   $$('article.fb[data-id]', host).forEach((el) => {
     const id = Number(el.dataset.id);
     const st = $('[data-status]', el);
@@ -1319,6 +1321,26 @@ async function renderFeedback(host = $('#sub-body') ?? view) {
     };
     const back = $('[data-restore]', el);
     if (back) back.onclick = () => run(back, async () => { await auth.feedback.hide(id, false); toast('救回來了'); await reload(); });
+  });
+}
+
+// 回報附的畫面截圖（js/feedback.js 拍的，私密空間 feedback-shots，只有管理員讀得到、30 天自動刪）
+// 一次拿一小時有效的網址；點縮圖開大圖
+async function loadFbShots(host) {
+  const boxes = $$('.fb-shot[data-shot]', host);
+  if (!boxes.length || !auth.db) return;
+  const paths = boxes.map((b) => b.dataset.shot);
+  let urls = [];
+  try {
+    const { data, error } = await auth.db.storage.from('feedback-shots').createSignedUrls(paths, 3600);
+    if (error) throw error;
+    urls = data || [];
+  } catch { urls = []; }
+  boxes.forEach((b) => {
+    const u = urls.find((x) => x.path === b.dataset.shot && x.signedUrl && !x.error);
+    b.innerHTML = u
+      ? `<a href="${esc(u.signedUrl)}" target="_blank" rel="noopener" title="開大圖"><img src="${esc(u.signedUrl)}" alt="回報時的畫面" loading="lazy"></a>`
+      : '<span class="tip">📷 截圖已過期（只留 30 天）或讀不到</span>';
   });
 }
 
