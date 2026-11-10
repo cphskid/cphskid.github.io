@@ -398,7 +398,6 @@ function gauges(p, m) {
 // 擺設（傢俱、小屋、盆子、圍籬小路）存成格子座標；寵物照格子找路，不會穿過圍籬、樹叢、小屋、池塘。
 const { GW, GH, N } = W;
 const LAKE = W.LAKE;
-const EGG_AT = W.center(17, 11);
 let items = [];                     // 島上擺的全部 { id, i, j, f }
 let occ = W.occupancy([]);          // 佔地表
 const walkable = (x, y) => W.walkableIn(occ.solid, x, y);
@@ -493,7 +492,7 @@ function openScene({ select, say: first } = {}) {
     <p class="skychip">${SKY_NAME.wx[sky.wx]}・${SKY_NAME.season[sky.season]}・${SKY_NAME.tod[sky.tod]}</p>
     <div class="isle-sign"><span>${esc(isle.nameText(isle.name()))}</span>${isle.loveChipHtml()}</div>
     ${isle.inboxHtml()}
-    <p class="hint">拖曳可以看整座島，兩指或滾輪放大縮小；按住寵物可以拎起來</p>
+    <p class="hint">拖曳可以看整座島，兩指或滾輪放大縮小；按住寵物或蛋可以搬到別的地方</p>
     <div class="zoom" aria-label="放大縮小"><button type="button" data-zoom="1.25" aria-label="放大">＋</button><button type="button" data-zoom="0.8" aria-label="縮小">－</button></div>
     <div class="dock"><div class="pals-s"></div><nav class="bar" aria-label="照顧"></nav></div>
     <div class="bagpop" hidden></div>
@@ -524,8 +523,11 @@ function openScene({ select, say: first } = {}) {
     const at = toIsle(e);
     if (walkable(at.x, at.y)) throwBall(at);
   });
+  eggs = [];
+  eggSpots = readEggSpots();
   if (canAdopt()) addEgg(box);
-  (state.eggs ?? []).forEach((e, k) => addWaitEgg(box, e, k));
+  (state.eggs ?? []).forEach((e) => addWaitEgg(box, e));
+  eggTip();
   skyFx = makeSky($('.ground', layer), sky, { w: GW, h: GH, lake: LAKE });
   bindCam();
   fitScene(true);
@@ -940,6 +942,7 @@ function occAdd(list, id, near) {
 // 島上現在的樣子存起來（伺服器晚一點一起送，js/isle.js）
 function saveIsle() {
   const lay = W.pack(items);
+  if (eggs.length) lay.eggs = eggsOut();
   try { localStorage.setItem(ISLE_KEY, JSON.stringify(lay)); } catch { /* 存不了就只存伺服器 */ }
   if (isle.ready()) isle.save({ layout: lay, stored: [] });
 }
@@ -995,6 +998,7 @@ function rebuildWorld() {
     a.x = a.tx = t.x; a.y = a.ty = t.y; a.path = null;
     place(a);
   }
+  fixEggs();
   if (deco) paintSel();
 }
 function addProp(box, it) {
@@ -1828,34 +1832,146 @@ function leave(a, to) {
   place(a);
 }
 
+// ---------- 島上的蛋：領養蛋＋過關拿到、明天才孵的蛋 ----------
+// 2026-11-10（問題回報 #58 Alice）：蛋可以按住拖到喜歡的地方。位置存在島的擺設裡 layout.eggs＝{ adopt: [i, j], 種類: [i, j] }
+// 每顆蛋站一格：不能放在池塘、樹叢、傢俱上，也不跟別的蛋疊在一起；傢俱搬過來蓋住了，蛋會自己跳到旁邊的空地
+const EGG_TIP_KEY = 'park-pet-egg-moved';
+let eggSpots = {};                  // 存起來的位置
+let eggs = [];                      // 島上的蛋 { key, el, i, j }
+function readEggSpots() {
+  let lay = isle.saved() ? isle.layout() : null;
+  if (!lay?.eggs) { try { lay = JSON.parse(localStorage.getItem(ISLE_KEY) ?? 'null'); } catch { lay = null; } }
+  const out = {};
+  for (const [k, v] of Object.entries(lay?.eggs ?? {})) if (Array.isArray(v) && v.length === 2) out[k] = { i: v[0] | 0, j: v[1] | 0 };
+  return out;
+}
+const eggCellFree = (i, j, self) => i >= 0 && j >= 0 && i < N && j < N && !occ.solid[j * N + i] && !occ.obj[j * N + i]
+  && !eggs.some((e) => e !== self && e.i === i && e.j === j);
+// 離 (i, j) 最近、蛋放得下的一格
+function eggNear(i, j, self) {
+  for (let r = 0; r < N; r++) {
+    for (let di = -r; di <= r; di++) for (let dj = -r; dj <= r; dj++) {
+      if (Math.max(Math.abs(di), Math.abs(dj)) !== r) continue;
+      if (eggCellFree(i + di, j + dj, self)) return { i: i + di, j: j + dj };
+    }
+  }
+  return { i, j };
+}
+function putEgg(e) {
+  const p = W.center(e.i, e.j);
+  e.el.style.cssText = `left:${p.x * GW}px;top:${p.y * GH}px;z-index:${e.el.classList.contains('held') ? 2000 : Math.round(p.y * 1000)}`;
+}
+function addEggAt(box, key, el, onTap) {
+  const e = { key, el, i: 0, j: 0 };
+  const want = eggSpots[key] ?? (eggs.length ? { i: eggs[eggs.length - 1].i + (eggs.length % 2 ? -1 : 1), j: eggs[eggs.length - 1].j + 1 } : { i: 17, j: 14 });
+  Object.assign(e, eggNear(want.i, want.j, e));
+  eggs.push(e);
+  putEgg(e);
+  dragEgg(e, onTap);
+  box.appendChild(el);
+  return e;
+}
 function addEgg(box) {
   const el = document.createElement('button');
   el.type = 'button';
   el.className = 'actor egg-nest';
-  el.setAttribute('aria-label', '新的時光蛋：領養一隻新夥伴');
-  el.innerHTML = '<img src="img/pet/egg/nest.webp" alt=""><img class="glint" src="img/fx/sparkle.webp" alt="">';
-  el.style.cssText = `left:${EGG_AT.x * GW}px;top:${EGG_AT.y * GH}px;z-index:${Math.round(EGG_AT.y * 1000)}`;
-  el.onclick = () => openAdopt({ more: true });
-  box.appendChild(el);
+  el.setAttribute('aria-label', '新的時光蛋：點一下領養一隻新夥伴，按住可以搬到別的地方');
+  el.innerHTML = '<img src="img/pet/egg/nest.webp" alt="" draggable="false"><img class="glint" src="img/fx/sparkle.webp" alt="" draggable="false"><i class="egg-tag">點我領養</i>';
+  addEggAt(box, 'adopt', el, () => openAdopt({ more: true }));
 }
-
-// 過關拿到、明天才孵的蛋：放在領養蛋旁邊，點了說明天會孵
-function addWaitEgg(box, e, k) {
+// 過關拿到、明天才孵的蛋：點了說什麼時候會孵
+function addWaitEgg(box, e) {
   const el = document.createElement('button');
   el.type = 'button';
   el.className = 'actor egg-nest wait';
-  el.setAttribute('aria-label', '等著孵的時光蛋');
-  el.innerHTML = '<img src="img/pet/egg/nest.webp" alt="">';
-  const x = EGG_AT.x - .05 * (k + 1), y = EGG_AT.y + .03 * (k % 2);
-  el.style.cssText = `left:${x * GW}px;top:${y * GH}px;z-index:${Math.round(y * 1000)}`;
-  el.onclick = (ev) => {
-    ev.stopPropagation();
+  const days = eggDays(e.hatch_on);
+  const when = days <= 1 ? '明天孵' : `${days} 天後孵`;
+  el.setAttribute('aria-label', `等著孵的時光蛋（${when}），按住可以搬到別的地方`);
+  el.innerHTML = `<img src="img/pet/egg/nest.webp" alt="" draggable="false"><i class="egg-tag">${when}</i>`;
+  addEggAt(box, e.species, el, () => {
     const home = myPet() ?? state.pets[0];
     if (!home) return;
-    say(e.source === 'parent' ? '這是爸媽送的神秘蛋！明天再來，就會孵出來喔。'
-      : `這是過關拿到的蛋，裡面好像是${speciesName(e.species)}！明天再來就會孵出來。`, home.id);
-  };
-  box.appendChild(el);
+    const day = days <= 1 ? '明天再來' : `再過 ${days} 天`;
+    say(e.source === 'parent' ? `這是爸媽送的神秘蛋！${day}，就會孵出來喔。`
+      : `這是過關拿到的蛋，裡面好像是${speciesName(e.species)}！${day}就會孵出來。`, home.id);
+  });
+}
+// 離孵化還有幾天（hatch_on 是台灣日期；讀不懂就當明天）
+function eggDays(on) {
+  if (!on) return 1;
+  const tw = new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10);
+  const d = Math.round((Date.parse(on) - Date.parse(tw)) / 864e5);
+  return d > 0 ? d : 1;
+}
+// 按住拖：跟著手指走，放不下的地方變紅，放開就落在最後一個放得下的格子；沒拖動就是點一下
+function dragEgg(e, onTap) {
+  const el = e.el;
+  let dragged = false;
+  el.addEventListener('pointerdown', (ev) => {
+    if (busy || ev.button > 0) return;
+    ev.stopPropagation();
+    const sx = ev.clientX, sy = ev.clientY;
+    let held = false, good = { i: e.i, j: e.j };
+    dragged = false;
+    const move = (m) => {
+      if (!held && Math.hypot(m.clientX - sx, m.clientY - sy) < 8) return;
+      if (!held) { held = dragged = true; el.setPointerCapture?.(ev.pointerId); el.classList.add('held'); $('.egg-hand', layer)?.remove(); }
+      const at = toIsle(m), y = at.y + .02;          // 蛋底在手指下面一點，看得到自己拎著的蛋
+      const c = W.cellOf(at.x, y);
+      const ok = eggCellFree(c.i, c.j, e);
+      if (ok) good = c;
+      el.classList.toggle('bad', !ok);
+      el.style.left = `${Math.min(.98, Math.max(.02, at.x)) * GW}px`;
+      el.style.top = `${Math.min(.97, Math.max(.03, y)) * GH}px`;
+    };
+    const up = () => {
+      removeEventListener('pointermove', move);
+      removeEventListener('pointerup', up);
+      removeEventListener('pointercancel', up);
+      if (!held) return;
+      el.classList.remove('held', 'bad');
+      e.i = good.i; e.j = good.j;
+      putEgg(e);
+      el.classList.remove('drop'); void el.offsetWidth; el.classList.add('drop');
+      setTimeout(() => el.classList.remove('drop'), 450);
+      try { localStorage.setItem(EGG_TIP_KEY, '1'); } catch { /* 存不了就再提示一次 */ }
+      saveIsle();
+    };
+    addEventListener('pointermove', move);
+    addEventListener('pointerup', up);
+    addEventListener('pointercancel', up);
+  });
+  el.addEventListener('dragstart', (ev) => ev.preventDefault());     // 電腦上拖蛋的圖不要變成「拖曳圖片」
+  el.addEventListener('click', (ev) => {
+    ev.preventDefault(); ev.stopPropagation();
+    if (dragged) { dragged = false; return; }
+    if (!deco) onTap();
+  });
+}
+// 傢俱搬過來蓋住蛋：蛋跳到旁邊的空地
+function fixEggs() {
+  let moved = false;
+  eggs = eggs.filter((e) => e.el.isConnected);
+  for (const e of eggs) {
+    if (eggCellFree(e.i, e.j, e)) continue;
+    Object.assign(e, eggNear(e.i, e.j, e));
+    putEgg(e);
+    e.el.classList.remove('drop'); void e.el.offsetWidth; e.el.classList.add('drop');
+    moved = true;
+  }
+  return moved;
+}
+const eggsOut = () => Object.fromEntries(eggs.map((e) => [e.key, [e.i, e.j]]));
+// 第一次看到蛋：蛋旁邊出現小手「按住可以搬」，搬過一次就不再出現
+function eggTip() {
+  if (!eggs.length) return;
+  try { if (localStorage.getItem(EGG_TIP_KEY)) return; } catch { return; }
+  const e = eggs[0];
+  const hand = document.createElement('span');
+  hand.className = 'egg-hand';
+  hand.textContent = '按住蛋可以搬家';
+  e.el.appendChild(hand);
+  sceneTimers.push(setTimeout(() => hand.remove(), 9000));
 }
 
 // 名牌、頭上的符號、大小

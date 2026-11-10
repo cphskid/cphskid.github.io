@@ -616,8 +616,21 @@ ul.classes li .row{gap:8px;justify-content:flex-end}
 .actor.nope .body{animation:petShake .35s ease-in-out 2}
 .actor .float{position:absolute;left:50%;top:10%;z-index:3;font:900 24px/1 var(--f-disp);color:#e2553f;text-shadow:0 2px 0 #fff,0 0 8px #fff;pointer-events:none;white-space:nowrap;animation:floatUp 1.3s ease-out forwards}
 @keyframes petDrop{0%{transform:translateY(-34px)}60%{transform:translateY(0) scale(1.1,.88)}100%{transform:none}}
-.actor.egg-nest{--h:120px;--d:1;cursor:pointer}
-.actor.egg-nest img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;animation:eggWobble 2.2s ease-in-out infinite;transform-origin:50% 90%}
+.actor.egg-nest{--h:96px;--d:1;cursor:grab}
+.actor.egg-nest::before{content:"";position:absolute;left:18%;right:18%;bottom:4%;height:12%;border-radius:50%;background:rgba(40,60,30,.22);transition:transform .2s,background .2s}
+.actor.egg-nest.held{cursor:grabbing;z-index:2000}
+.actor.egg-nest.held img{transform:translateY(-22px) rotate(-6deg) scale(1.08);animation:none}
+.actor.egg-nest.held::before{transform:scale(.7)}
+.actor.egg-nest.held.bad::before{background:rgba(226,85,63,.7)}
+.actor.egg-nest.held.bad img{filter:var(--tod) var(--wx) sepia(.4) saturate(1.6) hue-rotate(-20deg)}
+.actor.egg-nest.drop img{animation:eggDrop .45s cubic-bezier(.34,1.7,.5,1)}
+@keyframes eggDrop{0%{transform:translateY(-22px)}60%{transform:translateY(0) scale(1.1,.88)}100%{transform:none}}
+.actor.egg-nest .egg-tag{position:absolute;left:50%;top:100%;transform:translate(-50%,-2px);padding:3px 9px;border-radius:99px;background:rgba(255,255,255,.9);box-shadow:0 2px 0 rgba(0,0,0,.08);font:700 13px/1.1 var(--f-body);font-style:normal;color:var(--wood);white-space:nowrap;pointer-events:none}
+.actor.egg-nest.held .egg-tag{opacity:0}
+.actor.egg-nest .egg-hand{position:absolute;left:50%;bottom:100%;transform:translate(-50%,-4px);padding:6px 12px;border-radius:12px;background:#fff7d6;border:2px solid #f1c24b;font:800 14px/1.2 var(--f-body);color:var(--wood);white-space:nowrap;pointer-events:none;animation:eggHint 1.2s ease-in-out infinite}
+.actor.egg-nest .egg-hand::after{content:"";position:absolute;left:50%;top:100%;margin-left:-7px;border:7px solid transparent;border-top-color:#f1c24b}
+@keyframes eggHint{50%{transform:translate(-50%,-10px)}}
+.actor.egg-nest img{filter:var(--tod) var(--wx);pointer-events:none;-webkit-user-drag:none;user-select:none;position:absolute;inset:0;width:100%;height:100%;object-fit:contain;animation:eggWobble 2.2s ease-in-out infinite;transform-origin:50% 90%}
 .actor.egg-nest .glint{width:60%;height:auto;inset:auto;left:-6%;top:-4%;animation:twinkle 1.4s ease-in-out infinite}
 .bowl{position:absolute;width:calc(64px * var(--d));height:calc(64px * var(--d));transform:translate(-50%,-80%);pointer-events:none;animation:pop .35s ease-out}
 .bowl img,.bowl span{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:grid;place-items:center;font-size:44px;transform:scale(calc(.45 + .55 * var(--left,1)));transform-origin:50% 90%;transition:transform .3s}
@@ -714,7 +727,7 @@ aside.care .wish span img{width:40px;height:40px}
 #isle-pets .mini.care{width:62px;height:62px}
 #isle-pets .mini.egg-wait{width:44px;height:54px;animation:none}
 #isle-pets .mini.egg-wait .glint{position:absolute;width:40px;left:-8px;top:-8px;animation:twinkle 1.4s ease-in-out infinite}
-@media (prefers-reduced-motion:reduce){.actor .bub.mark,.actor.egg-nest img{animation:none}}
+@media (prefers-reduced-motion:reduce){.actor .bub.mark,.actor.egg-nest img,.actor.egg-nest .egg-hand{animation:none}}
 /* 寵物島傢俱（可拖曳） */
 .prop{position:absolute;transform:translate(-50%,var(--base,-88%));border:0;padding:0;background:none;cursor:pointer;touch-action:none}
 .prop.movable{cursor:grab}
@@ -1804,7 +1817,8 @@ button.dt-i:hover,button.dt-i:focus-visible{border-color:var(--wood);outline:non
 
 /* 寵物島 B 期：孵蛋的本事、等著孵的蛋、夥伴圖鑑、拜訪時躲起來的枯葉蝶 */
 .den.hatch .skill{position:absolute;bottom:10px;left:20px;right:20px;text-align:center;font:700 16px/1.4 var(--f-body);color:var(--ink,#5a3a1a);opacity:0;animation:showIn .4s 2.2s forwards}
-.actor.egg-nest.wait{opacity:.92;filter:saturate(.8)}
+.actor.egg-nest.wait{--h:84px}
+.actor.egg-nest.wait img{opacity:.92;filter:var(--tod) var(--wx) saturate(.8)}
 .pal-s.dex-b{border-color:#9ac7e8;background:#f2f9ff}
 .pal-s.dex-b span{font-size:24px;line-height:1}
 .dex-pop{position:absolute;inset:0;z-index:60;display:grid;place-items:center;background:rgba(40,30,20,.45);padding:12px}
