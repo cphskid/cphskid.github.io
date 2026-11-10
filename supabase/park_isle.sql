@@ -185,7 +185,7 @@ $$;
 create or replace function public.park_isle_save(p_theme text, p_name int[], p_layout jsonb, p_stored text[])
 returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
 declare v_me uuid := public.current_student_id(); v_layout jsonb := '{}'; v_k text; v_v jsonb; v_items jsonb := '[]'; v_e jsonb;
-        v_furn int := 0; v_build int := 0;
+        v_eggs jsonb := '{}'; v_furn int := 0; v_build int := 0;
 begin
   if v_me is null then raise exception '請先登入學生帳號'; end if;
   if not (coalesce(p_theme, 'spring') = any(public.park_isle_themes(v_me))) then raise exception '還沒拿到這個島的風格'; end if;
@@ -204,7 +204,17 @@ begin
       v_items := v_items || jsonb_build_array(jsonb_build_array(v_e ->> 0, (v_e ->> 1)::int, (v_e ->> 2)::int, case when (v_e ->> 3) = '1' then 1 else 0 end));
     end loop;
     if v_furn > 60 or v_build > 150 then raise exception '島上放太多東西了'; end if;
+    -- 2026-11-10：蛋的位置 eggs＝{ adopt 或種類: [i, j] }（問題回報 #58：蛋可以搬），最多 30 顆，不算傢俱數
+    if jsonb_typeof(p_layout -> 'eggs') = 'object' then
+      for v_k, v_v in select * from jsonb_each(p_layout -> 'eggs') limit 30 loop
+        if v_k !~ '^[a-z][a-z0-9-]{1,30}$' or jsonb_typeof(v_v) <> 'array' or jsonb_array_length(v_v) <> 2
+           or jsonb_typeof(v_v -> 0) <> 'number' or jsonb_typeof(v_v -> 1) <> 'number'
+           or (v_v ->> 0)::numeric not between 0 and 27 or (v_v ->> 1)::numeric not between 0 and 27 then continue; end if;
+        v_eggs := v_eggs || jsonb_build_object(v_k, jsonb_build_array((v_v ->> 0)::int, (v_v ->> 1)::int));
+      end loop;
+    end if;
     v_layout := jsonb_build_object('v', 2, 'items', v_items);
+    if v_eggs <> '{}'::jsonb then v_layout := v_layout || jsonb_build_object('eggs', v_eggs); end if;
   else
     for v_k, v_v in select * from jsonb_each(coalesce(p_layout, '{}')) loop
       if v_k !~ '^[a-z][a-z0-9-]{1,30}$' or jsonb_typeof(v_v -> 'x') <> 'number' or jsonb_typeof(v_v -> 'y') <> 'number' then continue; end if;
