@@ -94,7 +94,7 @@ const api = {
     return { ...clone(), did: 'pat', was, xp: 0, tired }; },
   play: async (kind) => { const p = S.pets.find((x) => x.active); joy(p, kind === 'wish' ? 4 : 2); p.mood = p.pts >= 13 ? 'happy' : 'normal';
     return { ...clone(), did: 'play', was: p.mood, xp: kind === 'wish' ? 1 : 0 }; },
-  rename: async (n) => { S.pets.find((x) => x.active).name = n; return clone(); },
+  rename: async (n, id) => { (id ? S.pets.find((x) => x.id === id) : S.pets.find((x) => x.active)).name = n; return clone(); },
   bowl: async () => { if (!S.inventory.kibble) throw new Error('背包裡沒有時光飼料了'); if ((S.bowl ?? 0) >= 3) throw new Error('飼料盆滿了');
     S.inventory.kibble--; S.bowl = (S.bowl ?? 0) + 1; return clone(); },
   furniture: async () => (q.get('furn') === 'all' ? ['house-mushroom', 'house-tree', 'house-igloo'] : []),
