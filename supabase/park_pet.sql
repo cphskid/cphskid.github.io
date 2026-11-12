@@ -776,14 +776,20 @@ begin
 end;
 $$;
 
-create or replace function public.park_pet_rename(p_name text)
+-- 改名：p_pet 給哪一隻就改哪一隻（自己的才行）；沒給＝照顧中那隻（舊版前端）。2026-11-12 問題回報 #61
+drop function if exists public.park_pet_rename(text);
+create or replace function public.park_pet_rename(p_name text, p_pet bigint default null)
 returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
 declare v_me uuid := public.current_student_id(); v_name text;
 begin
   if v_me is null then raise exception '請先登入學生帳號'; end if;
   v_name := public.park_pet_name_ok(p_name);
-  update public.park_pets set name = v_name where student_id = v_me and active;
-  if not found then raise exception '你還沒有桌寵'; end if;
+  if p_pet is null then
+    update public.park_pets set name = v_name where student_id = v_me and active;
+  else
+    update public.park_pets set name = v_name where student_id = v_me and id = p_pet;
+  end if;
+  if not found then raise exception '找不到這隻夥伴'; end if;
   return public.park_pet_state(v_me);
 end;
 $$;
@@ -983,7 +989,7 @@ revoke all on function
   public.park_pet_grant(uuid), public.park_pet_state(uuid, jsonb), public.park_pet_name_ok(text),
   public.park_pet_mine(uuid), public.park_pet_me(), public.park_pet_adopt(text, text),
   public.park_pet_slots(uuid), public.park_pet_swap(bigint), public.park_pet_rest(bigint, boolean),
-  public.park_pet_feed(text), public.park_pet_pat(), public.park_pet_rename(text),
+  public.park_pet_feed(text), public.park_pet_pat(), public.park_pet_rename(text, bigint),
   public.park_pet_class_quiet(text), public.park_pet_set_class_quiet(text, boolean),
   public.park_pet_bowl_eat(uuid), public.park_pet_bowl_fill(),
   public.park_pet_egg_give(uuid, text, text), public.park_pet_egg_check(uuid), public.park_pet_hatch(uuid),
@@ -994,6 +1000,6 @@ revoke all on function
 grant execute on function
   public.park_pet_me(), public.park_pet_adopt(text, text), public.park_pet_feed(text), public.park_pet_swap(bigint),
   public.park_pet_rest(bigint, boolean), public.park_pet_fish(int), public.park_pet_water(text, boolean), public.park_pet_harvest(text),
-  public.park_pet_bake(text, boolean, boolean, text), public.park_pet_bait(), public.park_pet_pat(), public.park_pet_play(text), public.park_pet_rename(text),
+  public.park_pet_bake(text, boolean, boolean, text), public.park_pet_bait(), public.park_pet_pat(), public.park_pet_play(text), public.park_pet_rename(text, bigint),
   public.park_pet_class_quiet(text), public.park_pet_set_class_quiet(text, boolean), public.park_pet_bowl_fill()
   to authenticated;

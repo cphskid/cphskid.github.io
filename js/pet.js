@@ -2241,7 +2241,8 @@ function paintCare() {
     top = `<b>${esc(p.name)}</b><small>在休息屋</small>`;
     body = `<p class="kind">${esc(speciesName(p.species))}・${STAGE[p.stage]}</p>
       <p class="lead">${esc(p.name)}在休息屋泡溫泉、睡午覺，不會餓也不會不開心。</p>
-      <div class="row"><button type="button" class="btn small" data-rest-out="${p.id}">叫牠出來玩</button></div>`;
+      <div class="row"><button type="button" class="btn small" data-rest-out="${p.id}">叫牠出來玩</button></div>
+      <div class="nm"><button type="button" class="ghost small" data-rename>改名</button></div>`;
   } else if (p) {
     const home = myPet();
     top = `<b>${esc(p.name)}</b><small>在島上玩</small>`;
@@ -2249,7 +2250,8 @@ function paintCare() {
       ${speciesOf(p.species)?.skill ? `<p class="note">本事：${esc(speciesOf(p.species).skill)}</p>` : ''}
       <p class="lead">${esc(p.name)}在島上自己找東西吃，不用餵。可是只有「照顧中」的那一隻會長大喔。</p>
       <div class="row"><button type="button" class="btn small" data-swap="${p.id}">換牠照顧</button><button type="button" class="ghost small" data-rest-in="${p.id}">去休息屋</button></div>
-      ${home ? `<p class="note">換了以後，${esc(home.name)}會回到島上自己玩。</p>` : ''}`;
+      ${home ? `<p class="note">換了以後，${esc(home.name)}會回到島上自己玩。</p>` : ''}
+      <div class="nm"><button type="button" class="ghost small" data-rename>改名</button></div>`;
   }
   box.classList.toggle('open', cardOpen);
   box.innerHTML = p ? `<button type="button" class="card-top" data-card aria-expanded="${cardOpen}" aria-label="${cardOpen ? '收起' : '打開'}${esc(p.name)}的狀態">
@@ -2572,8 +2574,10 @@ async function swap(id, b) {
   }
 }
 
+// 每一隻都能改名（不只照顧中那隻；2026-11-12 問題回報 #61 Enya）
 function rename() {
-  const p = myPet();
+  const p = petById(selected);
+  if (!p) return;
   const box = $('aside.care .nm', layer);
   box.innerHTML = `<form class="rn" novalidate><input maxlength="8" value="${esc(p.name)}" aria-label="新名字"><button class="btn small" type="submit">好了</button></form>`;
   const f = $('form', box);
@@ -2581,7 +2585,7 @@ function rename() {
   f.onsubmit = async (e) => {
     e.preventDefault();
     try {
-      refresh(await api.rename($('input', f).value.trim()));
+      refresh(await api.rename($('input', f).value.trim(), p.id));
       say('這個名字我好喜歡！', p.id);
     } catch (err) {
       oops(err.message);

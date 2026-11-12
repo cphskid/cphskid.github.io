@@ -317,7 +317,7 @@ export const pet = {
   feed:          (item) => petcall('park_pet_feed', { p_item: item }),
   pat:           () => petcall('park_pet_pat'),
   play:          (kind) => petcall('park_pet_play', { p_kind: kind }),
-  rename:        (name) => petcall('park_pet_rename', { p_name: name }),
+  rename:        (name, id) => petcall('park_pet_rename', { p_name: name, p_pet: id ?? null }),
   bowl:          () => petcall('park_pet_bowl_fill'),
   // 寵物島 C 期小遊戲（park_pet.sql 5b 段）
   fish:          (size) => petcall('park_pet_fish', { p_size: size }),
