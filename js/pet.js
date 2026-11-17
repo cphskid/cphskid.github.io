@@ -2320,10 +2320,23 @@ function focusHome() {
   paintCare();
 }
 // 丟球按鈕：丟到照顧中那隻附近的空地
-function ballNear() {
+let ballWait = false;
+async function ballNear() {
   const a = actors.find((x) => x.p.active);
   if (!a) return;
-  if (!free(a) && a.mode !== 'use') { say(['asleep', 'quiet'].includes(moodOf(a.p)) ? 'Zzz…' : pick(['現在不想玩…', '等一下再玩嘛']), a.p.id); return; }
+  const m = moodOf(a.p);
+  if (['asleep', 'quiet', 'angry'].includes(m)) { say(m === 'angry' ? pick(['現在不想玩…', '等一下再玩嘛']) : 'Zzz…', a.p.id); return; }
+  // 剛摸完、剛吃完還在跳的時候按丟球：牠嘴上才說「想玩丟球」，不能回「不想玩」（2026-11-16 回報 #67 Emily）。
+  // 等這段動作做完（最多 3 秒）再丟
+  if (!free(a) && a.mode !== 'use') {
+    if (ballWait) return;
+    ballWait = true;
+    say(pick(['好耶！等我一下～', '要丟球嗎？我準備好囉！']), a.p.id);
+    const t0 = performance.now();
+    while (performance.now() - t0 < 3000 && (busy || !free(a)) && a.mode !== 'use' && a.el.isConnected) await new Promise((r) => setTimeout(r, 120));
+    ballWait = false;
+    if (!a.el.isConnected || (!free(a) && a.mode !== 'use')) { say('等一下再玩嘛', a.p.id); return; }
+  }
   for (let k = 0; k < 40; k++) {
     const ang = Math.random() * Math.PI * 2, d = rnd(.04, .08);
     const at = { x: a.x + Math.cos(ang) * d, y: a.y + Math.sin(ang) * d * .6 };
