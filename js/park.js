@@ -724,6 +724,30 @@ gearBtn.addEventListener('click', (e) => {
   paintDock();
 });
 fbBtn.addEventListener('click', closeGear);
+// 換音樂：大廳只有一首聽久會膩，讓小朋友自己挑（存在這台裝置）
+$('#mu-btn').addEventListener('click', () => {
+  closeGear();
+  const paint = () => veil.querySelectorAll('[data-mu]').forEach((b) => {
+    const on = b.dataset.mu === snd.getTrack();
+    b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on));
+  });
+  veil.innerHTML = `<div class="card mu-pick" role="dialog" aria-modal="true" aria-label="換音樂">
+    <button class="x" id="close" aria-label="關閉"></button>
+    <div><h2>🎵 換音樂</h2>
+    <p class="lead">點一首就會換成那首，下次來也會記得。</p>
+    <div class="mu-list">${snd.TRACKS.map((t) => `<button type="button" data-mu="${t.code}"><span class="ck">✓</span>${t.name}</button>`).join('')}</div>
+    <div class="row"><button type="button" class="btn go" data-close>好了</button></div></div></div>`;
+  veil.querySelectorAll('[data-mu]').forEach((b) => b.addEventListener('click', () => {
+    if (snd.getMode() !== 'all') { snd.setMode('all'); paintSnd(); }   // 想聽音樂卻是靜音：選了就打開
+    snd.setTrack(b.dataset.mu);
+    paint();
+  }));
+  paint();
+  veil.hidden = false;
+  snd.sfx('SE-03');
+  $('#close').onclick = closeCard;
+  veil.querySelector('[data-close]').onclick = closeCard;
+});
 // 聯繫園長：大人小孩都看得到樂園的信箱，可以直接寫信（timepark@ciyulab.com 轉到園長的 Gmail）
 const CONTACT = 'timepark@ciyulab.com';
 $('#contact-btn').addEventListener('click', () => {

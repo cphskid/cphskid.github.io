@@ -103,7 +103,27 @@ function want(lane, code) {
   stopLoop(lane);
   if (code) startLoop(lane, code);
 }
-export const music = (code) => want('music', code);
+// 樂園大廳的音樂可以自己挑（2026-11-19，問題回報 #65 Emily）：呼叫 music('MU-01') 時換成選好的那首
+export const TRACKS = [
+  { code: 'MU-01', name: '樂園進行曲' },
+  { code: 'MU-52', name: '浮空島出發' },
+  { code: 'MU-53', name: '寵物島午後' },
+  { code: 'MU-54', name: '時光大冒險' },
+  { code: 'MU-55', name: '熱帶小島' },
+  { code: 'MU-56', name: '星空晚安曲' },
+];
+const TRACK_KEY = 'park.audio.track';
+let track = (() => { try { const v = localStorage.getItem(TRACK_KEY); return TRACKS.some((t) => t.code === v) ? v : 'MU-01'; } catch { return 'MU-01'; } })();
+export const getTrack = () => track;
+const lobby = (code) => (code === 'MU-01' ? track : code);
+export const music = (code) => want('music', lobby(code));
+export function setTrack(code) {
+  if (!TRACKS.some((t) => t.code === code)) return;
+  const wasLobby = wanted.music === track;
+  track = code;
+  try { localStorage.setItem(TRACK_KEY, code); } catch { /* 存不了就只管這次 */ }
+  if (wasLobby) want('music', code);
+}
 export const ambience = (code) => want('amb', code);
 
 async function startLoop(lane, code) {
