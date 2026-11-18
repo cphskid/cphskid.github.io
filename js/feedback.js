@@ -72,6 +72,20 @@
     });
     return h2c;
   }
+  function inlineCss(doc) {
+    const sheets = [...document.styleSheets];
+    doc.querySelectorAll('link[rel~="stylesheet"]').forEach((ln) => {
+      const sh = sheets.find((x) => x.href && x.href === ln.href);
+      if (!sh) return;
+      let css = '';
+      try { css = [...sh.cssRules].map((r) => r.cssText).join('\n'); } catch { return; }   // 跨網域（字型）讀不到就照舊
+      const st = doc.createElement('style');
+      if (ln.media) st.media = ln.media;
+      // 相對路徑（背景圖、字型）要照樣式表自己的位置算
+      st.textContent = css.replace(/url\((['"]?)(?!data:|https?:|blob:|\/)([^'")]+)\1\)/g, (m, q, u) => `url(${q}${new URL(u, sh.href).href}${q})`);
+      ln.replaceWith(st);
+    });
+  }
   const toBlob = (c, type, q) => new Promise((ok) => { try { c.toBlob(ok, type, q); } catch { ok(null); } });
   async function shoot() {
     // 記憶體很小的手機不拍（iOS 大畫面拍照容易把網頁擠掉）
@@ -83,6 +97,9 @@
       x, y, width: w, height: h, windowWidth: document.documentElement.clientWidth, windowHeight: document.documentElement.clientHeight,
       scale: Math.min(1, SHOT_W / w), useCORS: true, logging: false, imageTimeout: 2000,
       backgroundColor: getComputedStyle(document.body).backgroundColor || '#ffffff',
+      // Safari 拍出來沒有樣式（2026-11-16～18 #65 #67 #73，Mac Safari）：html2canvas 把畫面複製到 iframe 時，
+      // Safari 還沒載好 <link> 樣式表就開始畫。改成把已經載好的樣式表直接貼成 <style>，不用再下載
+      onclone: (doc) => inlineCss(doc),
       ignoreElements: (el) => !!(el.classList && el.classList.contains('pfb')) || el.hasAttribute?.('data-pfb'),
     });
     let blob = await toBlob(canvas, 'image/webp', 0.6);

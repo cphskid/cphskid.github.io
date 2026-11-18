@@ -1370,6 +1370,13 @@ body[data-scene="map"] #gear-menu>#back{display:flex!important}
 #gear-menu>button[hidden]{display:none!important}
 #gear-menu #snd-btn svg{width:24px;height:24px}
 #gear-menu #fb-btn .dot{position:static;margin-left:auto}
+.card.mu-pick{max-width:420px}
+.mu-list{display:grid;gap:8px;margin:10px 0 14px}
+.mu-list button{display:flex;align-items:center;gap:10px;padding:10px 14px;border:2px solid var(--cream-2);border-radius:14px;background:#fff;font:900 17px/1.2 var(--f-body);color:var(--ink);cursor:pointer;text-align:left}
+.mu-list button:hover{background:#fff4d0}
+.mu-list .ck{width:22px;height:22px;border-radius:50%;border:2px solid var(--wood);display:grid;place-items:center;color:transparent;font-size:14px;flex:none}
+.mu-list button.on{border-color:var(--wood);background:#fff4d0}
+.mu-list button.on .ck{background:var(--wood);color:#fff}
 
 #top-right{position:absolute;right:22px;top:18px;z-index:9;display:flex;align-items:center;gap:0}
 #top-right>#me-chip{position:relative;right:auto;top:auto}
