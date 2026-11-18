@@ -69,7 +69,7 @@ function next(code) {
   if (!st.linked && code !== 'app') return '和爸媽連起來之後就能做';
   if (code === 'link') return `已經和 ${st.parents.map(esc).join('、')} 連起來了。忘記密碼時，可以寄信給爸媽幫你設新密碼`;
   const done = st.tasks.find((t) => t.code === code)?.done;
-  if (code === 'view') return done ? '爸媽看過了，拿到 100 時光幣' : '請爸媽打開後台，看看你的冒險';
+  if (code === 'view') return done ? '爸媽看過了，拿到 100 時光幣' : '請爸媽用他們的手機打開後台，看看你的冒險';
   if (code === 'sticker') return done ? '收到貼紙了！親子長椅在寵物島的佈置裡' : '請爸媽在後台送你一張貼紙';
   if (code === 'goal') {
     if (!st.goal) return '請爸媽在後台幫你訂這週的目標';
@@ -108,6 +108,7 @@ export function open() {
     <button class="x" data-close aria-label="關閉"></button>
     <h2><img src="img/parent/letter.webp" alt="">爸媽任務</h2>
     <p class="lead">請爸媽幫你完成，每一項都送你禮物。什麼時候做都可以，不會過期。</p>
+    <p class="tip">下面說的「後台」是爸媽用自己的手機或電腦打開的大人頁面，你這邊不會看到喔。和爸媽連起來以後，爸媽就進得去。</p>
     ${links.pending.map((g) => `<div class="link-box ask" data-ask="${esc(g.id)}"><img src="img/parent/letter.webp" alt="">
       <p><b>「${esc(g.name)}」說是你的爸媽</b><span>是你的爸爸、媽媽或家人嗎？按「是」才會連起來；不認識就按「不是」。</span></p>
       <span class="row"><button type="button" class="btn small go" data-yes>是我的爸媽</button><button type="button" class="ghost small" data-no>不是</button></span></div>`).join('')}
