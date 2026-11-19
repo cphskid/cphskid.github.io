@@ -856,7 +856,7 @@ setTimeout(() => loading.remove(), 400);
 function warmStudent() {
   const pets = [...document.querySelectorAll('#isle-pets img')]
     .map((i) => i.getAttribute('src')?.match(/^img\/pet\/[\w-]+\/\d+-/)?.[0]).filter(Boolean);
-  warm('img/stamp/', 'img/pet/island', 'img/pet/egg/', 'img/pet/food/', ...pets, 'img/pet/furniture/', 'img/traveller/');
+  warm('img/stamp/', 'img/pet/island', 'img/pet/egg/', 'img/pet/food/', ...pets, ...pet.ownedFurnSrcs(), 'img/traveller/');
 }
 setTimeout(() => {
   warm('img/ui/', 'img/badge/', 'img/fx/portal', 'img/tick/');
