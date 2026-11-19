@@ -1,5 +1,5 @@
 // 聖誕活動：雪山滑雪橇（2026-11-19 Chuck：玩法像 Ski Safari 那種無盡下坡，提案頁第二版 A）
-// 自己的夥伴坐雪橇往下衝，後面雪崩在追，被追上就結束。
+// 自己的夥伴坐雪橇往下衝，沒有終點，後面雪崩越滾越快，被追上才結束；地形一段一段隨機接（緩坡、陡坡、小山丘、平地、跳台、斷崖、大波浪）。
 //   點一下＝跳；在空中按住＝後空翻，平穩落地加速（翻越多圈加速越久）；落地歪掉會摔一下變慢。
 //   坐騎：麋鹿（空中多跳一次）、小北極熊（撞開石頭）、大雪球（滾過一切，6 秒後散掉）。從坐騎摔下來不算輸，回到雪橇。
 //   撿雪花、禮物；經過山腳小屋時禮物丟進煙囪，一個禮物多 1 片雪花。
@@ -64,9 +64,45 @@ export async function openSki({ pet, onClose } = {}) {
     fit();
     addEventListener('resize', fit);
     // 地形：越往右越低（y 往下變大），加幾個波浪和跳台
-    const seed = Math.random() * 1000;
-    const hill = (x) => x * .36 + 70 * Math.sin((x + seed) / 330) + 34 * Math.sin((x + seed * 2) / 141 + 1) + ramp(x);
-    function ramp(x) { const k = Math.floor(x / 1400), c = k * 1400 + 900; const d = x - c; return d > -160 && d < 0 ? -Math.pow((d + 160) / 160, 2) * 70 : 0; }
+    // 地形：一段一段接下去，沒有終點。種類：緩坡、陡坡、小山丘連續起伏、平地、跳台、斷崖、大波浪；越滑越遠，陡坡和斷崖越多
+    const STEP = 40, pts = [0];
+    let segLeft = 0, seg = 'gentle', segN = 0, phase = 0;
+    const TYPES = ['gentle', 'steep', 'moguls', 'flat', 'ramp', 'cliff', 'wave'];
+    function pickSeg(x) {
+      const far = Math.min(1, x / 40000);                 // 2 公里後最難
+      const w = { gentle: 3 - far * 1.5, steep: 1 + far * 2, moguls: 1.5, flat: .8, ramp: 1.4, cliff: .3 + far * 1.5, wave: 1.2 };
+      let r = Math.random() * TYPES.reduce((a, k) => a + w[k], 0);
+      for (const k of TYPES) { r -= w[k]; if (r <= 0) return k; }
+      return 'gentle';
+    }
+    function grow(upto) {
+      while ((pts.length - 1) * STEP < upto) {
+        const i = pts.length, x = i * STEP;
+        if (segLeft <= 0) {
+          seg = x < 800 ? 'gentle' : pickSeg(x);
+          segN = { gentle: 14, steep: 10, moguls: 16, flat: 6, ramp: 6, cliff: 3, wave: 18 }[seg] + Math.floor(Math.random() * 6);
+          segLeft = segN; phase = 0;
+        }
+        const k = segN - segLeft;                           // 這一段的第幾格
+        let dy;
+        if (seg === 'gentle') dy = .3;
+        else if (seg === 'steep') dy = .75;
+        else if (seg === 'flat') dy = .06;
+        else if (seg === 'moguls') dy = .3 + Math.sin(k * STEP / 90 * Math.PI) * .55;
+        else if (seg === 'wave') dy = .4 + Math.sin(k * STEP / 300 * Math.PI) * .7;
+        else if (seg === 'ramp') dy = k < segN - 2 ? .1 - (k / segN) * 1.1 : 1.6;   // 往上翹，最後掉下去
+        else dy = k === 1 ? 5 + Math.random() * 2 : .4;      // 斷崖：中間一格直直掉
+        pts.push(pts[i - 1] + dy * STEP);
+        segLeft -= 1;
+      }
+    }
+    const hill = (x) => {
+      if (x < 0) return x * .3;
+      grow(x + STEP * 2);
+      const i = Math.floor(x / STEP), t = x / STEP - i;
+      const u = (1 - Math.cos(t * Math.PI)) / 2;
+      return pts[i] + (pts[i + 1] - pts[i]) * u;
+    };
     const slope = (x) => (hill(x + 2) - hill(x - 2)) / 4;
     const P = { x: 0, y: hill(0), vx: 300, vy: 0, a: 0, ground: true, air: 0, spin: 0, mount: null, mountT: 0, stun: 0, boost: 0 };
     const S = { t: 0, snow: 0, gifts: 0, ax: -900, things: [], next: 500, over: false, holding: false, deliver: [] };
@@ -107,7 +143,7 @@ export async function openSki({ pet, onClose } = {}) {
     }
     function update(dt) {
       S.t += dt;
-      const base = 300 + S.t * 6;                       // 越滑越快
+      const base = 300 + Math.min(S.t, 120) * 4;         // 自己也越滑越快，但兩分鐘後就不會再快（雪崩會）
       if (P.stun > 0) P.stun -= dt;
       if (P.boost > 0) P.boost -= dt;
       if (P.mount === 'ball' && (P.mountT -= dt) <= 0) P.mount = null;
@@ -120,6 +156,7 @@ export async function openSki({ pet, onClose } = {}) {
         // 跳台頂端會飛起來
         const s1 = slope(P.x), s0 = slope(P.x - P.vx * dt);
         if (s0 < -.2 && s1 > .1) { P.ground = false; P.vy = -P.vx * .9; P.air = extraJumps(); P.spin = 0; }
+        else if (slope(P.x + 20) > 2.2) { P.ground = false; P.vy = 0; P.air = extraJumps(); P.spin = 0; }   // 斷崖：直接飛出去
       } else {
         P.vy += 1500 * dt;
         P.y += P.vy * dt;
@@ -127,7 +164,7 @@ export async function openSki({ pet, onClose } = {}) {
         if (P.y >= hill(P.x)) land();
       }
       // 雪崩：比基本速度慢一點，摔倒就會被追上
-      S.ax += (base * .9 + S.t * 1.5) * dt;
+      S.ax += (210 + S.t * 7) * dt;                     // 雪崩越滾越快，總有一天追上來；後空翻加速、騎坐騎才甩得開
       if (S.ax < P.x - 900) S.ax = P.x - 900;
       if (S.ax + 120 >= P.x) { end(); return; }
       while (S.next < P.x + W * 1.5) { spawn(S.next); S.next += 260 + Math.random() * 260; }
@@ -161,7 +198,7 @@ export async function openSki({ pet, onClose } = {}) {
       let diff = (P.a - sa) % (Math.PI * 2); if (diff > Math.PI) diff -= Math.PI * 2; if (diff < -Math.PI) diff += Math.PI * 2;
       const flips = Math.floor((P.spin + .6) / (Math.PI * 2));
       P.a = sa;
-      if (Math.abs(diff) > .8) { if (P.mount && P.mount !== 'ball') P.mount = null; else tumble(); return; }
+      if (Math.abs(diff) > 1) { if (P.mount && P.mount !== 'ball') P.mount = null; else tumble(); return; }
       if (flips > 0) { P.boost = 1.2 + flips * 1.3; S.deliver.push({ x: P.x, y: P.y - 110, n: 0, t: 1.1, text: flips > 1 ? `${flips} 圈！加速！` : '後空翻！加速！' }); sfx('SE-20'); }
     }
     function tumble() { if (P.stun > 0) return; P.stun = 1; P.boost = 0; sfx('SE-02'); }
