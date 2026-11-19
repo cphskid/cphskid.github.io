@@ -2086,16 +2086,22 @@ aside.care .buff small{display:block;font-weight:700;color:#8a6a4a;font-size:12p
 .snow-box .head .snow-bal{margin-left:auto;flex:none}
 .snow-box .note{margin:10px 0 0;padding:8px 12px;border-radius:12px;background:#eaf3ff;color:#1f3c78;font-weight:700}
 .snow-box .note.ok{background:#e7f7e3;color:#2c6a1f}.snow-box .note.bad{background:#fde8e4;color:#9b2c1c}
-.advent .doors{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin:14px auto 0;max-width:430px;background:#a8652f;padding:10px;border-radius:16px;border:3px solid var(--wood)}
-.advent .door{aspect-ratio:1;border-radius:10px;border:3px solid #6b3f1f;background:#d99a5b;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-family:var(--f-body);color:#fff;padding:2px;min-width:0}
-.advent .door b{font:900 22px/1 var(--f-disp);text-shadow:0 2px 0 #6b3f1f}
-.advent .door small{font-size:11px;font-weight:800;line-height:1.1;text-align:center}
-.advent .door.today{background:#ffcf4a;color:#6b3f1f;cursor:pointer;box-shadow:0 0 0 3px #fff,0 0 18px 6px rgba(255,214,90,.9);animation:snow-glow 1.4s ease-in-out infinite}
-.advent .door.today b{text-shadow:none}
-.advent .door.miss{background:#b98a64;cursor:pointer}.advent .door.miss[disabled]{opacity:.55;cursor:default}
-.advent .door.later{background:#c4834a;opacity:.8}
-.advent .door.open{background:#fff4dc;color:#6b3f1f}
-.advent .door.open img{width:60%;height:55%;object-fit:contain}
+.advent .adv-house{position:relative;max-width:440px;margin:10px auto 0;padding:0 10px}
+.advent .adv-house .roof{display:block;width:108%;margin:0 -4% -4.5%;position:relative;z-index:2;pointer-events:none}
+.advent .adv-house .wall{position:relative;background:linear-gradient(#c98a55,#b8743f);border:5px solid #9a5a2c;border-top:0;border-radius:0 0 18px 18px;padding:12px 10px 12px;box-shadow:0 5px 0 #6b3f1f}
+.advent .adv-house .bear{position:absolute;right:-26px;bottom:2px;width:54px;z-index:3;pointer-events:none}
+.advent .doors{display:grid;grid-template-columns:repeat(5,1fr);gap:7px}
+.advent .door{position:relative;aspect-ratio:1;border-radius:10px;border:0;background:var(--door) center/100% 100% no-repeat,#c98a55;box-shadow:inset 0 0 0 2px rgba(107,63,31,.35),0 3px 0 #8a4f25;display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-start;font-family:var(--f-body);color:#fff;padding:3px;min-width:0}
+.advent .door b{font:900 13px/1 var(--f-disp);background:rgba(107,63,31,.8);border-radius:999px;padding:2px 5px;text-shadow:none}
+.advent .door small{position:absolute;left:0;right:0;bottom:3px;font-size:11px;font-weight:900;line-height:1.1;text-align:center;color:#fff;text-shadow:0 1px 2px #5a2f12,0 0 4px #5a2f12}
+.advent .door.today{cursor:pointer;box-shadow:0 0 0 3px #fff3b0,0 0 18px 6px rgba(255,214,90,.95),0 3px 0 #8a4f25;animation:snow-glow 1.4s ease-in-out infinite}
+.advent .door.today b{background:#e8473c}
+.advent .door.miss{cursor:pointer;filter:saturate(.8)}.advent .door.miss[disabled]{filter:grayscale(.6) brightness(.85);cursor:default}
+.advent .door.later{filter:brightness(.92)}
+.advent .door.open{background:radial-gradient(circle at 50% 40%,#5a3418,#2e1a0c 75%);box-shadow:inset 0 4px 8px rgba(0,0,0,.6),0 3px 0 #8a4f25;align-items:center;justify-content:center;overflow:visible}
+.advent .door.open img{width:62%;height:62%;object-fit:contain;filter:drop-shadow(0 0 6px rgba(255,220,140,.7))}
+.advent .door.open small{font-size:10px;bottom:1px}
+.advent .door.open .leaf{position:absolute;left:-14%;top:0;bottom:0;width:30%;background:url(../img/xmas/advent/leaf.webp) center/100% 100%;border-radius:6px;box-shadow:2px 0 4px rgba(0,0,0,.35)}
 .advent .door.pop{animation:snow-pop .5s ease-out}
 @keyframes snow-glow{50%{box-shadow:0 0 0 3px #fff,0 0 26px 10px rgba(255,214,90,1)}}
 @keyframes snow-pop{0%{transform:scale(.6)}70%{transform:scale(1.12)}100%{transform:scale(1)}}
@@ -2126,12 +2132,12 @@ aside.care .buff small{display:block;font-weight:700;color:#8a6a4a;font-size:12p
 .snow-veil .btn{font:900 18px/1 var(--f-body);padding:12px 26px;border-radius:14px;border:3px solid var(--wood);background:var(--gold);color:var(--wood);box-shadow:0 3px 0 var(--wood);cursor:pointer}
 /* 聖誕：夥伴的聖誕帽、村莊的全站大聖誕樹、雪花頭像框（js/snow.js、park_snow.sql） */
 .actor .body img.hat{position:absolute;left:50%;top:-6%;width:46%;height:auto;transform:translateX(-50%) rotate(calc(var(--f) * -12deg));filter:none;z-index:2}
-.xtree{position:relative;display:inline-block;width:64px;aspect-ratio:1}
+.xtree{position:relative;display:inline-block;width:64px;aspect-ratio:320/658}
 .xtree img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
 .xtree .xt-dim{filter:grayscale(.8) brightness(.75) saturate(.6)}
 .xtree .xt-lit{clip-path:inset(calc(100% - var(--lit)) 0 0 0);filter:drop-shadow(0 0 6px rgba(255,220,120,.9))}
-.xtree.map{position:absolute;left:58%;top:30%;width:15%;min-width:44px;pointer-events:none;z-index:3}
-.xtree.big{width:110px;flex:none}
+.xtree.map{position:absolute;left:56.5%;top:14%;width:19%;aspect-ratio:320/658;pointer-events:none;z-index:3}
+.xtree.big{width:80px;flex:none}
 .xtree .fw{position:absolute;width:40%;aspect-ratio:1;border-radius:50%;background:radial-gradient(circle,#fff 0 6%,transparent 7%),repeating-conic-gradient(#ffe066 0 6deg,transparent 6deg 30deg);
   -webkit-mask:radial-gradient(circle,transparent 20%,#000 22% 48%,transparent 50%);mask:radial-gradient(circle,transparent 20%,#000 22% 48%,transparent 50%);animation:xfw 1.8s ease-out infinite;opacity:0}
 .xtree .fw.a{left:-20%;top:-25%}

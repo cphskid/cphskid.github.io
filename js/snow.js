@@ -70,12 +70,15 @@ export function openAdvent({ onGift } = {}) {
   function paint(msg = null) {
     const a = st.advent ?? { today: 0, opened: [], makeups: 0 };
     const op = new Map(a.opened.map((x) => [x.day, x]));
+    // 提案圖的木頭小屋：每扇門是一塊木門板（鈴鐺、雪花、星星、手套、拐杖糖輪流），打開是暗暗的小格子放禮物、門板翻到左邊
+    const LOOK = ['bell', 'flake', 'star', 'mitten', 'cane'];
+    const face = (d) => `style="--door:url(../img/xmas/advent/d-${LOOK[(d * 3) % 5]}.webp)"`;
     const doors = Array.from({ length: 25 }, (_, i) => {
       const d = i + 1;
-      if (op.has(d)) { const g = giftOf(d); return `<div class="door open"><img src="${g.img}" alt=""><small>${esc(g.text)}</small></div>`; }
-      if (d === a.today) return `<button type="button" class="door today" data-day="${d}"><b>${d}</b><small>今天！</small></button>`;
-      if (d < a.today) return `<button type="button" class="door miss" data-day="${d}"${a.makeups > 0 ? '' : ' disabled'}><b>${d}</b><small>${a.makeups > 0 ? '補開' : '沒開到'}</small></button>`;
-      return `<div class="door later"><b>${d}</b></div>`;
+      if (op.has(d)) { const g = giftOf(d); return `<div class="door open" title="${esc(g.text)}"><i class="leaf"></i><img src="${g.img}" alt=""><small>${esc(g.text)}</small></div>`; }
+      if (d === a.today) return `<button type="button" class="door today" data-day="${d}" ${face(d)}><b>${d}</b><small>今天！</small></button>`;
+      if (d < a.today) return `<button type="button" class="door miss" data-day="${d}" ${face(d)}${a.makeups > 0 ? '' : ' disabled'}><b>${d}</b><small>${a.makeups > 0 ? '補開' : '沒開到'}</small></button>`;
+      return `<div class="door later" ${face(d)}><b>${d}</b></div>`;
     }).join('');
     veil.innerHTML = `<div class="snow-box advent" role="dialog" aria-modal="true" aria-label="降臨月曆">
       <button class="x" data-close aria-label="關閉"></button>
@@ -84,7 +87,7 @@ export function openAdvent({ onGift } = {}) {
         <span class="snow-bal">${SNOW}<b>${st.balance}</b></span></div>
       ${a.today === 0 ? '<p class="note">月曆 12/1 才開始，先去滑雪收集雪花吧！</p>' : ''}
       ${msg ? `<p class="note ${msg[0]}">${esc(msg[1])}</p>` : ''}
-      <div class="doors">${doors}</div>
+      <div class="adv-house"><img class="roof" src="img/xmas/advent/roof.webp" alt=""><div class="wall"><div class="doors">${doors}</div></div><img class="bear" src="img/xmas/advent/bear.webp" alt=""></div>
       ${todayHtml()}
     </div>`;
     $('[data-close]', veil).onclick = close;
@@ -98,7 +101,7 @@ export function openAdvent({ onGift } = {}) {
           sfx('SE-20');
           const g = giftOf(+b.dataset.day);
           paint(['ok', `打開第 ${b.dataset.day} 格：${g.text}！${GIFTS[+b.dataset.day - 1][0] === 'furn' ? '已經放進寵物島的傢俱裡了。' : GIFTS[+b.dataset.day - 1][0] === 'pet' ? '放進寵物的背包了。' : ''}`]);
-          veil.querySelector(`.door.open:nth-child(${b.dataset.day})`)?.classList.add('pop');
+          veil.querySelectorAll('.door')[+b.dataset.day - 1]?.classList.add('pop');
           onGift?.(r.gift);
         } catch (err) { paint(['bad', err.message]); }
       };
@@ -134,12 +137,19 @@ function setHat(v) { try { localStorage.setItem('park:snow-hat', v ? '1' : '0');
 function treeArt(cls = '') {
   const { lv, pct } = treeLevel();
   return `<span class="xtree ${cls}${lv >= 5 ? ' full' : ''}" style="--lit:${(pct * 100).toFixed(1)}%">
-    <img class="xt-dim" src="img/xmas/tree.webp" alt=""><img class="xt-lit" src="img/xmas/tree.webp" alt="">${lv >= 5 ? '<i class="fw a"></i><i class="fw b"></i><i class="fw c"></i>' : ''}</span>`;
+    <img class="xt-dim" src="img/xmas/tree-big.webp" alt=""><img class="xt-lit" src="img/xmas/tree-big.webp" alt="">${lv >= 5 ? '<i class="fw a"></i><i class="fw b"></i><i class="fw c"></i>' : ''}</span>`;
 }
+// 活動期間村莊換成下雪的樣子（img/l-01-xmas.webp，鐘塔右邊留了廣場），大樹種在鐘塔右邊
 export function paintMapTree(lift) {
   document.querySelectorAll('.xtree.map').forEach((el) => el.remove());
-  if (!lift || !tree()?.tiers || !(st.on || st.ended)) return;
-  lift.insertAdjacentHTML('beforeend', treeArt('map'));
+  const art = lift?.querySelector('img.art');
+  const show = !!(lift && tree()?.tiers && (st.on || st.ended));
+  if (art) {
+    art.dataset.orig ??= art.getAttribute('src');
+    const want = show ? 'img/l-01-xmas.webp' : art.dataset.orig;
+    if (art.getAttribute('src') !== want) art.setAttribute('src', want);
+  }
+  if (show) lift.insertAdjacentHTML('beforeend', treeArt('map'));
 }
 
 // 村莊卡片裡的大樹說明卡
