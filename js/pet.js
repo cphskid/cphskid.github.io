@@ -653,7 +653,7 @@ function camBox() {
   const v = $('.view', layer);
   const vw = v.clientWidth, vh = v.clientHeight;
   // 最大倍數照螢幕密度限制：iPhone（3 倍密度）放到 1.2 就是原圖的解析度了，再大只是糊、還多吃記憶體
-  return { vw, vh, kMin: Math.min(vw / GW, vh / GH) * .92, kMax: Math.min(1.6, 3.6 / (devicePixelRatio || 1)) };
+  return { vw, vh, kMin: Math.min(vw / GW, vh / GH) * .92, kMax: Math.min(1.6, 3 / (devicePixelRatio || 1)) };
 }
 function applyCam() {
   const g = $('.ground', layer);
