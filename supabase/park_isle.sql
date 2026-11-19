@@ -156,6 +156,20 @@ on conflict (code) do update
   set cat = excluded.cat, ref = excluded.ref, name = excluded.name, art = excluded.art, blurb = excluded.blurb,
       price = excluded.price, months = excluded.months, sort = excluded.sort;
 
+-- 2026-11-19 聖誕活動「雪花聖誕村」：11/25 開賣、12/31 下架（之前先預告；麋鹿雪橇不在這裡，之後用雪花結晶換）
+insert into public.park_shop_items (code, cat, ref, name, art, blurb, price, months, sort, sale_from, sale_to) values
+  ('theme-xmas',        'theme', 'theme-xmas',   '雪花聖誕村', 'img/pet/land2/s-xmas.webp',        '聖誕限定：雪地、拐杖糖邊框、結冰的湖', 400, null, 500, '2026-11-25', '2026-12-31'),
+  ('furn-xm-tree',      'furn',  'xm-tree',      '聖誕樹',     'img/pet/furniture/xm-tree.webp',      '聖誕限定傢俱', 250, null, 501, '2026-11-25', '2026-12-31'),
+  ('furn-house-ginger', 'furn',  'house-ginger', '薑餅屋',     'img/pet/furniture/house-ginger.webp', '聖誕限定小屋，夥伴會進去睡', 250, null, 502, '2026-11-25', '2026-12-31'),
+  ('furn-xm-gifts',     'furn',  'xm-gifts',     '禮物堆',     'img/pet/furniture/xm-gifts.webp',     '聖誕限定傢俱', 120, null, 503, '2026-11-25', '2026-12-31'),
+  ('furn-xm-fireplace', 'furn',  'xm-fireplace', '暖暖壁爐',   'img/pet/furniture/xm-fireplace.webp', '聖誕限定傢俱', 200, null, 504, '2026-11-25', '2026-12-31'),
+  ('furn-xm-lamp',      'furn',  'xm-lamp',      '拐杖糖路燈', 'img/pet/furniture/xm-lamp.webp',      '聖誕限定傢俱', 120, null, 505, '2026-11-25', '2026-12-31'),
+  ('furn-xm-snowman',   'furn',  'xm-snowman',   '雪人',       'img/pet/furniture/xm-snowman.webp',   '聖誕限定傢俱', 150, null, 506, '2026-11-25', '2026-12-31'),
+  ('furn-xm-arch',      'furn',  'xm-arch',      '花圈拱門',   'img/pet/furniture/xm-arch.webp',      '聖誕限定傢俱', 180, null, 507, '2026-11-25', '2026-12-31')
+on conflict (code) do update
+  set cat = excluded.cat, ref = excluded.ref, name = excluded.name, art = excluded.art, blurb = excluded.blurb,
+      price = excluded.price, months = excluded.months, sort = excluded.sort, sale_from = excluded.sale_from, sale_to = excluded.sale_to;
+
 -- -----------------------------------------------------------------------------
 -- 3. 誰可以看誰的島
 -- -----------------------------------------------------------------------------

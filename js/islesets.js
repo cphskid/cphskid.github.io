@@ -88,6 +88,20 @@ export const SETS = [
     ['rc-scarecrow', '稻草人', 100, 36, 1.299, P('look','jump','look','稻草人先生好！')],
     ['rc-cart', '蔬菜推車', 150, 56, 0.86, P('sniff','dig','chew','紅蘿蔔好甜！')],
   ] },
+  // 聖誕活動（2026-11-19 Chuck：11/25 開始，之前看得到、可以試套風格，不能買）。soon＝開賣日；麋鹿雪橇價錢 0＝之後用雪花結晶換
+  { id: 'xmas', name: '雪花聖誕村', price: 400, how: '11/25 聖誕活動開賣', soon: '2026-11-25', items: [
+    ['xm-tree', '聖誕樹', 250, 54, 1.587, P('look', 'cheer', 'jump', 'look', '聖誕樹亮晶晶！')],
+    ['house-ginger', '薑餅屋', 250, 185, 1.007, HOUSE],
+    ['xm-gifts', '禮物堆', 120, 46, .97, P('sniff', 'dig', 'cheer', '是給我的禮物嗎？')],
+    ['xm-sled', '麋鹿雪橇', 0, 60, .98, SIT(.55, .55)],
+    ['xm-fireplace', '暖暖壁爐', 200, 58, 1.111, P('look', 'sniff', 'look', '好溫暖～')],
+    ['xm-lamp', '拐杖糖路燈', 120, 22, 3.226, P('look', 'cheer', 'look', '')],
+    ['xm-snowman', '雪人', 150, 36, 1.724, P('look', 'jump', 'cheer', '雪人先生你好！')],
+    ['xm-arch', '花圈拱門', 180, 52, 1.282, P('look', 'cheer', 'look', '叮叮噹～')],
+  ] },
 ];
-export const SET_ITEMS = SETS.flatMap((s) => s.items.map(([id, name, price, w, aspect, use]) => ({ id, name, price, w, aspect, use, set: s.id })));
+export const SET_ITEMS = SETS.flatMap((s) => s.items.map(([id, name, price, w, aspect, use]) => ({ id, name, price, w, aspect, use, set: s.id, soon: s.soon })));
+// 還沒開賣（臺灣時間的日期還沒到開賣日）
+export const notYet = (soon) => !!soon && new Date().toLocaleDateString('sv', { timeZone: 'Asia/Taipei' }) < soon;
+export const soonText = (soon) => `${+soon.slice(5, 7)}/${+soon.slice(8, 10)} 開賣`;
 export const isSetHouse = (id) => id.startsWith('house-') && SET_ITEMS.some((x) => x.id === id);

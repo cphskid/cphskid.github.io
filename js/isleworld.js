@@ -37,7 +37,7 @@ const TREE_KIND = { spring: ['spring1', 'blossom', 'spring2', 'bush'], beach: ['
                     // 2026-11-19 島嶼風格套組
                     nightmarket: ['banyan', 'bush'], tung: ['tung', 'spring1', 'tung', 'bush'], teahill: ['bamboo', 'bush'], coral: ['kelp'],
                     moon: ['crystal'], dino: ['cycad', 'bush', 'cycad'], cloud: ['cloudtree'], future: ['holo', 'bush'],
-                    desert: ['palm1', 'cactus', 'palm2'], ranch: ['spring1', 'bush', 'spring2'] };
+                    desert: ['palm1', 'cactus', 'palm2'], ranch: ['spring1', 'bush', 'spring2'], xmas: ['pine1', 'pine2'] };
 const TREE_LOOK = { spring1: [150, 1.441, .931], spring2: [150, 1.456, .931], blossom: [150, 1.282, .922], bush: [125, 1.044, .904],
                     palm1: [150, 1.421, .93], palm2: [150, 1.335, .925], maple: [150, 1.24, .919], autumn: [150, 1.368, .927],
                     pine1: [135, 1.667, .94], pine2: [135, 1.663, .94], star: [150, 1.344, .926], candy: [150, 1.342, .925],
