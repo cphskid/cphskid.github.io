@@ -156,6 +156,7 @@ news.init({
     if (link === 'wear') return traveller.open();
     if (link === 'pet') return pet.open();
     if (link === 'shop-month') return shop.openShop(null, 'month');
+    if (link === 'shop-event') return shop.openShop(null, 'event');
     const z = zones.get(String(link).replace(/^zone:/, ''));
     if (!z) return;
     const s = park.map.slots.find((x) => x.slot === z.slot);

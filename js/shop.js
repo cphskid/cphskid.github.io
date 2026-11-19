@@ -246,6 +246,8 @@ const TABS = [
   { id: 'furn', name: '傢俱', tip: '買了擺在寵物島上，寵物會去玩' },
   { id: 'theme', name: '島的風格', tip: '把整座寵物島換個樣子，買了在寵物島按「裝扮」換上' },
   { id: 'month', name: '本月限定', tip: '這個月才買得到，下個月就下架；買到的會一直留著' },
+  // 活動商品（park_shop_items 有 sale_from 的）：開賣前先預告，風格可以去寵物島試套；有活動商品才出現這個分頁
+  { id: 'event', name: '🎄 聖誕', tip: '聖誕活動 11/25～12/31：還沒開賣的可以先看，島的風格可以去寵物島按「裝扮」試套；買到的會一直留著' },
 ];
 let tab = 'wear';
 let shop = null;
@@ -276,6 +278,7 @@ function paintShop(msg = null) {
       ${art}
       <b>${esc(x.name)}</b><small>${esc(x.blurb)}${x.qty ? `・背包裡有 ${x.qty} 個` : ''}</small>
       ${own ? '<span class="have">已經有了</span>'
+        : x.soon ? `<button type="button" class="btn small coin" disabled title="${esc(x.soon)} 才開賣">${COIN}${x.price}・${esc(x.soon)} 開賣</button>`
         : `<button type="button" class="btn small coin" data-buy="${esc(x.code)}" ${st.balance < x.price ? 'disabled' : ''}>${COIN}${x.price}</button>`}
     </div>`;
   };
@@ -284,7 +287,7 @@ function paintShop(msg = null) {
     <button class="x" data-close aria-label="關閉商店"></button>
     <div class="head"><h2><img src="img/ui/shop.webp" alt="">時空商店</h2>
       <button type="button" class="bal" data-wallet aria-label="我的時光幣">${COIN}<b>${st.balance}</b></button></div>
-    <nav class="tabs" role="tablist" aria-label="商品分類">${TABS.map((x) => `<button type="button" role="tab" class="tab${x.id === tab ? ' on' : ''}" aria-selected="${x.id === tab}" data-tab="${x.id}">${x.name}${x.id === 'month' && shop.items.some((i) => i.cat === 'month') ? '<i class="new">新</i>' : ''}</button>`).join('')}</nav>
+    <nav class="tabs" role="tablist" aria-label="商品分類">${TABS.filter((x) => x.id !== 'event' || shop.items.some((i) => i.cat === 'event')).map((x) => `<button type="button" role="tab" class="tab${x.id === tab ? ' on' : ''}" aria-selected="${x.id === tab}" data-tab="${x.id}">${x.name}${['month', 'event'].includes(x.id) && shop.items.some((i) => i.cat === x.id) ? '<i class="new">新</i>' : ''}</button>`).join('')}</nav>
     <p class="lead">${esc(t.tip)}</p>
     ${msg ? `<p class="note ${msg[0]}">${esc(msg[1])}</p>` : ''}
     <div class="body${doll ? ' with-doll' : ''}">${doll}<div class="grid">${items.length ? items.map(card).join('') : `<p class="tip">${empty}</p>`}</div></div>

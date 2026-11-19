@@ -87,6 +87,9 @@ create table if not exists public.park_shop_items (
 );
 alter table public.park_shop_items drop constraint if exists park_shop_items_cat_check;
 alter table public.park_shop_items add constraint park_shop_items_cat_check check (cat in ('pet', 'furn', 'frame', 'theme'));
+-- 活動商品（2026-11-19 聖誕）：sale_from 之前先預告（看得到、不能買），sale_to 之後下架；畫面放「活動」分頁（cat 'event'）
+alter table public.park_shop_items add column if not exists sale_from date;
+alter table public.park_shop_items add column if not exists sale_to date;
 
 -- 買到的傢俱（點心直接放進桌寵背包）
 create table if not exists public.park_student_furniture (
@@ -528,8 +531,9 @@ begin
        where i.active and not i.free and i.price is not null
          and (i.months is null or v_month = any(i.months))
       union all
-      select jsonb_build_object('cat', case when si.months is not null then 'month' else si.cat end, 'kind', si.cat,
+      select jsonb_build_object('cat', case when si.sale_from is not null then 'event' when si.months is not null then 'month' else si.cat end, 'kind', si.cat,
                'code', si.code, 'ref', si.ref, 'name', si.name, 'art', si.art, 'blurb', si.blurb, 'price', si.price, 'sort', si.sort,
+               'soon', case when public.park_today() < si.sale_from then to_char(si.sale_from, 'FMMM/FMDD') end,
                'owned', (si.cat in ('furn', 'theme') and exists (select 1 from public.park_student_furniture f
                                                       where f.student_id = v_me and f.item = si.ref))
                      or (si.cat = 'frame' and exists (select 1 from public.park_student_rewards b
@@ -538,6 +542,7 @@ begin
                                                                where v.student_id = v_me and v.item = si.ref), 0) end)
         from public.park_shop_items si
        where si.active and (si.months is null or v_month = any(si.months))
+         and (si.sale_to is null or public.park_today() <= si.sale_to)
     ) t), '[]'::jsonb));
 end;
 $$;
@@ -565,6 +570,8 @@ begin
     select * into v_si from public.park_shop_items si
      where si.code = p_code and si.active and (si.months is null or v_month = any(si.months));
     if v_si.code is null then raise exception '商店沒有賣這個（可能下架了）'; end if;
+    if public.park_today() < v_si.sale_from then raise exception '「%」% 才開賣，先去寵物島試套看看吧', v_si.name, to_char(v_si.sale_from, 'FMMM/FMDD'); end if;
+    if public.park_today() > v_si.sale_to then raise exception '「%」的活動結束了', v_si.name; end if;
     v_name := v_si.name;
     if v_si.cat in ('furn', 'theme') and exists (select 1 from public.park_student_furniture f where f.student_id = v_me and f.item = v_si.ref) then
       raise exception '你已經有「%」了', v_name;

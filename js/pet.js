@@ -15,7 +15,7 @@ import { span } from './perf.js';
 import * as playlog from './playlog.js';
 import * as isle from './isle.js';
 import * as W from './isleworld.js';
-import { SETS, SET_ITEMS } from './islesets.js';
+import { SETS, SET_ITEMS, notYet, soonText } from './islesets.js';
 import * as games from './petgames.js';
 
 const $ = (s, root = document) => root.querySelector(s);
@@ -952,11 +952,14 @@ const SHOP_FURN = { scratcher: 120, sandbox: 150, trampoline: 180, hammock: 200,
                     'house-mushroom': 250, 'house-tree': 300, 'house-igloo': 280 };   // 商店價（只給清單顯示，真的價錢看資料庫）
 const LIMITED = new Set(['rabbit-lamp', 'pumpkin-lamp', 'ghost-house', 'candy-bucket', 'web-swing', 'house-igloo']);   // 本月限定：沒買到就不放進清單
 const PARENT_FURN = { 'family-bench': '爸媽送貼紙', 'family-photo': '聯絡簿簽 4 次' };   // 爸媽任務送的：還沒拿到時寫怎麼拿
+const LOCK_TXT = {};   // 還沒拿到時另外寫的字（聖誕還沒開賣、雪花兌換）
 const HOUSES = ['house-basic', 'house-mushroom', 'house-tree', 'house-igloo'];
 // 島嶼風格套組（js/islesets.js）：名字、商店價、怎麼用都從那裡來；小屋另外也列在「小屋盆子」
 for (const x of SET_ITEMS) {
   FURN_NAME[x.id] = x.name;
-  SHOP_FURN[x.id] = x.price;
+  if (x.price) SHOP_FURN[x.id] = x.price;
+  if (notYet(x.soon)) LOCK_TXT[x.id] = soonText(x.soon);
+  else if (!x.price) LOCK_TXT[x.id] = '雪花結晶兌換';
   USE[x.id] = x.use;
   if (x.id.startsWith('house-')) HOUSES.push(x.id);
 }
@@ -1261,7 +1264,7 @@ function paintDeco() {
   const tile = (id, extra = '') => {
     const n = items.filter((o) => o.id === id).length, max = W.CAT[id].max;
     const have = owns(id);
-    if (!have) return `<span class="dt-i locked"><img src="img/pet/furniture/${id}.webp" alt=""><b>${FURN_NAME[id]}</b><small>🔒 ${SHOP_FURN[id] ? `商店 ${SHOP_FURN[id]}` : PARENT_FURN[id] ?? `${FURN_STAMP[id] ?? FARM_STAMP[id]} 個章`}</small></span>`;
+    if (!have) return `<span class="dt-i locked"><img src="img/pet/furniture/${id}.webp" alt=""><b>${FURN_NAME[id]}</b><small>🔒 ${LOCK_TXT[id] ?? (SHOP_FURN[id] ? `商店 ${SHOP_FURN[id]}` : PARENT_FURN[id] ?? `${FURN_STAMP[id] ?? FARM_STAMP[id]} 個章`)}</small></span>`;
     return `<button type="button" class="dt-i${n ? ' out' : ''}" data-add="${id}"${extra}><img src="img/pet/furniture/${id}.webp" alt=""><b>${FURN_NAME[id]}</b><small>${max > 1 ? `${n}/${max}` : n ? '在島上' : '＋ 擺出來'}</small></button>`;
   };
   let body = '', setBar = '';
@@ -1269,9 +1272,10 @@ function paintDeco() {
   else if (deco.tab === 'farm') body = FARM.map((id) => tile(id)).join('');
   else if (deco.tab === 'set') {
     // 一種風格一排小按鈕，下面列那一套的 6 件（還沒買的顯示價錢，去商店買）
-    const sel = SETS.find((x) => x.id === deco.set) ?? SETS[0];
+    const list = [...SETS.filter((x) => x.soon), ...SETS.filter((x) => !x.soon)];   // 活動的那套排最前面
+    const sel = list.find((x) => x.id === deco.set) ?? list[0];
     deco.set = sel.id;
-    setBar = `<div class="dt-sets">${SETS.map((x) => `<button type="button" data-set="${x.id}" class="${x.id === sel.id ? 'on' : ''}"><img src="${W.landThumb(x.id)}" alt="">${x.name}</button>`).join('')}</div>`;
+    setBar = `<div class="dt-sets">${list.map((x) => `<button type="button" data-set="${x.id}" class="${x.id === sel.id ? 'on' : ''}"><img src="${W.landThumb(x.id)}" alt="">${x.name}</button>`).join('')}</div>`;
     body = sel.items.map(([id]) => tile(id)).join('');
   }
   else if (deco.tab === 'house') body = [...HOUSES.filter((id) => owns(id) || !LIMITED.has(id)), 'bowl-food', 'bowl-water'].map((id) => tile(id)).join('');
