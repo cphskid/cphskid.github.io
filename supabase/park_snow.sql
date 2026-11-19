@@ -15,6 +15,8 @@ create table if not exists public.park_snow_cfg (
 insert into public.park_snow_cfg (id, starts, ends) values (1, '2026-11-25', '2026-12-31') on conflict (id) do nothing;
 -- 降臨月曆第 1 格是哪一天（正式 12/1；測試庫可以改成今天試開）
 alter table public.park_snow_cfg add column if not exists advent_from date not null default '2026-12-01';
+-- 全站大聖誕樹 5 層的門檻（全站賺到的雪花；測試庫可以改小一點試）
+alter table public.park_snow_cfg add column if not exists tree_tiers int[] not null default '{3000,8000,15000,25000,40000}';
 alter table public.park_snow_cfg enable row level security;
 revoke all on public.park_snow_cfg from public, anon, authenticated;
 
@@ -159,6 +161,44 @@ returns int language sql stable security definer set search_path = public, pg_te
   select coalesce(sum(amount), 0)::int from public.park_snow_ledger where amount > 0;
 $$;
 
+-- 每一層的獎勵（有參與＝活動期間賺過至少 1 片雪花的人都拿得到）：
+--   1 雪花頭像框  2 寵物聖誕帽（夥伴在島上戴著）  3 聖誕樹傢俱  4 島名多一組聖誕字  5 點燈小幫手頭像框
+create table if not exists public.park_snow_tree_got (
+  student_id uuid not null references public.students(id) on delete cascade,
+  tier       int  not null check (tier between 1 and 5),
+  got_at     timestamptz not null default now(),
+  primary key (student_id, tier)
+);
+alter table public.park_snow_tree_got enable row level security;
+revoke all on public.park_snow_tree_got from public, anon, authenticated;
+insert into public.park_rewards (code, kind, name, need_stamps, need_page, sort, need_kind, need_n, need_stamp) values
+  ('snowflake', 'frame', '雪花框',       0, null, 23, 'shop', 0, null),
+  ('snowstar',  'frame', '點燈小幫手框', 0, null, 24, 'shop', 0, null)
+on conflict (code) do update set name = excluded.name, sort = excluded.sort, need_kind = excluded.need_kind;
+
+create or replace function public.park_snow_tree_grant(p_student uuid)
+returns int[] language plpgsql security definer set search_path = public, pg_temp as $$
+declare c public.park_snow_cfg; v_total int; v_new int[] := '{}'; k int;
+begin
+  if p_student is null or not exists (select 1 from public.park_snow_ledger where student_id = p_student and amount > 0) then return v_new; end if;
+  select * into c from public.park_snow_cfg where id = 1;
+  v_total := public.park_snow_tree_total();
+  for k in 1 .. 5 loop
+    exit when v_total < c.tree_tiers[k];
+    continue when exists (select 1 from public.park_snow_tree_got where student_id = p_student and tier = k);
+    insert into public.park_snow_tree_got (student_id, tier) values (p_student, k);
+    if k = 1 then insert into public.park_student_rewards (student_id, reward) values (p_student, 'snowflake') on conflict do nothing;
+    elsif k = 2 then insert into public.park_student_furniture (student_id, item) values (p_student, 'acc-santa') on conflict do nothing;
+    elsif k = 3 then insert into public.park_student_furniture (student_id, item) values (p_student, 'xm-tree') on conflict do nothing;
+    elsif k = 4 then insert into public.park_student_furniture (student_id, item) values (p_student, 'words-xmas') on conflict do nothing;
+    else insert into public.park_student_rewards (student_id, reward) values (p_student, 'snowstar') on conflict do nothing;
+    end if;
+    v_new := v_new || k;
+  end loop;
+  return v_new;
+end;
+$$;
+
 -- 活動結束：剩下的雪花 10 片換 50 時光幣（一個人一次）
 create or replace function public.park_snow_convert(p_student uuid)
 returns int language plpgsql security definer set search_path = public, pg_temp as $$
@@ -179,16 +219,17 @@ $$;
 -- 狀態：{on, starts, ends, balance, today:{ski,learn,daily,pet}, caps, ski:{best,runs}, advent:{today, opened:[{day,late}], makeups}, tree:{total}, converted}
 create or replace function public.park_snow_me()
 returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
-declare v_me uuid := public.current_student_id(); c public.park_snow_cfg; v_today date := public.park_today(); v_conv int := 0;
+declare v_me uuid := public.current_student_id(); c public.park_snow_cfg; v_today date := public.park_today(); v_conv int := 0; v_new int[] := '{}';
 begin
   select * into c from public.park_snow_cfg where id = 1;
   if v_me is not null then
     perform pg_advisory_xact_lock(hashtext('park_snow:' || v_me::text));
     perform public.park_snow_sync(v_me);
     v_conv := public.park_snow_convert(v_me);
+    v_new := public.park_snow_tree_grant(v_me);
   end if;
   return jsonb_build_object(
-    'on', v_today between c.starts and c.ends, 'starts', c.starts, 'ends', c.ends,
+    'on', v_today between c.starts and c.ends, 'ended', v_today > c.ends and v_today <= c.ends + 14, 'starts', c.starts, 'ends', c.ends,
     'balance', case when v_me is null then 0 else public.park_snow_balance(v_me) end,
     'today', (select coalesce(jsonb_object_agg(k, coalesce((select sum(amount) from public.park_snow_ledger
                  where student_id = v_me and kind = k and day = v_today), 0)), '{}') from unnest(array['ski', 'learn', 'daily', 'pet']) k),
@@ -197,7 +238,10 @@ begin
     'advent', jsonb_build_object('today', case when v_today between c.starts and c.ends then public.park_snow_advent_today() else 0 end,
       'opened', coalesce((select jsonb_agg(jsonb_build_object('day', day, 'late', late) order by day) from public.park_snow_advent where student_id = v_me), '[]'),
       'makeups', case when v_me is null then 0 else public.park_snow_makeups(v_me) end),
-    'tree', jsonb_build_object('total', public.park_snow_tree_total()),
+    'tree', jsonb_build_object('total', public.park_snow_tree_total(), 'tiers', to_jsonb(c.tree_tiers), 'fresh', to_jsonb(v_new),
+      'got', coalesce((select jsonb_agg(tier order by tier) from public.park_snow_tree_got where student_id = v_me), '[]'),
+      'mine', coalesce((select sum(amount) from public.park_snow_ledger where student_id = v_me and amount > 0), 0),
+      'mine_today', coalesce((select sum(amount) from public.park_snow_ledger where student_id = v_me and amount > 0 and day = v_today), 0)),
     'converted', v_conv);
 end;
 $$;
@@ -271,6 +315,6 @@ end;
 $$;
 
 revoke all on function public.park_snow_cap(text), public.park_snow_balance(uuid), public.park_snow_give(uuid, text, text, int, date),
-  public.park_snow_sync(uuid), public.park_snow_makeups(uuid), public.park_snow_convert(uuid) from public, anon, authenticated;
+  public.park_snow_sync(uuid), public.park_snow_makeups(uuid), public.park_snow_convert(uuid), public.park_snow_tree_grant(uuid) from public, anon, authenticated;
 grant execute on function public.park_snow_me(), public.park_snow_ski_done(int, int), public.park_snow_advent_open(int),
   public.park_snow_buy(text), public.park_snow_tree_total() to authenticated;

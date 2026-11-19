@@ -1,0 +1,14 @@
+<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>大聖誕樹預覽</title><base href="../../"><link rel="stylesheet" href="css/park.css">
+<style>body{background:#bfe3ff;padding:16px;font-family:sans-serif}.lift{position:relative;width:260px;height:200px;background:#8bd27a;border-radius:40%}.wrap{max-width:640px;background:#fff;border-radius:18px;padding:12px;margin-top:16px}</style></head>
+<body><!-- ?tree=9876 假裝全站點亮了幾盞 -->
+<div class="isle"><div class="lift"></div></div><div class="wrap"></div>
+<script type="module">
+import * as auth from './js/auth.js';
+import * as snow from './js/snow.js';
+const q = new URLSearchParams(location.search);
+auth.snow.me = async () => ({ on: true, balance: 3, tree: { total: +(q.get('tree') ?? 9876), tiers: [3000, 8000, 15000, 25000, 40000], got: [1, 2], fresh: [], mine: 87, mine_today: 14 } });
+await snow.load();
+snow.paintMapTree(document.querySelector('.lift'));
+document.querySelector(".wrap").innerHTML = snow.treeHtml();
+</script></body></html>

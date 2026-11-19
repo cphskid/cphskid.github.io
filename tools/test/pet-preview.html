@@ -127,7 +127,7 @@ if (q.get('deco')) {
 // ?snow=1：聖誕活動（雪花、降臨月曆、滑雪）用假的資料；&adv=7 假裝今天是月曆第 7 格
 if (q.get('snow')) {
   const N = { on: true, starts: '2026-11-25', ends: '2026-12-31', balance: 23, today: { ski: 4, learn: 6, daily: 5, pet: 1 }, caps: { ski: 12, learn: 10, daily: 5, pet: 3 },
-    ski: { best: 512, runs: 3 }, advent: { today: +(q.get('adv') ?? 7), opened: [{ day: 1 }, { day: 2 }, { day: 4 }], makeups: 1 }, tree: { total: 9876 }, converted: 0 };
+    ski: { best: 512, runs: 3 }, advent: { today: +(q.get('adv') ?? 7), opened: [{ day: 1 }, { day: 2 }, { day: 4 }], makeups: 1 }, tree: { total: +(q.get('tree') ?? 9876), tiers: [3000, 8000, 15000, 25000, 40000], got: [1, 2], fresh: [], mine: 87, mine_today: 14 }, converted: 0 };
   Object.assign(auth.snow, {
     me: async () => JSON.parse(JSON.stringify(N)),
     advent: async (d) => { N.advent.opened.push({ day: d, late: d < N.advent.today }); if (d < N.advent.today) N.advent.makeups--; return { ...JSON.parse(JSON.stringify(N)), gift: { day: d } }; },

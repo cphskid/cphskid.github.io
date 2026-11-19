@@ -23,12 +23,14 @@ export const THEMES = [
   // 島嶼風格套組（js/islesets.js，每種還有 6 件同主題傢俱）
   ...SETS.map((x) => ({ id: x.id, name: x.name, how: x.how })),
 ];
-// 島名：三組各 20 個，存的是第幾個（park_isle.name）
+// 島名：三組各 20 個（＋2 個聖誕字），存的是第幾個（park_isle.name）
 export const WORDS = [
-  ['星空', '微風', '彩虹', '月光', '陽光', '花開', '雪花', '楓葉', '海浪', '糖果', '晨霧', '夕陽', '雲朵', '森林', '螢火', '春天', '夏日', '秋風', '冬眠', '魔法'],
-  ['貓咪', '小狗', '倉鼠', '小熊', '小鹿', '石虎', '藍鵲', '小龍', '獨角獸', '蝴蝶', '螞蟻', '穿山甲', '夥伴', '旅人', '勇者', '探險隊', '好朋友', '寶貝', '小精靈', '小英雄'],
-  ['樂園', '小島', '秘密基地', '度假村', '遊樂場', '花園', '森林', '營地', '果園', '城堡', '小鎮', '牧場', '海灘', '天堂', '王國', '農場', '學院', '碼頭', '動物園', '小屋'],
+  ['星空', '微風', '彩虹', '月光', '陽光', '花開', '雪花', '楓葉', '海浪', '糖果', '晨霧', '夕陽', '雲朵', '森林', '螢火', '春天', '夏日', '秋風', '冬眠', '魔法', '聖誕', '雪夜'],
+  ['貓咪', '小狗', '倉鼠', '小熊', '小鹿', '石虎', '藍鵲', '小龍', '獨角獸', '蝴蝶', '螞蟻', '穿山甲', '夥伴', '旅人', '勇者', '探險隊', '好朋友', '寶貝', '小精靈', '小英雄', '麋鹿', '雪人'],
+  ['樂園', '小島', '秘密基地', '度假村', '遊樂場', '花園', '森林', '營地', '果園', '城堡', '小鎮', '牧場', '海灘', '天堂', '王國', '農場', '學院', '碼頭', '動物園', '小屋', '聖誕村', '薑餅屋'],
 ];
+// 最後兩個字（20、21）是全站大聖誕樹第 4 層送的聖誕字，拿到才能選（park_isle_me 的 xwords）
+const wordsFor = () => (me?.xwords ? 22 : 20);
 // 圖示：0 好可愛 1 好厲害 2 好漂亮 3 好好笑 4 好有創意 5 我來過了（圖在 img/pet/react/）
 export const REACTS = [['heart', '好可愛'], ['star', '好厲害'], ['flower', '好漂亮'], ['laugh', '好好笑'], ['idea', '好有創意'], ['paw', '我來過了']];
 const reactImg = (k) => `<img src="img/pet/react/${REACTS[k][0]}.webp" alt="">`;
@@ -133,7 +135,7 @@ export function decorHtml(trying = null) {
   const n = name();
   return `<div class="isle-deco">
     <p class="lab">島的名字</p>
-    <div class="isle-name-pick">${WORDS.map((w, i) => `<select data-word="${i}" aria-label="島名第 ${i + 1} 段">${w.map((x, k) =>
+    <div class="isle-name-pick">${WORDS.map((w, i) => `<select data-word="${i}" aria-label="島名第 ${i + 1} 段">${w.slice(0, Math.max(wordsFor(), n[i] + 1)).map((x, k) =>
       `<option value="${k}"${k === n[i] ? ' selected' : ''}>${esc(x)}</option>`).join('')}</select>`).join('<span>・</span>')}</div>
     <p class="lab">島的風格</p>
     <div class="isle-themes">${THEMES.map((t) => own.includes(t.id)

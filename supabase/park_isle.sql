@@ -241,6 +241,7 @@ begin
     'theme', coalesce(v_i.theme, 'spring'), 'name', coalesce(to_jsonb(v_i.name), '[0,0,0]'::jsonb),
     'layout', coalesce(v_i.layout, '{}'::jsonb), 'stored', coalesce(to_jsonb(v_i.stored), '[]'::jsonb),
     'themes', to_jsonb(public.park_isle_themes(v_me)),
+    'xwords', exists (select 1 from public.park_student_furniture f where f.student_id = v_me and f.item = 'words-xmas'),
     'love', to_jsonb(public.park_isle_love(v_me)),
     'inbox', coalesce((select jsonb_agg(jsonb_build_object('id', r.from_id, 'nickname', st.nickname, 'kind', r.kind, 'at', r.at,
                                                            'has', exists (select 1 from public.park_isle i where i.student_id = r.from_id)) order by r.at desc)
@@ -280,7 +281,9 @@ declare v_me uuid := public.current_student_id(); v_layout jsonb := '{}'; v_k te
 begin
   if v_me is null then raise exception '請先登入學生帳號'; end if;
   if not (coalesce(p_theme, 'spring') = any(public.park_isle_themes(v_me))) then raise exception '還沒拿到這個島的風格'; end if;
-  if coalesce(array_length(p_name, 1), 0) <> 3 or exists (select 1 from unnest(p_name) n where n is null or n < 0 or n > 19) then
+  -- 第 21、22 個字（20、21）是聖誕大樹第 4 層送的聖誕字（park_snow.sql，記在 park_student_furniture 'words-xmas'）
+  if coalesce(array_length(p_name, 1), 0) <> 3 or exists (select 1 from unnest(p_name) n where n is null or n < 0
+       or n > case when exists (select 1 from public.park_student_furniture f where f.student_id = v_me and f.item = 'words-xmas') then 21 else 19 end) then
     raise exception '島名要從選單挑';
   end if;
   if jsonb_typeof(coalesce(p_layout, '{}')) <> 'object' then raise exception '擺放資料不對'; end if;
@@ -349,9 +352,9 @@ $$;
 -- 島名的字（跟 js/isle.js 的 WORDS 一樣，改那邊也要改這裡）：搜尋島名用
 create or replace function public.park_isle_name_text(p_name int[])
 returns text language sql immutable set search_path = public, pg_temp as $$
-  select coalesce((array['星空','微風','彩虹','月光','陽光','花開','雪花','楓葉','海浪','糖果','晨霧','夕陽','雲朵','森林','螢火','春天','夏日','秋風','冬眠','魔法'])[coalesce(p_name[1], 0) + 1], '')
-      || coalesce((array['貓咪','小狗','倉鼠','小熊','小鹿','石虎','藍鵲','小龍','獨角獸','蝴蝶','螞蟻','穿山甲','夥伴','旅人','勇者','探險隊','好朋友','寶貝','小精靈','小英雄'])[coalesce(p_name[2], 0) + 1], '')
-      || coalesce((array['樂園','小島','秘密基地','度假村','遊樂場','花園','森林','營地','果園','城堡','小鎮','牧場','海灘','天堂','王國','農場','學院','碼頭','動物園','小屋'])[coalesce(p_name[3], 0) + 1], '');
+  select coalesce((array['星空','微風','彩虹','月光','陽光','花開','雪花','楓葉','海浪','糖果','晨霧','夕陽','雲朵','森林','螢火','春天','夏日','秋風','冬眠','魔法','聖誕','雪夜'])[coalesce(p_name[1], 0) + 1], '')
+      || coalesce((array['貓咪','小狗','倉鼠','小熊','小鹿','石虎','藍鵲','小龍','獨角獸','蝴蝶','螞蟻','穿山甲','夥伴','旅人','勇者','探險隊','好朋友','寶貝','小精靈','小英雄','麋鹿','雪人'])[coalesce(p_name[2], 0) + 1], '')
+      || coalesce((array['樂園','小島','秘密基地','度假村','遊樂場','花園','森林','營地','果園','城堡','小鎮','牧場','海灘','天堂','王國','農場','學院','碼頭','動物園','小屋','聖誕村','薑餅屋'])[coalesce(p_name[3], 0) + 1], '');
 $$;
 
 -- 同班同學的島，一頁 12 座（2026-11-05 Chuck：要能搜尋、翻頁）
