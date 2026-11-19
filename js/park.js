@@ -629,7 +629,8 @@ function paintSnow() {
   if (msg && msg !== snowShown && !select.hidden) { snowShown = msg; say('cheer', msg); snd.sfx('SE-19'); }
 }
 async function loadSnow(w) {
-  if (w?.kind !== 'student') { snow.set({ on: false, ended: false, tree: null }); paintSnow(); return; }
+  // 大聖誕樹全站都看得到（老師、爸媽登入也看得到）；沒登入就不讀
+  if (!w || w.kind === 'guest') { snow.set({ on: false, ended: false, tree: null }); paintSnow(); return; }
   await snow.load();
   paintSnow();
 }
