@@ -9,6 +9,7 @@ import { wrapWallet } from './wallet-scroll.js';
 import * as traveller from './traveller.js';
 import * as passport from './passport.js';
 import { sfx } from './audio.js';
+import * as snow from './snow.js';
 
 const $ = (s, root = document) => root.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -247,7 +248,7 @@ const TABS = [
   { id: 'theme', name: '島的風格', tip: '把整座寵物島換個樣子，買了在寵物島按「裝扮」換上' },
   { id: 'month', name: '本月限定', tip: '這個月才買得到，下個月就下架；買到的會一直留著' },
   // 活動商品（park_shop_items 有 sale_from 的）：開賣前先預告，風格可以去寵物島試套；有活動商品才出現這個分頁
-  { id: 'event', name: '🎄 聖誕', tip: '聖誕活動 11/25～12/31：還沒開賣的可以先看，島的風格可以去寵物島按「裝扮」試套；買到的會一直留著' },
+  { id: 'event', name: '🎄 聖誕', tip: '聖誕活動 11/25～12/31：可以用時光幣買，也可以用雪花結晶換（麋鹿雪橇只能用雪花換）。還沒開賣的可以先看，島的風格去寵物島按「裝扮」試套；買到的會一直留著' },
 ];
 let tab = 'wear';
 let shop = null;
@@ -257,7 +258,7 @@ export async function openShop(msg = null, startTab = null) {
   if (!st) return;
   if (startTab) tab = startTab;
   show('<div class="shop loading" role="dialog" aria-modal="true" aria-label="商店"><p>商店開門中…</p></div>');
-  try { shop = await auth.coins.shop(); } catch (err) { show(`<div class="shop"><button class="x" data-close aria-label="關閉"></button><p class="note bad">${esc(err.message)}</p></div>`); return; }
+  try { [shop] = await Promise.all([auth.coins.shop(), snow.load()]); } catch (err) { show(`<div class="shop"><button class="x" data-close aria-label="關閉"></button><p class="note bad">${esc(err.message)}</p></div>`); return; }
   paintShop(msg);
 }
 
@@ -278,15 +279,16 @@ function paintShop(msg = null) {
       ${art}
       <b>${esc(x.name)}</b><small>${esc(x.blurb)}${x.qty ? `・背包裡有 ${x.qty} 個` : ''}</small>
       ${own ? '<span class="have">已經有了</span>'
-        : x.soon ? `<button type="button" class="btn small coin" disabled title="${esc(x.soon)} 才開賣">${COIN}${x.price}・${esc(x.soon)} 開賣</button>`
-        : `<button type="button" class="btn small coin" data-buy="${esc(x.code)}" ${st.balance < x.price ? 'disabled' : ''}>${COIN}${x.price}</button>`}
+        : x.soon ? `<button type="button" class="btn small coin" disabled title="${esc(x.soon)} 才開賣">${x.snow_only ? `${snow.SNOW}${x.snow}` : `${COIN}${x.price}`}・${esc(x.soon)} 開賣</button>`
+        : `${x.snow_only ? '' : `<button type="button" class="btn small coin" data-buy="${esc(x.code)}" ${st.balance < x.price ? 'disabled' : ''}>${COIN}${x.price}</button>`}${x.snow
+            ? `<button type="button" class="btn small coin snowbuy" data-snowbuy="${esc(x.code)}" ${(snow.state()?.balance ?? 0) < x.snow || !snow.on() ? 'disabled' : ''}>${snow.SNOW}<span>${x.snow}</span></button>` : ''}`}
     </div>`;
   };
   const empty = tab === 'month' ? '這個月沒有限定商品，下個月再來看看。' : '還沒有東西。';
   show(`<div class="shop" role="dialog" aria-modal="true" aria-label="商店">
     <button class="x" data-close aria-label="關閉商店"></button>
     <div class="head"><h2><img src="img/ui/shop.webp" alt="">時空商店</h2>
-      <button type="button" class="bal" data-wallet aria-label="我的時光幣">${COIN}<b>${st.balance}</b></button></div>
+      <button type="button" class="bal" data-wallet aria-label="我的時光幣">${COIN}<b>${st.balance}</b></button>${tab === 'event' && snow.state() ? `<span class="snow-bal">${snow.SNOW}<b>${snow.state().balance}</b></span>` : ''}</div>
     <nav class="tabs" role="tablist" aria-label="商品分類">${TABS.filter((x) => x.id !== 'event' || shop.items.some((i) => i.cat === 'event')).map((x) => `<button type="button" role="tab" class="tab${x.id === tab ? ' on' : ''}" aria-selected="${x.id === tab}" data-tab="${x.id}">${x.name}${['month', 'event'].includes(x.id) && shop.items.some((i) => i.cat === x.id) ? '<i class="new">新</i>' : ''}</button>`).join('')}</nav>
     <p class="lead">${esc(t.tip)}</p>
     ${msg ? `<p class="note ${msg[0]}">${esc(msg[1])}</p>` : ''}
@@ -298,6 +300,21 @@ function paintShop(msg = null) {
   $('[data-wallet]', layer).onclick = () => openWallet();
   const ward = $('[data-ward]', layer);
   if (ward) ward.onclick = () => { close(); traveller.open(); };
+  // 聖誕活動：用雪花結晶換（park_snow_buy）
+  layer.querySelectorAll('[data-snowbuy]').forEach((b) => {
+    b.onclick = async () => {
+      const x = shop.items.find((i) => i.code === b.dataset.snowbuy);
+      if (!b.dataset.sure) { b.dataset.sure = '1'; b.lastChild.textContent = `${x.snow} 確定換？`; return; }
+      b.disabled = true;
+      try {
+        shop = await auth.snow.buy(x.code);
+        snow.set({ balance: shop.snow });
+        sfx('SE-20');
+        dispatchEvent(new CustomEvent('park:shop', { detail: { kind: x.kind ?? x.cat, code: x.code } }));
+        paintShop(['ok', x.kind === 'theme' ? `換好了！去寵物島按「裝扮」，就能換成「${x.name}」。` : `換好了！「${x.name}」已經放進寵物島的傢俱裡。`]);
+      } catch (err) { paintShop(['bad', err.message]); }
+    };
+  });
   layer.querySelectorAll('[data-buy]').forEach((b) => {
     b.onclick = async () => {
       const x = shop.items.find((i) => i.code === b.dataset.buy);

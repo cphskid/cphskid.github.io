@@ -124,6 +124,16 @@ if (q.get('deco')) {
     react: async (id, k) => { const v = isles.find((x) => x.id === id); v.love[k]++; v.mine = k; return { love: v.love, mine: k }; },
   });
 }
+// ?snow=1：聖誕活動（雪花、降臨月曆、滑雪）用假的資料；&adv=7 假裝今天是月曆第 7 格
+if (q.get('snow')) {
+  const N = { on: true, starts: '2026-11-25', ends: '2026-12-31', balance: 23, today: { ski: 4, learn: 6, daily: 5, pet: 1 }, caps: { ski: 12, learn: 10, daily: 5, pet: 3 },
+    ski: { best: 512, runs: 3 }, advent: { today: +(q.get('adv') ?? 7), opened: [{ day: 1 }, { day: 2 }, { day: 4 }], makeups: 1 }, tree: { total: 9876 }, converted: 0 };
+  Object.assign(auth.snow, {
+    me: async () => JSON.parse(JSON.stringify(N)),
+    advent: async (d) => { N.advent.opened.push({ day: d, late: d < N.advent.today }); if (d < N.advent.today) N.advent.makeups--; return { ...JSON.parse(JSON.stringify(N)), gift: { day: d } }; },
+    ski: async (got, dist) => { const g = Math.min(got, 12 - N.today.ski); N.today.ski += g; N.balance += g; N.ski.best = Math.max(N.ski.best, dist); return { ...JSON.parse(JSON.stringify(N)), got: g, best: N.ski.best }; },
+  });
+}
 const stage = document.getElementById('stage');
 const ui = document.getElementById('ui');
 const fit = () => { stage.style.setProperty('--s', Math.min(innerWidth / 1600, innerHeight / 900)); ui.style.setProperty('--vw', innerWidth); ui.style.setProperty('--vh', innerHeight); };

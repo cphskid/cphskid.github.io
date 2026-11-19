@@ -17,6 +17,7 @@ import * as isle from './isle.js';
 import * as W from './isleworld.js';
 import { SETS, SET_ITEMS, notYet, soonText } from './islesets.js';
 import * as games from './petgames.js';
+import * as snow from './snow.js';
 
 const $ = (s, root = document) => root.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -103,6 +104,7 @@ export async function load() {
   }
   // 商店買的傢俱（park_coins.sql 沒裝就沒有）
   bought = state ? await (api.furniture ?? auth.coins.furniture)().catch(() => []) : [];
+  if (state) await Promise.all([snow.load()]);   // 聖誕活動（park_snow.sql；沒裝或活動外就是 null，按鈕不出現）
   if (state) await isle.load();      // 島的風格、島名、擺放（park_isle.sql 沒裝就只存在這台裝置）
   if (state?.granted?.length) news = state.granted;
   if (state?.hatched?.length) hatchQ = [...hatchQ, ...state.hatched.filter((c) => !hatchQ.includes(c))];
@@ -496,6 +498,7 @@ function openScene({ select, say: first } = {}) {
     ${isle.inboxHtml()}
     <p class="hint">拖曳可以看整座島，兩指或滾輪放大縮小；按住寵物或蛋可以搬到別的地方</p>
     <div class="zoom" aria-label="放大縮小"><button type="button" data-zoom="1.25" aria-label="放大">＋</button><button type="button" data-zoom="0.8" aria-label="縮小">－</button></div>
+    ${snow.petButtons()}
     <div class="dock"><div class="pals-s"></div><nav class="bar" aria-label="照顧"></nav></div>
     <div class="bagpop" hidden></div>
     <div class="deco-top" hidden></div>
@@ -539,6 +542,16 @@ function openScene({ select, say: first } = {}) {
   const feat = isle.greet();
   $('[data-inbox-ok]', layer)?.addEventListener('click', (e) => { e.currentTarget.closest('.isle-inbox').remove(); isle.inboxSeen(); });
   $('[data-love]', layer)?.addEventListener('click', openLove);
+  // 聖誕活動：降臨月曆、雪山滑雪橇（js/snow.js、js/ski.js）
+  $('[data-snow-advent]', layer)?.addEventListener('click', () => snow.openAdvent({ onGift: async (g) => {
+    if (g?.kind === 'furn') bought = await (api.furniture ?? auth.coins.furniture)().catch(() => bought);
+    if (g?.kind === 'pet') { try { state = await api.me(); } catch { /* 下次再讀 */ } }
+    paintSnowDock();
+  } }));
+  $('[data-snow-ski]', layer)?.addEventListener('click', async () => {
+    const { openSki } = await import('./ski.js');
+    openSki({ pet: myPet() ?? petById(selected), onClose: paintSnowDock });
+  });
   // 「去看看」：來拜訪、留圖示的朋友，點了直接參觀他的島（從愛心面板來的，回去時再打開面板）
   $('.pisle', layer).addEventListener('click', (e) => {
     const b = e.target.closest('[data-fan]');
@@ -1311,6 +1324,16 @@ function paintDeco() {
     });
   }
 }
+// 雪花數字、月曆紅點跟著更新（按鈕本身留著，事件不用重綁）
+function paintSnowDock() {
+  const box = $('.snow-dock', layer);
+  if (!box) return;
+  const b = $('.snow-bal b', box); if (b) b.textContent = snow.state()?.balance ?? 0;
+  const s = snow.state(), open = new Set((s?.advent?.opened ?? []).map((x) => x.day));
+  const dot = $('[data-snow-advent] .dot', box);
+  if (dot && !(s?.advent?.today > 0 && !open.has(s.advent.today))) dot.remove();
+}
+addEventListener('park:snow', () => paintSnowDock());
 function toolIcon(id) {
   const kind = W.kindOf(id);
   if (kind === 'tile') return `<img src="img/pet/furniture/${id}.webp" alt="">`;
