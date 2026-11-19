@@ -1333,7 +1333,7 @@ function paintSnowDock() {
   const dot = $('[data-snow-advent] .dot', box);
   if (dot && !(s?.advent?.today > 0 && !open.has(s.advent.today))) dot.remove();
 }
-addEventListener('park:snow', () => paintSnowDock());
+addEventListener('park:snow', () => { paintSnowDock(); actors.forEach(dress); });
 function toolIcon(id) {
   const kind = W.kindOf(id);
   if (kind === 'tile') return `<img src="img/pet/furniture/${id}.webp" alt="">`;
@@ -2129,6 +2129,10 @@ function dress(a) {
   a.el.classList.toggle('sel', p.id === selected);
   a.el.setAttribute('aria-label', `${p.name}（${m === 'quiet' ? '上課時間在休息' : MOOD[m]}）`);
   $('.tag', a.el).textContent = p.name;
+  // 全站大聖誕樹第 2 層：夥伴戴聖誕帽（js/snow.js；孩子可以在村莊的大樹卡關掉）
+  const hat = $('.body .hat', a.el);
+  if (snow.hasHat() && !hat) $('.body', a.el).insertAdjacentHTML('beforeend', '<img class="hat" src="img/xmas/hat.webp" alt="">');
+  else if (!snow.hasHat() && hat) hat.remove();
   const mark = p.active ? MARK[m] ?? '' : '';
   const bub = $('.bub', a.el);
   if (!a.talking) { bub.textContent = mark; bub.hidden = !mark; bub.className = 'bub mark'; }

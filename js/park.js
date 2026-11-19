@@ -10,6 +10,7 @@ import * as repair from './repair.js';
 import * as news from './news.js';
 import * as install from './install.js';
 import * as parent from './parent.js';
+import * as snow from './snow.js';
 import { facilityStatus, db, wish, quiz } from './auth.js';
 import * as snd from './audio.js';
 import * as playlog from './playlog.js';
@@ -469,6 +470,7 @@ function showMap({ animate = true } = {}) {
   if (stamped) setTimeout(() => snd.sfx('SE-19'), 700);
   say(stamped ? 'cheer' : 'wave', greeting());
   news.onMap();
+  paintSnow();
   setTimeout(askTraveller, reduceMotion ? 300 : 1500);
   if (animate) {
     select.classList.add('entering');
@@ -589,6 +591,19 @@ function villageHtml() {
     <div class="fac"><h3>我的桌寵</h3><p>你的桌寵住在村莊旁邊的寵物島。照顧中的那隻會肚子餓，記得常回來餵牠、陪牠玩；在各島完成任務還會拿到牠最愛的點心。</p>
     <div class="row"><button type="button" class="btn go" data-open-pet>去看桌寵</button></div></div>`;
 }
+// 聖誕活動：村莊島上的全站大聖誕樹（js/snow.js）；學生才讀，讀不到（活動沒開、資料庫沒裝）就什麼都不畫
+let snowShown = '';
+function paintSnow() {
+  snow.paintMapTree(islesLayer.querySelector('.isle[data-zone="village"] .lift'));
+  const msg = snow.freshText();
+  if (msg && msg !== snowShown && !select.hidden) { snowShown = msg; say('cheer', msg); snd.sfx('SE-19'); }
+}
+async function loadSnow(w) {
+  if (w?.kind !== 'student') { snow.set({ on: false, ended: false, tree: null }); paintSnow(); return; }
+  await snow.load();
+  paintSnow();
+}
+addEventListener('park:snow', paintSnow);
 function openCard(z) {
   const facs = facilitiesOf(z.code);
   const village = z.code === 'village';
@@ -598,7 +613,7 @@ function openCard(z) {
     <div class="art"><img crossorigin="anonymous" src="${esc(z.art)}" alt="">${z.badge ? `<img class="badge" src="${esc(z.badge)}" alt="">` : ''}</div>
     <div><h2>${esc(z.name)}</h2><p class="lead">${esc(z.description)}</p>
     ${village ? '' : news.cardHtml(z.code)}
-    ${village ? news.villageHtml() + villageHtml() : facs.length ? facs.map((f) => facilityHtml(f, z)).join('') : '<p class="lead">島上的設施還在規劃。</p>'}
+    ${village ? news.villageHtml() + (account.current().kind === 'student' ? snow.treeHtml() : '') + villageHtml() : facs.length ? facs.map((f) => facilityHtml(f, z)).join('') : '<p class="lead">島上的設施還在規劃。</p>'}
     <div class="say"><img src="img/tick/${face}.webp" alt="滴答"><p>${line}</p></div></div></div>`;
   veil.hidden = false;
   snd.sfx('SE-03');
@@ -613,6 +628,7 @@ function openCard(z) {
   veil.querySelector('[data-open-board]')?.addEventListener('click', () => { closeCard(); news.openBoard(); });
   veil.querySelectorAll('a.btn.go').forEach((a) => a.addEventListener('click', () => news.entered(z.code)));
   veil.querySelectorAll('[data-wish]').forEach(initWish);
+  snow.bindTree(veil);
   (veil.querySelector('.card .btn') ?? $('#close')).focus();
 }
 // 進設施：時空傳送門轉一圈再換頁
@@ -796,6 +812,7 @@ function onAccountChange(w) {
   install.load(w);
   parent.load(w);
   news.load();
+  loadSnow(w);
   playlog.active(w.kind === 'student' && !select.hidden);
   if (w.kind === 'guest' && !select.hidden) { history.replaceState(null, '', location.pathname); showTitle(); }
 }
@@ -807,6 +824,7 @@ starter.load(me);
 install.load(me);
 parent.load(me);
 news.load();
+loadSnow(me);
 paintQuiz();
 if (route && me.kind === 'guest') {
   // 從遊戲回來但已經登出（或換人用平板）：先回開場，按 Start 再登入

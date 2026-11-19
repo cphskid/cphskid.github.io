@@ -105,3 +105,64 @@ export function openAdvent({ onGift } = {}) {
     });
   }
 }
+
+// ---------- 全站大聖誕樹（大廳村莊廣場、鐘塔前） ----------
+// 大家「賺到」的雪花都會點亮它（換東西不會扣）。亮到每一層，活動期間賺過雪花的人都拿到那層的禮物。
+export const TIERS = [
+  ['雪花頭像框', 'img/xmas/snow.webp'],
+  ['寵物聖誕帽', 'img/xmas/hat.webp'],
+  ['聖誕樹傢俱', 'img/pet/furniture/xm-tree.webp'],
+  ['島名聖誕字', 'img/xmas/advent.webp'],
+  ['點燈小幫手框＋全站煙火', 'img/xmas/tree.webp'],
+];
+const tree = () => st?.tree ?? null;
+const fmt = (n) => Number(n ?? 0).toLocaleString('zh-TW');
+export function treeLevel() {
+  const t = tree();
+  if (!t?.tiers) return { lv: 0, pct: 0 };
+  const lv = t.tiers.filter((x) => t.total >= x).length;
+  // 一層一層亮：每層占樹的 1/5，層裡面照進度慢慢往上
+  const lo = t.tiers[lv - 1] ?? 0, hi = t.tiers[lv];
+  const part = hi ? (t.total - lo) / (hi - lo) : 0;
+  return { lv, pct: Math.min(1, (lv + part) / t.tiers.length) };
+}
+export const hasHat = () => !!tree()?.got?.includes(2) && hatOn();
+function hatOn() { try { return localStorage.getItem('park:snow-hat') !== '0'; } catch { return true; } }
+function setHat(v) { try { localStorage.setItem('park:snow-hat', v ? '1' : '0'); } catch { /* 存不到就算了 */ } }
+
+// 地圖上村莊島的那棵樹（亮的部分從下往上長）
+function treeArt(cls = '') {
+  const { lv, pct } = treeLevel();
+  return `<span class="xtree ${cls}${lv >= 5 ? ' full' : ''}" style="--lit:${(pct * 100).toFixed(1)}%">
+    <img class="xt-dim" src="img/xmas/tree.webp" alt=""><img class="xt-lit" src="img/xmas/tree.webp" alt="">${lv >= 5 ? '<i class="fw a"></i><i class="fw b"></i><i class="fw c"></i>' : ''}</span>`;
+}
+export function paintMapTree(lift) {
+  document.querySelectorAll('.xtree.map').forEach((el) => el.remove());
+  if (!lift || !tree()?.tiers || !(st.on || st.ended)) return;
+  lift.insertAdjacentHTML('beforeend', treeArt('map'));
+}
+
+// 村莊卡片裡的大樹說明卡
+export function treeHtml() {
+  const t = tree();
+  if (!t?.tiers || !(st.on || st.ended)) return '';
+  const { lv } = treeLevel();
+  const next = t.tiers[lv];
+  const got = new Set(t.got ?? []);
+  return `<div class="fac xtree-card"><h3>全站大聖誕樹</h3>
+    <div class="row">${treeArt('big')}
+      <div><p>大家賺到的每一片雪花都會點亮這棵樹（拿去換東西也不會扣）。已經點亮 <b>${fmt(t.total)}</b> 盞燈${next ? `，再 <b>${fmt(next - t.total)}</b> 盞亮到第 ${lv + 1} 層` : '，整棵樹都亮了！'}。</p>
+      <p>你一共點了 <b>${fmt(t.mine)}</b> 盞，今天 <b>${fmt(t.mine_today)}</b> 盞。${t.mine > 0 ? '' : '賺到 1 片雪花就算參加，亮到的每一層禮物都有你一份！'}</p></div></div>
+    <ol class="xtiers">${TIERS.map(([n, img], i) => `<li class="${lv > i ? 'on' : ''}${got.has(i + 1) ? ' got' : ''}"><img src="${img}" alt=""><b>第 ${i + 1} 層</b><small>${n}</small><em>${got.has(i + 1) ? '已拿到' : lv > i ? '賺 1 片雪花就拿到' : fmt(t.tiers[i]) + ' 盞'}</em></li>`).join('')}</ol>
+    ${got.has(2) ? `<label class="xhat"><input type="checkbox" data-snow-hat${hatOn() ? ' checked' : ''}> 寵物島的夥伴戴聖誕帽</label>` : ''}
+  </div>`;
+}
+export function bindTree(root) {
+  root.querySelector('[data-snow-hat]')?.addEventListener('change', (e) => { setHat(e.target.checked); set(); });
+}
+// 剛亮到新的一層：告訴孩子拿到什麼
+export function freshText() {
+  const f = tree()?.fresh ?? [];
+  if (!f.length) return '';
+  return `大聖誕樹亮到第 ${f[f.length - 1]} 層了！你拿到：${f.map((k) => TIERS[k - 1][0]).join('、')}。`;
+}
