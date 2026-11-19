@@ -1,6 +1,8 @@
 // 聖誕活動：雪山滑雪橇（2026-11-19 Chuck：玩法像 Ski Safari 那種無盡下坡，提案頁第二版 A）
 // 自己的夥伴坐雪橇往下衝，沒有終點，後面雪崩越滾越快，被追上才結束；地形一段一段隨機接（緩坡、陡坡、小山丘、平地、跳台、斷崖、大波浪）。
 //   點一下＝跳；在空中按住＝後空翻，平穩落地加速（翻越多圈加速越久）；落地歪掉會摔一下變慢。
+//   2026-11-19 Chuck 要像 Ski Safari 的飛行：重力變輕、跳台斷崖加大、飛到最高點會停一下；空中點兩下＝俯衝（落在下坡大加速）；
+//   大冠鷲會把夥伴抓起來飛一段，放手時可以俯衝；後空翻圈數決定加速的火焰（1 圈橘火、2 圈藍火、3 圈以上彩虹火，火燒著撞得碎石頭）。
 //   坐騎：麋鹿（空中多跳一次）、小北極熊（撞開石頭）、大雪球（滾過一切，6 秒後散掉）。從坐騎摔下來不算輸，回到雪橇。
 //   撿雪花、禮物；經過山腳小屋時禮物丟進煙囪，一個禮物多 1 片雪花。
 //   夥伴本事：獨角獸、藍鵲多跳一次；小火龍撞石頭不會摔；小貓、石虎吸雪花範圍大。
@@ -11,13 +13,14 @@ import { sfx } from './audio.js';
 
 const $ = (s, root = document) => root.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const SPRITES = ['deer', 'bear', 'ball', 'rock', 'gift', 'house', 'pine', 'wave', 'sled'];
+const SPRITES = ['deer', 'bear', 'ball', 'rock', 'gift', 'house', 'pine', 'wave', 'sled', 'eagle'];
 const ABILITY = {
   unicorn: ['air', '獨角獸：空中可以多跳一次'], magpie: ['air', '藍鵲：空中可以多跳一次'],
   dragon: ['rock', '小火龍：撞到石頭也不會摔'], kitten: ['magnet', '小貓：吸雪花的範圍比較大'], 'leopard-cat': ['magnet', '石虎：吸雪花的範圍比較大'],
 };
 
 let veil = null, raf = 0, imgs = {};
+const EAGLE_TEST = /[?&]eagle=1/.test(location.search);   // 測試用：老鷹常常出現（tools/test/pet-preview.html?snow=1&eagle=1）
 function load(src) { return new Promise((ok) => { const i = new Image(); i.onload = () => ok(i); i.onerror = () => ok(null); i.src = src; }); }
 
 export async function openSki({ pet, onClose } = {}) {
@@ -41,7 +44,8 @@ export async function openSki({ pet, onClose } = {}) {
         <span class="snow-bal">${snow.SNOW}<b>${s?.balance ?? 0}</b></span></div>
       ${msg ?? ''}
       <ul class="how">
-        <li><b>點一下</b>跳起來；在空中<b>按住</b>會後空翻，平穩落地就加速</li>
+        <li><b>點一下</b>跳起來；在空中<b>按住</b>會後空翻，平穩落地就加速：翻 1 圈橘色火焰、2 圈藍色火焰、3 圈彩虹火焰，火燒著撞得碎石頭</li>
+        <li>在空中<b>點兩下</b>會俯衝，落在下坡大加速；看到<b>大冠鷲</b>就跳起來，牠會抓著你飛一段</li>
         <li>跳上<b>麋鹿</b>可以在空中多跳一次、<b>小北極熊</b>撞得開石頭、<b>大雪球</b>什麼都滾得過</li>
         <li>撿<b>雪花</b>和<b>禮物</b>；經過山腳小屋時禮物會丟進煙囪，多拿雪花</li>
         ${ab ? `<li class="ab">✨ ${esc(ab[1])}</li>` : ''}
@@ -80,7 +84,7 @@ export async function openSki({ pet, onClose } = {}) {
         const i = pts.length, x = i * STEP;
         if (segLeft <= 0) {
           seg = x < 800 ? 'gentle' : pickSeg(x);
-          segN = { gentle: 14, steep: 10, moguls: 16, flat: 6, ramp: 6, cliff: 3, wave: 18 }[seg] + Math.floor(Math.random() * 6);
+          segN = { gentle: 14, steep: 10, moguls: 16, flat: 6, ramp: 8, cliff: 3, wave: 18 }[seg] + Math.floor(Math.random() * 6);
           segLeft = segN; phase = 0;
         }
         const k = segN - segLeft;                           // 這一段的第幾格
@@ -90,8 +94,8 @@ export async function openSki({ pet, onClose } = {}) {
         else if (seg === 'flat') dy = .06;
         else if (seg === 'moguls') dy = .3 + Math.sin(k * STEP / 90 * Math.PI) * .55;
         else if (seg === 'wave') dy = .4 + Math.sin(k * STEP / 300 * Math.PI) * .7;
-        else if (seg === 'ramp') dy = k < segN - 2 ? .1 - (k / segN) * 1.1 : 1.6;   // 往上翹，最後掉下去
-        else dy = k === 1 ? 5 + Math.random() * 2 : .4;      // 斷崖：中間一格直直掉
+        else if (seg === 'ramp') dy = k < segN - 2 ? .1 - (k / segN) * 1.5 : 1.8;   // 往上翹，最後掉下去
+        else dy = k === 1 ? 7 + Math.random() * 4 : .4;      // 斷崖：中間一格直直掉
         pts.push(pts[i - 1] + dy * STEP);
         segLeft -= 1;
       }
@@ -107,8 +111,9 @@ export async function openSki({ pet, onClose } = {}) {
     };
     const slope = (x) => (hill(x + 2) - hill(x - 2)) / 4;
     const lean = (x) => Math.atan((hill(x + 24) - hill(x - 24)) / 48);   // 雪橇有長度：前後兩點連線的角度，比單點穩
-    const P = { x: 0, y: hill(0), vx: 420, vy: 0, a: 0, ground: true, air: 0, spin: 0, mount: null, mountT: 0, stun: 0, boost: 0 };
-    const S = { t: 0, snow: 0, gifts: 0, ax: -1200, things: [], next: 500, over: false, holding: false, deliver: [] };
+    const P = { x: 0, y: hill(0), vx: 420, vy: 0, a: 0, ground: true, air: 0, spin: 0, mount: null, mountT: 0, stun: 0, boost: 0, fire: 0, hang: 0, dive: false, eagle: 0 };
+    const S = { t: 0, snow: 0, gifts: 0, ax: -1200, things: [], next: 500, over: false, holding: false, holdT: 0, tapAt: -9, deliver: [] };
+    const G = 1100;                                    // 重力（輕一點，飛得久，才翻得了好幾圈）
     const extraJumps = () => (P.mount === 'deer' ? 1 : 0) + (ab?.[0] === 'air' ? 1 : 0);
     // 路上的東西：石頭、坐騎、雪花（一串弧線）、禮物、小屋（裝飾＋送禮）
     function spawn(x) {
@@ -117,6 +122,7 @@ export async function openSki({ pet, onClose } = {}) {
       else if (r < .4) S.things.push({ k: ['deer', 'bear', 'ball'][Math.floor(Math.random() * 3)], x, r: 34 });
       else if (r < .75) { for (let i = 0; i < 5; i++) S.things.push({ k: 'snow', x: x + i * 46, lift: 60 + Math.sin(i / 4 * Math.PI) * 70, r: 18 }); }
       else S.things.push({ k: 'gift', x, lift: 40 + Math.random() * 80, r: 22 });
+      if (x > (EAGLE_TEST ? 600 : 2500) && Math.random() < (EAGLE_TEST ? .7 : .09)) S.things.push({ k: 'eagle', x: x + 120, lift: 230 + Math.random() * 90, r: 60 });   // 大冠鷲：要跳起來才抓得到
       if (Math.random() < .22) S.things.push({ k: 'house', x: x + 260, r: 0 });
       if (Math.random() < .5) S.things.push({ k: 'pine', x: x + 120 + Math.random() * 200, r: 0, bg: true });
     }
@@ -124,8 +130,21 @@ export async function openSki({ pet, onClose } = {}) {
       if (S.over) return;
       S.holding = down;
       if (!down) return;
-      if (P.ground) { P.vy = -620 - (P.mount === 'deer' ? 80 : 0); P.ground = false; P.air = extraJumps(); P.spin = 0; sfx('SE-02'); }
-      else if (P.air > 0) { P.air -= 1; P.vy = -560; }
+      S.holdT = 0;
+      if (P.eagle > 0) { if (S.t - S.tapAt < .35) { release(); startDive(); } S.tapAt = S.t; return; }
+      if (P.ground) { P.vy = -700 - (P.mount === 'deer' ? 90 : 0); P.ground = false; P.air = extraJumps(); P.spin = 0; P.dive = false; S.tapAt = -9; sfx('SE-02'); return; }
+      if (S.t - S.tapAt < .35 && !P.dive) { startDive(); return; }   // 空中點兩下：俯衝
+      S.tapAt = S.t;
+      if (P.air > 0) { P.air -= 1; P.vy = -620; }
+    }
+    function startDive() {
+      if (P.ground) return;
+      P.dive = true; P.hang = 0; P.vy = Math.max(P.vy, 1300); S.holding = false;
+      sfx('SE-02');
+    }
+    function release() {
+      P.eagle = 0; P.vy = 120; P.air = extraJumps(); P.spin = 0;
+      S.deliver.push({ x: P.x + 60, y: P.y - 120, n: 0, t: 1.4, text: '點兩下俯衝！' });
     }
     const down = (e) => { if (e.target.closest('[data-quit]')) return; e.preventDefault(); press(true); };
     const up = () => press(false);
@@ -153,12 +172,20 @@ export async function openSki({ pet, onClose } = {}) {
       S.t += dt;
       const base = 420 + Math.min(S.t, 120) * 5.4;         // 自己也越滑越快，但兩分鐘後就不會再快（雪崩會）
       if (P.stun > 0) P.stun -= dt;
-      if (P.boost > 0) P.boost -= dt;
+      if (P.boost > 0 && (P.boost -= dt) <= 0) P.fire = 0;
+      if (S.holding) S.holdT += dt;
       if (P.mount === 'ball' && (P.mountT -= dt) <= 0) P.mount = null;
-      const want = (P.stun > 0 ? base * .45 : base) * (P.boost > 0 ? 1.45 : 1) * (P.mount === 'ball' ? 1.25 : 1);
+      const want = (P.stun > 0 ? base * .45 : base) * (P.boost > 0 ? [1.4, 1.45, 1.62, 1.85][P.fire] : 1) * (P.eagle > 0 ? 1.3 : 1) * (P.mount === 'ball' ? 1.25 : 1);
       P.vx += (want - P.vx) * Math.min(1, dt * 2.2);
       P.x += P.vx * dt;
-      if (P.ground) {
+      if (P.eagle > 0) {
+        // 被大冠鷲抓著：飛到坡上方 300 左右，沿路撿高空雪花；時間到放手
+        P.eagle -= dt;
+        const ty = hill(P.x + 200) - 320;
+        P.vy = (ty - P.y) * 2.5; P.y += P.vy * dt;
+        P.a += (-.12 - P.a) * Math.min(1, dt * 4);
+        if (P.eagle <= 0) release();
+      } else if (P.ground) {
         P.y = hill(P.x);
         P.a += (lean(P.x) - P.a) * Math.min(1, dt * 14);   // 角度慢慢轉過去，不會一格一格跳
         // 跳台頂端會飛起來
@@ -168,18 +195,27 @@ export async function openSki({ pet, onClose } = {}) {
         else {
           // 衝過坡頂太快會自然飛起來（重力拉不住），不會硬貼著地面一頓一頓
           const curv = (slope(P.x + 6) - slope(P.x - 6)) / 12;
-          if (curv > 0 && P.vx * P.vx * curv > 1500 * 1.15) { P.ground = false; P.vy = P.vx * s1; P.air = extraJumps(); P.spin = 0; }
+          if (curv > 0 && P.vx * P.vx * curv > G * 1.15) { P.ground = false; P.vy = P.vx * s1; P.air = extraJumps(); P.spin = 0; }
         }
       } else {
-        P.vy += 1500 * dt;
+        // 飛到最高點停一下（夠高才停）
+        const was = P.vy;
+        if (P.hang > 0) P.hang -= dt;
+        P.vy += G * dt * (P.hang > 0 ? .15 : P.dive ? 2.2 : 1);
+        if (was < 0 && P.vy >= 0 && !P.dive && hill(P.x) - P.y > 140) P.hang = .3;
         P.y += P.vy * dt;
-        if (S.holding) { P.a -= 7 * dt; P.spin += 7 * dt; } else P.a += (lean(P.x) - P.a) * Math.min(1, dt * 3);
+        if (P.dive) P.a += (Math.atan2(P.vy, P.vx) * .6 - P.a) * Math.min(1, dt * 10);
+        else if (S.holding && S.holdT > .12) { P.a -= 7 * dt; P.spin += 7 * dt; }   // 按住一下下才開始翻（點兩下俯衝不會不小心翻到）
+        else P.a += (lean(P.x) - P.a) * Math.min(1, dt * 3);
         if (P.y >= hill(P.x)) land();
       }
       // 雪崩：比基本速度慢一點，摔倒就會被追上
       S.ax += (285 + S.t * 9.4) * dt;                     // 雪崩越滾越快，總有一天追上來；後空翻加速、騎坐騎才甩得開
       if (S.ax < P.x - 1200) S.ax = P.x - 1200;
       if (S.ax + 120 >= P.x) { end(); return; }
+      // 加速火焰：拖在雪橇後面
+      if (P.boost > 0 && P.fire) for (let i = 0; i < 2; i++) fx.push({ k: 'fire', lv: P.fire, x: P.x - 34 + (Math.random() - .5) * 10, y: P.y - 20 + (Math.random() - .5) * 26, vx: -90 - Math.random() * 120, vy: -30 - Math.random() * 60, t: .45 + Math.random() * .2, t0: .65, r: 9 + Math.random() * 8, h: Math.random() * 360 });
+      if (P.dive) fx.push({ k: 'puff', x: P.x, y: P.y - 30, vx: -40, vy: -260, t: .3, r: 3 });
       // 雪橇噴雪：越快噴越多
       if (P.ground && Math.random() < Math.min(1, P.vx / 500)) fx.push({ k: 'puff', x: P.x - 30, y: P.y - 4, vx: -60 - Math.random() * 80, vy: -80 - Math.random() * 120, t: .5 + Math.random() * .3, r: 3 + Math.random() * 4 });
       while (S.next < P.x + W * 2.2) { spawn(S.next); S.next += 260 + Math.random() * 260; }
@@ -193,10 +229,13 @@ export async function openSki({ pet, onClose } = {}) {
         const d = Math.hypot(o.x - P.x, oy - (P.y - 30));
         if (o.k === 'snow' && d < mag) { o.gone = true; S.snow += 1; sfx('SE-01'); }
         else if (o.k === 'gift' && d < 46) { o.gone = true; S.gifts += 1; sfx('SE-01'); }
+        else if (o.k === 'eagle' && d < 70 && !P.ground && P.eagle <= 0) { o.gone = true; P.eagle = 4; P.mount = P.mount === 'deer' ? 'deer' : null; P.dive = false; P.hang = 0; S.holding = false; sfx('SE-20');
+          for (let i = 0; i < 12; i++) S.things.push({ k: 'snow', x: P.x + 300 + i * 70, lift: 300 + Math.sin(i / 3) * 40, r: 18 });
+          S.deliver.push({ x: P.x, y: P.y - 140, n: 0, t: 1.2, text: '大冠鷲來幫忙了！' }); }
         else if (['deer', 'bear', 'ball'].includes(o.k) && d < 50) { o.gone = true; P.mount = o.k; P.mountT = 6; }
         else if (o.k === 'rock' && d < 38 && P.y > oy - 30) {
           o.gone = true;
-          if (P.mount === 'bear' || P.mount === 'ball' || ab?.[0] === 'rock') { sfx('SE-02'); }
+          if (P.mount === 'bear' || P.mount === 'ball' || ab?.[0] === 'rock' || (P.boost > 0 && P.fire)) { sfx('SE-02'); for (let i = 0; i < 8; i++) fx.push({ k: 'puff', x: o.x, y: oy, vx: (Math.random() - .3) * 300, vy: -150 - Math.random() * 200, t: .6, r: 4 + Math.random() * 4, c: '#9aa4b2' }); }
           else tumble();
         }
       }
@@ -216,10 +255,22 @@ export async function openSki({ pet, onClose } = {}) {
       const flips = Math.floor((P.spin + .6) / (Math.PI * 2));
       P.a = lean(P.x);
       fx.push(...Array.from({ length: 10 }, () => ({ k: 'puff', x: P.x + (Math.random() - .5) * 60, y: P.y - 4, vx: (Math.random() - .3) * 160, vy: -60 - Math.random() * 160, t: .6, r: 4 + Math.random() * 5 })));
+      P.hang = 0;
+      if (P.dive) {
+        // 俯衝：落在下坡大加速，落在平地或上坡會摔
+        P.dive = false;
+        if (sa > .18) { P.boost = Math.max(P.boost, 2.2); P.fire = Math.max(P.fire, 1); P.vx *= 1.15; S.deliver.push({ x: P.x, y: P.y - 110, n: 0, t: 1.1, text: '俯衝加速！' }); sfx('SE-20'); }
+        else tumble();
+        return;
+      }
       if (Math.abs(diff) > 1) { if (P.mount && P.mount !== 'ball') P.mount = null; else tumble(); return; }
-      if (flips > 0) { P.boost = 1.2 + flips * 1.3; S.deliver.push({ x: P.x, y: P.y - 110, n: 0, t: 1.1, text: flips > 1 ? `${flips} 圈！加速！` : '後空翻！加速！' }); sfx('SE-20'); }
+      if (flips > 0) {
+        // 翻越多圈火越旺：1 圈橘火、2 圈藍火、3 圈以上彩虹火（火燒著撞得碎石頭）
+        P.fire = Math.max(P.fire, Math.min(3, flips)); P.boost = 1.4 + flips * 1.4;
+        S.deliver.push({ x: P.x, y: P.y - 110, n: 0, t: 1.1, text: ['', '後空翻！橘色火焰！', '2 圈！藍色火焰！', `${flips} 圈！彩虹火焰！`][Math.min(3, flips)] }); sfx('SE-20');
+      }
     }
-    function tumble() { if (P.stun > 0) return; P.stun = 1; P.boost = 0; sfx('SE-02'); }
+    function tumble() { if (P.stun > 0) return; P.stun = 1; P.boost = 0; P.fire = 0; sfx('SE-02'); }
     const dist = () => Math.max(0, Math.round(P.x / 20));
 
     function draw(R, fdt) {
@@ -227,7 +278,7 @@ export async function openSki({ pet, onClose } = {}) {
       // 鏡頭：越快拉越遠、越往前看；跟得上但不會跟著每個小起伏上下抖
       // 飛很高的時候也拉遠，看得到底下的坡；鏡頭對準夥伴和地面中間
       const airH = Math.max(0, hill(R.x + 120) - R.y);
-      C.z += ((1 - Math.min(.28, sp * .3) - Math.min(.22, airH / 1800)) * Math.min(1, W / 700 + .25) - C.z) * Math.min(1, fdt * 2);
+      C.z += ((1 - Math.min(.28, sp * .3) - Math.min(.3, airH / 1400)) * Math.min(1, W / 700 + .25) - C.z) * Math.min(1, fdt * 2);
       const VW = W / C.z, VH = H / C.z;
       C.x = R.x;
       const ty = R.y + Math.min(airH * .5, VH * .25) - VH * (P.ground ? .52 : .5);
@@ -270,14 +321,28 @@ export async function openSki({ pet, onClose } = {}) {
         if (o.k === 'snow') { if (imgs.snow) ctx.drawImage(imgs.snow, x - 15, y - 34 + Math.sin(S.t * 5 + o.x) * 3, 30, 30); }
         else if (o.k === 'gift') sprite('gift', x, y, 44, 0, 1);
         else if (o.k === 'rock') sprite('rock', x, y + 6, 64, Math.atan(slope(o.x)), 1);
+        else if (o.k === 'eagle') eagle(x + Math.sin(S.t * 2 + o.x) * 20, y + 30 + Math.sin(S.t * 3 + o.x) * 12, 120);
         else sprite(o.k, x, y + 4, o.k === 'ball' ? 74 : 80, 0, 1);
       }
       // 自己
       // 雪花粒子
       for (const f of fx) { f.t -= fdt; f.x += f.vx * fdt; f.y += f.vy * fdt; f.vy += 400 * fdt; }
       for (let i = fx.length - 1; i >= 0; i--) if (fx[i].t <= 0) fx.splice(i, 1);
-      ctx.fillStyle = '#ffffff';
-      for (const f of fx) { ctx.globalAlpha = Math.min(1, f.t * 2); ctx.beginPath(); ctx.arc(f.x - camX, f.y - camY, f.r, 0, 7); ctx.fill(); }
+      for (const f of fx) {
+        if (f.k === 'fire') continue;
+        ctx.fillStyle = f.c ?? '#ffffff'; ctx.globalAlpha = Math.min(1, f.t * 2); ctx.beginPath(); ctx.arc(f.x - camX, f.y - camY, f.r, 0, 7); ctx.fill();
+      }
+      // 火焰：疊亮色，越新的越大越亮
+      ctx.globalCompositeOperation = 'lighter';
+      for (const f of fx) {
+        if (f.k !== 'fire') continue;
+        const k = f.t / f.t0, r = f.r * (.5 + k * .8), x = f.x - camX, y = f.y - camY;
+        const [c1, c2] = f.lv === 1 ? ['255,236,140', '255,110,20'] : f.lv === 2 ? ['210,250,255', '40,130,255'] : [`255,255,255`, hsl(f.h + S.t * 400)];
+        const gr = ctx.createRadialGradient(x, y, 0, x, y, r);
+        gr.addColorStop(0, `rgba(${c1},${k})`); gr.addColorStop(.45, `rgba(${c2},${k * .8})`); gr.addColorStop(1, `rgba(${c2},0)`);
+        ctx.globalAlpha = 1; ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
+      }
+      ctx.globalCompositeOperation = 'source-over';
       ctx.globalAlpha = 1;
       const px = R.x - camX, py = R.y - camY;
       ctx.save(); ctx.translate(px, py); ctx.rotate(R.a);
@@ -287,7 +352,9 @@ export async function openSki({ pet, onClose } = {}) {
       else sprite('sled', 0, 2, 96, 0, 1);
       const pi = P.ground ? imgs.pet : imgs.petJump;
       if (pi) { const h = 70, w = h * pi.width / pi.height; ctx.drawImage(pi, -w / 2 - 4, -h - (P.mount ? (P.mount === 'ball' ? 86 : 52) : 14), w, h); }
+      if (P.eagle > 0) eagle(0, -(P.mount ? 120 : 84), 150);       // 抓著夥伴的大冠鷲
       ctx.restore();
+      if (P.hang > 0 && !P.ground) { ctx.globalAlpha = Math.min(1, P.hang * 4); ctx.font = '900 18px "Noto Sans TC", sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = '#fff'; ctx.strokeStyle = '#1d3d7a'; ctx.lineWidth = 4; ctx.strokeText('點兩下俯衝', px, py - 120); ctx.fillText('點兩下俯衝', px, py - 120); ctx.globalAlpha = 1; }
       // 雪崩
       const wx = S.ax - camX;
       ctx.fillStyle = '#ffffff'; ctx.fillRect(wx - 2000, -10, 2000 - 60, H + 20);
@@ -318,6 +385,13 @@ export async function openSki({ pet, onClose } = {}) {
       if (gap < 360 && !S.over) { const a = (360 - gap) / 360 * .45; const lg = ctx.createLinearGradient(0, 0, W * .4, 0); lg.addColorStop(0, `rgba(255,255,255,${a})`); lg.addColorStop(1, 'rgba(255,255,255,0)'); ctx.fillStyle = lg; ctx.fillRect(0, 0, W * .4, H); }
       }
     }
+    // 大冠鷲：翅膀上下拍（垂直壓扁一點點）
+    function eagle(x, y, w) {
+      const im = imgs.eagle; if (!im) return;
+      const h = w * im.height / im.width, f = 1 + Math.sin(S.t * 14) * .12;
+      ctx.save(); ctx.translate(x, y); ctx.scale(1, f); ctx.drawImage(im, -w / 2, -h * .75, w, h); ctx.restore();
+    }
+    const hsl = (h) => { const c = (n) => { const k = (n + h / 30) % 12; return Math.round(255 * (.5 - .5 * Math.max(-1, Math.min(k - 3, 9 - k, 1)))); }; return `${c(0)},${c(8)},${c(4)}`; };
     function sprite(k, x, y, w, rot, alpha, center = false) {
       const im = imgs[k]; if (!im) return;
       const h = w * im.height / im.width;
