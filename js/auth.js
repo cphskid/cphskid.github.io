@@ -404,6 +404,14 @@ export const coins = {
   home:      () => ccall('park_app_home'),
 };
 
+// ---------- 聖誕活動：雪花結晶、降臨月曆、滑雪（supabase/park_snow.sql） ----------
+export const snow = {
+  me:      () => ccall('park_snow_me'),
+  ski:     (got, dist) => ccall('park_snow_ski_done', { p_snow: got, p_dist: dist }),
+  advent:  (day) => ccall('park_snow_advent_open', { p_day: day }),
+  buy:     (code) => ccall('park_snow_buy', { p_code: code }),
+};
+
 // ---------- 公共交誼廳＋同伴圈（supabase/park_lounge.sql） ----------
 // 孩子打開樂園時叫一次（這週第一次來就分圈）。state：{lounge, grade, no, size, real}；沒裝 SQL、不是學生是 null
 export const lounge = {
