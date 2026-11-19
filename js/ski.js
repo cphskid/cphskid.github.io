@@ -28,6 +28,8 @@ export async function openSki({ pet, onClose } = {}) {
   close();
   veil = document.createElement('div');
   veil.className = 'snow-veil ski';
+  // iPhone 長按會跳出「拷貝／查詢／翻譯」：整個滑雪畫面不讓選字、不跳選單
+  for (const ev of ['contextmenu', 'selectstart', 'dragstart']) veil.addEventListener(ev, (e) => e.preventDefault());
   document.body.appendChild(veil);
   const species = pet?.species ?? 'kitten', stage = pet?.stage ?? 1;
   const ab = ABILITY[species] ?? null;
@@ -206,7 +208,11 @@ export async function openSki({ pet, onClose } = {}) {
         P.y += P.vy * dt;
         if (P.knock) P.a += 13 * dt;                                       // 被石頭撞飛：往前翻滾
         else if (S.holding && S.holdT > .1) { P.a -= 7 * dt; P.spin += 7 * dt; }
-        else P.a += (lean(P.x) - P.a) * Math.min(1, dt * 3);
+        else {
+          // 放開：停在當下的角度（不會反方向轉回去）；只有快要正的時候才輕輕扶正，落地角度要自己抓
+          let d = (lean(P.x) - P.a) % (Math.PI * 2); if (d > Math.PI) d -= Math.PI * 2; if (d < -Math.PI) d += Math.PI * 2;
+          if (Math.abs(d) < .6) P.a += d * Math.min(1, dt * 3);
+        }
         if (P.y >= hill(P.x)) land();
       }
       // 雪崩：比基本速度慢一點，摔倒就會被追上
@@ -321,7 +327,11 @@ export async function openSki({ pet, onClose } = {}) {
         ctx.beginPath(); ctx.moveTo(x, b - h); ctx.lineTo(x + h * .32, b); ctx.lineTo(x - h * .32, b); ctx.fill();
       }
       // 背景小松樹與小屋
-      for (const o of S.things) if (o.k === 'pine' || o.k === 'house') sprite(o.k, o.x - camX, hill(o.x) - camY - 8, o.k === 'house' ? 120 : 80, 0, 1);
+      // 小屋和松樹種在坡上：底部對齊左右兩邊比較低的那點，再往下埋一點，前面的雪坡會蓋住底部（不會飄在空中）
+      for (const o of S.things) if (o.k === 'pine' || o.k === 'house') {
+        const w = o.k === 'house' ? 120 : 80, base = Math.max(hill(o.x - w * .4), hill(o.x + w * .4));
+        sprite(o.k, o.x - camX, base - camY + w * (o.k === 'house' ? .14 : .1), w, 0, 1);
+      }
       // 雪坡
       // 取樣點對齊世界座標（不跟著鏡頭小數點移動），坡的邊線才不會閃
       ctx.beginPath(); ctx.moveTo(-10, H + 10);

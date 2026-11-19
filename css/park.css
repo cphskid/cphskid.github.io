@@ -2103,7 +2103,7 @@ aside.care .buff small{display:block;font-weight:700;color:#8a6a4a;font-size:12p
 .ski-intro .row.end{display:flex;justify-content:flex-end;margin-top:12px}
 .ski-result{margin-top:12px;background:#eaf3ff;border-radius:14px;padding:10px 14px;color:#1f3c78}
 .ski-result p{margin:4px 0}.ski-result .big{font:900 20px/1.3 var(--f-disp)}
-.snow-veil.ski{padding:0;background:#22346b}
+.snow-veil.ski{padding:0;background:#22346b;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
 .snow-veil.ski .snow-box{margin:12px}
 .ski-cv{position:absolute;inset:0;touch-action:none;display:block}
 .ski-hud{position:absolute;left:calc(env(safe-area-inset-left) + 12px);top:calc(env(safe-area-inset-top) + 12px);display:flex;gap:8px;z-index:2;pointer-events:none}
