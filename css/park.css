@@ -731,7 +731,9 @@ aside.care .wish span img{width:40px;height:40px}
 /* 寵物島傢俱（可拖曳） */
 .prop{position:absolute;transform:translate(-50%,var(--base,-88%));border:0;padding:0;background:none;cursor:pointer;touch-action:none}
 .prop.movable{cursor:grab}
-.prop img{position:relative;display:block;width:100%;height:auto;pointer-events:none;-webkit-user-drag:none;filter:var(--tod) var(--wx) drop-shadow(0 4px 3px rgba(20,50,30,.3));transition:transform .15s}
+/* 2026-11-19 寵物島閃退：每件傢俱、圍籬、小路都掛 drop-shadow，iPhone 要為每一件另外開一張放大的畫布，擺多了記憶體爆掉。影子用底下的 .shadow 就好 */
+.prop img{position:relative;display:block;width:100%;height:auto;pointer-events:none;-webkit-user-drag:none;filter:var(--tod) var(--wx);transition:transform .15s}
+.pisle[data-tod=day][data-wx=sunny] :is(.prop img,.decor img,.actor.egg-nest img){filter:none}
 .prop .shadow{position:absolute;left:12%;right:12%;bottom:0;height:16%;border-radius:50%;background:rgba(30,60,20,.25);transition:transform .15s,opacity .15s}
 .prop.held{cursor:grabbing}
 .prop.held img{transform:translateY(-24px) scale(1.05)}
@@ -767,12 +769,12 @@ aside.care .wish span img{width:40px;height:40px}
 .pisle[data-wx=fog] .haze{background:radial-gradient(ellipse 40% 22% at 30% 50%,rgba(255,255,255,.55),transparent),radial-gradient(ellipse 45% 25% at 75% 65%,rgba(255,255,255,.5),transparent),rgba(235,242,248,.28);background-size:160% 100%;animation:clouds 30s ease-in-out infinite alternate}
 .pisle[data-season=winter][data-wx=snow] .haze{background:rgba(255,255,255,.14)}
 .pisle:is([data-tod=night],[data-tod=dusk]) .p-lantern::after{content:"";position:absolute;left:50%;top:30%;width:420%;aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle,rgba(255,214,110,.6),rgba(255,214,110,.15) 40%,transparent 68%);pointer-events:none;mix-blend-mode:screen;animation:twinkle 3s ease-in-out infinite}
-.pisle[data-tod=night] .p-lantern img{filter:brightness(1.05) drop-shadow(0 0 10px rgba(255,214,110,.9))}
+.pisle[data-tod=night] .p-lantern img{filter:brightness(1.15)}
 /* 萬聖節：南瓜燈（商店傢俱＋島上的小裝飾）傍晚、晚上會亮（光暈用 ::before，::after 是 NEW 標籤） */
 .pisle .decor{position:absolute;transform:translate(-50%,-88%);pointer-events:none}
 .pisle .decor img{width:100%;display:block;filter:var(--tod) var(--wx)}
 .pisle:is([data-tod=night],[data-tod=dusk]) :is(.p-pumpkin-lamp,.d-pumpkin)::before{content:"";position:absolute;left:50%;top:55%;width:300%;aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle,rgba(255,170,60,.55),rgba(255,150,40,.12) 40%,transparent 68%);pointer-events:none;mix-blend-mode:screen;animation:twinkle 3s ease-in-out infinite}
-.pisle:is([data-tod=night],[data-tod=dusk]) :is(.p-pumpkin-lamp,.d-pumpkin) img{filter:brightness(1.1) drop-shadow(0 0 8px rgba(255,160,50,.9))}
+.pisle:is([data-tod=night],[data-tod=dusk]) :is(.p-pumpkin-lamp,.d-pumpkin) img{filter:brightness(1.15)}
 @keyframes clouds{from{background-position:0 0}to{background-position:100% 0}}
 .pisle .skychip{position:absolute;right:calc(env(safe-area-inset-right) + 80px);top:calc(env(safe-area-inset-top) + 22px);margin:0;padding:7px 14px;border-radius:99px;background:rgba(255,255,255,.85);font:800 16px/1 var(--f-body);color:var(--wood);pointer-events:none;z-index:15}
 .pisle .hint{z-index:15}
@@ -803,7 +805,7 @@ aside.care .wish span img{width:40px;height:40px}
 .ball.gone{opacity:0;transition:opacity .45s}
 .prop.new img{animation:newFurn 1s ease-in-out 3}
 .prop.new::after{content:"NEW";position:absolute;left:50%;top:-6px;transform:translateX(-50%);font:900 13px/1 var(--f-disp);color:#fff;background:#e2553f;border:2px solid #fff;border-radius:99px;padding:3px 8px;pointer-events:none}
-@keyframes newFurn{0%,100%{transform:none;filter:var(--tod) var(--wx) drop-shadow(0 4px 3px rgba(20,50,30,.3))}50%{transform:translateY(-10px) scale(1.06);filter:var(--tod) var(--wx) brightness(1.15) drop-shadow(0 0 10px #fff7b0)}}
+@keyframes newFurn{0%,100%{transform:none;filter:var(--tod) var(--wx)}50%{transform:translateY(-10px) scale(1.06);filter:var(--tod) var(--wx) brightness(1.15)}}
 #petroom .furn-i small{font:800 11px/1 var(--f-body);color:#b0603a}
 #petroom button.furn-i{cursor:pointer;font:inherit}
 #petroom button.furn-i:hover,#petroom button.furn-i:focus-visible{border-color:var(--wood);outline:none;transform:translateY(-1px)}
