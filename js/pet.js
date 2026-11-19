@@ -621,6 +621,9 @@ async function tintTiles() {
 async function paintLand(src) {
   const turn = ++landTurn, cv = $('canvas.land', layer);
   if (!cv) { const fb = $('img.land', layer); if (fb) fb.src = src; return; }
+  // 連點好幾個風格試套時，只解最後點的那張（一張大島圖解開約 8MB，同時解好幾張 iPhone 會閃退）
+  await new Promise((ok) => setTimeout(ok, 180));
+  if (turn !== landTurn) return;
   let im = null;
   for (let tries = 0; tries < 2 && !im; tries++) {
     const one = new Image();
@@ -634,6 +637,7 @@ async function paintLand(src) {
   try {
     if (!cv.getContext('2d')) throw new Error('no canvas');
     paintTinted(cv, im, skyM, { y: 18 * k, blur: 18 * k, color: 'rgba(0,40,80,.35)' });
+    im.src = '';                 // 畫進 canvas 就放掉解開的原圖
   } catch {
     // canvas 開不出來（手機記憶體緊）：退回直接放原圖（不變色、不加影子），至少島看得到
     const fb = document.createElement('img');
@@ -794,7 +798,8 @@ async function revealScene() {
   span('寵物島掀開', t0);
   // 背景只預讀選到的那隻（夥伴少的話全部）的其他動作；其他風格的大島圖不預讀（一張解開要 8MB），只抓小縮圖
   const warmPets = actors.filter((a) => a.p.id === selected || actors.length <= 3);
-  warm(...new Set(warmPets.map((a) => `img/pet/${a.p.species}/${a.p.stage}-`)), 'img/pet/food/', 'img/pet/furniture/', 'img/pet/build/', 'img/pet/land2/s-');
+  // 傢俱只預讀自己有的（0.50 起傢俱從 36 件變 104 件，全部抓會讓 iPhone 記憶體吃緊、寵物島閃退）
+  warm(...new Set(warmPets.map((a) => `img/pet/${a.p.species}/${a.p.stage}-`)), 'img/pet/food/', ...ownedFurnSrcs(), 'img/pet/build/', 'img/pet/land2/s-');
   guideFirst();
 }
 
@@ -916,6 +921,8 @@ function ownedFurniture() {
   const stamps = state?.stamps ?? 0;
   return PROPS.map((d) => d.id).filter((id) => STARTER.includes(id) || stamps >= (FURN_STAMP[id] ?? 99) || bought.includes(id));
 }
+// 自己有的傢俱圖（預讀用）
+export const ownedFurnSrcs = () => Object.keys(FURN_NAME).filter((id) => owns(id) && !all()).map((id) => `img/pet/furniture/${id}.webp`);
 const owns = (id) => FREE.includes(id) || ownedFurniture().includes(id) || bought.includes(id) || (all() && (HOUSES.includes(id) || FARM.includes(id) || SET_ITEMS.some((x) => x.id === id)))
   || (FARM_STAMP[id] && (state?.stamps ?? 0) >= FARM_STAMP[id]);
 // 這次打開才解鎖的傢俱（記在這台電腦，只慶祝一次）
