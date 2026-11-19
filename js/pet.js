@@ -15,6 +15,7 @@ import { span } from './perf.js';
 import * as playlog from './playlog.js';
 import * as isle from './isle.js';
 import * as W from './isleworld.js';
+import { SETS, SET_ITEMS } from './islesets.js';
 import * as games from './petgames.js';
 
 const $ = (s, root = document) => root.querySelector(s);
@@ -868,6 +869,13 @@ const SHOP_FURN = { scratcher: 120, sandbox: 150, trampoline: 180, hammock: 200,
 const LIMITED = new Set(['rabbit-lamp', 'pumpkin-lamp', 'ghost-house', 'candy-bucket', 'web-swing', 'house-igloo']);   // 本月限定：沒買到就不放進清單
 const PARENT_FURN = { 'family-bench': '爸媽送貼紙', 'family-photo': '聯絡簿簽 4 次' };   // 爸媽任務送的：還沒拿到時寫怎麼拿
 const HOUSES = ['house-basic', 'house-mushroom', 'house-tree', 'house-igloo'];
+// 島嶼風格套組（js/islesets.js）：名字、商店價、怎麼用都從那裡來；小屋另外也列在「小屋盆子」
+for (const x of SET_ITEMS) {
+  FURN_NAME[x.id] = x.name;
+  SHOP_FURN[x.id] = x.price;
+  USE[x.id] = x.use;
+  if (x.id.startsWith('house-')) HOUSES.push(x.id);
+}
 const BUILDS = ['s-fence-white', 's-fence-wood', 's-gate', 's-path-stone', 's-path-wood', 's-path-brick', 's-hedge', 's-flowerbed', 's-veg'];
 // 萬聖節（petsky.js 的 fest）島上自己會有的小南瓜燈：只是裝飾，不能拎、寵物不會用
 const FEST_DECOR = { halloween: [[6, 20], [21, 6], [12, 24], [24, 19], [9, 13]] };
@@ -890,7 +898,7 @@ function ownedFurniture() {
   const stamps = state?.stamps ?? 0;
   return PROPS.map((d) => d.id).filter((id) => STARTER.includes(id) || stamps >= (FURN_STAMP[id] ?? 99) || bought.includes(id));
 }
-const owns = (id) => FREE.includes(id) || ownedFurniture().includes(id) || bought.includes(id) || (all() && (HOUSES.includes(id) || FARM.includes(id)))
+const owns = (id) => FREE.includes(id) || ownedFurniture().includes(id) || bought.includes(id) || (all() && (HOUSES.includes(id) || FARM.includes(id) || SET_ITEMS.some((x) => x.id === id)))
   || (FARM_STAMP[id] && (state?.stamps ?? 0) >= FARM_STAMP[id]);
 // 這次打開才解鎖的傢俱（記在這台電腦，只慶祝一次）
 function freshFurniture() {
@@ -1159,26 +1167,34 @@ function paintDeco() {
     decoMsg('全部收進背包了，按錯可以按「全部放回去」');
   };
   $('[data-done]', top).onclick = exitDeco;
-  const tabs = [['furn', '🪑 傢俱'], ['house', '🏠 小屋盆子'], ['farm', '🌳 果樹烤爐'], ['build', '🧱 圍籬小路'], ['look', '🏝️ 島名風格']];
+  const tabs = [['furn', '🪑 傢俱'], ['set', '🎨 風格傢俱'], ['house', '🏠 小屋盆子'], ['farm', '🌳 果樹烤爐'], ['build', '🧱 圍籬小路'], ['look', '🏝️ 島名風格']];
   const tile = (id, extra = '') => {
     const n = items.filter((o) => o.id === id).length, max = W.CAT[id].max;
     const have = owns(id);
     if (!have) return `<span class="dt-i locked"><img src="img/pet/furniture/${id}.webp" alt=""><b>${FURN_NAME[id]}</b><small>🔒 ${SHOP_FURN[id] ? `商店 ${SHOP_FURN[id]}` : PARENT_FURN[id] ?? `${FURN_STAMP[id] ?? FARM_STAMP[id]} 個章`}</small></span>`;
     return `<button type="button" class="dt-i${n ? ' out' : ''}" data-add="${id}"${extra}><img src="img/pet/furniture/${id}.webp" alt=""><b>${FURN_NAME[id]}</b><small>${max > 1 ? `${n}/${max}` : n ? '在島上' : '＋ 擺出來'}</small></button>`;
   };
-  let body = '';
+  let body = '', setBar = '';
   if (deco.tab === 'furn') body = PROPS.filter((d) => owns(d.id) || !LIMITED.has(d.id)).map((d) => tile(d.id)).join('');
   else if (deco.tab === 'farm') body = FARM.map((id) => tile(id)).join('');
+  else if (deco.tab === 'set') {
+    // 一種風格一排小按鈕，下面列那一套的 6 件（還沒買的顯示價錢，去商店買）
+    const sel = SETS.find((x) => x.id === deco.set) ?? SETS[0];
+    deco.set = sel.id;
+    setBar = `<div class="dt-sets">${SETS.map((x) => `<button type="button" data-set="${x.id}" class="${x.id === sel.id ? 'on' : ''}"><img src="${W.landThumb(x.id)}" alt="">${x.name}</button>`).join('')}</div>`;
+    body = sel.items.map(([id]) => tile(id)).join('');
+  }
   else if (deco.tab === 'house') body = [...HOUSES.filter((id) => owns(id) || !LIMITED.has(id)), 'bowl-food', 'bowl-water'].map((id) => tile(id)).join('');
   else if (deco.tab === 'build') {
     body = BUILDS.map((id) => `<button type="button" class="dt-i tool${deco.tool === id ? ' on' : ''}" data-tool="${id}">${toolIcon(id)}<b>${FURN_NAME[id]}</b></button>`).join('');
   }
   box.hidden = false;
   box.innerHTML = `<div class="dt-tabs">${tabs.map(([k, t]) => `<button type="button" data-tab="${k}" class="${deco.tab === k ? 'on' : ''}">${t}</button>`).join('')}</div>
-    ${deco.tab === 'look' ? isle.decorHtml(tryTheme) : `<div class="dt-list">${body}</div>`}
+    ${setBar}${deco.tab === 'look' ? isle.decorHtml(tryTheme) : `<div class="dt-list">${body}</div>`}
     ${deco.tab === 'build' ? '<p class="note">選好一種：點空格擺上去、點擺好的收起來；按住不動一下再拖可以畫一整排，從擺好的那格開始拖就是收一整排；直接拖曳是移動地圖。寵物不會穿過圍籬，記得留小門。</p>' : ''}`;
   box.querySelectorAll('[data-tab]').forEach((b) => { b.onclick = () => { deco.tab = b.dataset.tab; deco.tool = null; paintDeco(); }; });
   box.querySelectorAll('[data-add]').forEach((b) => { b.onclick = () => addItem(b.dataset.add); });
+  box.querySelectorAll('[data-set]').forEach((b) => { b.onclick = () => { deco.set = b.dataset.set; paintDeco(); }; });
   box.querySelectorAll('[data-tool]').forEach((b) => { b.onclick = () => { deco.tool = deco.tool === b.dataset.tool ? null : b.dataset.tool; deco.sel = null; paintSel(); paintDeco(); }; });
   if (deco.tab === 'look') {
     isle.bindDecor(box, {

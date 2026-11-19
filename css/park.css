@@ -1689,6 +1689,10 @@ body[data-starter="on"][data-scene="map"] #tick .bubble{display:none}
 .dt-tabs{display:flex;gap:6px;margin-bottom:8px;overflow-x:auto;scrollbar-width:none}
 .dt-tabs button{flex:none;font:900 15px/1 var(--f-body);padding:9px 12px;border-radius:12px;border:3px solid var(--cream-2);background:#fff;color:#8a6a4a;cursor:pointer}
 .dt-tabs button.on{background:var(--gold);border-color:var(--wood);color:var(--wood)}
+.dt-sets{display:flex;gap:6px;margin-bottom:8px;overflow-x:auto;scrollbar-width:none}
+.dt-sets button{flex:none;display:flex;align-items:center;gap:4px;font:800 13px/1 var(--f-body);padding:4px 10px 4px 4px;border-radius:999px;border:2px solid var(--cream-2);background:#fff;color:#8a6a4a;cursor:pointer}
+.dt-sets button img{width:34px;height:19px;object-fit:contain}
+.dt-sets button.on{background:var(--gold);border-color:var(--wood);color:var(--wood)}
 .dt-list{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin}
 .dt-i{position:relative;flex:none;width:86px;display:grid;justify-items:center;gap:3px;padding:6px 4px;border-radius:14px;background:#fff;border:2px solid #ecd9b8;font:inherit;cursor:pointer}
 .dt-i img{width:60px;height:50px;object-fit:contain}

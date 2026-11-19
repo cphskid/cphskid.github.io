@@ -5,6 +5,8 @@
 // 擺設存成 { v: 2, items: [[id, i, j, f], …] }：(i, j) 是佔的格子裡最上面那格，f＝左右翻面（翻面時佔地 i、j 對調）。
 // pet.js（自己的島，會動）和 isle.js（參觀別人的島，不會動）共用這裡畫圖、算能不能擺、找路。
 
+import { SET_ITEMS } from './islesets.js';
+
 export const GW = 2640, GH = 1448, N = 28, CW = 90, CH = 45;
 const TX = 1320, TY = 60;                  // 最上面那格的頂點
 export const FURN_MAX = 60, BUILD_MAX = 150;
@@ -31,10 +33,16 @@ export const landThumb = (theme) => `img/pet/land2/s-${theme || 'spring'}.webp`;
 // 島上固定的樹（後面兩條邊），照風格換樹種；樹的格子不能擺東西、不能走
 const TREE_SPOTS = [[10, 1], [14, 0], [18, 1], [22, 0], [25, 3], [26, 7], [1, 11], [0, 14], [1, 18], [2, 22]];
 const TREE_KIND = { spring: ['spring1', 'blossom', 'spring2', 'bush'], beach: ['palm1', 'palm2', 'bush'], autumn: ['maple', 'autumn', 'bush'],
-                    snow: ['pine1', 'pine2'], stars: ['star', 'bush'], candy: ['candy', 'bush'] };
+                    snow: ['pine1', 'pine2'], stars: ['star', 'bush'], candy: ['candy', 'bush'],
+                    // 2026-11-19 島嶼風格套組
+                    nightmarket: ['banyan', 'bush'], tung: ['tung', 'spring1', 'tung', 'bush'], teahill: ['bamboo', 'bush'], coral: ['kelp'],
+                    moon: ['crystal'], dino: ['cycad', 'bush', 'cycad'], cloud: ['cloudtree'], future: ['holo', 'bush'],
+                    desert: ['palm1', 'cactus', 'palm2'], ranch: ['spring1', 'bush', 'spring2'] };
 const TREE_LOOK = { spring1: [150, 1.441, .931], spring2: [150, 1.456, .931], blossom: [150, 1.282, .922], bush: [125, 1.044, .904],
                     palm1: [150, 1.421, .93], palm2: [150, 1.335, .925], maple: [150, 1.24, .919], autumn: [150, 1.368, .927],
-                    pine1: [135, 1.667, .94], pine2: [135, 1.663, .94], star: [150, 1.344, .926], candy: [150, 1.342, .925] };
+                    pine1: [135, 1.667, .94], pine2: [135, 1.663, .94], star: [150, 1.344, .926], candy: [150, 1.342, .925],
+                    banyan: [150, 1.142, .9], tung: [150, 1.396, .925], bamboo: [130, 1.552, .935], kelp: [130, 1.748, .935], crystal: [125, 1.791, .935],
+                    cycad: [140, 1, .9], cloudtree: [150, 1.154, .91], holo: [135, 1.558, .93], cactus: [120, 1.748, .94] };
 export function trees(theme) {
   const kinds = TREE_KIND[theme] ?? TREE_KIND.spring;
   return TREE_SPOTS.map(([i, j], k) => {
@@ -76,6 +84,10 @@ export const CAT = {
   'tree-mango':  { kind: 'farm', w: 118, aspect: 1.12, base: .93, foot: [2, 2], max: 1 },
   oven:          { kind: 'farm', w: 84, aspect: .96, base: .8, foot: [1, 1], max: 1 },
 };
+// 島嶼風格套組的傢俱（js/islesets.js）：小屋佔 2×2、擋路；其他跟一般傢俱一樣
+for (const x of SET_ITEMS) {
+  CAT[x.id] = x.id.startsWith('house-') ? { kind: 'house', w: x.w, aspect: x.aspect, base: .74, foot: [2, 2], max: 1 } : F(x.w, x.aspect);
+}
 export const isBuild = (id) => id.startsWith('s-');                    // 圍籬小路這類（另外算 150 格）
 export const kindOf = (id) => CAT[id]?.kind;
 const SOLID = new Set(['house', 'tile', 'fence', 'farm']);

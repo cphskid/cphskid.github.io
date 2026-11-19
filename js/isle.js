@@ -6,6 +6,7 @@
 // 資料庫還沒裝（missing）時：裝扮照舊存在這台裝置，拜訪鈕不出現。
 import * as auth from './auth.js';
 import * as W from './isleworld.js';
+import { SETS } from './islesets.js';
 
 const $ = (s, root = document) => root.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -19,6 +20,8 @@ export const THEMES = [
   { id: 'snow', name: '雪夜木屋', how: '冬天在商店上架' },
   { id: 'stars', name: '星空露營', how: '完成臺灣島終章' },
   { id: 'candy', name: '糖果樂園', how: '週末活動的獎勵' },
+  // 島嶼風格套組（js/islesets.js，每種還有 6 件同主題傢俱）
+  ...SETS.map((x) => ({ id: x.id, name: x.name, how: x.how })),
 ];
 // 島名：三組各 20 個，存的是第幾個（park_isle.name）
 export const WORDS = [
