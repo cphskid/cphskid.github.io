@@ -63,7 +63,16 @@ returns text[] language sql stable security definer set search_path = public, pg
                   where f.student_id = p_student and f.item like 'theme-%'), '{}')
     || case when exists (select 1 from public.park_student_stamps s
                           where s.student_id = p_student and s.facility = 'island_pioneer' and s.stamp = 'end')
-            then array['stars'] else '{}' end;
+            then array['stars'] else '{}' end
+    -- 2026-11-19 島嶼風格套組：三種過關／集章解鎖（其他在商店賣，下面上架）
+    || case when exists (select 1 from public.park_student_stamps s
+                          where s.student_id = p_student and s.facility = 'island_pioneer' and s.stamp = 'ch5')
+            then array['tung'] else '{}' end
+    || case when to_regclass('public.animal_progress') is not null and exists (select 1 from public.animal_progress a
+                          where a.student_id = p_student and a.level = 'sky' and a.first_clear_at is not null)
+            then array['moon'] else '{}' end
+    || case when (select count(*) from public.park_student_stamps s where s.student_id = p_student) >= 30
+            then array['cloud'] else '{}' end;
 $$;
 
 -- 商店上架（cat 'theme'，park_coins.sql 的 park_shop／park_shop_buy 會照傢俱一樣處理：買一次、記在 park_student_furniture）
@@ -74,7 +83,75 @@ insert into public.park_shop_items (code, cat, ref, name, art, blurb, price, mon
   -- 寵物島 2.0：小屋（cat 'furn'，買了在裝扮的「小屋盆子」擺出來；小木屋一開始就有，不用買）
   ('furn-house-mushroom', 'furn', 'house-mushroom', '蘑菇屋', 'img/pet/furniture/house-mushroom.webp', '紅紅的蘑菇屋，寵物會進去睡午覺', 250, null, 40),
   ('furn-house-tree',     'furn', 'house-tree',     '樹屋',   'img/pet/furniture/house-tree.webp',     '爬梯子上去的小樹屋', 300, null, 41),
-  ('furn-house-igloo',    'furn', 'house-igloo',    '雪屋',   'img/pet/furniture/house-igloo.webp',    '冬天限定：圓圓的冰磚雪屋', 280, '{12,1,2}', 42)
+  ('furn-house-igloo',    'furn', 'house-igloo',    '雪屋',   'img/pet/furniture/house-igloo.webp',    '冬天限定：圓圓的冰磚雪屋', 280, '{12,1,2}', 42),
+  -- 2026-11-19 島嶼風格套組（js/islesets.js）：七種風格在商店賣（油桐花、月球、雲朵是過關／集章解鎖），每種 6 件傢俱
+  ('theme-nightmarket', 'theme', 'theme-nightmarket', '夜市燈籠', 'img/pet/land2/s-nightmarket.webp', '整座島換成「夜市燈籠」，還有 6 件同主題傢俱', 350, null, 100),
+  ('theme-teahill', 'theme', 'theme-teahill', '竹林茶山', 'img/pet/land2/s-teahill.webp', '整座島換成「竹林茶山」，還有 6 件同主題傢俱', 350, null, 101),
+  ('theme-coral', 'theme', 'theme-coral', '海底珊瑚', 'img/pet/land2/s-coral.webp', '整座島換成「海底珊瑚」，還有 6 件同主題傢俱', 400, null, 102),
+  ('theme-dino', 'theme', 'theme-dino', '恐龍叢林', 'img/pet/land2/s-dino.webp', '整座島換成「恐龍叢林」，還有 6 件同主題傢俱', 400, null, 103),
+  ('theme-future', 'theme', 'theme-future', '未來科技城', 'img/pet/land2/s-future.webp', '整座島換成「未來科技城」，還有 6 件同主題傢俱', 400, null, 104),
+  ('theme-desert', 'theme', 'theme-desert', '沙漠綠洲', 'img/pet/land2/s-desert.webp', '整座島換成「沙漠綠洲」，還有 6 件同主題傢俱', 300, null, 105),
+  ('theme-ranch', 'theme', 'theme-ranch', '小農牧場', 'img/pet/land2/s-ranch.webp', '整座島換成「小農牧場」，還有 6 件同主題傢俱', 300, null, 106),
+  ('furn-nm-cart', 'furn', 'nm-cart', '小吃攤車', 'img/pet/furniture/nm-cart.webp', '「夜市燈籠」風格傢俱', 220, null, 200),
+  ('furn-nm-lantern', 'furn', 'nm-lantern', '紅燈籠串', 'img/pet/furniture/nm-lantern.webp', '「夜市燈籠」風格傢俱', 150, null, 201),
+  ('furn-nm-tea', 'furn', 'nm-tea', '珍奶攤', 'img/pet/furniture/nm-tea.webp', '「夜市燈籠」風格傢俱', 180, null, 202),
+  ('furn-nm-stool', 'furn', 'nm-stool', '紅色塑膠椅桌', 'img/pet/furniture/nm-stool.webp', '「夜市燈籠」風格傢俱', 100, null, 203),
+  ('furn-nm-pinball', 'furn', 'nm-pinball', '彈珠台', 'img/pet/furniture/nm-pinball.webp', '「夜市燈籠」風格傢俱', 200, null, 204),
+  ('furn-nm-arch', 'furn', 'nm-arch', '霓虹拱門', 'img/pet/furniture/nm-arch.webp', '「夜市燈籠」風格傢俱', 250, null, 205),
+  ('furn-tg-bench', 'furn', 'tg-bench', '花布長椅', 'img/pet/furniture/tg-bench.webp', '「油桐花小徑」風格傢俱', 150, null, 206),
+  ('furn-tg-umbrella', 'furn', 'tg-umbrella', '紙傘架', 'img/pet/furniture/tg-umbrella.webp', '「油桐花小徑」風格傢俱', 120, null, 207),
+  ('furn-tg-leicha', 'furn', 'tg-leicha', '擂茶桌', 'img/pet/furniture/tg-leicha.webp', '「油桐花小徑」風格傢俱', 180, null, 208),
+  ('furn-tg-bridge', 'furn', 'tg-bridge', '小石橋', 'img/pet/furniture/tg-bridge.webp', '「油桐花小徑」風格傢俱', 220, null, 209),
+  ('furn-tg-basket', 'furn', 'tg-basket', '油桐花籃', 'img/pet/furniture/tg-basket.webp', '「油桐花小徑」風格傢俱', 80, null, 210),
+  ('furn-tg-arch', 'furn', 'tg-arch', '花拱門', 'img/pet/furniture/tg-arch.webp', '「油桐花小徑」風格傢俱', 200, null, 211),
+  ('furn-tea-pavilion', 'furn', 'tea-pavilion', '竹編茶亭', 'img/pet/furniture/tea-pavilion.webp', '「竹林茶山」風格傢俱', 250, null, 212),
+  ('furn-tea-table', 'furn', 'tea-table', '茶桌茶具', 'img/pet/furniture/tea-table.webp', '「竹林茶山」風格傢俱', 150, null, 213),
+  ('furn-tea-fence', 'furn', 'tea-fence', '竹籬笆', 'img/pet/furniture/tea-fence.webp', '「竹林茶山」風格傢俱', 80, null, 214),
+  ('furn-tea-pipe', 'furn', 'tea-pipe', '竹管流水', 'img/pet/furniture/tea-pipe.webp', '「竹林茶山」風格傢俱', 180, null, 215),
+  ('furn-tea-basket', 'furn', 'tea-basket', '採茶簍', 'img/pet/furniture/tea-basket.webp', '「竹林茶山」風格傢俱', 80, null, 216),
+  ('furn-tea-lamp', 'furn', 'tea-lamp', '石燈籠', 'img/pet/furniture/tea-lamp.webp', '「竹林茶山」風格傢俱', 120, null, 217),
+  ('furn-cr-shellbed', 'furn', 'cr-shellbed', '貝殼床', 'img/pet/furniture/cr-shellbed.webp', '「海底珊瑚」風格傢俱', 220, null, 218),
+  ('furn-cr-chair', 'furn', 'cr-chair', '珊瑚沙發', 'img/pet/furniture/cr-chair.webp', '「海底珊瑚」風格傢俱', 180, null, 219),
+  ('furn-cr-jelly', 'furn', 'cr-jelly', '水母燈', 'img/pet/furniture/cr-jelly.webp', '「海底珊瑚」風格傢俱', 150, null, 220),
+  ('furn-cr-chest', 'furn', 'cr-chest', '寶箱', 'img/pet/furniture/cr-chest.webp', '「海底珊瑚」風格傢俱', 200, null, 221),
+  ('furn-cr-swing', 'furn', 'cr-swing', '船舵鞦韆', 'img/pet/furniture/cr-swing.webp', '「海底珊瑚」風格傢俱', 220, null, 222),
+  ('furn-cr-fountain', 'furn', 'cr-fountain', '珍珠噴泉', 'img/pet/furniture/cr-fountain.webp', '「海底珊瑚」風格傢俱', 180, null, 223),
+  ('furn-mn-rocket', 'furn', 'mn-rocket', '小火箭', 'img/pet/furniture/mn-rocket.webp', '「月球基地」風格傢俱', 250, null, 224),
+  ('furn-house-dome', 'furn', 'house-dome', '圓頂太空艙', 'img/pet/furniture/house-dome.webp', '「月球基地」風格傢俱', 300, null, 225),
+  ('furn-mn-dish', 'furn', 'mn-dish', '衛星天線', 'img/pet/furniture/mn-dish.webp', '「月球基地」風格傢俱', 150, null, 226),
+  ('furn-mn-scope', 'furn', 'mn-scope', '望遠鏡', 'img/pet/furniture/mn-scope.webp', '「月球基地」風格傢俱', 180, null, 227),
+  ('furn-mn-rover', 'furn', 'mn-rover', '月球車', 'img/pet/furniture/mn-rover.webp', '「月球基地」風格傢俱', 220, null, 228),
+  ('furn-mn-star', 'furn', 'mn-star', '星星燈', 'img/pet/furniture/mn-star.webp', '「月球基地」風格傢俱', 100, null, 229),
+  ('furn-dn-nest', 'furn', 'dn-nest', '恐龍蛋巢床', 'img/pet/furniture/dn-nest.webp', '「恐龍叢林」風格傢俱', 220, null, 230),
+  ('furn-dn-bone', 'furn', 'dn-bone', '化石拱門', 'img/pet/furniture/dn-bone.webp', '「恐龍叢林」風格傢俱', 250, null, 231),
+  ('furn-dn-table', 'furn', 'dn-table', '石桌石椅', 'img/pet/furniture/dn-table.webp', '「恐龍叢林」風格傢俱', 150, null, 232),
+  ('furn-dn-hammock', 'furn', 'dn-hammock', '大葉吊床', 'img/pet/furniture/dn-hammock.webp', '「恐龍叢林」風格傢俱', 180, null, 233),
+  ('furn-dn-egg', 'furn', 'dn-egg', '恐龍蛋', 'img/pet/furniture/dn-egg.webp', '「恐龍叢林」風格傢俱', 120, null, 234),
+  ('furn-dn-slide', 'furn', 'dn-slide', '長頸龍溜滑梯', 'img/pet/furniture/dn-slide.webp', '「恐龍叢林」風格傢俱', 250, null, 235),
+  ('furn-cl-sofa', 'furn', 'cl-sofa', '雲朵沙發', 'img/pet/furniture/cl-sofa.webp', '「雲朵天空」風格傢俱', 200, null, 236),
+  ('furn-cl-balloon', 'furn', 'cl-balloon', '熱氣球鞦韆', 'img/pet/furniture/cl-balloon.webp', '「雲朵天空」風格傢俱', 250, null, 237),
+  ('furn-cl-lamp', 'furn', 'cl-lamp', '金星路燈', 'img/pet/furniture/cl-lamp.webp', '「雲朵天空」風格傢俱', 120, null, 238),
+  ('furn-cl-rainbow', 'furn', 'cl-rainbow', '彩虹溜滑梯', 'img/pet/furniture/cl-rainbow.webp', '「雲朵天空」風格傢俱', 250, null, 239),
+  ('furn-cl-bed', 'furn', 'cl-bed', '羽毛枕床', 'img/pet/furniture/cl-bed.webp', '「雲朵天空」風格傢俱', 180, null, 240),
+  ('furn-cl-vane', 'furn', 'cl-vane', '風向風車', 'img/pet/furniture/cl-vane.webp', '「雲朵天空」風格傢俱', 100, null, 241),
+  ('furn-ft-chair', 'furn', 'ft-chair', '懸浮椅', 'img/pet/furniture/ft-chair.webp', '「未來科技城」風格傢俱', 200, null, 242),
+  ('furn-ft-robot', 'furn', 'ft-robot', '機器人充電座', 'img/pet/furniture/ft-robot.webp', '「未來科技城」風格傢俱', 220, null, 243),
+  ('furn-ft-holo', 'furn', 'ft-holo', '全息投影燈', 'img/pet/furniture/ft-holo.webp', '「未來科技城」風格傢俱', 180, null, 244),
+  ('furn-ft-bench', 'furn', 'ft-bench', '太陽能長椅', 'img/pet/furniture/ft-bench.webp', '「未來科技城」風格傢俱', 150, null, 245),
+  ('furn-house-pod', 'furn', 'house-pod', '膠囊小屋', 'img/pet/furniture/house-pod.webp', '「未來科技城」風格傢俱', 300, null, 246),
+  ('furn-ft-drone', 'furn', 'ft-drone', '無人機快遞箱', 'img/pet/furniture/ft-drone.webp', '「未來科技城」風格傢俱', 150, null, 247),
+  ('furn-house-tent', 'furn', 'house-tent', '條紋帳篷', 'img/pet/furniture/house-tent.webp', '「沙漠綠洲」風格傢俱', 280, null, 248),
+  ('furn-ds-cactus', 'furn', 'ds-cactus', '陶盆仙人掌', 'img/pet/furniture/ds-cactus.webp', '「沙漠綠洲」風格傢俱', 80, null, 249),
+  ('furn-ds-saddle', 'furn', 'ds-saddle', '駱駝鞍座墊', 'img/pet/furniture/ds-saddle.webp', '「沙漠綠洲」風格傢俱', 120, null, 250),
+  ('furn-ds-carpet', 'furn', 'ds-carpet', '編織地毯', 'img/pet/furniture/ds-carpet.webp', '「沙漠綠洲」風格傢俱', 150, null, 251),
+  ('furn-ds-jar', 'furn', 'ds-jar', '陶罐噴泉', 'img/pet/furniture/ds-jar.webp', '「沙漠綠洲」風格傢俱', 180, null, 252),
+  ('furn-ds-palm', 'furn', 'ds-palm', '棕櫚樹', 'img/pet/furniture/ds-palm.webp', '「沙漠綠洲」風格傢俱', 120, null, 253),
+  ('furn-house-barn', 'furn', 'house-barn', '紅色穀倉', 'img/pet/furniture/house-barn.webp', '「小農牧場」風格傢俱', 300, null, 254),
+  ('furn-rc-hay', 'furn', 'rc-hay', '圓乾草堆', 'img/pet/furniture/rc-hay.webp', '「小農牧場」風格傢俱', 100, null, 255),
+  ('furn-rc-mill', 'furn', 'rc-mill', '小風車', 'img/pet/furniture/rc-mill.webp', '「小農牧場」風格傢俱', 200, null, 256),
+  ('furn-rc-milk', 'furn', 'rc-milk', '牛奶桶水槽', 'img/pet/furniture/rc-milk.webp', '「小農牧場」風格傢俱', 120, null, 257),
+  ('furn-rc-scarecrow', 'furn', 'rc-scarecrow', '稻草人', 'img/pet/furniture/rc-scarecrow.webp', '「小農牧場」風格傢俱', 100, null, 258),
+  ('furn-rc-cart', 'furn', 'rc-cart', '蔬菜推車', 'img/pet/furniture/rc-cart.webp', '「小農牧場」風格傢俱', 150, null, 259)
 on conflict (code) do update
   set cat = excluded.cat, ref = excluded.ref, name = excluded.name, art = excluded.art, blurb = excluded.blurb,
       price = excluded.price, months = excluded.months, sort = excluded.sort;
