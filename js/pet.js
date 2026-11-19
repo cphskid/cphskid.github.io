@@ -60,6 +60,8 @@ export function init(h) {
 
 const myPet = () => state?.pets?.find((p) => p.active) ?? null;
 const petById = (id) => state?.pets?.find((p) => p.id === id) ?? null;
+// 大地圖雪山島（js/park.js）要知道帶哪隻夥伴去滑雪：照顧中的那隻，沒有就第一隻
+export const skiPet = () => myPet() ?? state?.pets?.[0] ?? null;
 const speciesName = (code) => state?.species?.find((s) => s.code === code)?.name ?? '';
 const item = (code) => state?.items?.find((i) => i.code === code);
 // 圖：img/pet/<種類>/<階段>-<動作>.webp（PT 系列動作表切出來的）

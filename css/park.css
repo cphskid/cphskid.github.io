@@ -2152,3 +2152,6 @@ aside.care .buff small{display:block;font-weight:700;color:#8a6a4a;font-size:12p
 @media (max-width:520px){.xtiers{grid-template-columns:repeat(3,1fr)}}
 .av.fr-snowflake{background:linear-gradient(145deg,#ffffff,#bfe6ff 45%,#5aa7e8);box-shadow:0 0 calc(var(--av)*.1) rgba(150,210,255,.9),0 3px 6px rgba(0,0,0,.2)}
 .av.fr-snowstar{background:conic-gradient(#ff5a5a,#ffd84d,#4fc96a,#ffd84d,#ff5a5a);box-shadow:0 0 calc(var(--av)*.14) rgba(255,215,90,.95),0 3px 6px rgba(0,0,0,.2)}
+/* 雪山島（聖誕活動期間才出現在大地圖，js/park.js paintSnowIsle） */
+.isle.snow-isle .art{width:100%}
+.snow-isle-tag{position:absolute;right:4%;top:2%;padding:4px 10px;border-radius:999px;background:#d8402f;color:#fff;border:3px solid #fff;font:900 15px/1 var(--f-body,system-ui);box-shadow:0 3px 0 #7a1f14;transform:rotate(6deg)}

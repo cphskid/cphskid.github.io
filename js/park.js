@@ -593,7 +593,31 @@ function villageHtml() {
 }
 // 聖誕活動：村莊島上的全站大聖誕樹（js/snow.js）；學生才讀，讀不到（活動沒開、資料庫沒裝）就什麼都不畫
 let snowShown = '';
+// 雪山島：活動期間（park_snow_cfg 的 starts～ends，snow.on()）才出現在大地圖，點了直接開滑雪橇；活動結束自動收起
+const SNOW_NAME = '雪橇峰';   // 暫定名，Chuck 選定再換
+let snowIsle = null;
+function paintSnowIsle() {
+  const want = snow.on() && account.current().kind === 'student' && park.map.snow_isle;
+  if (!want) { snowIsle?.remove(); snowIsle = null; return; }
+  if (snowIsle) return;
+  const s = park.map.snow_isle;
+  const b = document.createElement('button');
+  b.className = 'isle snow-isle';
+  b.style.cssText = `left:${s.left}px;top:${s.top}px;width:${s.width}px;--delay:-2.5s`;
+  b.setAttribute('aria-label', `${SNOW_NAME}：雪山滑雪橇`);
+  b.innerHTML = `<div class="bob"><div class="lift"><div class="foam"></div><img class="art" src="img/l-snow.webp" alt=""><span class="snow-isle-tag">聖誕限定</span></div></div>`
+    + `<div class="plate"><b>${SNOW_NAME}</b><span>雪山滑雪橇</span></div>`;
+  b.addEventListener('click', async () => {
+    if (dragged) return;
+    snd.sfx('SE-03');
+    const { openSki } = await import('./ski.js');
+    openSki({ pet: pet.skiPet(), onClose: () => snow.set() });
+  });
+  islesLayer.appendChild(b);
+  snowIsle = b;
+}
 function paintSnow() {
+  paintSnowIsle();
   snow.paintMapTree(islesLayer.querySelector('.isle[data-zone="village"] .lift'));
   const msg = snow.freshText();
   if (msg && msg !== snowShown && !select.hidden) { snowShown = msg; say('cheer', msg); snd.sfx('SE-19'); }
