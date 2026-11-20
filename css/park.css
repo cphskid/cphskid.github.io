@@ -723,6 +723,13 @@ aside.care .wish span img{width:40px;height:40px}
 .pal-s.locked i{background:#9aa0a8}
 /* 地圖上寵物島的小夥伴 */
 #isle-pets .mini.still,#isle-pets .mini.still img{animation:none;opacity:1}
+/* 電腦把「動畫效果」關掉（prefers-reduced-motion，學校電腦、Windows 省電常是關的）時，上面全站的 animation:none 會讓地圖上的夥伴整隻定住、
+   兩張走路圖疊在一起，看起來像壞掉。夥伴慢慢走是內容不是裝飾，留著走路，只拿掉一跳一跳。2026-11-20 問題回報 #72、#78 潔「寵物不會動」 */
+@media (prefers-reduced-motion:reduce){
+  #isle-pets .mini:not(.still):not(.egg-wait){animation:miniWalk calc(9s + var(--i) * 2s) ease-in-out infinite!important;animation-delay:calc(var(--i) * -3s)!important}
+  #isle-pets .mini:not(.still):not(.egg-wait) img:not(.w2):not(.glint){animation:walkStep .5s steps(1) -.25s infinite!important}
+  #isle-pets .mini:not(.still):not(.egg-wait) img.w2{animation:walkStep .5s steps(1) infinite!important}
+}
 #isle-pets .mini .mp-bub{position:absolute;left:50%;top:-20px;transform:translateX(-50%);font:900 15px/1 var(--f-disp);color:#e2553f;background:#fff;border:2px solid var(--wood);border-radius:50%;width:24px;height:24px;display:grid;place-items:center;z-index:2;animation:none}
 #isle-pets .mini.care{width:62px;height:62px}
 #isle-pets .mini.egg-wait{width:44px;height:54px;animation:none}
