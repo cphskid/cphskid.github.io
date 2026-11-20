@@ -13,7 +13,7 @@
 [hidden]{display:none!important}
 html,body{height:100%}
 body{margin:0;background:var(--sea-deep);color:var(--ink);font-family:var(--f-body);overflow:hidden;-webkit-tap-highlight-color:transparent;overscroll-behavior:none}
-#world{position:fixed;inset:0;overflow:hidden;background:var(--sea-deep);touch-action:none}
+#world{position:fixed;inset:0;bottom:auto;height:var(--app-h,100%);overflow:hidden;background:var(--sea-deep);touch-action:none}
 #sea{position:absolute;inset:-30px;background:url(../img/sea.webp) center/cover no-repeat;transform:translate(calc(var(--px,0)*-8px),calc(var(--py,0)*-5px));transition:transform .4s ease-out}
 #stage{position:absolute;left:50%;top:50%;width:1600px;height:900px;transform:translate(-50%,-50%) scale(var(--s,1));transform-origin:center}
 .scene{position:absolute;inset:0}
@@ -818,7 +818,7 @@ aside.care .wish span img{width:40px;height:40px}
 /* ---------- 介面層 #ui：不跟著舞台縮放 ----------
    舞台（海、島、船）照樣等比縮放；按鈕、介紹卡、帳號、護照、桌寵視窗都在 #ui，用真正的螢幕像素排版。
    手機（窄或矮的畫面）在最下面另外排一套，字至少 16px、次要文字 13~14px。 */
-#ui{position:fixed;inset:0;z-index:20;pointer-events:none;--vw:1600;--vh:900}
+#ui{position:fixed;inset:0;bottom:auto;height:var(--app-h,100%);z-index:20;pointer-events:none;--vw:1600;--vh:900}
 #ui>*{pointer-events:auto}
 #hud{position:absolute;inset:0;pointer-events:none;display:none}
 #hud>*{pointer-events:auto}
