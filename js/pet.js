@@ -1224,6 +1224,9 @@ function enterDeco() {
 }
 function exitDeco() {
   deco = null;
+  // 選起來那件上面的「翻面／收起來」也要一起收掉（不然按完成後還一直掛在島上，按了會壞掉）
+  $('.deco-sel', layer)?.remove();
+  props.forEach((x) => x.el.classList.remove('sel'));
   if (tryTheme) { tryTheme = null; paintLand(W.landSrc(isle.theme())); }
   $('.pisle', layer)?.classList.remove('decorating');
   $('.furn', layer).hidden = true;
@@ -1243,6 +1246,7 @@ function decoMsg(t) {
   m.classList.add('flash');
 }
 function paintDeco() {
+  if (!deco) return;
   const top = $('.deco-top', layer), box = $('.furn', layer);
   top.hidden = false;
   top.innerHTML = `${deco.back ? '<button type="button" class="ghost small" data-back>↶ 全部放回去</button>' : `<button type="button" class="ghost small" data-wipe>${deco.wipe ? '再按一次：全部收起來' : '📦 全部收起來'}</button>`}
@@ -1379,6 +1383,7 @@ function paintSel() {
   bar.innerHTML = `<button type="button" data-flip>↔ 翻面</button><button type="button" data-away>📦 收起來</button>`;
   $('.actors', layer).appendChild(bar);
   $('[data-flip]', bar).onclick = () => {
+    if (!deco) { bar.remove(); return; }
     const it = o.it, before = snapshot();
     const k = items.indexOf(it);
     if (!W.canPlace(occ, it.id, it.i, it.j, !it.f, k)) { decoMsg('翻過來會撞到旁邊的東西'); return; }
@@ -1389,6 +1394,7 @@ function paintSel() {
     paintDeco();
   };
   $('[data-away]', bar).onclick = () => {
+    if (!deco) { bar.remove(); return; }
     const before = snapshot();
     items = items.filter((x) => x !== o.it);
     deco.sel = null;
@@ -1431,6 +1437,7 @@ function dragProp(o, e) {
     removeEventListener('pointerup', up);
     removeEventListener('pointercancel', up);
     o.el.classList.remove('held', 'bad');
+    if (!deco) return;                                      // 拖到一半已經離開裝扮
     if (!held) { deco.sel = deco.sel === it ? null : it; paintSel(); return; }
     it.i = good.i; it.j = good.j;
     deco.sel = it;
@@ -1522,6 +1529,7 @@ function selBuild(it) {
   $('.actors', layer).appendChild(bar);
   $('.floor', layer).insertAdjacentHTML('beforeend', W.footSvg(it.id, it.i, it.j, 0, true));
   $('[data-away]', bar).onclick = () => {
+    if (!deco) { bar.remove(); return; }
     const before = snapshot();
     items = items.filter((x) => x !== it);
     deco.sel = null;
