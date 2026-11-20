@@ -598,7 +598,7 @@ ul.classes li .row{gap:8px;justify-content:flex-end}
 .pisle .hint{position:absolute;left:50%;bottom:auto;top:calc(env(safe-area-inset-top) + 80px);animation:hintout 1s ease-in 7s forwards;transform:translateX(-50%);margin:0;padding:8px 18px;border-radius:99px;background:rgba(255,255,255,.85);font:700 16px/1 var(--f-body);color:var(--wood);white-space:nowrap;pointer-events:none}
 .actor{position:absolute;width:calc(var(--h) * var(--d));height:calc(var(--h) * var(--d));transform:translate(-50%,-92%);border:0;padding:0;background:none;cursor:grab;touch-action:none}
 .actor .body{position:absolute;inset:0;transform-origin:50% 100%;transition:transform .15s}
-.actor .body img{width:100%;height:100%;object-fit:contain;transform:scaleX(var(--f));pointer-events:none;-webkit-user-drag:none;filter:var(--tod) var(--wx)}
+.actor .body img{width:100%;height:100%;object-fit:contain;transform:scaleX(var(--f));pointer-events:none;-webkit-user-drag:none;filter:none}
 /* 夥伴多的時候每隻都掛 drop-shadow 很吃手機記憶體：腳下本來就有 .shadow 影子，拿掉；晴天白天連顏色濾鏡都不用 */
 .pisle[data-tod=day][data-wx=sunny] .actor .body img{filter:none}
 .actor .shadow{position:absolute;left:18%;right:18%;bottom:2%;height:14%;border-radius:50%;background:rgba(30,60,20,.28);transition:transform .15s,opacity .15s}
@@ -622,7 +622,7 @@ ul.classes li .row{gap:8px;justify-content:flex-end}
 .actor.egg-nest.held img{transform:translateY(-22px) rotate(-6deg) scale(1.08);animation:none}
 .actor.egg-nest.held::before{transform:scale(.7)}
 .actor.egg-nest.held.bad::before{background:rgba(226,85,63,.7)}
-.actor.egg-nest.held.bad img{filter:var(--tod) var(--wx) sepia(.4) saturate(1.6) hue-rotate(-20deg)}
+.actor.egg-nest.held.bad img{filter:sepia(.4) saturate(1.6) hue-rotate(-20deg)}
 .actor.egg-nest.drop img{animation:eggDrop .45s cubic-bezier(.34,1.7,.5,1)}
 @keyframes eggDrop{0%{transform:translateY(-22px)}60%{transform:translateY(0) scale(1.1,.88)}100%{transform:none}}
 .actor.egg-nest .egg-tag{position:absolute;left:50%;top:100%;transform:translate(-50%,-2px);padding:3px 9px;border-radius:99px;background:rgba(255,255,255,.9);box-shadow:0 2px 0 rgba(0,0,0,.08);font:700 13px/1.1 var(--f-body);font-style:normal;color:var(--wood);white-space:nowrap;pointer-events:none}
@@ -630,7 +630,7 @@ ul.classes li .row{gap:8px;justify-content:flex-end}
 .actor.egg-nest .egg-hand{position:absolute;left:50%;bottom:100%;transform:translate(-50%,-4px);padding:6px 12px;border-radius:12px;background:#fff7d6;border:2px solid #f1c24b;font:800 14px/1.2 var(--f-body);color:var(--wood);white-space:nowrap;pointer-events:none;animation:eggHint 1.2s ease-in-out infinite}
 .actor.egg-nest .egg-hand::after{content:"";position:absolute;left:50%;top:100%;margin-left:-7px;border:7px solid transparent;border-top-color:#f1c24b}
 @keyframes eggHint{50%{transform:translate(-50%,-10px)}}
-.actor.egg-nest img{filter:var(--tod) var(--wx);pointer-events:none;-webkit-user-drag:none;user-select:none;position:absolute;inset:0;width:100%;height:100%;object-fit:contain;animation:eggWobble 2.2s ease-in-out infinite;transform-origin:50% 90%}
+.actor.egg-nest img{filter:none;pointer-events:none;-webkit-user-drag:none;user-select:none;position:absolute;inset:0;width:100%;height:100%;object-fit:contain;animation:eggWobble 2.2s ease-in-out infinite;transform-origin:50% 90%}
 .actor.egg-nest .glint{width:60%;height:auto;inset:auto;left:-6%;top:-4%;animation:twinkle 1.4s ease-in-out infinite}
 .bowl{position:absolute;width:calc(64px * var(--d));height:calc(64px * var(--d));transform:translate(-50%,-80%);pointer-events:none;animation:pop .35s ease-out}
 .bowl img,.bowl span{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:grid;place-items:center;font-size:44px;transform:scale(calc(.45 + .55 * var(--left,1)));transform-origin:50% 90%;transition:transform .3s}
@@ -732,7 +732,7 @@ aside.care .wish span img{width:40px;height:40px}
 .prop{position:absolute;transform:translate(-50%,var(--base,-88%));border:0;padding:0;background:none;cursor:pointer;touch-action:none}
 .prop.movable{cursor:grab}
 /* 2026-11-19 寵物島閃退：每件傢俱、圍籬、小路都掛 drop-shadow，iPhone 要為每一件另外開一張放大的畫布，擺多了記憶體爆掉。影子用底下的 .shadow 就好 */
-.prop img{position:relative;display:block;width:100%;height:auto;pointer-events:none;-webkit-user-drag:none;filter:var(--tod) var(--wx);transition:transform .15s}
+.prop img{position:relative;display:block;width:100%;height:auto;pointer-events:none;-webkit-user-drag:none;filter:none;transition:transform .15s}
 .pisle[data-tod=day][data-wx=sunny] :is(.prop img,.decor img,.actor.egg-nest img){filter:none}
 .prop .shadow{position:absolute;left:12%;right:12%;bottom:0;height:16%;border-radius:50%;background:rgba(30,60,20,.25);transition:transform .15s,opacity .15s}
 .prop.held{cursor:grabbing}
@@ -748,7 +748,7 @@ aside.care .wish span img{width:40px;height:40px}
 .actor.wade .body{clip-path:inset(-40% -20% 24% -20%)}
 .actor.wade .shadow{bottom:22%;height:16%;left:4%;right:4%;background:rgba(255,255,255,.5);box-shadow:0 0 0 4px rgba(255,255,255,.25);animation:ripple 1.4s ease-in-out infinite}
 .prop.rustle img{animation:rustle .45s ease-in-out infinite;transform-origin:50% 100%}
-.prop.aim img{transform:scale(1.06);filter:var(--tod) var(--wx) brightness(1.12) drop-shadow(0 0 6px #fff7b0) drop-shadow(0 0 4px #fff7b0)}
+.prop.aim img{transform:scale(1.06);filter:brightness(1.12) drop-shadow(0 0 6px #fff7b0) drop-shadow(0 0 4px #fff7b0)}
 @keyframes petSway{0%,100%{transform:rotate(-8deg)}50%{transform:rotate(8deg)}}
 @keyframes ripple{0%,100%{transform:scale(1);opacity:.9}50%{transform:scale(1.12);opacity:.55}}
 @keyframes rustle{0%,100%{transform:rotate(0)}25%{transform:rotate(-2.5deg) scale(1.02,.98)}75%{transform:rotate(2.5deg) scale(1.02,.98)}}
@@ -768,13 +768,13 @@ aside.care .wish span img{width:40px;height:40px}
 .pisle[data-wx=cloudy] .haze{background:radial-gradient(ellipse 22% 16% at 30% 40%,rgba(30,50,80,.2),transparent),radial-gradient(ellipse 26% 18% at 75% 70%,rgba(30,50,80,.18),transparent);background-size:200% 100%;animation:clouds 50s linear infinite alternate}
 .pisle[data-wx=fog] .haze{background:radial-gradient(ellipse 40% 22% at 30% 50%,rgba(255,255,255,.55),transparent),radial-gradient(ellipse 45% 25% at 75% 65%,rgba(255,255,255,.5),transparent),rgba(235,242,248,.28);background-size:160% 100%;animation:clouds 30s ease-in-out infinite alternate}
 .pisle[data-season=winter][data-wx=snow] .haze{background:rgba(255,255,255,.14)}
-.pisle:is([data-tod=night],[data-tod=dusk]) .p-lantern::after{content:"";position:absolute;left:50%;top:30%;width:420%;aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle,rgba(255,214,110,.6),rgba(255,214,110,.15) 40%,transparent 68%);pointer-events:none;mix-blend-mode:screen;animation:twinkle 3s ease-in-out infinite}
-.pisle[data-tod=night] .p-lantern img{filter:brightness(1.15)}
+.pisle:is([data-tod=night],[data-tod=dusk]) .p-lantern::after{content:"";position:absolute;left:50%;top:30%;width:420%;aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle,rgba(255,214,110,.6),rgba(255,214,110,.15) 40%,transparent 68%);pointer-events:none;animation:twinkle 3s ease-in-out infinite}
+
 /* 萬聖節：南瓜燈（商店傢俱＋島上的小裝飾）傍晚、晚上會亮（光暈用 ::before，::after 是 NEW 標籤） */
 .pisle .decor{position:absolute;transform:translate(-50%,-88%);pointer-events:none}
-.pisle .decor img{width:100%;display:block;filter:var(--tod) var(--wx)}
-.pisle:is([data-tod=night],[data-tod=dusk]) :is(.p-pumpkin-lamp,.d-pumpkin)::before{content:"";position:absolute;left:50%;top:55%;width:300%;aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle,rgba(255,170,60,.55),rgba(255,150,40,.12) 40%,transparent 68%);pointer-events:none;mix-blend-mode:screen;animation:twinkle 3s ease-in-out infinite}
-.pisle:is([data-tod=night],[data-tod=dusk]) :is(.p-pumpkin-lamp,.d-pumpkin) img{filter:brightness(1.15)}
+.pisle .decor img{width:100%;display:block;filter:none}
+.pisle:is([data-tod=night],[data-tod=dusk]) :is(.p-pumpkin-lamp,.d-pumpkin)::before{content:"";position:absolute;left:50%;top:55%;width:300%;aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle,rgba(255,170,60,.55),rgba(255,150,40,.12) 40%,transparent 68%);pointer-events:none;animation:twinkle 3s ease-in-out infinite}
+
 @keyframes clouds{from{background-position:0 0}to{background-position:100% 0}}
 .pisle .skychip{position:absolute;right:calc(env(safe-area-inset-right) + 80px);top:calc(env(safe-area-inset-top) + 22px);margin:0;padding:7px 14px;border-radius:99px;background:rgba(255,255,255,.85);font:800 16px/1 var(--f-body);color:var(--wood);pointer-events:none;z-index:15}
 .pisle .hint{z-index:15}
@@ -805,7 +805,7 @@ aside.care .wish span img{width:40px;height:40px}
 .ball.gone{opacity:0;transition:opacity .45s}
 .prop.new img{animation:newFurn 1s ease-in-out 3}
 .prop.new::after{content:"NEW";position:absolute;left:50%;top:-6px;transform:translateX(-50%);font:900 13px/1 var(--f-disp);color:#fff;background:#e2553f;border:2px solid #fff;border-radius:99px;padding:3px 8px;pointer-events:none}
-@keyframes newFurn{0%,100%{transform:none;filter:var(--tod) var(--wx)}50%{transform:translateY(-10px) scale(1.06);filter:var(--tod) var(--wx) brightness(1.15)}}
+@keyframes newFurn{0%,100%{transform:none;filter:none}50%{transform:translateY(-10px) scale(1.06);filter:brightness(1.15)}}
 #petroom .furn-i small{font:800 11px/1 var(--f-body);color:#b0603a}
 #petroom button.furn-i{cursor:pointer;font:inherit}
 #petroom button.furn-i:hover,#petroom button.furn-i:focus-visible{border-color:var(--wood);outline:none;transform:translateY(-1px)}
@@ -1107,7 +1107,7 @@ body[data-scene="map"] #hud{display:block}
 /* 寵物島上的旅人 */
 .trav{position:absolute;width:calc(200px * var(--d));transform:translate(-50%,-97%);border:0;padding:0;background:none;cursor:pointer}
 .trav .doll{--dw:100%;display:block}
-.trav .doll img{filter:var(--tod) var(--wx) drop-shadow(0 4px 3px rgba(20,50,30,.3))}
+.trav .doll img{filter:none}
 .trav .shadow{position:absolute;left:28%;right:28%;bottom:0;height:7%;border-radius:50%;background:radial-gradient(ellipse at center,rgba(20,50,30,.35),rgba(20,50,30,0) 70%)}
 .trav:hover .doll,.trav:focus-visible .doll{transform:translateY(-3px)}
 .trav:focus-visible{outline:none}
@@ -1645,20 +1645,20 @@ body[data-starter="on"][data-scene="map"] #tick .bubble{display:none}
 /* ---------- 寵物島 2.0：大島、樹、圍籬小路、裝扮模式（js/pet.js、js/isleworld.js） ---------- */
 .pisle .floor{position:absolute;left:0;top:0;pointer-events:none}
 .tree{position:absolute;transform:translate(-50%,var(--base));pointer-events:none}
-.tree img{display:block;width:100%;filter:var(--tod) var(--wx) drop-shadow(0 6px 4px rgba(20,50,30,.25))}
+.tree img{display:block;width:100%}
 .fence{position:absolute;pointer-events:none}
 .fence{width:0;height:0}
-.fence img{position:absolute;display:block;max-width:none;filter:var(--tod) var(--wx)}
-.fence img.fj{filter:var(--tod) var(--wx) brightness(.88)}
+.fence img{position:absolute;display:block;max-width:none;filter:none}
+.fence img.fj{filter:brightness(.88)}
 .iv-ground .fence img{filter:none}
 .iv-ground .fence img.fj{filter:brightness(.88)}
 .prop.k-house .shadow,.prop.k-tile .shadow,.prop.k-bowl .shadow{display:none}
-.prop.k-house img,.prop.k-tile img{filter:var(--tod) var(--wx) drop-shadow(0 5px 4px rgba(20,50,30,.22))}
+.prop.k-house img,.prop.k-tile img{filter:none}
 .prop.zz::after{content:"Zz";position:absolute;left:58%;top:6%;font:900 26px/1 var(--f-disp);color:#5a7fd6;text-shadow:0 2px 0 #fff,0 0 6px #fff;animation:zzz 2.4s ease-in-out infinite;pointer-events:none}
 @keyframes zzz{0%{transform:translate(0,6px) scale(.8);opacity:0}30%{opacity:1}100%{transform:translate(14px,-22px) scale(1.15);opacity:0}}
 .prop.new img{animation:petDrop .6s cubic-bezier(.34,1.7,.5,1) 2}
-.pisle.decorating .prop.movable:hover img{filter:var(--tod) var(--wx) brightness(1.08) drop-shadow(0 0 5px #fff7b0)}
-.pisle .prop.sel img{filter:var(--tod) var(--wx) brightness(1.1) drop-shadow(0 0 4px #fff) drop-shadow(0 0 8px #ffd34d)}
+.pisle.decorating .prop.movable:hover img{filter:brightness(1.08) drop-shadow(0 0 5px #fff7b0)}
+.pisle .prop.sel img{filter:brightness(1.1) drop-shadow(0 0 4px #fff) drop-shadow(0 0 8px #ffd34d)}
 .pisle .prop.held.bad img{filter:sepia(1) saturate(4) hue-rotate(-30deg) brightness(.9);opacity:.85}
 /* 放大縮小鈕 */
 .pisle .zoom{position:absolute;right:calc(env(safe-area-inset-right) + 12px);top:calc(env(safe-area-inset-top) + 76px);z-index:18;display:flex;flex-direction:column;gap:8px}
@@ -1831,7 +1831,7 @@ button.dt-i:hover,button.dt-i:focus-visible{border-color:var(--wood);outline:non
 /* 寵物島 B 期：孵蛋的本事、等著孵的蛋、夥伴圖鑑、拜訪時躲起來的枯葉蝶 */
 .den.hatch .skill{position:absolute;bottom:10px;left:20px;right:20px;text-align:center;font:700 16px/1.4 var(--f-body);color:var(--ink,#5a3a1a);opacity:0;animation:showIn .4s 2.2s forwards}
 .actor.egg-nest.wait{--h:84px}
-.actor.egg-nest.wait img{opacity:.92;filter:var(--tod) var(--wx) saturate(.8)}
+.actor.egg-nest.wait img{opacity:.92;filter:saturate(.8)}
 .pal-s.dex-b{border-color:#9ac7e8;background:#f2f9ff}
 .pal-s.dex-b span{font-size:24px;line-height:1}
 .dex-pop{position:absolute;inset:0;z-index:60;display:grid;place-items:center;background:rgba(40,30,20,.45);padding:12px}
@@ -1909,7 +1909,7 @@ button.dt-i:hover,button.dt-i:focus-visible{border-color:var(--wood);outline:non
 
 /* ---------- 寵物島 C 期小遊戲（js/petgames.js）：釣魚、澆果樹、烤點心 ---------- */
 .fish-spot{position:absolute;transform:translate(-50%,-100%);border:0;background:none;padding:0;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;animation:bob 2.4s ease-in-out infinite}
-.fish-spot img{width:30px;height:auto;filter:drop-shadow(0 3px 2px rgba(0,0,0,.25))}
+.fish-spot img{width:30px;height:auto}
 .fish-spot b{font:900 12px/1 var(--f-body);color:#fff;background:#2f7fb8;padding:3px 8px;border-radius:99px;box-shadow:0 2px 0 #1d5a85;white-space:nowrap}
 @keyframes bob{0%,100%{translate:0 0}50%{translate:0 -5px}}
 .prop .farm-tag{position:absolute;left:50%;bottom:calc(100% - 6px);transform:translateX(-50%);font:900 12px/1 var(--f-body);font-style:normal;color:var(--wood);background:#fff8e6;border:2px solid #f0c890;padding:3px 7px;border-radius:99px;white-space:nowrap;pointer-events:none;animation:bob 2s ease-in-out infinite}
