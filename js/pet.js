@@ -463,6 +463,7 @@ function stopScene() {
   props = [];
   skyFx?.stop?.();
   skyFx = null;
+  unwatchTint();
   // 島的底圖 canvas 也馬上放掉（iOS 的 canvas 記憶體不會馬上回收，開關幾次寵物島就超過上限、島畫不出來）
   const land = layer && $('canvas.land', layer);
   if (land) { land.width = 0; land.height = 0; }
@@ -510,6 +511,7 @@ function openScene({ select, say: first } = {}) {
   skyM = skyMatrix(`${cs.getPropertyValue('--tod')} ${cs.getPropertyValue('--wx')}`);
   landReady = paintLand(land);
   tintTiles();
+  watchTint();
   sceneAbort = new AbortController();
   const box = $('.actors', layer);
   const fresh = freshFurniture();
@@ -617,6 +619,82 @@ async function tintTiles() {
   }));
   if (m === skyM && $('.floor', layer)) $('.floor', layer).innerHTML = W.floorSvg(items, { grid: !!deco, tint: skyTint, tile: skyTile });
 }
+// 島上的小圖（傢俱、圍籬、樹、夥伴、蛋）也先套好日夜天氣的顏色，不掛 CSS filter：
+// 晚上、陰天每張小圖都掛一層濾鏡的話，iPhone 兩指縮放時會照放大後的尺寸一張張重畫，記憶體爆掉、網頁閃退。
+// 做法：看著 .ground 裡的 img，換成套好顏色的 blob 圖（原圖記在 data-o）；同一張圖只算一次。
+const TINT_SEL = '.prop img,.decor img,.fence img,.tree img,.actor .body img,.actor.egg-nest img,.trav .doll img';
+const tintUrl = new Map();          // 原圖 → blob URL 或還在算的 Promise
+const tintQ = [];
+let tintBusy = 0, tintObs = null;
+function tintPump() {
+  while (tintBusy < 2 && tintQ.length) {
+    const [src, m, done] = tintQ.shift();
+    tintBusy++;
+    (async () => {
+      let url = null;
+      try {
+        const im = new Image();
+        im.src = src;
+        await im.decode();
+        if (m === skyM && im.naturalWidth) {
+          const cv = document.createElement('canvas');
+          cv.width = im.naturalWidth; cv.height = im.naturalHeight;
+          paintTinted(cv, im, m);
+          const blob = await new Promise((ok) => cv.toBlob(ok, 'image/webp', .92));
+          cv.width = 0; cv.height = 0;
+          if (blob && m === skyM) url = URL.createObjectURL(blob);
+        }
+        im.src = '';
+      } catch { /* 用原圖 */ }
+      tintBusy--;
+      done(url);
+      tintPump();
+    })();
+  }
+}
+function tintOf(src) {
+  let v = tintUrl.get(src);
+  if (v === undefined) {
+    v = new Promise((ok) => { tintQ.push([src, skyM, ok]); tintPump(); })
+      .then((url) => { if (url) tintUrl.set(src, url); else tintUrl.delete(src); return url; });
+    tintUrl.set(src, v);
+  }
+  return v;
+}
+function tintImg(img, old) {
+  if (!skyM || !img.matches?.(TINT_SEL)) return;
+  const src = img.getAttribute('src');
+  if (!src || /^(blob|data):/.test(src)) return;
+  img.dataset.o = src;
+  const v = tintOf(src);
+  if (typeof v === 'string') { img.src = v; return; }
+  // 還沒算好：先留著上一張套好色的（不閃一下亮的），算好再換
+  if (old && old.startsWith('blob:')) img.src = old;
+  v.then((url) => { if (url && img.dataset.o === src && img.isConnected) img.src = url; });
+}
+function watchTint() {
+  tintObs?.disconnect();
+  const g = $('.ground', layer);
+  if (!skyM || !g) return;
+  g.querySelectorAll('img').forEach((im) => tintImg(im));
+  tintObs = new MutationObserver((list) => {
+    for (const r of list) {
+      if (r.type === 'attributes') tintImg(r.target, r.oldValue);
+      else r.addedNodes.forEach((n) => {
+        if (n.nodeType !== 1) return;
+        if (n.tagName === 'IMG') tintImg(n); else n.querySelectorAll?.('img').forEach((im) => tintImg(im));
+      });
+    }
+  });
+  tintObs.observe(g, { subtree: true, childList: true, attributes: true, attributeFilter: ['src'], attributeOldValue: true });
+}
+function unwatchTint() {
+  tintObs?.disconnect();
+  tintObs = null;
+  tintQ.length = 0;
+  for (const v of tintUrl.values()) if (typeof v === 'string') URL.revokeObjectURL(v);
+  tintUrl.clear();
+}
 // 島是這個畫面最重要的圖：最先抓、優先抓；抓失敗（網路不穩、記憶體緊）再抓一次
 async function paintLand(src) {
   const turn = ++landTurn, cv = $('canvas.land', layer);
@@ -659,7 +737,8 @@ function applyCam() {
   const g = $('.ground', layer);
   if (!g) return;
   g.style.transform = `translate(${cam.x.toFixed(1)}px,${cam.y.toFixed(1)}px) scale(${cam.k.toFixed(4)})`;
-  $('.pisle', layer).style.setProperty('--g', cam.k.toFixed(4));
+  // 名牌跟著倍數變大小（--g）：改它整座島的樣式都要重算，縮放時每變 8% 才改一次
+  if (Math.abs(cam.k / (cam.g ?? 0) - 1) > .08) { cam.g = cam.k; $('.pisle', layer).style.setProperty('--g', cam.k.toFixed(3)); }
 }
 // 島比畫面小就置中；比較大時最多拖到島的邊在畫面四成的地方
 function clampCam() {
@@ -1079,7 +1158,7 @@ function paintFarm() {
     if (W.kindOf(o.id) !== 'farm') continue;
     const im = $('img', o.el);
     const src = propSrc(o.id);
-    if (!im.src.endsWith(src)) im.src = src;
+    if (!(im.dataset.o ?? im.src).endsWith(src)) im.src = src;
     farmTag(o);
   }
 }
