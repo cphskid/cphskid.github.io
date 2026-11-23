@@ -1836,9 +1836,17 @@ function runTo(a, to, speed = 140) {
 }
 const free = (a) => ['rest', 'walk'].includes(a.mode) && !a.using && !['asleep', 'quiet', 'angry'].includes(moodOf(a.p));
 async function throwBall(at) {
-  if (ball || busy) return;
+  // 丟不出去時要說為什麼，不然小朋友覺得「有時候可以有時候不行」、以為球壞了（2026-11-22/23 問題回報 #81 貓咪、#83 小熙）
+  const who = actors.find((x) => x.p.id === selected) ?? actors.find((x) => x.p.active) ?? actors[0];
+  const no = (t) => { if (who && !ballSaid) { ballSaid = true; say(t, who.p.id); setTimeout(() => { ballSaid = false; }, 1500); } };
+  if (ball) { no('球還在滾～等我玩完這一顆，再丟一次！'); return; }
+  if (busy) { no('等我一下下，吃完（摸完）再玩球！'); return; }
   const a = actors.find((x) => x.p.id === selected && (free(x) || x.mode === 'use')) ?? actors.find(free);
-  if (!a) return;
+  if (!a) {
+    const m = who ? moodOf(who.p) : '';
+    no(m === 'quiet' ? '上課時間在休息，下課再陪我玩球！' : m === 'asleep' ? 'Zzz…（先叫醒牠）' : m === 'angry' ? '肚子好餓，先餵我吃東西再玩球！' : '大家正在忙，等一下再丟一次！');
+    return;
+  }
   if (a.mode === 'use' || a.using) leave(a);
   const id = a.useId = (a.useId ?? 0) + 1;
   const still = () => a.useId === id && a.el.isConnected && ball;
@@ -2430,7 +2438,7 @@ function focusHome() {
   paintCare();
 }
 // 丟球按鈕：丟到照顧中那隻附近的空地
-let ballWait = false;
+let ballWait = false, ballSaid = false;
 async function ballNear() {
   const a = actors.find((x) => x.p.active);
   if (!a) return;
