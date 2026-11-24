@@ -70,8 +70,8 @@
       "subtitle": "冒險・變身",
       "slot": 4,
       "art": "img/l-04.webp",
-      "status": "trial",
-      "description": "雲霧裡浮出一座神秘的新島！第一區「時光動物祕境」開始試營運，試玩班的旅人可以先進去冒險。"
+      "status": "open",
+      "description": "雲霧裡浮出一座神秘的新島！第一區「時光動物祕境」開放了，變身成各種動物去冒險吧！"
     }
   ],
 
@@ -130,7 +130,7 @@
       "wish": true,
       "grade_min": 5,
       "grade_max": null,
-      "status": "trial",
+      "status": "open",
       "url": "animal/",
       "url_dev": "animal/",
       "summary_fn": null,
