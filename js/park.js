@@ -616,8 +616,22 @@ function paintSnowIsle() {
   islesLayer.appendChild(b);
   snowIsle = b;
 }
+// 活動期間其他島也換成雪景聖誕版（Gemini 產的 img/l-XX-xmas.webp；村莊在 js/snow.js 跟大樹一起換）
+const XMAS_ART = new Set(['02', '03', '04', '07', '08', '09']);
+function snowArt() {
+  const on = snow.on();
+  islesLayer.querySelectorAll('.isle:not([data-zone="village"]) img.art').forEach((im) => {
+    const src = im.getAttribute('src') ?? '';
+    const m = src.match(/img\/l-(\d\d)(-xmas)?\.webp$/);
+    if (!m || !XMAS_ART.has(m[1])) return;
+    const want = `img/l-${m[1]}${on ? '-xmas' : ''}.webp`;
+    if (src !== want) im.setAttribute('src', want);
+  });
+}
+new MutationObserver(() => { if (snow.on()) snowArt(); }).observe(islesLayer, { childList: true, subtree: true });
 function paintSnow() {
   paintSnowIsle();
+  snowArt();
   snow.paintMapTree(islesLayer.querySelector('.isle[data-zone="village"] .lift'));
   const msg = snow.freshText();
   if (msg && msg !== snowShown && !select.hidden) { snowShown = msg; say('cheer', msg); snd.sfx('SE-19'); }
@@ -626,6 +640,7 @@ async function loadSnow(w) {
   // 大聖誕樹全站都看得到（老師、爸媽登入也看得到）；沒登入就不讀
   if (!w || w.kind === 'guest') { snow.set({ on: false, ended: false, tree: null }); paintSnow(); return; }
   await snow.load();
+  snd.setSeason(snow.on() ? 'xmas' : null);   // 活動期間大廳多兩首聖誕歌（MU-57、MU-58）
   paintSnow();
 }
 addEventListener('park:snow', paintSnow);
@@ -777,7 +792,7 @@ $('#mu-btn').addEventListener('click', () => {
     <button class="x" id="close" aria-label="關閉"></button>
     <div><h2>🎵 換音樂</h2>
     <p class="lead">點一首就會換成那首，下次來也會記得。</p>
-    <div class="mu-list">${snd.TRACKS.map((t) => `<button type="button" data-mu="${t.code}"><span class="ck">✓</span>${t.name}</button>`).join('')}</div>
+    <div class="mu-list">${snd.tracks().map((t) => `<button type="button" data-mu="${t.code}"><span class="ck">✓</span>${t.name}</button>`).join('')}</div>
     <div class="row"><button type="button" class="btn go" data-close>好了</button></div></div></div>`;
   veil.querySelectorAll('[data-mu]').forEach((b) => b.addEventListener('click', () => {
     if (snd.getMode() !== 'all') { snd.setMode('all'); paintSnd(); }   // 想聽音樂卻是靜音：選了就打開

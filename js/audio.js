@@ -112,17 +112,35 @@ export const TRACKS = [
   { code: 'MU-55', name: '熱帶小島' },
   { code: 'MU-56', name: '星空晚安曲' },
 ];
+// 活動限定的歌（聖誕 11/25～12/31）：park.js 讀到活動開著就叫 setSeason('xmas')，活動期間沒自己挑過的人先聽聖誕歌
+const SEASON = { xmas: [{ code: 'MU-57', name: '🎄 雪花聖誕村', xmas: true }, { code: 'MU-58', name: '🛷 雪橇鈴鐺', xmas: true }] };
+let season = null;
+export const tracks = () => [...(SEASON[season] ?? []), ...TRACKS];
 const TRACK_KEY = 'park.audio.track';
-let track = (() => { try { const v = localStorage.getItem(TRACK_KEY); return TRACKS.some((t) => t.code === v) ? v : 'MU-01'; } catch { return 'MU-01'; } })();
+const saved = (() => { try { return localStorage.getItem(TRACK_KEY); } catch { return null; } })();
+let picked = saved;            // 自己挑過的那首（可能是活動歌，活動結束就不算）
+const pick = () => (tracks().some((t) => t.code === picked) ? picked : SEASON[season]?.[0]?.code ?? 'MU-01');
+let track = pick();
 export const getTrack = () => track;
 const lobby = (code) => (code === 'MU-01' ? track : code);
 export const music = (code) => want('music', lobby(code));
+// 現在要放的那首（滑雪橇放自己的歌，關掉再換回來）
+export const nowMusic = () => wanted.music;
+function retrack() {
+  const was = track, wasLobby = wanted.music === was;
+  track = pick();
+  if (wasLobby && track !== was) want('music', track);
+}
+export function setSeason(s) {
+  if ((s ?? null) === season) return;
+  season = s ?? null;
+  retrack();
+}
 export function setTrack(code) {
-  if (!TRACKS.some((t) => t.code === code)) return;
-  const wasLobby = wanted.music === track;
-  track = code;
+  if (!tracks().some((t) => t.code === code)) return;
+  picked = code;
   try { localStorage.setItem(TRACK_KEY, code); } catch { /* 存不了就只管這次 */ }
-  if (wasLobby) want('music', code);
+  retrack();
 }
 export const ambience = (code) => want('amb', code);
 
