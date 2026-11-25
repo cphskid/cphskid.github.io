@@ -7,6 +7,7 @@ import * as auth from './auth.js';
 import { headHtml } from './traveller.js';
 import { renderGuide, startTour, tourSeen } from './teacher-guide.js';
 import { renderQuiz } from './teacher-quiz.js';
+import { renderSurveys } from './teacher-survey.js';
 import { resultHtml } from './quiz-items.js';
 import { rememberCode, pendingCode, setPendingCode, normCode, redeemPending, renderParent } from './teacher-parent.js';
 
@@ -44,7 +45,7 @@ const PAGES = [...TABS, 'guide', 'feedback', 'news'];
 const OLD_TAB = { classes: 'home', play: 'kids/play' };   // 舊網址、舊公告的「去看看」按鈕
 let kidsSub = 'ov';        // 孩子頁：ov 總覽 / play 每天玩多久
 let adminSub = 'data';     // 管理頁：data 數據 / accounts 帳號 / classes 班級 / content 內容 / log 紀錄
-const ADMIN_SUBS = [['data', '數據'], ['accounts', '帳號'], ['classes', '班級'], ['content', '內容'], ['log', '紀錄']];
+const ADMIN_SUBS = [['data', '數據'], ['accounts', '帳號'], ['classes', '班級'], ['content', '內容'], ['survey', '問卷'], ['log', '紀錄']];
 
 if (IS_DEV) $('#env').hidden = false;
 rememberCode();                                // 孩子給的家長碼（?parent=XXXXXX）先記著，登入後連起來
@@ -1742,6 +1743,8 @@ async function renderAdmin() {
       <div id="news-box"></div>`;
     $('[data-bank]', box).onclick = () => go('quiz');
     await Promise.all([paintAdminPapers($('#p-papers')), renderNews($('#news-box'))]);
+  } else if (adminSub === 'survey') {
+    await renderSurveys(box);
   } else if (adminSub === 'log') {
     box.innerHTML = '<div id="fb-box"></div><div id="adm-log"></div>';
     await Promise.all([renderFeedback($('#fb-box')), renderAdminParts(['log'], $('#adm-log'))]);

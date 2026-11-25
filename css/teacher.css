@@ -659,3 +659,19 @@ tr.old td{opacity:.6}
 .bar .help.has-dot::after{content:"";position:absolute;top:2px;right:2px;width:10px;height:10px;border-radius:50%;background:var(--red);box-shadow:0 0 0 2px #fff}
 .parent .wait,.parent-mini .wait{margin:8px 0;padding:10px 14px;border-radius:12px;background:#e9f6ff;font-weight:700;color:var(--sea-deep)}
 .kid header .linkish{margin-left:auto;font-size:14px}
+
+/* 管理 → 問卷（js/teacher-survey.js） */
+.sv-bars{list-style:none;margin:6px 0 4px;padding:0;display:flex;flex-direction:column;gap:6px}
+.sv-bars li{display:grid;grid-template-columns:minmax(90px,170px) 1fr 40px 44px;align-items:center;gap:8px}
+.sv-bars .k{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sv-bars .sv-bar{display:block;height:14px;border-radius:99px;background:#efe3cc;overflow:hidden}
+.sv-bars .sv-bar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#f6b33f,#e08a1e)}
+.sv-bars b{text-align:right}
+.sv-bars small{color:#8a6a4a}
+.sv-filt{flex-wrap:wrap;gap:12px;align-items:center;margin-top:10px}
+.sv-filt label{display:flex;align-items:center;gap:6px;font-weight:700;white-space:nowrap}
+.sv-filt input[type=checkbox]{width:18px;height:18px;min-height:0;padding:0;margin:0;flex:none}
+.sv-filt select{width:auto}
+.sv-filt .spacer{flex:1}
+.sv-text{white-space:pre-wrap;word-break:break-word;min-width:180px}
+@media (max-width:560px){.sv-bars li{grid-template-columns:96px 1fr 30px 36px;gap:6px}}
