@@ -44,9 +44,30 @@ const MAP_W = park.map.width;
 
 // 設施狀態以資料庫為準（管理員在老師後台切換，不用重新部署），連不上就照 park.json。
 // 學生登入時還會帶回 mine：自己的班有沒有開放這個設施。
+// 時光實驗室不在 park.json 的設施裡（地圖上自己一座島，lab_slot），狀態另外記，試營運掛旗子、只讓試玩班進去
+let labFac = null;
+function paintLabIsle() {
+  const lift = document.querySelector('.lab-isle .lift');
+  if (!lift) return;
+  lift.querySelector('.flag')?.remove();
+  const st = labFac?.status;
+  if (st === 'trial') lift.insertAdjacentHTML('beforeend', '<span class="flag">試營運</span>');
+  else if (st === 'maintenance') lift.insertAdjacentHTML('beforeend', '<span class="flag maint">維修中</span>');
+}
+function enterLab() {
+  const f = labFac, w = account.current();
+  if (f && w.kind !== 'staff') {
+    if (f.status === 'trial' && f.mine !== true) return showToast('時光實驗室還在試營運，目前只開放給試玩班喔！');
+    if (f.status === 'maintenance') return showToast('時光實驗室暫停營業，修好就會重新開放。');
+    if (f.status === 'construction' || f.status === 'hidden') return showToast('時光實驗室還在施工，即將開幕！');
+  }
+  location.href = 'lab/';
+}
 async function syncFacilities() {
   const live = await facilityStatus();
   if (!live) return;
+  labFac = live.get('time_lab') ?? null;
+  paintLabIsle();
   for (const f of park.facilities) {
     const l = live.get(f.code);
     if (!l) { f.status = 'hidden'; continue; }
@@ -115,7 +136,14 @@ park.map.slots.forEach((s, i) => {
   b.style.cssText = `left:${s.left}px;top:${s.top}px;width:${s.width}px;--in:${(i * .05).toFixed(2)}s;--delay:${-i * 1.3}s`;
   const z = bySlot.get(s.slot);
   if (s.slot === park.map.repair_slot && !z) return; // 時光修理站自己畫（js/repair.js）
-  if (s.slot === park.map.pet_slot && !z) {
+  if (s.slot === park.map.lab_slot && !z) {
+    // 時光實驗室：書櫃裡的互動書＋時光祕境島過關點亮的工具（lab/，supabase/park_lab.sql）
+    b.classList.add('pet-isle', 'lab-isle');
+    b.setAttribute('aria-label', '時光實驗室');
+    b.innerHTML = `<div class="bob"><div class="lift"><div class="foam"></div><img class="art" src="img/l-09.webp" alt=""></div></div><div class="plate"><b>時光實驗室</b><span>互動書・實驗工具</span></div>`;
+    b.addEventListener('click', () => { if (!dragged) enterLab(); });
+    setTimeout(paintLabIsle, 0);
+  } else if (s.slot === park.map.pet_slot && !z) {
     b.classList.add('pet-isle');
     b.setAttribute('aria-label', '寵物島');
     b.innerHTML = `<div class="bob"><div class="lift"><div class="foam"></div><img class="art" src="img/l-07.webp" alt=""></div></div><div class="plate"><b>寵物島</b><span>夥伴們住的地方</span></div>`;
@@ -153,6 +181,7 @@ news.init({
   scene: () => document.body.dataset.scene,
   go: (link) => {
     if (link === 'quiz') { location.href = 'quiz/'; return; }
+    if (link === 'lab') return enterLab();
     if (link === 'repair') return repair.open();
     if (link === 'wear') return traveller.open();
     if (link === 'pet') return pet.open();

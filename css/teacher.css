@@ -659,3 +659,46 @@ tr.old td{opacity:.6}
 .bar .help.has-dot::after{content:"";position:absolute;top:2px;right:2px;width:10px;height:10px;border-radius:50%;background:var(--red);box-shadow:0 0 0 2px #fff}
 .parent .wait,.parent-mini .wait{margin:8px 0;padding:10px 14px;border-radius:12px;background:#e9f6ff;font-weight:700;color:var(--sea-deep)}
 .kid header .linkish{margin-left:auto;font-size:14px}
+
+/* 管理 → 問卷（js/teacher-survey.js） */
+.sv-bars{list-style:none;margin:6px 0 4px;padding:0;display:flex;flex-direction:column;gap:6px}
+.sv-bars li{display:grid;grid-template-columns:minmax(90px,170px) 1fr 40px 44px;align-items:center;gap:8px}
+.sv-bars .k{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sv-bars .sv-bar{display:block;height:14px;border-radius:99px;background:#efe3cc;overflow:hidden}
+.sv-bars .sv-bar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#f6b33f,#e08a1e)}
+.sv-bars b{text-align:right}
+.sv-bars small{color:#8a6a4a}
+.sv-filt{flex-wrap:wrap;gap:12px;align-items:center;margin-top:10px}
+.sv-filt label{display:flex;align-items:center;gap:6px;font-weight:700;white-space:nowrap}
+.sv-filt input[type=checkbox]{width:18px;height:18px;min-height:0;padding:0;margin:0;flex:none}
+.sv-filt select{width:auto}
+.sv-filt .spacer{flex:1}
+.sv-text{white-space:pre-wrap;word-break:break-word;min-width:180px}
+@media (max-width:560px){.sv-bars li{grid-template-columns:96px 1fr 30px 36px;gap:6px}}
+.sv-list tbody tr{cursor:pointer}
+.sv-list tbody tr:hover{background:#fff6e0}
+.sv-new{color:#c0392b}
+.sv-range,.sv-chips{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:8px 0}
+.sv-chips .k{font-weight:900;min-width:2.5em}
+.sv-chip{padding:6px 12px;border-radius:99px;border:2px solid #e3c79a;background:#fff;font:700 14px/1.2 inherit;color:inherit;cursor:pointer}
+.sv-chip small{margin-left:4px;color:#8a6a4a}
+.sv-chip.on{background:#f6b33f;border-color:#c07a14;color:#fff}
+.sv-chip.on small{color:#fff}
+.sv-custom input{padding:4px 6px;border-radius:8px;border:2px solid #e3c79a;font:inherit}
+.sv-trend{display:flex;align-items:flex-end;gap:3px;height:150px;padding:4px 0 22px;overflow-x:auto}
+.sv-trend .col{position:relative;flex:1 0 18px;height:100%;display:flex;flex-direction:column;justify-content:flex-end}
+.sv-trend .col i{display:block;min-height:2px;border-radius:6px 6px 0 0;background:linear-gradient(#f6b33f,#e08a1e)}
+.sv-trend .col span{position:absolute;left:50%;bottom:-20px;translate:-50% 0;font-size:11px;color:#8a6a4a;white-space:nowrap}
+.sv-trend .col:nth-child(even) span{visibility:hidden}
+.sv-trend:has(.col:nth-child(-n+16):last-child) .col span{visibility:visible}
+.sv-q summary{display:flex;justify-content:space-between;align-items:center;cursor:pointer;list-style:none}
+.sv-q summary h3{margin:0}
+.sv-msg tr.st-new td{background:#fffbe9}
+.sv-msg tr.st-done td{opacity:.6}
+.sv-msg select,.sv-msg input[data-note]{font:inherit;padding:4px 6px;border-radius:8px;border:2px solid #e3c79a;background:#fff;max-width:150px}
+.sv-msg input[type=checkbox]{width:18px;height:18px}
+.sv-filt input[type=search]{min-width:220px;padding:6px 10px;border-radius:10px;border:2px solid #e3c79a;font:inherit}
+.sv-bulk{display:flex;align-items:center;gap:6px;font-weight:700}
+.sv-pager{justify-content:center;gap:12px;margin-top:10px}
+.sv-title{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:6px}
+.sv-title h2{margin:0}

@@ -473,6 +473,14 @@ export const starter = {
   class: (code) => ccall('park_starter_class', { p_code: code }),
 };
 
+// ---------- 樂園共用問卷（supabase/park_survey.sql）：管理員看統計；孩子作答在 js/survey.js ----------
+export const survey = {
+  list:  () => call('park_survey_admin_list'),
+  admin: (code, from = null, to = null) => call('park_survey_admin', { p_code: code, p_from: from, p_to: to }),
+  mark:  (code, students, tag = null, state = null, note = null) =>
+    call('park_survey_mark', { p_code: code, p_students: students, p_tag: tag, p_state: state, p_note: note }),
+};
+
 // ---------- 時光試煉島（supabase/park_quiz.sql） ----------
 // 孩子：我的卷、打開、交卷、訂正、這題怪怪的。老師／家長：題庫、全班狀況、出卷、報告、推薦去玩。管理員：審題。
 export const quiz = {

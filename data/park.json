@@ -6,6 +6,8 @@
     "height": 900,
     "_pet_slot": "寵物島放在哪個 slot（主島桌寵，js/pet.js）；這個 slot 就不放雲霧",
     "pet_slot": 5,
+    "_lab_slot": "時光實驗室（lab/，2026-11-06）放在哪個 slot；這個 slot 就不放雲霧",
+    "lab_slot": 6,
     "_repair_slot": "時光修理站（改版紀錄＋小幫手牆，js/repair.js）放在哪個 slot；這個 slot 就不放雲霧",
     "repair_slot": 8,
     "_snow_isle": "聖誕活動「雪山滑雪橇」的雪山島（js/park.js；活動期間才出現，結束自動收起）放在哪裡；不占 slot，一進地圖就看得到",
