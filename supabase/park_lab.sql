@@ -170,6 +170,28 @@ insert into public.park_surveys (code, facility, title, thanks, reward, stamp, g
 on conflict (code) do update set title = excluded.title, thanks = excluded.thanks, reward = excluded.reward,
   stamp = excluded.stamp, gate_fn = excluded.gate_fn, locked = excluded.locked, questions = excluded.questions;
 
+-- ---------- 試營運開放給所有班（2026-11-25 Chuck：所有班都能玩，仍標「試營運」） ----------
+-- 試營運只認試玩班（park_trial_classes），所以把每一班都放進試玩班；新開的班用觸發器自動加。
+-- 之後改成「開放中」時，這份不用動（觸發器只在 time_lab 是 trial 時加）。
+insert into public.park_trial_classes (facility, class_code)
+select 'time_lab', c.code from public.classes c
+ where (select status from public.park_facilities where code = 'time_lab') = 'trial'
+on conflict do nothing;
+
+create or replace function public.lab_trial_new_class()
+returns trigger language plpgsql security definer set search_path = public, pg_temp as $$
+begin
+  if (select status from public.park_facilities where code = 'time_lab') = 'trial' then
+    insert into public.park_trial_classes (facility, class_code) values ('time_lab', new.code) on conflict do nothing;
+  end if;
+  return new;
+end;
+$$;
+revoke all on function public.lab_trial_new_class() from public, anon, authenticated;
+drop trigger if exists lab_trial_new_class on public.classes;
+create trigger lab_trial_new_class after insert on public.classes
+  for each row execute function public.lab_trial_new_class();
+
 -- ---------- 權限 ----------
 revoke all on function public.lab_books(), public.lab_exps(), public.lab_track(text, int), public.lab_me(),
   public.lab_coin_sources(uuid), public.lab_earned_stamps(uuid), public.lab_survey_gate(uuid) from public, anon, authenticated;
