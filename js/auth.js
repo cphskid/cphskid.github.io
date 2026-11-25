@@ -476,7 +476,9 @@ export const starter = {
 // ---------- 樂園共用問卷（supabase/park_survey.sql）：管理員看統計；孩子作答在 js/survey.js ----------
 export const survey = {
   list:  () => call('park_survey_admin_list'),
-  admin: (code) => call('park_survey_admin', { p_code: code }),
+  admin: (code, from = null, to = null) => call('park_survey_admin', { p_code: code, p_from: from, p_to: to }),
+  mark:  (code, students, tag = null, state = null, note = null) =>
+    call('park_survey_mark', { p_code: code, p_students: students, p_tag: tag, p_state: state, p_note: note }),
 };
 
 // ---------- 時光試煉島（supabase/park_quiz.sql） ----------

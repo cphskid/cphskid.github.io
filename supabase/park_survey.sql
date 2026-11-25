@@ -28,7 +28,11 @@
 --   park_survey_get(code)                           學生：題目、能不能寫、我寫過的答案
 --   park_survey_submit(code, answers, text, secs, device, names)  學生：送出（可以改，幣只給第一次）
 --   park_survey_stamps(student, facility)           各設施的 *_earned_stamps 接上來用
---   park_survey_admin_list() / park_survey_admin(code)  管理員：問卷列表／一份的所有作答
+--   park_survey_admin_list()                        管理員：問卷清單（類型、設施、開放狀態、份數、待處理留言）
+--   park_survey_admin(code, from, to)               管理員：一份問卷在日期區間（臺灣時間）內的作答
+--   park_survey_mark(code, students[], tag, state, note)  管理員：留言分類、已看／已處理、備註（可一次多筆）
+--
+-- 2026-11-25 Chuck：後台要能分類、分日期管理 → 問卷加 kind（類型），作答加 tag（留言分類）、state（處理狀態）、note。
 --
 -- 套用順序：park_coins.sql → park_passport.sql → 這份 → 各設施（park_lab.sql 會登記實驗室留言本）。重跑沒關係。
 
@@ -48,6 +52,10 @@ create table if not exists public.park_surveys (
   active    boolean not null default true,
   created_at timestamptz not null default now()
 );
+-- 問卷類型（後台分類用）：feedback 心得建議／event 活動／test 試玩測試／other 其他
+alter table public.park_surveys add column if not exists kind text not null default 'feedback';
+alter table public.park_surveys drop constraint if exists park_surveys_kind_check;
+alter table public.park_surveys add constraint park_surveys_kind_check check (kind in ('feedback', 'event', 'test', 'other'));
 alter table public.park_surveys enable row level security;
 revoke all on public.park_surveys from public, anon, authenticated;
 
@@ -64,6 +72,13 @@ create table if not exists public.park_survey_answers (
   updated_at timestamptz not null default now(),
   primary key (survey, student_id)
 );
+-- 留言管理：tag 分類（praise 好評／idea 建議／stuck 卡住看不懂／bug 壞掉／other 其他，null＝還沒分）
+--          state new 新的／seen 看過／done 處理好了；note 給自己看的備註
+alter table public.park_survey_answers add column if not exists tag text check (tag in ('praise', 'idea', 'stuck', 'bug', 'other'));
+alter table public.park_survey_answers add column if not exists state text not null default 'new' check (state in ('new', 'seen', 'done'));
+alter table public.park_survey_answers add column if not exists note text;
+alter table public.park_survey_answers add column if not exists handled_at timestamptz;
+create index if not exists park_survey_answers_day on public.park_survey_answers (survey, updated_at);
 alter table public.park_survey_answers enable row level security;
 revoke all on public.park_survey_answers from public, anon, authenticated;
 
@@ -163,7 +178,8 @@ begin
           least(greatest(coalesce(p_secs, 0), 0), 36000), left(p_device, 40))
   on conflict (survey, student_id) do update
     set answers = excluded.answers, names = x.names || excluded.names, text = excluded.text,
-        secs = excluded.secs, device = excluded.device, edits = x.edits + 1, updated_at = now()
+        secs = excluded.secs, device = excluded.device, edits = x.edits + 1, updated_at = now(),
+        state = case when x.text is distinct from excluded.text and excluded.text is not null then 'new' else x.state end
   returning (xmax = 0) into v_first;
 
   v_coins := public.park_coin_grant(v_me, 'survey:' || s.code, s.reward, s.facility, '寫了「' || s.title || '」');
@@ -187,23 +203,28 @@ returns setof text language sql stable security definer set search_path = public
 $$;
 
 -- ---------- 管理員 ----------
+drop function if exists public.park_survey_admin_list();
 create or replace function public.park_survey_admin_list()
-returns table (code text, facility text, facility_name text, title text, reward int, active boolean,
-               opens_at timestamptz, closes_at timestamptz, answers bigint, with_text bigint, last_at timestamptz)
+returns table (code text, kind text, facility text, facility_name text, title text, reward int, active boolean,
+               opens_at timestamptz, closes_at timestamptz, created_at timestamptz, status text,
+               answers bigint, with_text bigint, todo bigint, first_at timestamptz, last_at timestamptz)
 language plpgsql stable security definer set search_path = public, pg_temp as $$
 begin
   if not public.is_admin() then raise exception '只有管理員可以看'; end if;
   return query
-  select s.code, s.facility, f.name, s.title, s.reward, s.active, s.opens_at, s.closes_at,
-         count(a.student_id), count(a.text), max(a.updated_at)
+  select s.code, s.kind, s.facility, f.name, s.title, s.reward, s.active, s.opens_at, s.closes_at, s.created_at,
+         case when not s.active then 'off' when s.opens_at > now() then 'soon' when s.closes_at <= now() then 'ended' else 'open' end,
+         count(a.student_id), count(a.text), count(a.text) filter (where a.state = 'new'),
+         min(a.created_at), max(a.updated_at)
     from public.park_surveys s join public.park_facilities f on f.code = s.facility
     left join public.park_survey_answers a on a.survey = s.code
    group by s.code, f.name order by s.created_at desc;
 end;
 $$;
 
--- 一份問卷的全部作答（統計在後台前端算）：暱稱、主要班級、年級、裝置、秒數、答案、留言
-create or replace function public.park_survey_admin(p_code text)
+-- 一份問卷的作答（統計在後台前端算）：日期區間照臺灣時間的「最後送出那天」，null＝不限
+drop function if exists public.park_survey_admin(text);
+create or replace function public.park_survey_admin(p_code text, p_from date default null, p_to date default null)
 returns jsonb language plpgsql stable security definer set search_path = public, pg_temp as $$
 declare s public.park_surveys;
 begin
@@ -211,22 +232,47 @@ begin
   select * into s from public.park_surveys where code = p_code;
   if not found then raise exception '找不到這份問卷'; end if;
   return jsonb_build_object(
-    'code', s.code, 'title', s.title, 'questions', s.questions, 'min_secs', s.min_secs, 'reward', s.reward,
+    'code', s.code, 'title', s.title, 'kind', s.kind, 'questions', s.questions,
+    'status', case when not s.active then 'off' when s.opens_at > now() then 'soon' when s.closes_at <= now() then 'ended' else 'open' end, 'min_secs', s.min_secs, 'reward', s.reward,
     'rows', coalesce((
       select jsonb_agg(jsonb_build_object(
-               'nickname', st.nickname, 'class', st.class_code, 'class_name', c.name,
+               'id', st.id, 'nickname', st.nickname, 'class', st.class_code, 'class_name', c.name,
                'grade', (select g.grade from public.park_student_grades g where g.student_id = st.id),
                'answers', a.answers, 'names', a.names, 'text', a.text, 'secs', a.secs, 'device', a.device,
-               'edits', a.edits, 'at', a.updated_at) order by a.updated_at desc)
+               'edits', a.edits, 'first', a.created_at, 'at', a.updated_at,
+               'day', to_char(a.updated_at at time zone 'Asia/Taipei', 'YYYY-MM-DD'),
+               'tag', a.tag, 'state', a.state, 'note', a.note) order by a.updated_at desc)
         from public.park_survey_answers a join public.students st on st.id = a.student_id
         left join public.classes c on c.code = st.class_code
-       where a.survey = s.code), '[]'::jsonb));
+       where a.survey = s.code
+         and (p_from is null or (a.updated_at at time zone 'Asia/Taipei')::date >= p_from)
+         and (p_to is null or (a.updated_at at time zone 'Asia/Taipei')::date <= p_to)), '[]'::jsonb));
+end;
+$$;
+
+-- 留言管理：p_tag／p_state／p_note 給 null 就不改；p_tag＝'' 清掉分類
+create or replace function public.park_survey_mark(p_code text, p_students uuid[], p_tag text default null,
+  p_state text default null, p_note text default null)
+returns int language plpgsql security definer set search_path = public, pg_temp as $$
+declare n int;
+begin
+  if not public.is_admin() then raise exception '只有管理員可以改'; end if;
+  update public.park_survey_answers a
+     set tag   = case when p_tag is null then a.tag when p_tag = '' then null else p_tag end,
+         state = coalesce(p_state, a.state),
+         note  = case when p_note is null then a.note else nullif(btrim(p_note), '') end,
+         handled_at = case when p_state = 'done' then now() when p_state is not null then null else a.handled_at end
+   where a.survey = p_code and a.student_id = any (p_students);
+  get diagnostics n = row_count;
+  return n;
 end;
 $$;
 
 revoke all on function public.park_survey_open(public.park_surveys), public.park_survey_can(public.park_surveys, uuid),
   public.park_survey_get(text), public.park_survey_submit(text, jsonb, text, int, text, jsonb),
-  public.park_survey_stamps(uuid, text), public.park_survey_admin_list(), public.park_survey_admin(text)
+  public.park_survey_stamps(uuid, text), public.park_survey_admin_list(), public.park_survey_admin(text, date, date),
+  public.park_survey_mark(text, uuid[], text, text, text)
   from public, anon, authenticated;
 grant execute on function public.park_survey_get(text), public.park_survey_submit(text, jsonb, text, int, text, jsonb),
-  public.park_survey_admin_list(), public.park_survey_admin(text) to authenticated;
+  public.park_survey_admin_list(), public.park_survey_admin(text, date, date),
+  public.park_survey_mark(text, uuid[], text, text, text) to authenticated;
