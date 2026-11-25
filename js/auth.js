@@ -323,6 +323,7 @@ export const pet = {
   fish:          (size) => petcall('park_pet_fish', { p_size: size }),
   water:         (tree, fert) => petcall('park_pet_water', { p_tree: tree, p_fert: !!fert }),
   bait:          () => petcall('park_pet_bait'),
+  sell:          (item) => petcall('park_pet_sell', { p_item: item }),    // 食材攤收購小遊戲拿到的魚、果子、點心
   harvest:       (tree) => petcall('park_pet_harvest', { p_tree: tree }),
   bake:          (recipe, good, deco, top) => petcall('park_pet_bake', { p_recipe: recipe, p_good: !!good, p_deco: !!deco, p_top: top ?? null }),      // 飼料盆放一份時光飼料（park_pet.sql）
   classQuiet:    (code) => petcall('park_pet_class_quiet', { p_code: code }),

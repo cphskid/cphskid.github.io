@@ -18,6 +18,7 @@ import * as W from './isleworld.js';
 import { SETS, SET_ITEMS, notYet, soonText } from './islesets.js';
 import * as games from './petgames.js';
 import * as snow from './snow.js';
+import { sfx } from './audio.js';
 
 const $ = (s, root = document) => root.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -2451,10 +2452,53 @@ function paintBar() {
     isle.openVisit({ host: $('.pisle', layer), art });
   });
 }
+// 食材攤收購（park_pet.sql park_pet_sell）：小遊戲拿到的魚、果子、烤點心賣一個換時光幣，一天有上限。價錢跟伺服器 park_pet_sell_price 一樣
+let sellMode = false;
+function sellPrice(code) {
+  const P = { 'fish-s': 1, 'fish-m': 2, 'fish-l': 3, 'fish-night': 4 };
+  if (P[code]) return P[code];
+  if (/^fruit-/.test(code)) return 2;
+  if (/^bake-[a-z]+-gold$/.test(code)) return 8;
+  if (/^bake-[a-z]+-deco$/.test(code)) return 6;
+  if (/^bake-[a-z]+$/.test(code)) return 5;
+  return 0;
+}
+function paintSell(pop) {
+  const inv = state.inventory ?? {};
+  const left = state.sell_left ?? 0;
+  const list = state.items.filter((i) => sellPrice(i.code) && inv[i.code]).map((i) => {
+    const n = inv[i.code], pr = Math.min(sellPrice(i.code), left);
+    return `<button type="button" class="food" data-sell="${esc(i.code)}" ${left > 0 && !busy ? '' : 'disabled'}
+      aria-label="賣一個${esc(i.name)}換 ${pr} 時光幣（還有 ${n} 個）"><span class="ic">${icon(i)}</span><b>${esc(i.name)}</b><small>× ${n}・🪙${pr}</small></button>`;
+  }).join('');
+  pop.innerHTML = `<p>食材攤收購：點一下賣一個<small class="sell-left">${left > 0 ? `今天還收 🪙${left}` : '今天收夠了，明天再來'}</small></p>
+    <div class="bag">${list || '<em class="sell-none">背包裡還沒有能賣的。去釣魚、澆果樹收成、烤點心，多的就能拿來賣！</em>'}</div>
+    <button type="button" class="ghost small sell-tog" data-unsell>← 回去餵食</button>`;
+  pop.hidden = false;
+  $('[data-unsell]', pop).onclick = () => { sellMode = false; paintBag(); };
+  pop.querySelectorAll('[data-sell]').forEach((b) => {
+    b.onclick = async () => {
+      if (busy) return;
+      busy = true;
+      pop.querySelectorAll('[data-sell]').forEach((x) => { x.disabled = true; });
+      try {
+        const r = await api.sell(b.dataset.sell);
+        refresh(r);
+        coinUp(r, actors.find((x) => x.p.active));
+        sfx('SE-20');
+      } catch (err) {
+        oops(err.message);
+      }
+      busy = false;
+      if (bagOpen && sellMode) paintBag();
+    };
+  });
+}
 function paintBag() {
   const pop = $('.bagpop', layer);
   const home = myPet();
   if (!pop || !home) return;
+  if (sellMode) { paintSell(pop); return; }
   const m = moodOf(home);
   const inv = state.inventory ?? {};
   const bag = state.items.filter((i) => i.kind !== 'cook' && (i.kind === 'food' || i.facility || inv[i.code])).map((i) => {
@@ -2462,13 +2506,18 @@ function paintBag() {
     return `<button type="button" class="food${n ? '' : ' none'}" data-feed="${esc(i.code)}" ${n && m !== 'quiet' && !busy ? '' : 'disabled'}
       aria-label="餵${esc(i.name)}（還有 ${n} 個）"><span class="ic">${icon(i)}</span><b>${esc(i.name)}</b><small>× ${n}</small></button>`;
   }).join('');
-  pop.innerHTML = `<p>點一下拿去餵${esc(home.name)}</p><div class="bag">${bag}</div>`;
+  const canSell = state.sell_left != null && state.items.some((i) => sellPrice(i.code) && inv[i.code]);
+  pop.innerHTML = `<p>點一下拿去餵${esc(home.name)}</p><div class="bag">${bag}</div>
+    ${canSell ? '<button type="button" class="ghost small sell-tog" data-tosell>🪙 多的賣給食材攤</button>' : ''}`;
   pop.hidden = false;
   pop.querySelectorAll('[data-feed]').forEach((b) => { b.onclick = () => { closeBag(); focusHome(); feed(b.dataset.feed); }; });
+  const ts = $('[data-tosell]', pop);
+  if (ts) ts.onclick = () => { sellMode = true; paintBag(); };
 }
 function closeBag() {
   if (!bagOpen) return;
   bagOpen = false;
+  sellMode = false;
   const pop = $('.bagpop', layer);
   if (pop) pop.hidden = true;
   paintBar();
@@ -2513,7 +2562,13 @@ function oops(msg) {
   if (home) say(msg, home.id);
 }
 // 餵、摸、陪玩成功：套新狀態，也跟每日任務說一聲（js/shop.js 會重讀）
-function cared(s) { refresh(s); dispatchEvent(new Event('park:pet-care')); }
+function cared(s) { refresh(s); coinUp(s); dispatchEvent(new Event('park:pet-care')); }
+// 今天第一次餵、摸、陪玩，或賣東西給食材攤，有拿到時光幣：頭上跳「🪙 +3」，右上錢包跟著變
+function coinUp(s, a = actors.find((x) => x.p.active)) {
+  if (!(s?.coins > 0)) return;
+  if (a) setTimeout(() => floatUp(a, `🪙 +${s.coins}`), 450);
+  if (s.balance != null) dispatchEvent(new CustomEvent('park:coins', { detail: { balance: s.balance } }));
+}
 // 資料庫回來的新狀態套到島上的每一隻
 function refresh(s) {
   state = { ...state, ...s, granted: [] };
