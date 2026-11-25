@@ -1,6 +1,6 @@
 // 時光幣、每日任務、商店（資料庫在 supabase/park_coins.sql）。
 //
-// 地圖右上角「時光幣」、底部功能列「每日任務」：點了看餘額、本週冒險值、今天的每日任務（做到了按「領」；週末多一個，一週 5 天全做完有週獎勵）。
+// 地圖右上角「時光幣」、底部功能列「每日任務」：點了看餘額、本週冒險值、今天的每日任務（做到了自動入帳，打開樂園或照顧完寵物時跳通知；還沒入帳的也能按「領」；週末多一個，一週 5 天全做完有週獎勵）。
 // 左下角護照上面一個「商店」：主角（換裝間的衣服）、寵物（點心）、傢俱（寵物島）、本月限定。
 // 進樂園時，各遊戲新賺到的時光幣跳一次通知（「在島嶼開拓者賺了 130 時光幣！」）。
 // 錢都是伺服器算的，這裡只負責顯示和按按鈕；資料庫還沒裝這份 SQL 時整個藏起來。
@@ -31,7 +31,8 @@ export async function load(w = hooks.me()) {
     [st] = await Promise.all([auth.coins.me().catch(() => null), auth.lounge.me()]);   // 交誼廳這週第一次來就分同伴圈
   }
   paintHud();
-  if (st?.fresh?.length) announce(st.fresh);
+  if (st?.fresh?.length) announce(st.fresh, st.auto);
+  else autoDone(st?.auto);
   return st;
 }
 
@@ -66,13 +67,24 @@ function paintTasks(n = canClaim()) {
 taskBtn?.addEventListener('click', () => openWallet());
 
 // 進樂園時跳一次「在哪裡賺了多少」
-function announce(list) {
+function announce(list, auto = null) {
   const total = list.reduce((n, x) => n + x.amount, 0);
   const where = list.map((x) => x.name ?? '樂園').join('、');
-  hooks.toast(`🪙 你在${where}賺了 ${total} 時光幣！`);
+  hooks.toast(`🪙 你在${where}賺了 ${total} 時光幣！${auto?.amount ? `每日任務也自動拿到 ${auto.amount}！` : ''}`);
+  boing();
+  auth.coins.seen().catch(() => {});
+}
+function boing() {
   chip.classList.add('boing');
   setTimeout(() => chip.classList.remove('boing'), 1200);
-  auth.coins.seen().catch(() => {});
+}
+// 每日任務做到了伺服器自動入帳（park_daily_auto）：跳一句「完成了，拿到幾枚」，不用再按「領」
+function autoDone(auto) {
+  if (!auto?.amount) return;
+  const names = (auto.tasks ?? []).map((t) => `「${String(t).replace(/：.*$/, '')}」`).join('');
+  hooks.toast(`✅ 每日任務${names}完成！自動拿到 ${auto.amount} 時光幣`);
+  sfx('SE-20');
+  boing();
 }
 
 function show(html) {
@@ -95,7 +107,7 @@ let rechecking = null;
 function recheck() {
   if (!st) return Promise.resolve(null);
   return rechecking ??= auth.coins.me()
-    .then((s) => { if (s) { st = s; paintHud(); } return st; })
+    .then((s) => { if (s) { st = s; paintHud(); autoDone(s.auto); } return st; })
     .catch(() => st)
     .finally(() => { rechecking = null; });
 }
@@ -129,12 +141,12 @@ function paintWallet(msg = null) {
     <div class="wk"><div class="bar"><i style="width:${pct}%"></i></div><b>${st.week} / ${st.goal}</b>
       ${myClasses().length ? '<button type="button" class="ghost small" data-board>🏆 班級排行</button>' : ''}</div>
     ${starterOn() ? '<h3>新手手冊 <small>新手期間先照手冊走，翻完七頁就換成每日任務</small></h3><p class="tip"><button type="button" class="ghost small" data-guide>📖 打開新手手冊</button></p>'
-      : `<h3>今天的任務 <small>每個 ${d.each}，全部完成再加 ${d.bonus}${d.weekend ? '；週末多一個加碼' : ''}</small></h3>
+      : `<h3>今天的任務 <small>每個 ${d.each}，全部完成再加 ${d.bonus}${d.weekend ? '；週末多一個加碼' : ''}；做到了自動拿</small></h3>
     <ul class="daily">${rows}</ul>
     ${wk}
     ${d.all ? '<p class="note ok">今天的任務都完成了，明天再來！</p>' : ''}`}
     ${msg ? `<p class="note ${msg[0]}">${esc(msg[1])}</p>` : ''}
-    <p class="tip">去各座島過關、拿星星就會賺時光幣；重玩一整章也有，但一次比一次少。</p>
+    <p class="tip">去各座島過關、拿星星就會賺時光幣；重玩一整章也有，但一次比一次少。在寵物島照顧夥伴、釣魚，或把釣到的魚、收成的果子、烤好的點心賣給食材攤，也能賺一點。</p>
     <div class="row end"><button type="button" class="ghost" data-close>關閉</button>
       <button type="button" class="btn go" data-shop><img src="img/ui/shop.webp" alt="">去商店</button></div>
   </div>`);

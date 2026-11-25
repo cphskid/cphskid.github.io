@@ -11,7 +11,8 @@
 --     重玩整章遞減：二刷給整章獎勵的一半、三刷四分之一、四刷起不給；看到新結局另給 30。
 --     費率、各步的輕中重之後用全體通關時間中位數校正（改表就好，不用改程式）。
 --   守護異世界：每蓋到一個樂園護照章給 20。
---   每日任務：每天 3 個，各 5，全做完再加 10，一天最多 25。
+--   每日任務：每天 3 個（週末 4 個），各 10（2026-11-25 從 5 調上來），全做完再加 10；做到了自動入帳。
+--   時光動物祕境：每關第一次過關 50（終章 100）、第二次 20、彩蛋 10。
 --   本週冒險值＝這週新賺到的時光幣（不是餘額），週一（臺灣時間）重置；花掉也不會掉。
 --
 -- 商店四類：主角（換裝間的衣飾，價錢在 park_wear_items）、寵物（點心）、傢俱（寵物島）、本月限定。
@@ -114,10 +115,29 @@ insert into public.park_coin_rates (code, amount, note) values
   ('ending',         30, '重玩時看到新的結局'),
   ('challenge',      10, '⭐⭐⭐再挑戰第一次過關'),
   ('guardian_stamp', 20, '守護異世界每蓋到一個樂園護照章'),
-  ('daily',          5,  '每日任務一個'),
+  ('daily',          10, '每日任務一個（2026-11-25 從 5 調成 10）'),
   ('daily_all',      10, '每日任務當天全做完'),
   ('daily_week',     30, '一週有 5 天每日任務全做完')
 on conflict (code) do update set note = excluded.note;   -- 金額校正過就不蓋回去
+
+-- 2026-11-25「讓時光幣更容易賺」（Chuck 選 A+B+C）：
+--   每日任務一個 5 → 10。只在第一次套這一版時調（那時還沒有 animal_clear 這一列），之後重跑不會蓋掉校正過的金額。
+update public.park_coin_rates set amount = 10
+ where code = 'daily' and amount = 5
+   and not exists (select 1 from public.park_coin_rates where code = 'animal_clear');
+--   A 時光動物祕境過關發幣；C 寵物島：釣魚上限、照顧夥伴、食材攤收購
+--   照顧夥伴（care:）、食材攤收購（sell:）只進錢包，不算本週冒險值（park_coin_counts）
+insert into public.park_coin_rates (code, amount, note) values
+  ('animal_clear',  50,  '時光動物祕境：每一關第一次過關'),
+  ('animal_finale', 100, '時光動物祕境：終章第一次過關'),
+  ('animal_again',  20,  '時光動物祕境：同一關第二次過關（第三次起不給）'),
+  ('animal_egg',    10,  '時光動物祕境：每找到一顆彩蛋'),
+  ('fish_daily',    20,  '寵物島釣魚：一天最多賺幾枚'),
+  ('care_feed',     3,   '寵物島：今天第一次餵夥伴'),
+  ('care_pat',      3,   '寵物島：今天第一次摸摸夥伴'),
+  ('care_play',     4,   '寵物島：今天第一次陪夥伴玩（願望或丟球）'),
+  ('sell_daily',    30,  '寵物島食材攤：一天最多收購幾枚')
+on conflict (code) do update set note = excluded.note;
 
 insert into public.park_pet_items (code, kind, name, icon, xp, facility, sort) values
   ('apple',   'special', '蘋果片',   '🍎', 2, null, 10),
@@ -210,11 +230,18 @@ returns int language sql stable security definer set search_path = public, pg_te
   select coalesce(sum(amount), 0)::int from public.park_coin_ledger where student_id = p_student;
 $$;
 
+-- 哪些入帳算冒險值：寵物島照顧夥伴（care:）、食材攤收購（sell:）只進錢包，不算（2026-11-25）
+create or replace function public.park_coin_counts(p_source text)
+returns boolean language sql immutable set search_path = public, pg_temp as $$
+  select p_source !~ '^(care|sell):';
+$$;
+
 -- 本週冒險值：這週新賺到的（花掉的不扣）
 create or replace function public.park_coin_week(p_student uuid)
 returns int language sql stable security definer set search_path = public, pg_temp as $$
   select coalesce(sum(amount), 0)::int from public.park_coin_ledger
-   where student_id = p_student and amount > 0 and created_at >= public.park_week_start();
+   where student_id = p_student and amount > 0 and created_at >= public.park_week_start()
+     and public.park_coin_counts(source);
 $$;
 
 -- 入帳：同一個來源只算一次。回傳這次真的入帳的金額（重複的回 0）。
@@ -244,6 +271,29 @@ update public.park_facilities set coins_fn = 'guardian_coin_sources' where code 
 -- 島嶼開拓者的 SQL 先套過了（已經有 island_coin_sources）就順便登記
 update public.park_facilities set coins_fn = 'island_coin_sources'
  where code = 'island_pioneer' and coins_fn is null and to_regprocedure('public.island_coin_sources(uuid)') is not null;
+
+-- 時光動物祕境（park_animal.sql 的 animal_progress / animal_eggs）：
+--   每關第一次過關 50（終章 100）、同一關第二次過關 20、每顆彩蛋 10。之前就過關的孩子，打開樂園時一次補發。
+create or replace function public.animal_coin_sources(p_student uuid)
+returns table (source text, amount int, note text)
+language plpgsql stable security definer set search_path = public, pg_temp as $$
+begin
+  if to_regclass('public.animal_progress') is null then return; end if;
+  return query
+    select 'animal:' || p.level || ':clear',
+           public.park_coin_rate(case when p.level = 'storm' then 'animal_finale' else 'animal_clear' end),
+           '祕境過關'::text
+      from public.animal_progress p where p.student_id = p_student and p.first_clear_at is not null
+    union all
+    select 'animal:' || p.level || ':again', public.park_coin_rate('animal_again'), '祕境再過一次關'::text
+      from public.animal_progress p where p.student_id = p_student and p.clears >= 2
+    union all
+    select 'animal:egg:' || e.egg, public.park_coin_rate('animal_egg'), '找到祕境彩蛋'::text
+      from public.animal_eggs e where e.student_id = p_student;
+end;
+$$;
+revoke all on function public.animal_coin_sources(uuid) from public, anon, authenticated;
+update public.park_facilities set coins_fn = 'animal_coin_sources' where code = 'science_warrior' and coins_fn is null;
 
 -- 把各設施「該拿到」的時光幣補進帳本。回傳這次新入帳的總額。
 create or replace function public.park_coin_sync(p_student uuid)
@@ -449,6 +499,45 @@ begin
 end;
 $$;
 
+-- 每日任務做到了就自動入帳（2026-11-25：兩週只有五分之一的孩子按過「領」）。
+--   看今天和昨天（昨天做完沒回樂園的也補），做到沒領的一個個入帳，全做完再加全勤、週獎勵。
+--   回傳 {amount, tasks:[這次自動領到的任務名]}；打開樂園（park_coins_me）時叫。
+create or replace function public.park_daily_auto(p_student uuid)
+returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
+declare d public.park_daily; t text; v_amt int := 0; v_names text[] := '{}'; v_g int; v_mon date; v_days int;
+        v_today date := public.park_today();
+begin
+  if p_student is null then return jsonb_build_object('amount', 0, 'tasks', '[]'::jsonb); end if;
+  perform public.park_daily_row(p_student);
+  for d in select * from public.park_daily x where x.student_id = p_student and x.day in (v_today, v_today - 1)
+            and cardinality(x.claimed) < cardinality(x.tasks) order by x.day for update loop
+    foreach t in array d.tasks loop
+      continue when t = any(d.claimed);
+      continue when not public.park_daily_done(p_student, t, d.day);
+      v_g := public.park_coin_grant(p_student, 'daily:' || d.day || ':' || t, public.park_coin_rate('daily'),
+                                    null, '每日任務：' || public.park_daily_name(t));
+      update public.park_daily set claimed = claimed || t where student_id = p_student and day = d.day
+      returning * into d;
+      v_amt := v_amt + v_g;
+      v_names := v_names || public.park_daily_name(t);
+    end loop;
+    if cardinality(d.claimed) >= cardinality(d.tasks) then
+      v_amt := v_amt + public.park_coin_grant(p_student, 'daily:' || d.day || ':all', public.park_coin_rate('daily_all'),
+                                              null, '每日任務全部完成');
+      v_mon := d.day - (extract(isodow from d.day)::int - 1);
+      select count(*) into v_days from public.park_daily x
+       where x.student_id = p_student and x.day between v_mon and v_mon + 6 and cardinality(x.claimed) >= cardinality(x.tasks);
+      if v_days >= 5 then
+        v_amt := v_amt + public.park_coin_grant(p_student, 'daily-week:' || v_mon, public.park_coin_rate('daily_week'),
+                                                null, '這週有 5 天每日任務全部完成');
+      end if;
+    end if;
+  end loop;
+  return jsonb_build_object('amount', v_amt, 'tasks', to_jsonb(v_names));
+end;
+$$;
+revoke all on function public.park_daily_auto(uuid) from public, anon, authenticated;
+
 -- 這週一 0 點到現在、上週同一段時間的總覽給畫面用
 create or replace function public.park_coins_state(p_student uuid)
 returns jsonb language sql security definer set search_path = public, pg_temp as $$
@@ -463,15 +552,17 @@ $$;
 -- 5. 給樂園畫面叫的
 -- -----------------------------------------------------------------------------
 
--- 我的時光幣：先把各遊戲該給的補進帳本，再回傳 {balance, week, goal, daily, fresh:[還沒跳過通知的入帳]}
+-- 我的時光幣：先把各遊戲該給的補進帳本，再把做到的每日任務自動入帳，
+-- 回傳 {balance, week, goal, daily, auto:{amount, tasks}, fresh:[還沒跳過通知的入帳]}
 -- 不是學生回 null。
 create or replace function public.park_coins_me()
 returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
-declare v_me uuid := public.current_student_id();
+declare v_me uuid := public.current_student_id(); v_auto jsonb;
 begin
   if v_me is null then return null; end if;
   perform public.park_coin_sync(v_me);
-  return public.park_coins_state(v_me) || jsonb_build_object(
+  v_auto := public.park_daily_auto(v_me);
+  return public.park_coins_state(v_me) || jsonb_build_object('auto', v_auto,
     'fresh', coalesce((select jsonb_agg(jsonb_build_object('facility', g.facility, 'name', g.name, 'amount', g.amount, 'n', g.n)
                                         order by g.amount desc)
                          from (select l.facility, f.name, sum(l.amount)::int as amount, count(*)::int as n
@@ -669,7 +760,7 @@ begin
              when 'week' then public.park_coin_week(m.student_id)
              when 'up' then public.park_coin_week(m.student_id)
                             - coalesce((select sum(l.amount) from public.park_coin_ledger l
-                                         where l.student_id = m.student_id and l.amount > 0
+                                         where l.student_id = m.student_id and l.amount > 0 and public.park_coin_counts(l.source)
                                            and l.created_at >= v_ws - interval '7 days' and l.created_at < v_ws), 0)::int
              else (select count(*) from public.park_student_stamps x where x.student_id = m.student_id)::int
            end as score

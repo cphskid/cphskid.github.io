@@ -712,6 +712,9 @@ aside.care .wish span img{width:40px;height:40px}
 .pisle .bagpop .food .ic{height:44px}
 .pisle .bagpop .food .ic img{width:44px;height:44px}
 .pisle .bagpop .food b{font-size:13px}
+.pisle .bagpop .sell-tog{margin-top:8px;font-size:13px}
+.pisle .bagpop .sell-left{margin-left:8px;font:800 12px/1 var(--f-body);color:#c27a12}
+.pisle .bagpop .sell-none{display:block;max-width:300px;font:700 13px/1.4 var(--f-body);color:#8a6a4a;font-style:normal;white-space:normal}
 .pisle .bagpop .food small{font-size:13px}
 .pals-s{display:flex;gap:10px;flex-wrap:wrap}
 .pal-s{position:relative;width:72px;height:72px;border-radius:18px;border:3px solid var(--cream-2);background:#fff;padding:4px;cursor:pointer;display:grid;place-items:center}

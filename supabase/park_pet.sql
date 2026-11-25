@@ -434,6 +434,16 @@ end;
 $$;
 
 -- 畫面要的一整包
+-- 食材攤今天還收多少（park_pet_sell；park_coins.sql 還沒套就是 0）
+create or replace function public.park_pet_sell_left(p_student uuid)
+returns int language plpgsql stable security definer set search_path = public, pg_temp as $$
+begin
+  if to_regprocedure('public.park_coin_rate(text)') is null then return 0; end if;
+  return greatest(0, public.park_coin_rate('sell_daily') - coalesce((select g.coins from public.park_pet_game_log g
+           where g.student_id = p_student and g.game = 'sell' and g.day = (now() at time zone 'Asia/Taipei')::date), 0))::int;
+end;
+$$;
+
 create or replace function public.park_pet_state(p_student uuid, p_granted jsonb default '[]')
 returns jsonb language sql stable security definer set search_path = public, pg_temp as $$
   select jsonb_build_object(
@@ -449,6 +459,7 @@ returns jsonb language sql stable security definer set search_path = public, pg_
     'trees', coalesce((select jsonb_object_agg(t.tree, jsonb_build_object('grow', t.grow,
                           'watered', t.last_water = (now() at time zone 'Asia/Taipei')::date, 'harvests', t.harvests))
                          from public.park_pet_trees t where t.student_id = p_student), '{}'::jsonb),
+    'sell_left', public.park_pet_sell_left(p_student),
     'fish_coins', coalesce((select g.coins from public.park_pet_game_log g where g.student_id = p_student and g.game = 'fish'
                              and g.day = (now() at time zone 'Asia/Taipei')::date), 0),
     'items', (select jsonb_agg(jsonb_build_object('code', i.code, 'kind', i.kind, 'name', i.name, 'icon', i.icon, 'xp', i.xp, 'buff', i.buff,
@@ -682,6 +693,21 @@ $$;
 
 -- 餵食：一份飼料撐 6 小時（約一格多），點心撐 10 小時；肚子是滿的就不吃。
 -- 飼料要隔 15 分鐘才能再餵（慢慢吃）；點心隨時都吃。吃東西心情也 +1（節日點心 +3）。
+-- 照顧夥伴的時光幣（2026-11-25）：今天第一次餵、第一次摸、第一次陪玩各給一點（care_feed / care_pat / care_play），
+-- 只進錢包、不算冒險值（park_coin_counts）。回傳 {coins, balance} 讓畫面跳「+3」。
+create or replace function public.park_pet_care_coin(p_student uuid, p_what text)
+returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
+declare v_got int := 0;
+begin
+  if to_regprocedure('public.park_coin_grant(uuid,text,integer,text,text)') is not null then
+    v_got := public.park_coin_grant(p_student, 'care:' || (now() at time zone 'Asia/Taipei')::date || ':' || p_what,
+                                    public.park_coin_rate('care_' || p_what), null, '照顧夥伴');
+    return jsonb_build_object('coins', v_got, 'balance', public.park_coin_balance(p_student));
+  end if;
+  return jsonb_build_object('coins', 0);
+end;
+$$;
+
 create or replace function public.park_pet_feed(p_item text)
 returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
 declare
@@ -715,7 +741,8 @@ begin
    where id = v.id;
   perform public.park_pet_add_joy(v.id, case when p_item in ('pumpkin-pie', 'candy', 'bat-cookie') then 3
                                              when v_i.buff = 'happy' then 8 else 1 end);
-  return public.park_pet_state(v_me) || jsonb_build_object('did', 'feed', 'was', v_mood, 'xp', v_i.xp);
+  return public.park_pet_state(v_me) || jsonb_build_object('did', 'feed', 'was', v_mood, 'xp', v_i.xp)
+         || public.park_pet_care_coin(v_me, 'feed');
 end;
 $$;
 
@@ -729,6 +756,7 @@ declare
   v_today date := (now() at time zone 'Asia/Taipei')::date;
   v_xp int := 0;
   v_tired boolean := false;
+  v_coin jsonb := '{}';
 begin
   v := public.park_pet_mine(v_me);
   v_mood := public.park_pet_mood(v);
@@ -745,8 +773,9 @@ begin
     update public.park_pets
        set patted_at = now(), sulky = false, xp = xp + v_xp, pat_xp_on = v_today
      where id = v.id;
+    v_coin := public.park_pet_care_coin(v_me, 'pat');
   end if;
-  return public.park_pet_state(v_me) || jsonb_build_object('did', 'pat', 'was', v_mood, 'xp', v_xp, 'tired', v_tired);
+  return public.park_pet_state(v_me) || jsonb_build_object('did', 'pat', 'was', v_mood, 'xp', v_xp, 'tired', v_tired) || v_coin;
 end;
 $$;
 
@@ -772,7 +801,8 @@ begin
   v_n := case when v.play_day = v_today then v.play_n else 0 end;
   if p_kind = 'wish' and v_n < 3 then v_xp := 1; v_n := v_n + 1; end if;
   update public.park_pets set played_at = now(), play_day = v_today, play_n = v_n, xp = xp + v_xp where id = v.id;
-  return public.park_pet_state(v_me) || jsonb_build_object('did', 'play', 'was', v_mood, 'xp', v_xp);
+  return public.park_pet_state(v_me) || jsonb_build_object('did', 'play', 'was', v_mood, 'xp', v_xp)
+         || public.park_pet_care_coin(v_me, 'play');
 end;
 $$;
 
@@ -818,7 +848,7 @@ returns void language sql security definer set search_path = public, pg_temp as 
 $$;
 
 -- 釣魚：p_size 0 沒釣到、1 小、2 中、3 大（連續釣到越來越大，畫面算）。
--- 晚上（18:00～06:00）有石虎、釣到中大魚時有機會變成夜光魚；大魚 +2 幣、中魚 +1 幣，一天最多 10 幣。
+-- 晚上（18:00～06:00）有石虎、釣到中大魚時有機會變成夜光魚；大魚 +2 幣、中魚 +1 幣，一天最多 fish_daily 幣（2026-11-25 10 → 20）。
 create or replace function public.park_pet_fish(p_size int)
 returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
 declare v_me uuid := public.current_student_id(); v public.park_pet_game_log; v_item text; v_coin int := 0; v_got int := 0;
@@ -834,7 +864,7 @@ begin
       v_item := 'fish-night';
     end if;
     perform public.park_pet_give(v_me, v_item, 1);
-    v_coin := least(case p_size when 3 then 2 when 2 then 1 else 0 end, greatest(0, 10 - v.coins));
+    v_coin := least(case p_size when 3 then 2 when 2 then 1 else 0 end, greatest(0, coalesce(nullif(public.park_coin_rate('fish_daily'), 0), 10) - v.coins));
     if v_coin > 0 then
       v_got := public.park_coin_grant(v_me, 'fish:' || v.day || ':' || v.n, v_coin, null, '寵物島釣魚');
       update public.park_pet_game_log set coins = coins + v_got where student_id = v_me and game = 'fish' and day = v.day;
@@ -956,6 +986,38 @@ begin
 end;
 $$;
 
+-- 食材攤收購（2026-11-25）：小遊戲拿到的魚、果子、烤點心可以賣一個換時光幣，一天最多 sell_daily 枚。
+-- 只進錢包、不算冒險值（park_coin_counts）。商店買的點心、每天的飼料不收。
+create or replace function public.park_pet_sell_price(p_item text)
+returns int language sql immutable set search_path = public, pg_temp as $$
+  select case
+    when p_item = 'fish-s' then 1 when p_item = 'fish-m' then 2 when p_item = 'fish-l' then 3 when p_item = 'fish-night' then 4
+    when p_item like 'fruit-%' then 2
+    when p_item ~ '^bake-[a-z]+-gold$' then 8 when p_item ~ '^bake-[a-z]+-deco$' then 6 when p_item ~ '^bake-[a-z]+$' then 5
+  end;
+$$;
+create or replace function public.park_pet_sell(p_item text)
+returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
+declare v_me uuid := public.current_student_id(); v_price int := public.park_pet_sell_price(p_item);
+        v_left int; v public.park_pet_game_log; v_got int;
+begin
+  if v_me is null then raise exception '請先登入學生帳號'; end if;
+  if v_price is null then raise exception '食材攤不收這個'; end if;
+  v_left := public.park_pet_sell_left(v_me);
+  if v_left <= 0 then raise exception '食材攤今天收夠了，明天再來賣'; end if;
+  update public.park_pet_inventory set qty = qty - 1 where student_id = v_me and item = p_item and qty > 0;
+  if not found then raise exception '背包裡沒有了'; end if;
+  insert into public.park_pet_game_log as g (student_id, game, day, n, last_at)
+  values (v_me, 'sell', (now() at time zone 'Asia/Taipei')::date, 1, now())
+  on conflict (student_id, game, day) do update set n = g.n + 1, last_at = now()
+  returning * into v;
+  v_got := public.park_coin_grant(v_me, 'sell:' || v.day || ':' || v.n, least(v_price, v_left), null, '食材攤收購');
+  update public.park_pet_game_log set coins = coins + v_got where student_id = v_me and game = 'sell' and day = v.day;
+  return public.park_pet_state(v_me) || jsonb_build_object('did', 'sell', 'item', p_item, 'coins', v_got,
+                                                           'balance', public.park_coin_balance(v_me));
+end;
+$$;
+
 -- -----------------------------------------------------------------------------
 -- 6. 給老師後台叫的：上課時間桌寵休息
 -- -----------------------------------------------------------------------------
@@ -995,11 +1057,12 @@ revoke all on function
   public.park_pet_egg_give(uuid, text, text), public.park_pet_egg_check(uuid), public.park_pet_hatch(uuid),
   public.park_pet_game_tick(uuid, text), public.park_pet_give(uuid, text, int), public.park_pet_reap(uuid, text),
   public.park_pet_fish(int), public.park_pet_water(text, boolean), public.park_pet_harvest(text),
-  public.park_pet_bake(text, boolean, boolean, text), public.park_pet_bait()
+  public.park_pet_bake(text, boolean, boolean, text), public.park_pet_bait(),
+  public.park_pet_care_coin(uuid, text), public.park_pet_sell_left(uuid), public.park_pet_sell(text)
   from public, anon, authenticated;
 grant execute on function
   public.park_pet_me(), public.park_pet_adopt(text, text), public.park_pet_feed(text), public.park_pet_swap(bigint),
   public.park_pet_rest(bigint, boolean), public.park_pet_fish(int), public.park_pet_water(text, boolean), public.park_pet_harvest(text),
-  public.park_pet_bake(text, boolean, boolean, text), public.park_pet_bait(), public.park_pet_pat(), public.park_pet_play(text), public.park_pet_rename(text, bigint),
+  public.park_pet_bake(text, boolean, boolean, text), public.park_pet_bait(), public.park_pet_sell(text), public.park_pet_pat(), public.park_pet_play(text), public.park_pet_rename(text, bigint),
   public.park_pet_class_quiet(text), public.park_pet_set_class_quiet(text, boolean), public.park_pet_bowl_fill()
   to authenticated;
