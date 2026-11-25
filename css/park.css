@@ -438,6 +438,9 @@ ul.classes li .row{gap:8px;justify-content:flex-end}
 
 /* 桌寵的窩 */
 #pass.again,#pass.again>*,#petroom.again,#petroom.again>*{animation:none}   /* 視窗開著時換內容不重播彈出 */
+/* 寵物島開著時大地圖整個藏起來、動畫停住（js/pet.js show 加 body.pet-on） */
+body.pet-on #world,body.ski-on #world,body.ski-on #petroom{visibility:hidden}
+body:is(.pet-on,.ski-on) #world *{animation-play-state:paused!important}
 #petroom{position:absolute;inset:0;background:rgba(10,40,70,.55);display:grid;place-items:center;z-index:13}
 #petroom .x{position:absolute;right:-30px;top:-30px;width:72px;height:72px;border:0;padding:0;background:url(../img/ui/close.webp) center/contain no-repeat;cursor:pointer;filter:drop-shadow(0 4px 6px rgba(0,0,0,.3));transition:transform .2s;z-index:2}
 #petroom .x:hover,#petroom .x:focus-visible{transform:scale(1.1) rotate(8deg);outline:none}

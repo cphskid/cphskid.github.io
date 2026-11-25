@@ -20,7 +20,9 @@ const ABILITY = {
   dragon: ['rock', '小火龍：撞到石頭也不會摔'], kitten: ['magnet', '小貓：吸雪花的範圍比較大'], 'leopard-cat': ['magnet', '石虎：吸雪花的範圍比較大'],
 };
 
-let veil = null, raf = 0, imgs = {};
+let veil = null, raf = 0, imgs = {}, cvNow = null;
+// iPhone 的 canvas 記憶體要把寬高設 0 才會馬上放掉（只拿掉元素不會），滑幾次再進寵物島就超過上限閃退（2026-11-25）
+function dropCanvas() { if (cvNow) { cvNow.width = 0; cvNow.height = 0; cvNow = null; } }
 const EAGLE_TEST = /[?&]eagle=1/.test(location.search);   // 測試用：老鷹常常出現（tools/test/pet-preview.html?snow=1&eagle=1）
 function load(src) { return new Promise((ok) => { const i = new Image(); i.onload = () => ok(i); i.onerror = () => ok(null); i.src = src; }); }
 
@@ -31,6 +33,7 @@ export async function openSki({ pet, onClose } = {}) {
   // iPhone 長按會跳出「拷貝／查詢／翻譯」：整個滑雪畫面不讓選字、不跳選單
   for (const ev of ['contextmenu', 'selectstart', 'dragstart']) veil.addEventListener(ev, (e) => e.preventDefault());
   document.body.appendChild(veil);
+  document.body.classList.add('ski-on');     // 後面的大地圖／寵物島先不畫
   // 滑雪放自己的歌（MU-58 雪橇鈴鐺），關掉再換回原本那首
   const prevMu = nowMusic();
   music('MU-58');
@@ -68,7 +71,9 @@ export async function openSki({ pet, onClose } = {}) {
       <div class="ski-hud"><span>${snow.SNOW}<b data-n>0</b></span><span class="gift"><img src="img/xmas/ski-gift.webp" alt=""><b data-g>0</b></span><span><b data-d>0</b> 公尺</span></div>
       <p class="ski-tip">點一下跳，空中按住翻滾</p>
       <button class="x" data-quit aria-label="結束"></button>`;
+    dropCanvas();
     const cv = $('canvas', veil), ctx = cv.getContext('2d');
+    cvNow = cv;
     let W = 0, H = 0;
     const fit = () => { const d = Math.min(2, devicePixelRatio || 1); W = veil.clientWidth; H = veil.clientHeight; cv.width = W * d; cv.height = H * d; cv.style.width = W + 'px'; cv.style.height = H + 'px'; ctx.setTransform(d, 0, 0, d, 0, 0); };
     fit();
@@ -446,6 +451,7 @@ export async function openSki({ pet, onClose } = {}) {
       let r = null, err = null;
       try { r = await auth.snow.ski(S.snow, d); snow.set(r); } catch (e) { err = e.message; }
       cancelAnimationFrame(raf);
+      dropCanvas();
       const s = snow.state();
       intro(`<div class="ski-result"><p class="big">滑了 <b>${d}</b> 公尺${r && d >= (r.best ?? 0) && d > 0 ? '・新紀錄！' : ''}</p>
         <p>撿到雪花 ${S.snow} 片${r ? `，拿到 <b>${r.got}</b> 片${r.got < S.snow ? `（今天滑雪最多 ${s?.caps?.ski ?? 12} 片）` : ''}` : ''}</p>
@@ -454,4 +460,4 @@ export async function openSki({ pet, onClose } = {}) {
     }
   }
 }
-export function close() { cancelAnimationFrame(raf); veil?.remove(); veil = null; }
+export function close() { cancelAnimationFrame(raf); dropCanvas(); veil?.remove(); veil = null; imgs = {}; document.body.classList.remove('ski-on'); }
