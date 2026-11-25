@@ -178,7 +178,7 @@ function launchBalloon() {
 
 // ---------- 視窗 ----------
 const LINK = {
-  'shop-month': '去商店看看', 'shop-event': '去商店看看', repair: '去時光修理站', wear: '去換裝間', pet: '去寵物島', quiz: '去時光試煉島',
+  'shop-month': '去商店看看', 'shop-event': '去商店看看', repair: '去時光修理站', wear: '去換裝間', pet: '去寵物島', quiz: '去時光試煉島', lab: '去時光實驗室',
 };
 const linkLabel = (l) => LINK[l] ?? (String(l).startsWith('zone:') ? '去那座島看看' : '去看看');
 function show(html, onClose) {

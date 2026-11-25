@@ -181,6 +181,7 @@ news.init({
   scene: () => document.body.dataset.scene,
   go: (link) => {
     if (link === 'quiz') { location.href = 'quiz/'; return; }
+    if (link === 'lab') return enterLab();
     if (link === 'repair') return repair.open();
     if (link === 'wear') return traveller.open();
     if (link === 'pet') return pet.open();
