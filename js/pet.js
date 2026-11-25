@@ -491,11 +491,11 @@ function openScene({ select, say: first } = {}) {
   bagOpen = false;
   const land = W.landSrc(isle.theme());
   show(`<div class="pisle loading" role="dialog" aria-modal="true" aria-label="寵物島" data-wx="${sky.wx}" data-tod="${sky.tod}" data-season="${sky.season}">
-    <div class="view"><section class="ground" style="width:${GW}px;height:${GH}px">
+    <div class="view"><div class="pan"><section class="ground" style="width:${GW}px;height:${GH}px">
       <canvas class="land" width="${W.LAND_W}" height="${W.LAND_H}"></canvas>
       <svg class="floor" viewBox="0 0 ${GW} ${GH}" width="${GW}" height="${GH}" aria-hidden="true"></svg>
       <div class="actors"></div>
-    </section></div>
+    </section></div></div>
     <div class="haze" aria-hidden="true"></div>
     <aside class="care"></aside>
     <p class="skychip">${SKY_NAME.wx[sky.wx]}・${SKY_NAME.season[sky.season]}・${SKY_NAME.tod[sky.tod]}</p>
@@ -729,7 +729,12 @@ async function paintLand(src) {
 
 // ---------- 鏡頭：拖曳移動、兩指或滾輪縮放、＋－鈕 ----------
 const isTall = (w, h) => w < h * .9;
-const toIsle = (e) => { const g = $('.ground', layer).getBoundingClientRect(); return { x: (e.clientX - g.left) / g.width, y: (e.clientY - g.top) / g.height }; };
+// 島在畫面上的位置照鏡頭算（.ground 用 CSS zoom 縮放，不用 getBoundingClientRect，各瀏覽器算 zoom 的方式不一樣）
+function groundRect() {
+  const v = $('.view', layer).getBoundingClientRect();
+  return { left: v.left + cam.x, top: v.top + cam.y, width: GW * cam.k, height: GH * cam.k };
+}
+const toIsle = (e) => { const g = groundRect(); return { x: (e.clientX - g.left) / g.width, y: (e.clientY - g.top) / g.height }; };
 function camBox() {
   const v = $('.view', layer);
   const vw = v.clientWidth, vh = v.clientHeight;
@@ -739,7 +744,10 @@ function camBox() {
 function applyCam() {
   const g = $('.ground', layer);
   if (!g) return;
-  g.style.transform = `translate(${cam.x.toFixed(1)}px,${cam.y.toFixed(1)}px) scale(${cam.k.toFixed(4)})`;
+  // 放大縮小用 zoom 不用 transform scale：transform 每變一次倍數，iPhone 就照新倍數把整座 2640×1448 的島重畫一次，
+  // 兩指縮放時一秒幾十次、記憶體來不及放掉就閃退（拜訪別人的島 0.46.3 也是這樣修好的）；zoom 是照縮好的大小排版，只畫看得到的部分
+  g.style.zoom = cam.k.toFixed(4);
+  g.parentElement.style.transform = `translate(${cam.x.toFixed(1)}px,${cam.y.toFixed(1)}px)`;
   // 名牌跟著倍數變大小（--g）：改它整座島的樣式都要重算，縮放時每變 8% 才改一次
   if (Math.abs(cam.k / (cam.g ?? 0) - 1) > .08) { cam.g = cam.k; $('.pisle', layer).style.setProperty('--g', cam.k.toFixed(3)); }
 }
@@ -2264,7 +2272,7 @@ function grab(a) {
   const el = a.el;
   el.addEventListener('pointerdown', (e) => {
     if (busy || e.button > 0) return;
-    const g = $('.ground', layer).getBoundingClientRect();
+    const g = groundRect();
     const k = g.width / GW;
     const start = { x: e.clientX, y: e.clientY, mode: a.mode };
     let held = false, ok = { x: a.x, y: a.y }, aim = null;
