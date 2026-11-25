@@ -1892,7 +1892,7 @@ async function throwBall(at) {
   const id = a.useId = (a.useId ?? 0) + 1;
   const still = () => a.useId === id && a.el.isConnected && ball;
   a.mode = 'use'; a.next = null;
-  addBall({ x: a.x, y: Math.min(.9, a.y + .06) });
+  addBall({ x: a.x, y: Math.min(.9, a.y + .06) }).owner = a;
   say(pick(['球！球！', '我來了！', '看我的！']), a.p.id);
   // 附近的夥伴偶爾也跑過去湊熱鬧
   actors.filter((b) => b !== a && free(b) && Math.random() < .5).forEach((b) => {
@@ -1982,6 +1982,9 @@ function leave(a, to) {
     a.using = null;
   }
   a.path = null;
+  // 追球追到一半被打斷（餵食、摸摸、心情變了…）：球也收掉。不然 throwBall 停在半路、球一直留在地上，
+  // 之後每丟一次都說「球還在滾」，看起來像寵物不追球（2026-11-24 問題回報 #85 貓咪）
+  if (ball?.owner === a) { const b = ball.el; b.classList.add('gone'); setTimeout(() => b.remove(), 500); ball = null; }
   a.el.classList.remove('up', 'sway', 'wade', 'inside');
   if (to === undefined && a.mode === 'use' && !walkable(a.x, a.y)) to = somewhere({ x: a.x, y: a.y });
   if (to && !walkable(to.x, to.y)) to = somewhere(to);
@@ -2602,7 +2605,9 @@ async function feed(code) {
     paintCare();
     return;
   }
-  if (a.mode === 'use' || a.using || a.next) leave(a);
+  // 正在走路的也要先停下：不然 path 還留著，牠會先走完原本的路、在別的地方吃，碗留在原地
+  // （2026-11-24 問題回報 #84 貓咪「食物停在一個地方，寵物卻在另外一個地方吃」）
+  if (a.mode === 'use' || a.using || a.next || a.path?.length) leave(a);
   const i = item(code);
   const side = Math.random() < .5 ? -1 : 1;
   let spot = { x: a.x + side * .025, y: a.y + .006 };
