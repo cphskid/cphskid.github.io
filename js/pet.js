@@ -182,6 +182,8 @@ function show(html) {
   stopScene();
   layer.innerHTML = html;
   layer.hidden = false;
+  // 寵物島整個蓋住畫面時，後面的大地圖（海、會上下浮的島、船、聖誕樹）不畫也不動，省 iPhone 記憶體（2026-11-25 測試區又閃退）
+  document.body.classList.toggle('pet-on', html.includes('class="pisle'));
   layer.querySelectorAll('[data-close]').forEach((b) => { b.onclick = close; });
 }
 export function close() {
@@ -190,6 +192,7 @@ export function close() {
   clearInterval(limitTimer); limitTimer = 0;
   layer.hidden = true;
   layer.innerHTML = '';
+  document.body.classList.remove('pet-on');
   playlog.at('gate', '樂園大廳');
   news = [];
   paintMap();

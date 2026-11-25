@@ -169,6 +169,8 @@ function stopLoop(lane) {
   p.gain.gain.setValueAtTime(p.gain.gain.value, t);
   p.gain.gain.linearRampToValueAtTime(0, t + 0.6);
   p.src.stop(t + 0.7);
+  // 一首音樂解開約 17MB（96 秒），換歌就放掉舊的，不要一直留在記憶體（iPhone 寵物島閃退）
+  if (lane === 'music') buffers.delete(p.code);
 }
 function resumeWanted() {
   for (const lane of ['music', 'amb']) if (wanted[lane] && !playing[lane]) startLoop(lane, wanted[lane]);
