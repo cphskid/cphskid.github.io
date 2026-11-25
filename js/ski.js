@@ -10,7 +10,7 @@
 // 一趟結束把撿到的雪花和距離送到 park_snow_ski_done（每天最多 12 片，伺服器算）。
 import * as auth from './auth.js';
 import * as snow from './snow.js';
-import { sfx } from './audio.js';
+import { sfx, music, nowMusic } from './audio.js';
 
 const $ = (s, root = document) => root.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -31,6 +31,9 @@ export async function openSki({ pet, onClose } = {}) {
   // iPhone 長按會跳出「拷貝／查詢／翻譯」：整個滑雪畫面不讓選字、不跳選單
   for (const ev of ['contextmenu', 'selectstart', 'dragstart']) veil.addEventListener(ev, (e) => e.preventDefault());
   document.body.appendChild(veil);
+  // 滑雪放自己的歌（MU-58 雪橇鈴鐺），關掉再換回原本那首
+  const prevMu = nowMusic();
+  music('MU-58');
   const species = pet?.species ?? 'kitten', stage = pet?.stage ?? 1;
   const ab = ABILITY[species] ?? null;
   const base = 'img/xmas/ski-';
@@ -56,7 +59,7 @@ export async function openSki({ pet, onClose } = {}) {
       <p class="best">我的最遠紀錄：<b>${s?.ski?.best ?? 0}</b> 公尺・今天滑雪雪花 ${s?.today?.ski ?? 0}/${s?.caps?.ski ?? 12}</p>
       <div class="row end"><button type="button" class="btn" data-go>開始滑！</button></div>
     </div>`;
-    $('[data-close]', veil).onclick = () => { close(); onClose?.(); };
+    $('[data-close]', veil).onclick = () => { close(); music(prevMu); onClose?.(); };
     $('[data-go]', veil).onclick = play;
   }
 
