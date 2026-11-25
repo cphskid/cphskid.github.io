@@ -591,6 +591,7 @@ body:is(.pet-on,.ski-on) #world *{animation-play-state:paused!important}
 @keyframes hintout{to{opacity:0;visibility:hidden}}
 /* 島：.ground 用 transform 移動、縮放（js/pet.js 的 cam），--g＝放大倍數（字跟著反過來放大，才看得清楚） */
 .pisle .view{position:absolute;inset:0;overflow:hidden;touch-action:none}
+.pisle .pan{position:absolute;left:0;top:0}
 .pisle .ground{position:absolute;left:0;top:0;transform-origin:0 0}
 .actor .bub.talk,.actor .tag,.actor .bub.mark{zoom:max(1,calc(.85 / var(--g,1)))}
 #petroom .pisle>.x{position:absolute;right:calc(env(safe-area-inset-right) + 12px);top:calc(env(safe-area-inset-top) + 10px);width:56px;height:56px;z-index:30;touch-action:manipulation}
