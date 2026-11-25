@@ -95,7 +95,7 @@ end;
 $$;
 
 -- 從時光幣帳本、寵物小遊戲紀錄補發雪花（只算活動期間；打開樂園時叫）
---   學習設施：開拓者（island:）、守護異世界（guardian:play / guardian:stamp）、時光實驗室（lab:）、試煉島（quiz: / quizfix:）每一筆 +2，
+--   學習設施：開拓者（island:）、祕境島（animal:）、守護異世界（guardian:play / guardian:stamp）、時光實驗室（lab:）、試煉島（quiz: / quizfix:）每一筆 +2，
 --            過關（…:clear）或守護蓋章 +4（第一次過關才會有這筆）；每天最多 10
 --   每日任務：當天全部做完（daily:<日期>:all）+5
 --   寵物小遊戲：釣魚、澆果樹、烤點心每玩一次 +1，每天最多 3
@@ -112,13 +112,14 @@ begin
             order by l.created_at loop
     if r.source like 'daily:%:all' then
       perform public.park_snow_give(p_student, 'c:' || r.source, 'daily', 5, r.d);
-    elsif r.source ~ '^(island|lab|quiz|quizfix|guardian:play|guardian:stamp):' then
+    elsif r.source ~ '^(island|animal|lab|quiz|quizfix|guardian:play|guardian:stamp):' then
       perform public.park_snow_give(p_student, 'c:' || r.source, 'learn',
         case when r.source like '%:clear' or r.source like 'guardian:stamp:%' then 4 else 2 end, r.d);
     end if;
   end loop;
   for r in select g.game, g.day, g.n from public.park_pet_game_log g
-            where g.student_id = p_student and g.day between c.starts and c.ends loop
+            where g.student_id = p_student and g.day between c.starts and c.ends
+              and g.game in ('fish', 'water', 'bake') loop   -- 食材攤收購（sell）不算
     for k in 1 .. least(r.n, 3) loop
       perform public.park_snow_give(p_student, 'pet:' || r.game || ':' || r.day || ':' || k, 'pet', 1, r.day);
     end loop;

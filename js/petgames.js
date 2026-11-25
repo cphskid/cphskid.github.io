@@ -1,7 +1,7 @@
 // 寵物島 C 期的三個小遊戲：釣魚（池塘碼頭）、澆果樹（果樹傢俱）、烤點心（烤點心爐）。
 // 規劃 doc「寵物島 2.0 通盤規劃」；資料庫在 supabase/park_pet.sql 的 5b 段（park_pet_fish / water / harvest / bake）。
 // 不換頁：在寵物島上開一個大窗（手機全螢幕），玩完窗戶收起來、拿到的東西進背包。
-// 不限次數（2026-10-30 Chuck），但果樹一天只能澆一次、釣魚一天最多 10 個時光幣。
+// 不限次數（2026-10-30 Chuck），但果樹一天只能澆一次、釣魚一天最多 20 個時光幣（2026-11-25 從 10 調上來）。
 //
 // ctx（js/pet.js 給的）：{ host, api, state()（目前的 park_pet_state）, refresh(s), has(species), say(text), onClose() }
 
