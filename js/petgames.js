@@ -160,11 +160,15 @@ export function openFish(c) {
     bob.className = 'pf-bob reel';
     goal('指針跑到綠色的地方就放開', true);
     const t0 = performance.now();
-    hold = { v: 0 };
+    hold = { v: 0, log: [] };
     const step = () => {
       if (phase !== 'reel' || me !== alive) return;
-      const t = ((performance.now() - t0) / SPEED) % 2;
+      const now = performance.now();
+      const t = ((now - t0) / SPEED) % 2;
       hold.v = t < 1 ? t : 2 - t;
+      // 記下最近畫過的位置：放開的判定往回看一小段，補手指和電腦的反應時間（#89）
+      hold.log.push([now, hold.v]);
+      while (hold.log.length && hold.log[0][0] < now - 400) hold.log.shift();
       nail.style.bottom = `${hold.v * 100}%`;
       requestAnimationFrame(step);
     };
@@ -173,7 +177,10 @@ export function openFish(c) {
   async function release(e) {
     e?.preventDefault();
     if (phase !== 'reel') return;
-    const v = hold?.v ?? 0;
+    let v = hold?.v ?? 0;
+    // 放開前 GRACE 毫秒內指針有在綠色區就算釣到（慢一點的電腦、平板反應比較慢）
+    const GRACE = 180, now = performance.now();
+    if ((hold?.log ?? []).some(([t, x]) => t >= now - GRACE && x >= z0 && x <= z1)) v = (z0 + z1) / 2;
     if (v < z0 || v > z1) { miss(v < z0 ? '太早放開，魚溜走了' : '拉太久，線斷了'); return; }
     phase = 'busy';
     streak++;
@@ -252,9 +259,7 @@ function playRain(tree) {
     el.innerHTML = '<img src="img/pet/game/drop.webp" alt="">';
     el.style.left = `${rnd(12, 82)}%`;
     el.style.animationDuration = `${rnd(2.2, 3.2)}s`;
-    el.addEventListener('pointerdown', (e) => {
-      e.preventDefault();
-      if (el.dataset.hit) return;
+    el._hit = () => {
       el.dataset.hit = 1;
       el.classList.add('hit');
       drops++;
@@ -262,7 +267,7 @@ function playRain(tree) {
       if (drops >= NEED && bugs) goal('還有毛毛蟲在吃葉子，點牠趕走！', true);
       later(() => el.remove(), 300);
       finish();
-    });
+    };
     el.addEventListener('animationend', () => el.remove());
     fx.appendChild(el);
     later(drop, rnd(450, 800));
@@ -278,21 +283,33 @@ function playRain(tree) {
       el.innerHTML = '<img src="img/pet/game/bug.webp" alt="">';
       el.style.left = `${rnd(30, 62)}%`;
       el.style.top = `${rnd(28, 55)}%`;
-      el.addEventListener('pointerdown', (e) => {
-        e.preventDefault();
-        if (el.dataset.hit) return;
+      el._hit = () => {
         el.dataset.hit = 1;
         el.classList.add('hit');
         bugs--;
         later(() => el.remove(), 400);
         if (drops < NEED) goal('趕走了！繼續接雨滴');
         finish();
-      });
+      };
       fx.appendChild(el);
       if (drops < NEED) goal('毛毛蟲來吃葉子了！點牠趕走', true);
     }
     later(bug, rnd(3500, 6000));
   }
+  // 點的判定放在整個畫面：找離手指最近、還沒被點的雨滴或毛毛蟲，差一點點也算（#89 點了沒接到）
+  fx.addEventListener('pointerdown', (e) => {
+    if (me !== alive || done) return;
+    e.preventDefault();
+    let best = null, bd = Infinity;
+    for (const el of fx.querySelectorAll('.pw-drop, .pw-bug')) {
+      if (el.dataset.hit || !el._hit) continue;
+      const r = el.getBoundingClientRect();
+      const d = Math.hypot(e.clientX - (r.left + r.width / 2), e.clientY - (r.top + r.height / 2));
+      const reach = Math.max(r.width, r.height) / 2 + 30;
+      if (d <= reach && d < bd) { best = el; bd = d; }
+    }
+    best?._hit();
+  });
   paint();
   later(drop, 300);
   later(bug, 2500);

@@ -1972,7 +1972,7 @@ aside.care .buff small{display:block;font-weight:700;color:#8a6a4a;font-size:12p
 .pw-fx{position:absolute;inset:0}
 .pw-drop{position:absolute;top:-12%;width:44px;height:52px;border:0;padding:4px;background:none;cursor:pointer;animation:fall linear forwards;touch-action:manipulation}
 .pw-drop img{width:100%;height:100%;object-fit:contain;pointer-events:none}
-.pw-drop.hit{animation:none;opacity:0;transition:opacity .25s,scale .25s;scale:1.6}
+.pw-drop.hit{animation-play-state:paused;opacity:0;transition:opacity .25s,scale .25s;scale:1.6}
 @keyframes fall{to{top:100%}}
 .pw-bug{position:absolute;width:60px;height:48px;border:0;padding:0;background:none;cursor:pointer;animation:wig .6s ease-in-out infinite;touch-action:manipulation}
 .pw-bug img{width:100%;height:100%;object-fit:contain;pointer-events:none}
