@@ -2264,11 +2264,6 @@ body.ski-on{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none
 .xc-cards button{padding:0;border:3px solid #fff;border-radius:10px;overflow:hidden;background:#ddd;aspect-ratio:4/5;min-height:44px;cursor:pointer;box-shadow:0 2px 0 rgba(0,0,0,.15)}
 .xc-cards button img{display:block;width:100%;height:100%;object-fit:cover}
 .xc-cards button.on{border-color:#2fa84f;box-shadow:0 0 0 3px rgba(47,168,79,.35)}
-.xc-seg{display:flex;gap:6px}
-.xc-seg button{flex:1;min-height:44px;border-radius:999px;border:2px solid #e0d3bb;background:#fff;font:800 15px/1.2 var(--f-body);color:#5a3418;cursor:pointer}
-.xc-seg button.on{background:#2fa84f;border-color:#2fa84f;color:#fff}
-.xc-pethint{margin:0;padding:8px 10px;border-radius:10px;background:#eaf3ff;color:#1f3c78;font-size:14px;line-height:1.5}
-.xc-pethint .link{font-weight:900}
 .xc-wish{display:flex;flex-wrap:wrap;gap:6px}
 .xc-wish button{min-height:36px;border-radius:999px;border:2px solid #f0a020;background:#fff;padding:4px 12px;font:700 14px/1.2 var(--f-body);color:#7a4a20;cursor:pointer}
 .xc-in{width:100%;box-sizing:border-box;min-height:44px;border:2px solid #c9b48c;border-radius:12px;padding:8px 12px;font:700 16px/1.3 var(--f-body);color:#4a2c12;background:#fff}
@@ -2282,8 +2277,6 @@ body.ski-on{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none
 .xc-btns{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
 .xc-btns button{min-height:48px;padding:0 20px}
 .xtree-help .row.end{gap:8px;flex-wrap:wrap}
-.snow-dock .xc-ic{border-radius:4px}
-.snow-dock button.busy{opacity:.6}
 @media (max-width:640px){
   .xc-body{flex-direction:column;align-items:stretch}
   .xc-prev{flex:none;width:min(260px,70%);margin:0 auto}

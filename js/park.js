@@ -785,7 +785,7 @@ snow.setCardCtx(() => {
   const w = account.current();
   if (w.kind !== 'student') return null;
   const t = traveller.state();
-  return { nick: w.nickname, dollHtml: t?.created ? traveller.dollHtml(t.look) : '', openPet: () => pet.open() };
+  return { nick: w.nickname, dollHtml: t?.created ? traveller.dollHtml(t.look) : '' };
 });
 // 聖誕活動：村莊島上的全站大聖誕樹（js/snow.js）；學生才讀，讀不到（活動沒開、資料庫沒裝）就什麼都不畫
 let snowShown = '';

@@ -42,7 +42,6 @@ export function petButtons() {
   return `<div class="snow-dock">
     <button type="button" data-snow-advent aria-label="降臨月曆"><img src="img/xmas/advent.webp" alt=""><b>月曆</b>${canOpenToday() ? '<i class="dot"></i>' : ''}</button>
     <button type="button" data-snow-ski aria-label="雪山滑雪橇"><img src="img/xmas/sled.webp" alt=""><b>滑雪</b></button>
-    <button type="button" data-snow-card aria-label="拍下寵物島，寄聖誕卡給朋友"><img src="img/xmas/card/c1-s.webp" alt="" class="xc-ic"><b>寄卡片</b></button>
     <span class="snow-bal">${SNOW}<b>${st.balance}</b></span>
   </div>`;
 }
