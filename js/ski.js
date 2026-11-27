@@ -20,7 +20,7 @@ const ABILITY = {
   dragon: ['rock', '小火龍：撞到石頭也不會摔'], kitten: ['magnet', '小貓：吸雪花的範圍比較大'], 'leopard-cat': ['magnet', '石虎：吸雪花的範圍比較大'],
 };
 
-let veil = null, raf = 0, imgs = {}, cvNow = null;
+let veil = null, raf = 0, imgs = {}, cvNow = null, unbind = null;
 // iPhone 的 canvas 記憶體要把寬高設 0 才會馬上放掉（只拿掉元素不會），滑幾次再進寵物島就超過上限閃退（2026-11-25）
 function dropCanvas() { if (cvNow) { cvNow.width = 0; cvNow.height = 0; cvNow = null; } }
 const EAGLE_TEST = /[?&]eagle=1/.test(location.search);   // 測試用：老鷹常常出現（tools/test/pet-preview.html?snow=1&eagle=1）
@@ -152,9 +152,30 @@ export async function openSki({ pet, onClose } = {}) {
     const up = () => press(false);
     cv.addEventListener('pointerdown', down);
     addEventListener('pointerup', up);
-    const key = (e) => { if (e.code === 'Space' || e.code === 'ArrowUp') { e.preventDefault(); press(e.type === 'keydown'); } };
+    addEventListener('pointercancel', up);
+    addEventListener('blur', up);                    // 切到別的視窗：當作放開，不會一直翻
+    // 手機長按：pointerdown 的 preventDefault 擋不住 iOS 的長按選取／放大鏡／整塊反白，要在 touchstart 擋（不能是 passive）
+    const touch = (e) => { if (!e.target.closest('[data-quit]')) e.preventDefault(); };
+    veil.addEventListener('touchstart', touch, { passive: false });
+    const unsel = () => { const sel = getSelection(); if (sel && !sel.isCollapsed) sel.removeAllRanges(); };
+    document.addEventListener('selectionchange', unsel);
+    // 電腦空白鍵按住：系統會一直重送 keydown（重複鍵），以前每一下都當成「重新按」把按住時間歸零，翻一下就停（2026-11-27 Chuck）
+    // 重複的 keydown 不理，空白鍵和↑兩個鍵都放開才算放開
+    const keys = new Set();
+    const key = (e) => {
+      if (e.code !== 'Space' && e.code !== 'ArrowUp') return;
+      e.preventDefault();
+      if (e.type === 'keydown') { if (e.repeat || keys.has(e.code)) return; keys.add(e.code); if (keys.size === 1) press(true); }
+      else { keys.delete(e.code); if (!keys.size) press(false); }
+    };
     addEventListener('keydown', key);
     addEventListener('keyup', key);
+    unbind = () => {
+      removeEventListener('pointerup', up); removeEventListener('pointercancel', up); removeEventListener('blur', up);
+      removeEventListener('keydown', key); removeEventListener('keyup', key); removeEventListener('resize', fit);
+      document.removeEventListener('selectionchange', unsel); veil?.removeEventListener('touchstart', touch);
+      unbind = null;
+    };
     $('[data-quit]', veil).onclick = () => end();
     // 固定步長 1/120 秒算物理，畫面用前後兩步插值：不管手機每秒幾格，動起來都一樣順
     const FIX = 1 / 120;
@@ -446,7 +467,7 @@ export async function openSki({ pet, onClose } = {}) {
     async function end() {
       if (S.over) return;
       S.over = true;
-      removeEventListener('pointerup', up); removeEventListener('keydown', key); removeEventListener('keyup', key); removeEventListener('resize', fit);
+      unbind?.();
       const d = dist();
       let r = null, err = null;
       try { r = await auth.snow.ski(S.snow, d); snow.set(r); } catch (e) { err = e.message; }
@@ -460,4 +481,4 @@ export async function openSki({ pet, onClose } = {}) {
     }
   }
 }
-export function close() { cancelAnimationFrame(raf); dropCanvas(); veil?.remove(); veil = null; imgs = {}; document.body.classList.remove('ski-on'); }
+export function close() { unbind?.(); cancelAnimationFrame(raf); dropCanvas(); veil?.remove(); veil = null; imgs = {}; document.body.classList.remove('ski-on'); }

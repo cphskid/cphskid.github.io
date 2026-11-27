@@ -2129,7 +2129,8 @@ aside.care .buff small{display:block;font-weight:700;color:#8a6a4a;font-size:12p
 .ski-result p{margin:4px 0}.ski-result .big{font:900 20px/1.3 var(--f-disp)}
 .snow-veil.ski{padding:0;background:#22346b;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
 .snow-veil.ski .snow-box{margin:12px}
-.ski-cv{position:absolute;inset:0;touch-action:none;display:block}
+.ski-cv{position:absolute;inset:0;touch-action:none;display:block;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+body.ski-on{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 .ski-hud{position:absolute;left:calc(env(safe-area-inset-left) + 12px);top:calc(env(safe-area-inset-top) + 12px);display:flex;gap:8px;z-index:2;pointer-events:none}
 .ski-hud span{display:inline-flex;align-items:center;gap:4px;background:rgba(255,255,255,.92);border:3px solid var(--wood);border-radius:999px;padding:4px 12px 4px 6px;font:900 18px/1 var(--f-disp);color:var(--wood)}
 .ski-hud img,.ski-hud .snow-ic{width:26px;height:26px;object-fit:contain}
