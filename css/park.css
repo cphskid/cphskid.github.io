@@ -2204,7 +2204,7 @@ body.ski-on{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none
 .xtree-isle .xn.now{background:#2fa84f;box-shadow:0 0 0 4px rgba(47,168,79,.35);animation:xn-now 1.4s ease-in-out infinite}
 @keyframes xn-now{50%{box-shadow:0 0 0 7px rgba(47,168,79,.15)}}
 .xtree-isle .xstar{position:absolute;left:50%;top:5.6%;width:30%;aspect-ratio:1;translate:-50% -50%;border-radius:50%;background:radial-gradient(circle,rgba(255,240,150,.9),rgba(255,220,90,0) 65%);opacity:0;pointer-events:none}
-.xtree-isle.full .xstar{opacity:1;animation:xb-tw 1.6s ease-in-out infinite}
+.xtree-isle.lit-all .xstar{opacity:1;animation:xb-tw 1.6s ease-in-out infinite}
 .xtree-isle .fw{position:absolute;width:26%;aspect-ratio:1;border-radius:50%;background:radial-gradient(circle,#fff 0 6%,transparent 7%),repeating-conic-gradient(#ffe066 0 6deg,transparent 6deg 30deg);animation:xfw 1.8s ease-out infinite;opacity:0;pointer-events:none}
 .xtree-isle .fw.a{left:6%;top:2%}.xtree-isle .fw.b{right:4%;top:12%;animation-delay:.6s}.xtree-isle .fw.c{left:38%;top:-10%;animation-delay:1.2s}
 .xtree-isle.ping .lift{animation:xt-ping 1s ease-out 2}
