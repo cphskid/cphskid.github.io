@@ -75,7 +75,10 @@ function paintTarget() {
   if (!s?.go) return;
   const el = DOCK[s.go] ? $(DOCK[s.go]) : hooks.isle(s.go);
   el?.classList.add('starter-target');
+  // 箭頭指的島在畫面外（地圖放大或滑走了）：鏡頭移過去一次，之後孩子自己拖走就不再拉回來
+  if (el && !DOCK[s.go] && focusedGo !== s.go) { focusedGo = s.go; hooks.focus?.(el); }
 }
+let focusedGo = null;
 
 function paint() {
   const on = active();

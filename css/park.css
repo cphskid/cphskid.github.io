@@ -19,7 +19,8 @@ body{margin:0;background:var(--sea-deep);color:var(--ink);font-family:var(--f-bo
 .scene{position:absolute;inset:0}
 .layer{position:absolute;inset:0;pointer-events:none;transform:translate(calc(var(--px,0)*var(--d)*-1px),calc(var(--py,0)*var(--d)*-0.6px));transition:transform .35s ease-out}
 .layer>*{pointer-events:auto}
-#map{position:absolute;left:0;top:0;height:900px;transform:translateX(calc(var(--pan,0)*-1px));transition:transform .45s cubic-bezier(.2,.8,.2,1)}
+/* 地圖鏡頭（js/park.js）：tx,ty 舞台單位、z 放大倍數。這一層和裡面的大圖層不要掛 filter/mask（iPhone 放大會整張重畫而閃退） */
+#map{position:absolute;left:0;top:0;height:900px;transform-origin:0 0;transform:translate(calc(var(--tx,0)*1px),calc(var(--ty,0)*1px)) scale(var(--z,1));transition:transform .45s cubic-bezier(.2,.8,.2,1)}
 #map.dragging{transition:none}
 
 /* 船 */
@@ -93,6 +94,13 @@ body{margin:0;background:var(--sea-deep);color:var(--ink);font-family:var(--f-bo
 .pan:hover,.pan:focus-visible{transform:scale(1.1);outline:none}
 .pan:focus-visible{filter:drop-shadow(0 0 0 4px #ffd66e) drop-shadow(0 8px 10px rgba(0,0,0,.3))}
 #pan-l{left:18px} #pan-r{right:18px}
+/* 放大縮小：左邊、往左箭頭下面（右下有滴答、底部有功能列） */
+#zoom{position:absolute;left:18px;top:calc(50% + 58px);z-index:5;display:flex;flex-direction:column;gap:8px}
+#zoom button{width:48px;height:48px;border-radius:14px;border:3px solid #7a4a22;background:linear-gradient(#fff7e3,#f3dfb3);box-shadow:0 4px 0 #5a3414,0 6px 12px rgba(0,0,0,.25);color:#5a3414;font:900 28px/1 var(--f-body);padding:0;cursor:pointer;display:grid;place-items:center;transition:transform .15s}
+#zoom button:active{transform:translateY(3px);box-shadow:0 1px 0 #5a3414}
+#zoom button:disabled{opacity:.45;cursor:default}
+#zoom #zoom-all{width:auto;min-width:48px;height:40px;padding:0 8px;font-size:14px;line-height:1;white-space:nowrap}
+#zoom button:focus-visible{outline:3px solid #ffd66e;outline-offset:2px}
 
 /* Tiny Swords 小兵（圖不在公開 repo，見 README；沒有圖就不顯示） */
 .unit{position:absolute;pointer-events:none}
@@ -881,6 +889,9 @@ body[data-scene="map"] #hud{display:block}
   .env-tag{left:auto;right:10px;top:110px;bottom:auto;font-size:13px;padding:5px 8px}
   .pan{width:52px;height:52px;margin-top:-26px}
   #pan-l{left:6px} #pan-r{right:6px}
+  #zoom{left:6px;top:calc(50% + 34px);gap:6px}
+  #zoom button{width:44px;height:44px;font-size:24px;border-radius:12px}
+  #zoom #zoom-all{min-width:44px;height:36px;padding:0 6px;font-size:13px}
   #tick{right:4px;bottom:2px;gap:2px}
   #tick button{width:86px}
   #tick .bubble{max-width:min(300px,calc(100vw - 190px));margin-bottom:56px;font-size:16px;padding:8px 12px;border-width:2px;border-radius:16px;box-shadow:0 3px 0 var(--wood)}

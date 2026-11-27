@@ -78,6 +78,12 @@
     </div>
     <button class="pan" id="pan-l" aria-label="往左看" hidden></button>
     <button class="pan" id="pan-r" aria-label="往右看更多島嶼" hidden></button>
+    <!-- 放大縮小（js/park.js 鏡頭）：雙指捏合、滾輪也可以；放大後才出現「看全部」 -->
+    <div id="zoom" role="group" aria-label="地圖放大縮小">
+      <button type="button" id="zoom-in" aria-label="放大地圖">＋</button>
+      <button type="button" id="zoom-out" aria-label="縮小地圖" disabled>－</button>
+      <button type="button" id="zoom-all" hidden aria-label="看整張地圖"><b>看全部</b></button>
+    </div>
     <!-- 底部功能列：「我的東西」都在這裡（島上只放去哪裡玩）。學生才有，沒登入整條藏起來 -->
     <nav id="dock" aria-label="我的東西">
       <button id="pass-btn" hidden aria-label="打開樂園護照"><img src="img/ui/passport.webp" alt=""><b>護照</b><i class="dot" hidden></i></button>
