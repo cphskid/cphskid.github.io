@@ -2,6 +2,8 @@
 -- 聖誕活動「雪花聖誕村」：雪花結晶（活動貨幣）、降臨月曆、雪山滑雪橇紀錄、全站大聖誕樹的總數
 -- 2026-11-19 串「提案島嶼風格與聖誕活動」，Chuck 選雪花 A 方案：
 --   滑雪 12＋學習設施 10＋每日任務 5＋寵物小遊戲 3，每天最多 30；降臨月曆另外算。
+-- 2026-11-27（回報 #94 貓咪「希望多賺雪花」）Chuck 定：學習設施每筆 2→3、過關 4→6、每天 10→20（每天最多 40）；
+--   月曆：那天有玩學習關卡（拿到 learn 雪花），那天開的格子雪花再送一次（advent-bonus:<格>）；大樹門檻 3k～40k 下修成 1.5k～20k。
 --   活動 11/25～12/31；結束後剩下的雪花 10 片換 50 時光幣（打開樂園時自動換）。
 -- 依賴：park_coins.sql（帳本、park_today、park_shop_items）、park_pet.sql（背包、小遊戲紀錄）。重跑不會壞資料。
 -- =============================================================================
@@ -16,7 +18,10 @@ insert into public.park_snow_cfg (id, starts, ends) values (1, '2026-11-25', '20
 -- 降臨月曆第 1 格是哪一天（正式 12/1；測試庫可以改成今天試開）
 alter table public.park_snow_cfg add column if not exists advent_from date not null default '2026-12-01';
 -- 全站大聖誕樹 5 層的門檻（全站賺到的雪花；測試庫可以改小一點試）
-alter table public.park_snow_cfg add column if not exists tree_tiers int[] not null default '{3000,8000,15000,25000,40000}';
+alter table public.park_snow_cfg add column if not exists tree_tiers int[] not null default '{1500,4000,8000,13000,20000}';
+alter table public.park_snow_cfg alter column tree_tiers set default '{1500,4000,8000,13000,20000}';
+-- 2026-11-27 下修（只改還是舊預設的；測試庫自己設的小數字不動）
+update public.park_snow_cfg set tree_tiers = '{1500,4000,8000,13000,20000}' where tree_tiers = '{3000,8000,15000,25000,40000}';
 alter table public.park_snow_cfg enable row level security;
 revoke all on public.park_snow_cfg from public, anon, authenticated;
 
@@ -67,7 +72,7 @@ on conflict (code) do update set name = excluded.name, art = excluded.art, blurb
 -- 每天各來源上限
 create or replace function public.park_snow_cap(p_kind text)
 returns int language sql immutable as $$
-  select case p_kind when 'ski' then 12 when 'learn' then 10 when 'daily' then 5 when 'pet' then 3 else 0 end;
+  select case p_kind when 'ski' then 12 when 'learn' then 20 when 'daily' then 5 when 'pet' then 3 else 0 end;
 $$;
 
 create or replace function public.park_snow_balance(p_student uuid)
@@ -94,9 +99,26 @@ begin
 end;
 $$;
 
+-- 月曆加倍：哪天開的格子是雪花、那天也有玩學習關卡（拿到 learn 雪花）→ 同樣片數再送一次（先開月曆、晚點才去玩也算）
+create or replace function public.park_snow_advent_bonus(p_student uuid)
+returns int language plpgsql security definer set search_path = public, pg_temp as $$
+declare r record; v_n int := 0;
+begin
+  for r in select a.day, (a.opened_at at time zone 'Asia/Taipei')::date as d, (public.park_snow_gift(a.day) ->> 'n')::int as n
+             from public.park_snow_advent a
+            where a.student_id = p_student and public.park_snow_gift(a.day) ->> 'kind' = 'snow'
+              and not exists (select 1 from public.park_snow_ledger s where s.student_id = p_student and s.source = 'advent-bonus:' || a.day) loop
+    if exists (select 1 from public.park_snow_ledger s where s.student_id = p_student and s.kind = 'learn' and s.day = r.d and s.amount > 0) then
+      v_n := v_n + public.park_snow_give(p_student, 'advent-bonus:' || r.day, 'advent', r.n, r.d);
+    end if;
+  end loop;
+  return v_n;
+end;
+$$;
+
 -- 從時光幣帳本、寵物小遊戲紀錄補發雪花（只算活動期間；打開樂園時叫）
 --   學習設施：開拓者（island:）、祕境島（animal:）、守護異世界（guardian:play / guardian:stamp）、時光實驗室（lab:）、試煉島（quiz: / quizfix:）每一筆 +2，
---            過關（…:clear）或守護蓋章 +4（第一次過關才會有這筆）；每天最多 10
+--            過關（…:clear）或守護蓋章 +6（第一次過關才會有這筆）；每天最多 20（2026-11-27 從 2／4／10 調高）
 --   每日任務：當天全部做完（daily:<日期>:all）+5
 --   寵物小遊戲：釣魚、澆果樹、烤點心每玩一次 +1，每天最多 3
 create or replace function public.park_snow_sync(p_student uuid)
@@ -114,7 +136,7 @@ begin
       perform public.park_snow_give(p_student, 'c:' || r.source, 'daily', 5, r.d);
     elsif r.source ~ '^(island|animal|lab|quiz|quizfix|guardian:play|guardian:stamp):' then
       perform public.park_snow_give(p_student, 'c:' || r.source, 'learn',
-        case when r.source like '%:clear' or r.source like 'guardian:stamp:%' then 4 else 2 end, r.d);
+        case when r.source like '%:clear' or r.source like 'guardian:stamp:%' then 6 else 3 end, r.d);
     end if;
   end loop;
   for r in select g.game, g.day, g.n from public.park_pet_game_log g
@@ -124,6 +146,7 @@ begin
       perform public.park_snow_give(p_student, 'pet:' || r.game || ':' || r.day || ':' || k, 'pet', 1, r.day);
     end loop;
   end loop;
+  perform public.park_snow_advent_bonus(p_student);
 end;
 $$;
 
@@ -234,10 +257,12 @@ begin
     'balance', case when v_me is null then 0 else public.park_snow_balance(v_me) end,
     'today', (select coalesce(jsonb_object_agg(k, coalesce((select sum(amount) from public.park_snow_ledger
                  where student_id = v_me and kind = k and day = v_today), 0)), '{}') from unnest(array['ski', 'learn', 'daily', 'pet']) k),
-    'caps', jsonb_build_object('ski', 12, 'learn', 10, 'daily', 5, 'pet', 3),
+    'caps', jsonb_build_object('ski', 12, 'learn', 20, 'daily', 5, 'pet', 3),
     'ski', coalesce((select jsonb_build_object('best', best, 'runs', runs) from public.park_snow_ski where student_id = v_me), '{"best":0,"runs":0}'),
     'advent', jsonb_build_object('today', case when v_today between c.starts and c.ends then public.park_snow_advent_today() else 0 end,
-      'opened', coalesce((select jsonb_agg(jsonb_build_object('day', day, 'late', late) order by day) from public.park_snow_advent where student_id = v_me), '[]'),
+      'opened', coalesce((select jsonb_agg(jsonb_build_object('day', a.day, 'late', a.late, 'bonus', exists (select 1 from public.park_snow_ledger s
+          where s.student_id = v_me and s.source = 'advent-bonus:' || a.day)) order by a.day) from public.park_snow_advent a where a.student_id = v_me), '[]'),
+      'learn_today', exists (select 1 from public.park_snow_ledger s where s.student_id = v_me and s.kind = 'learn' and s.day = v_today and s.amount > 0),
       'makeups', case when v_me is null then 0 else public.park_snow_makeups(v_me) end),
     'tree', jsonb_build_object('total', public.park_snow_tree_total(), 'tiers', to_jsonb(c.tree_tiers), 'fresh', to_jsonb(v_new),
       'got', coalesce((select jsonb_agg(tier order by tier) from public.park_snow_tree_got where student_id = v_me), '[]'),
@@ -283,6 +308,7 @@ begin
   g := public.park_snow_gift(p_day);
   if g ->> 'kind' = 'snow' then
     perform public.park_snow_give(v_me, 'advent:' || p_day, 'advent', (g ->> 'n')::int, public.park_today());
+    if public.park_snow_advent_bonus(v_me) > 0 then g := g || jsonb_build_object('bonus', true); end if;
   elsif g ->> 'kind' = 'pet' then
     insert into public.park_pet_inventory as v (student_id, item, qty) values (v_me, g ->> 'ref', (g ->> 'n')::int)
     on conflict (student_id, item) do update set qty = v.qty + excluded.qty;
@@ -316,6 +342,6 @@ end;
 $$;
 
 revoke all on function public.park_snow_cap(text), public.park_snow_balance(uuid), public.park_snow_give(uuid, text, text, int, date),
-  public.park_snow_sync(uuid), public.park_snow_makeups(uuid), public.park_snow_convert(uuid), public.park_snow_tree_grant(uuid) from public, anon, authenticated;
+  public.park_snow_sync(uuid), public.park_snow_advent_bonus(uuid), public.park_snow_makeups(uuid), public.park_snow_convert(uuid), public.park_snow_tree_grant(uuid) from public, anon, authenticated;
 grant execute on function public.park_snow_me(), public.park_snow_ski_done(int, int), public.park_snow_advent_open(int),
   public.park_snow_buy(text), public.park_snow_tree_total() to authenticated;
