@@ -298,7 +298,7 @@ function paintShop(msg = null) {
   };
   const empty = tab === 'month' ? '這個月沒有限定商品，下個月再來看看。' : '還沒有東西。';
   // 買完、點衣服重畫時留在原本捲到的地方（回報 #95：每次買完跳回最上面要再往下滑）；換分頁才回最上面
-  const keep = layer.querySelector('.shop')?.dataset.tab === tab
+  const keep = layer.querySelector('.shop')?.dataset.cur === tab
     ? ['.shop', '.shop .body'].map((q) => [q, layer.querySelector(q)?.scrollTop ?? 0]).concat([['', layer.scrollTop]]) : null;
   show(`<div class="shop" role="dialog" aria-modal="true" aria-label="商店">
     <button class="x" data-close aria-label="關閉商店"></button>
@@ -310,7 +310,7 @@ function paintShop(msg = null) {
     <div class="body${doll ? ' with-doll' : ''}">${doll}<div class="grid">${items.length ? items.map(card).join('') : `<p class="tip">${empty}</p>`}</div></div>
     ${doll ? '<div class="row end"><button type="button" class="ghost" data-ward>去換裝間</button></div>' : ''}
   </div>`);
-  layer.querySelector('.shop').dataset.tab = tab;
+  layer.querySelector('.shop').dataset.cur = tab;   // 不能叫 data-tab：下面會把所有 [data-tab] 當分頁鈕綁 onclick
   if (keep) keep.forEach(([q, y]) => { const el = q ? layer.querySelector(q) : layer; if (el && y) el.scrollTop = y; });
   layer.querySelectorAll('[data-tab]').forEach((b) => { b.onclick = () => { tab = b.dataset.tab; pick = null; paintShop(); }; });
   layer.querySelectorAll('[data-look]').forEach((c) => { c.onclick = (e) => { if (e.target.closest('[data-buy]')) return; pick = c.dataset.look; paintShop(); }; });
