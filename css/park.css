@@ -22,6 +22,11 @@ body{margin:0;background:var(--sea-deep);color:var(--ink);font-family:var(--f-bo
 /* 地圖鏡頭（js/park.js）：tx,ty 舞台單位、z 放大倍數。這一層和裡面的大圖層不要掛 filter/mask（iPhone 放大會整張重畫而閃退） */
 #map{position:absolute;left:0;top:0;height:900px;transform-origin:0 0;transform:translate(calc(var(--tx,0)*1px),calc(var(--ty,0)*1px)) scale(var(--z,1));transition:transform .45s cubic-bezier(.2,.8,.2,1)}
 #map.dragging{transition:none}
+/* 地圖縮很小（js/park.js 加 .far）：副標收起來免得擠成一團 */
+#map.far .plate span{display:none}
+/* 地圖畫面：天空跟著鏡頭上下走（js/park.js paintSea） */
+body[data-scene=map] #sea{transition:transform .4s ease-out,top .45s cubic-bezier(.2,.8,.2,1),height .45s cubic-bezier(.2,.8,.2,1)}
+#world.cam-hold #sea{transition:transform .4s ease-out}
 
 /* 船 */
 .boat{position:absolute;left:0;top:0;width:96px;pointer-events:none;will-change:transform}
@@ -862,11 +867,14 @@ body[data-scene="map"] #hud{display:block}
 .den:not(.isle):not(.adopt):not(.small):not(.hatch){position:absolute;left:50%;top:50%;translate:-50% -50%}
 .den:not(.isle):not(.adopt):not(.small):not(.hatch){scale:min(1,calc((var(--vw) - 24) / 1180),calc((var(--vh) - 24) / 700))}
 
-/* 島上的名牌、旗子在舞台裡，畫面縮小時字不能跟著縮：保底約 17px（名牌）、13px（副標） */
-.plate b{font-size:max(22px,calc(17px / var(--s,1)));padding:.4em .8em .45em}
-.plate span{font-size:max(14px,calc(13px / var(--s,1)));padding:.35em .7em}
-.isle.mist .plate b{font-size:max(18px,calc(15px / var(--s,1)))}
-.flag{font-size:max(16px,calc(14px / var(--s,1)));padding:.45em .6em}
+/* 島上的名牌、旗子在舞台裡，畫面縮小時字不能跟著縮：保底約 15px（名牌）、13px（副標）。
+   --z 是地圖鏡頭倍數（js/park.js，掛在 #map 上），地圖縮小時名牌照比例放大 */
+.plate b{font-size:max(22px,calc(var(--pf,15px) / var(--s,1) / var(--z,1)));padding:.4em .8em .45em}
+.plate span{font-size:max(14px,calc(var(--pf2,13px) / var(--s,1) / var(--z,1)));padding:.35em .7em}
+.isle.mist .plate b{font-size:max(18px,calc(14px / var(--s,1) / var(--z,1)))}
+.flag{font-size:max(16px,calc(13px / var(--s,1) / var(--z,1)));padding:.45em .6em}
+/* 手機橫拿畫面矮：名牌保底小一點，不然蓋滿整片海 */
+@media (max-height:560px){#map{--pf:12px;--pf2:11px}}
 
 /* ---------- 手機：窄（直拿）或矮（橫放）的畫面 ---------- */
 @media (max-width:760px),(max-height:560px){
@@ -890,6 +898,8 @@ body[data-scene="map"] #hud{display:block}
   .pan{width:52px;height:52px;margin-top:-26px}
   #pan-l{left:6px} #pan-r{right:6px}
   #zoom{left:6px;top:calc(50% + 34px);gap:6px}
+  /* 手機直拿：左邊常有島名牌，＋－ 放右邊（往右箭頭下面、滴答上面） */
+  @media (orientation:portrait){#zoom{left:auto;right:6px;align-items:flex-end}}
   #zoom button{width:44px;height:44px;font-size:24px;border-radius:12px}
   #zoom #zoom-all{min-width:44px;height:36px;padding:0 6px;font-size:13px}
   #tick{right:4px;bottom:2px;gap:2px}
