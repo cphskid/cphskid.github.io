@@ -16,6 +16,7 @@
 -- 章的代碼由前端決定（feed、band…），只有「哪幾章算一本書」寫在 lab_books()；之後加書改這裡。
 -- 套用順序：park_coins.sql → park_passport.sql → park_animal.sql → park_survey.sql → 這份（重跑沒關係）
 -- 2026-11-25：加實驗室留言本（樂園共用問卷 lab-v1、勳章 survey「實驗室小顧問」）
+-- 2026-11-27：布置（lab_deco 表、lab_deco_save、lab_me 回 deco、勳章 tinker「實驗室奇想家」）
 
 create table if not exists public.lab_progress (
   student_id     uuid not null references public.students(id) on delete cascade,
@@ -28,6 +29,20 @@ create table if not exists public.lab_progress (
 );
 alter table public.lab_progress enable row level security;
 revoke all on public.lab_progress from public, anon, authenticated;
+
+-- 2026-11-27 布置：實驗做完的成品擺在牆上哪一格。成品有哪些由前端算（看 lab_progress），這裡只記位置。
+--   slots  { 格子代碼: 成品代碼 }   stored 收進抽屜的成品（不要自動擺回去）
+--   dark   關燈中                   combos 發現過的組合彩蛋（四個都找到＝勳章 tinker「實驗室奇想家」）
+create table if not exists public.lab_deco (
+  student_id  uuid primary key references public.students(id) on delete cascade,
+  slots       jsonb not null default '{}'::jsonb,
+  stored      text[] not null default '{}',
+  dark        boolean not null default false,
+  combos      text[] not null default '{}',
+  updated_at  timestamptz not null default now()
+);
+alter table public.lab_deco enable row level security;
+revoke all on public.lab_deco from public, anon, authenticated;
 
 -- 書櫃上的書：書代碼 → 三章。前端 src/data/books.ts 要跟這裡一樣。
 create or replace function public.lab_books()
@@ -84,7 +99,10 @@ returns jsonb language sql stable security definer set search_path = public, pg_
                        where p.student_id = public.current_student_id()), '{}'::jsonb),
     'animal', case when to_regclass('public.animal_progress') is null then '[]'::jsonb else
       coalesce((select jsonb_agg(a.level) from public.animal_progress a
-                 where a.student_id = public.current_student_id() and a.first_clear_at is not null), '[]'::jsonb) end);
+                 where a.student_id = public.current_student_id() and a.first_clear_at is not null), '[]'::jsonb) end,
+    -- 2026-11-27 布置：成品擺在哪一格（沒存過＝null，前端自己把做過的成品擺上去）
+    'deco', (select jsonb_build_object('slots', d.slots, 'stored', to_jsonb(d.stored), 'dark', d.dark, 'combos', to_jsonb(d.combos))
+               from public.lab_deco d where d.student_id = public.current_student_id()));
 $$;
 
 -- ---------- 時光幣 ----------
@@ -132,6 +150,8 @@ returns setof text language sql stable security definer set search_path = public
   select 'exps' where (select count(*) from public.lab_progress p
                         where p.student_id = p_student and p.item in (select public.lab_exp_core())) >= 12
   union all
+  select 'tinker' where (select cardinality(d.combos) from public.lab_deco d where d.student_id = p_student) >= 4
+  union all
   select * from public.park_survey_stamps(p_student, 'time_lab');   -- 實驗室留言本（park_survey.sql）
 $$;
 update public.park_facilities
@@ -147,7 +167,8 @@ insert into public.park_stamps (facility, code, name, hint, art, sort, kind, rar
   ('time_lab', 'shelf',       '書櫃讀透透',   '書櫃上的每一本書都讀完',           'img/stamp/lab-shelf.webp',  5, 'collect', 'gold'),
   ('time_lab', 'stars',       '實驗室之星',   '每一章都拿到三顆星',               'img/stamp/lab-stars.webp',  6, 'master',  'rainbow'),
   ('time_lab', 'exps',        '實驗高手',     '實驗室裡的 12 個實驗都做完',       'img/stamp/lab-exp.webp',    7, 'collect', 'gold'),
-  ('time_lab', 'survey',      '實驗室小顧問', '在實驗室留言本寫下你的想法',       'img/stamp/lab-survey.webp', 8, 'story',   'bronze')
+  ('time_lab', 'survey',      '實驗室小顧問', '在實驗室留言本寫下你的想法',       'img/stamp/lab-survey.webp', 8, 'story',   'bronze'),
+  ('time_lab', 'tinker',      '實驗室奇想家', '把成品擺在一起，找到實驗室裡藏著的 4 個驚喜', 'img/stamp/lab-tinker.webp', 9, 'egg', 'silver')
 on conflict (facility, code) do update set name = excluded.name, hint = excluded.hint, art = excluded.art,
   sort = excluded.sort, kind = excluded.kind, rarity = excluded.rarity;
 
@@ -202,7 +223,35 @@ drop trigger if exists lab_trial_new_class on public.classes;
 create trigger lab_trial_new_class after insert on public.classes
   for each row execute function public.lab_trial_new_class();
 
+-- ---------- 布置存檔（2026-11-27） ----------
+-- 前端 src/data/deco.ts：格子代碼 s01…、成品代碼 d-…（書擋 d-book-…）、組合彩蛋 rainbow/fork/dry/dipper。
+-- 只檢查格式和數量（成品不多、不換錢），擺沒拿到的成品前端本來就做不到。
+create or replace function public.lab_deco_save(p_slots jsonb, p_stored text[], p_dark boolean, p_combos text[])
+returns void language plpgsql security definer set search_path = public, pg_temp as $$
+declare v_me uuid := public.current_student_id(); v_slots jsonb := '{}'; v_k text; v_v jsonb;
+begin
+  if v_me is null then return; end if;
+  if jsonb_typeof(coalesce(p_slots, '{}')) <> 'object' then raise exception '擺放資料不對'; end if;
+  for v_k, v_v in select * from jsonb_each(coalesce(p_slots, '{}')) limit 80 loop
+    if v_k ~ '^s[0-9]{2}$' and jsonb_typeof(v_v) = 'string' and (v_v #>> '{}') ~ '^d-[a-z0-9-]{1,30}$' then
+      v_slots := v_slots || jsonb_build_object(v_k, v_v);
+    end if;
+  end loop;
+  insert into public.lab_deco as d (student_id, slots, stored, dark, combos, updated_at)
+  values (v_me, v_slots,
+          coalesce((select array_agg(distinct x) from unnest(p_stored[1:80]) x where x ~ '^d-[a-z0-9-]{1,30}$'), '{}'),
+          coalesce(p_dark, false),
+          coalesce((select array_agg(distinct x) from unnest(p_combos) x where x in ('rainbow', 'fork', 'dry', 'dipper')), '{}'),
+          now())
+  on conflict (student_id) do update
+    set slots = excluded.slots, stored = excluded.stored, dark = excluded.dark,
+        combos = (select coalesce(array_agg(distinct x), '{}') from unnest(d.combos || excluded.combos) x),  -- 找到過就不會掉
+        updated_at = now();
+end;
+$$;
+
 -- ---------- 權限 ----------
 revoke all on function public.lab_books(), public.lab_exps(), public.lab_exp_core(), public.lab_track(text, int), public.lab_me(),
-  public.lab_coin_sources(uuid), public.lab_earned_stamps(uuid), public.lab_survey_gate(uuid) from public, anon, authenticated;
-grant execute on function public.lab_track(text, int), public.lab_me() to authenticated;
+  public.lab_coin_sources(uuid), public.lab_earned_stamps(uuid), public.lab_survey_gate(uuid),
+  public.lab_deco_save(jsonb, text[], boolean, text[]) from public, anon, authenticated;
+grant execute on function public.lab_track(text, int), public.lab_me(), public.lab_deco_save(jsonb, text[], boolean, text[]) to authenticated;
