@@ -1,4 +1,4 @@
-// 遊玩紀錄：學生在樂園大廳（島嶼地圖）、寵物島待了多久（supabase/park_playlog.sql）。
+// 遊玩紀錄：學生在樂園大廳（島嶼地圖）、寵物島、聖誕活動（雪橇峰 ski、降臨月曆 advent）待了多久（supabase/park_playlog.sql）。
 // 進到一個地方寫一筆，每 30 秒送一次心跳，切到別的 App、進遊戲、回開場、登出就收尾。
 // 老師後台的學生時間軸、管理員的全站動態都靠它。沒裝 SQL、網路斷了就只是不記。
 import { db } from './auth.js';
@@ -77,4 +77,14 @@ export function at(place, label) {
   stop();
   cur = { place, label };
   start();
+}
+// 現在在哪裡（雪橇峰、月曆關掉時回到原本的地方：地圖或寵物島）
+export const where = () => cur;
+// 打開一個蓋在上面的活動畫面（2026-11-27 Chuck：寵物島、聖誕活動也要算進管理員統計）；回傳關掉時要呼叫的函式
+export function visit(place, label) {
+  const back = cur;
+  if (back.place === place) return () => {};
+  at(place, label);
+  let done = false;
+  return () => { if (done) return; done = true; if (cur.place === place) at(back.place, back.label); };
 }

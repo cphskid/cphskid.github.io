@@ -85,7 +85,10 @@ function gradeText(min, max) {
   if (min === max) return `${min} 年級`;
   return `${min ?? 1}–${max ?? 6} 年級`;
 }
+// 樂園裡不是設施、但算進遊玩統計的地方（park_play_fac：寵物島、聖誕活動，2026-11-27）
+const PARK_BADGE = { park: 'img/admin/park.webp', pet: 'img/ui/pet.webp', xmas: 'img/xmas/snow.webp' };
 function badgeOf(code) {
+  if (PARK_BADGE[code]) return PARK_BADGE[code];
   const f = park.facilities.find((x) => x.code === code);
   const z = park.zones.find((x) => x.code === f?.zone);
   return z?.badge ?? 'img/badge/clocktower.webp';
@@ -902,7 +905,7 @@ function mergeStamps(rows) {
 }
 const tlItems = (list) => list.map((r) => `<li class="k-${esc(r.kind)}">
         <time>${esc(clock(r.started_at))}${r.ended_at && r.seconds ? `–${esc(clock(r.ended_at))}` : ''}</time>
-        <img src="${esc(r.facility === 'park' ? 'img/admin/park.webp' : badgeOf(r.facility))}" alt="">
+        <img src="${esc(badgeOf(r.facility))}" alt="">
         <span><b>${esc(r.game)}</b>${r.label && r.label !== r.game && !(r.kind === 'play' && r.place === 'enter') ? `・${esc(r.label)}` : ''}
           <small>${esc([mins(r.seconds), r.note, KIND_NOTE[r.kind]].filter(Boolean).join('・'))}</small></span></li>`).join('');
 
@@ -988,7 +991,7 @@ async function paintDaysTable(c) {
         <td class="sum">${k.sec ? `${Math.max(1, Math.round(k.sec / 60))} 分` : k.days ? `${k.days} 天` : '沒來'}</td></tr>`;
   const pages = Math.max(1, Math.ceil(pg.total / pg.size));
   box.innerHTML = `
-    <p class="lead">最近 ${playDays} 天有 <b>${pg.came}</b> / ${pg.came + pg.idle} 人來玩${playQ ? `，找「${esc(playQ)}」有 ${pg.total} 人` : ''}。每一格是那天在遊戲裡玩了幾分鐘（只待在樂園大廳、寵物島不算），顏色越深玩越久；「✓」是有玩但沒記到時間（2026-10-23 以前的紀錄）。點名字看那個孩子每天玩了什麼。</p>
+    <p class="lead">最近 ${playDays} 天有 <b>${pg.came}</b> / ${pg.came + pg.idle} 人來玩${playQ ? `，找「${esc(playQ)}」有 ${pg.total} 人` : ''}。每一格是那天玩了幾分鐘（遊戲、寵物島、聖誕活動都算；只待在樂園大廳地圖不算），顏色越深玩越久；「✓」是有玩但沒記到時間（2026-10-23 以前的紀錄）。點名字看那個孩子每天玩了什麼。</p>
     <p class="heat-legend"><span class="hx1">1–14</span><span class="hx2">15–29</span><span class="hx3">30–59</span><span class="hx4">60+ 分鐘</span></p>
     ${pg.kids.length ? `<div class="tablewrap"><table class="heat ${playDays > 14 ? 'many' : ''}">
       <thead><tr><th>暱稱</th>${days.map((d) => `<th>${dayHead(d)}</th>`).join('')}<th>合計</th></tr></thead>
@@ -1030,7 +1033,7 @@ async function paintKidDays(c, s) {
       if (r.kind !== 'play' || r.place !== 'enter') g.n += 1;
     }
     const stamps = list.filter((r) => r.kind === 'stamp').reduce((a, r) => a + (r.names?.length ?? 1), 0);
-    // 樂園大廳（地圖、寵物島）不算進遊戲時間，另外用灰字標，免得看起來那天沒來（2026-11-02 小奎）
+    // 樂園大廳（地圖）不算進遊戲時間（寵物島、聖誕活動 2026-11-27 起算），另外用灰字標，免得看起來那天沒來（2026-11-02 小奎）
     const lobby = list.filter((r) => r.kind === 'play' && r.facility === 'park').reduce((a, r) => a + (r.seconds ?? 0), 0);
     return `${[...games].map(([f, g]) => `<span class="g"><img src="${esc(badgeOf(f))}" alt="">${esc(g.game.replace(/^穿越吧！/, ''))}<small>${esc(g.sec ? mins(g.sec) : `${g.n} 次`)}</small></span>`).join('')}
       ${stamps ? `<span class="g st">${ico('passport')}${stamps} 個勳章</span>` : ''}
@@ -1038,13 +1041,13 @@ async function paintKidDays(c, s) {
   };
   box.innerHTML = `
     <div class="row"><button class="linkish" data-back>‹ 回全班</button></div>
-    <h3 class="kid-h">${esc(s.nickname)} 最近 ${playDays} 天${total ? `<span class="tag">在遊戲裡共 ${esc(mins(total))}</span>` : ''}</h3>
+    <h3 class="kid-h">${esc(s.nickname)} 最近 ${playDays} 天${total ? `<span class="tag">共玩 ${esc(mins(total))}</span>` : ''}</h3>
     ${rows.length ? `<div class="kid-days">${[...byDay].map(([d, list]) => {
       const sec = list.filter(play).reduce((a, r) => a + (r.seconds ?? 0), 0);
       return `<details><summary><b class="d">${esc(d)}</b><span class="m">${sec ? esc(mins(sec)) : ''}</span><span class="gs">${summary(list)}</span></summary>
         <div class="tl-list"><ul>${tlItems(list)}</ul></div></details>`; }).join('')}</div>`
       : `<div class="empty small"><img src="img/admin/tick-empty.webp" alt=""><p>最近 ${playDays} 天沒有遊玩紀錄。</p></div>`}
-    <p class="hint">每天一列，點開看那天的每一筆。綠色分鐘數只算遊戲裡的時間；「樂園大廳」是待在地圖、寵物島，不算進去，畫面放著超過 5 分鐘沒動也不再繼續算（2026-11-02 起）。玩多久從 2026-10-23 開始記；更早的只有守護異世界每一場的答題，和島嶼開拓者每章的最後存檔時間。</p>`;
+    <p class="hint">每天一列，點開看那天的每一筆。綠色分鐘數算遊戲、寵物島、聖誕活動（雪橇峰、降臨月曆）的時間；「樂園大廳」是待在地圖，不算進去，畫面放著超過 5 分鐘沒動也不再繼續算（2026-11-02 起）。寵物島從 2026-10-23 開始有記；雪橇峰、降臨月曆從 2026-11-27 起才分開記，之前算在樂園大廳。玩多久從 2026-10-23 開始記；更早的只有守護異世界每一場的答題，和島嶼開拓者每章的最後存檔時間。</p>`;
   $('[data-back]', box).onclick = () => { playKid = null; renderPlay(); };
 }
 
@@ -1686,7 +1689,7 @@ async function paintActivity(days) {
         <td><b>${esc(r.nickname)}</b><small class="sub">${esc(r.login_id)}${r.class_code ? `・${esc(r.class_code)}` : ''}</small></td>
         <td>${esc(r.game)}${r.label && r.label !== r.game ? `・${esc(r.label)}` : ''}${r.note || r.kind === 'save' ? `<small class="sub">${esc([r.note, KIND_NOTE[r.kind]].filter(Boolean).join('・'))}</small>` : ''}</td>
         <td class="nowrap">${esc(mins(r.seconds)) || '—'}</td></tr>`).join('') || '<tr><td colspan="4">還沒有動態</td></tr>'}</tbody></table></div></details>
-    <p class="hint">「進來幾趟」「共玩幾分鐘」從 ${esc(a.log_since ? new Date(a.log_since).toLocaleDateString('zh-TW') : '遊玩紀錄上線那天')} 開始記錄；更早的只看得到守護異世界每一場的答題和島嶼開拓者每章的最後存檔。</p>`;
+    <p class="hint">寵物島、聖誕活動（雪橇峰、降臨月曆）和遊戲分開列；「樂園大廳」只剩待在地圖的時間。雪橇峰、降臨月曆 2026-11-27 起才分開記。「進來幾趟」「共玩幾分鐘」從 ${esc(a.log_since ? new Date(a.log_since).toLocaleDateString('zh-TW') : '遊玩紀錄上線那天')} 開始記錄；更早的只看得到守護異世界每一場的答題和島嶼開拓者每章的最後存檔。</p>`;
   wireAct(p);
 }
 function wireAct(p) {

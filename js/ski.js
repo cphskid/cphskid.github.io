@@ -9,6 +9,8 @@
 //   夥伴本事：獨角獸、藍鵲多跳一次；小火龍撞石頭不會摔；小貓、石虎吸雪花範圍大。
 // 一趟結束把撿到的雪花和距離送到 park_snow_ski_done（每天最多 12 片，伺服器算）。
 import * as auth from './auth.js';
+import * as playlog from './playlog.js';
+let leave = null;
 import * as snow from './snow.js';
 import { sfx, music, nowMusic } from './audio.js';
 
@@ -28,6 +30,7 @@ function load(src) { return new Promise((ok) => { const i = new Image(); i.onloa
 
 export async function openSki({ pet, onClose } = {}) {
   close();
+  leave = playlog.visit('ski', '雪橇峰');    // 遊玩紀錄：滑雪橇另外記一筆（管理員統計的「聖誕活動」）
   veil = document.createElement('div');
   veil.className = 'snow-veil ski';
   // iPhone 長按會跳出「拷貝／查詢／翻譯」：整個滑雪畫面不讓選字、不跳選單
@@ -481,4 +484,4 @@ export async function openSki({ pet, onClose } = {}) {
     }
   }
 }
-export function close() { unbind?.(); cancelAnimationFrame(raf); dropCanvas(); veil?.remove(); veil = null; imgs = {}; document.body.classList.remove('ski-on'); }
+export function close() { leave?.(); leave = null; unbind?.(); cancelAnimationFrame(raf); dropCanvas(); veil?.remove(); veil = null; imgs = {}; document.body.classList.remove('ski-on'); }

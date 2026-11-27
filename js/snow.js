@@ -3,6 +3,7 @@
 // 這裡管：活動狀態、寵物島右邊的兩顆按鈕（降臨月曆、雪山滑雪橇）、降臨月曆視窗、「今天的雪花」說明。
 // 活動還沒開始、資料庫還沒裝好時什麼都不出現。
 import * as auth from './auth.js';
+import * as playlog from './playlog.js';
 import { sfx } from './audio.js';
 
 const $ = (s, root = document) => root.querySelector(s);
@@ -60,9 +61,11 @@ export function todayHtml() {
 
 // ---------- 降臨月曆 ----------
 let veil = null;
-function close() { veil?.remove(); veil = null; }
+function close() { leave?.(); leave = null; veil?.remove(); veil = null; }
+let leave = null;
 export function openAdvent({ onGift } = {}) {
   close();
+  leave = playlog.visit('advent', '降臨月曆');   // 遊玩紀錄（管理員統計的「聖誕活動」）
   veil = document.createElement('div');
   veil.className = 'snow-veil';
   document.body.appendChild(veil);
