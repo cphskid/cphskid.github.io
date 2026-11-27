@@ -47,7 +47,9 @@ language sql immutable as $$
          ('x-sky', 'sky'), ('x-pond', 'pond'), ('x-beacon', 'beacon'), ('x-stage', 'stage'),
          ('x-stars', 'stars'), ('x-storm', 'storm'), ('x-mirror', null), ('x-spray', null),
          -- 2026-11-27 四年級先行包：一開始就能玩
-         ('x-circuit', null), ('x-tank', null), ('x-moon', null), ('x-bugcase', null);
+         ('x-circuit', null), ('x-tank', null), ('x-moon', null), ('x-bugcase', null),
+         -- 2026-11-27 五下：火山島溫泉谷過關帶回來
+         ('x-spring', 'spring'), ('x-steam', 'steam');
 $$;
 -- 「實驗高手」勳章只算最早的 12 個（之後加的實驗不會讓已經拿到的孩子掉勳章）
 create or replace function public.lab_exp_core()
