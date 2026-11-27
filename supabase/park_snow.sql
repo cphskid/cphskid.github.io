@@ -26,7 +26,7 @@ alter table public.park_snow_cfg enable row level security;
 revoke all on public.park_snow_cfg from public, anon, authenticated;
 
 -- 雪花帳本：一筆一個來源（source 唯一，重算不會重複發）
---   kind：ski 滑雪／learn 學習設施／daily 每日任務／pet 寵物小遊戲／advent 降臨月曆／buy 換東西（負的）／convert 活動結束換時光幣（負的）
+--   kind：ski 滑雪／learn 學習設施／daily 每日任務／pet 寵物小遊戲／advent 降臨月曆／card 第一次寄聖誕卡（只一次）／buy 換東西（負的）／convert 活動結束換時光幣（負的）
 create table if not exists public.park_snow_ledger (
   student_id uuid not null references public.students(id) on delete cascade,
   source     text not null,
@@ -36,6 +36,9 @@ create table if not exists public.park_snow_ledger (
   created_at timestamptz not null default now(),
   primary key (student_id, source)
 );
+-- 2026-11-27 加 card（第一次寄聖誕卡送雪花）：舊表的 check 要換掉
+alter table public.park_snow_ledger drop constraint if exists park_snow_ledger_kind_check;
+alter table public.park_snow_ledger add constraint park_snow_ledger_kind_check check (kind in ('ski', 'learn', 'daily', 'pet', 'advent', 'card', 'buy', 'convert'));
 create index if not exists park_snow_ledger_day on public.park_snow_ledger (day, kind);
 alter table public.park_snow_ledger enable row level security;
 revoke all on public.park_snow_ledger from public, anon, authenticated;
@@ -72,7 +75,7 @@ on conflict (code) do update set name = excluded.name, art = excluded.art, blurb
 -- 每天各來源上限
 create or replace function public.park_snow_cap(p_kind text)
 returns int language sql immutable as $$
-  select case p_kind when 'ski' then 12 when 'learn' then 20 when 'daily' then 5 when 'pet' then 3 else 0 end;
+  select case p_kind when 'ski' then 12 when 'learn' then 20 when 'daily' then 5 when 'pet' then 3 when 'card' then 5 else 0 end;
 $$;
 
 create or replace function public.park_snow_balance(p_student uuid)
@@ -268,7 +271,23 @@ begin
       'got', coalesce((select jsonb_agg(tier order by tier) from public.park_snow_tree_got where student_id = v_me), '[]'),
       'mine', coalesce((select sum(amount) from public.park_snow_ledger where student_id = v_me and amount > 0), 0),
       'mine_today', coalesce((select sum(amount) from public.park_snow_ledger where student_id = v_me and amount > 0 and day = v_today), 0)),
+    'card', exists (select 1 from public.park_snow_ledger where student_id = v_me and source = 'card:first'),
     'converted', v_conv);
+end;
+$$;
+
+-- 寄出（分享或存下）聖誕卡：活動期間第一次送 5 片雪花，之後不再送（2026-11-27 Chuck：首次分享送雪花）
+create or replace function public.park_snow_card_done()
+returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
+declare v_me uuid := public.current_student_id(); c public.park_snow_cfg; v_got int := 0;
+begin
+  if v_me is null then raise exception '請先登入學生帳號'; end if;
+  select * into c from public.park_snow_cfg where id = 1;
+  perform pg_advisory_xact_lock(hashtext('park_snow:' || v_me::text));
+  if public.park_today() between c.starts and c.ends then
+    v_got := public.park_snow_give(v_me, 'card:first', 'card', 5, public.park_today());
+  end if;
+  return public.park_snow_me() || jsonb_build_object('got', v_got);
 end;
 $$;
 
@@ -344,4 +363,4 @@ $$;
 revoke all on function public.park_snow_cap(text), public.park_snow_balance(uuid), public.park_snow_give(uuid, text, text, int, date),
   public.park_snow_sync(uuid), public.park_snow_advent_bonus(uuid), public.park_snow_makeups(uuid), public.park_snow_convert(uuid), public.park_snow_tree_grant(uuid) from public, anon, authenticated;
 grant execute on function public.park_snow_me(), public.park_snow_ski_done(int, int), public.park_snow_advent_open(int),
-  public.park_snow_buy(text), public.park_snow_tree_total() to authenticated;
+  public.park_snow_buy(text), public.park_snow_tree_total(), public.park_snow_card_done() to authenticated;

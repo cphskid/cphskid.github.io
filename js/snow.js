@@ -42,6 +42,7 @@ export function petButtons() {
   return `<div class="snow-dock">
     <button type="button" data-snow-advent aria-label="降臨月曆"><img src="img/xmas/advent.webp" alt=""><b>月曆</b>${canOpenToday() ? '<i class="dot"></i>' : ''}</button>
     <button type="button" data-snow-ski aria-label="雪山滑雪橇"><img src="img/xmas/sled.webp" alt=""><b>滑雪</b></button>
+    <button type="button" data-snow-card aria-label="拍下寵物島，寄聖誕卡給朋友"><img src="img/xmas/card/c1-s.webp" alt="" class="xc-ic"><b>寄卡片</b></button>
     <span class="snow-bal">${SNOW}<b>${st.balance}</b></span>
   </div>`;
 }
@@ -230,6 +231,17 @@ export function paintTreeBar(sign, { onLook } = {}) {
 }
 let barLook = null;
 // 玩法說明：怎麼點燈、5 層禮物、你點了幾盞；「去看大樹」把地圖移過去
+// 聖誕卡（js/xcard.js）：暱稱、旅人樣子、怎麼去寵物島由 park.js 告訴這裡（snow.js 不直接讀帳號）
+let cardCtx = () => null;
+export function setCardCtx(fn) { cardCtx = fn; }
+export const canCard = () => !!cardCtx() && !!(st?.on || st?.ended);
+export async function openCard(extra = {}) {
+  const base = cardCtx();
+  if (!base) return;
+  const { openCard: open } = await import('./xcard.js');
+  open({ ...base, cardDone: !!st?.card || !st?.on, ...extra,
+    onSent: async () => { if (st?.card || !st?.on) return 0; const r = await auth.snow.card(); set(r); return r?.got ?? 0; } });
+}
 let tveil = null;
 export function openTree({ onLook } = {}) {
   const t = tree();
@@ -253,12 +265,13 @@ export function openTree({ onLook } = {}) {
     <ol class="xlv">${TIERS.map(([n, img], i) => `<li class="${i < lv ? 'done' : i === lv ? 'now' : ''}"><img src="${img}" alt=""><b>第 ${i + 1} 層</b><span>${n}</span><em>${got.has(i + 1) ? '✓ 已拿到' : i < lv ? '✓ 已亮' : i === lv ? `${fmt(t.total)} / ${fmt(t.tiers[i])}` : `${fmt(t.tiers[i])} 盞`}</em></li>`).join('')}</ol>
     <p class="mine">你一共點了 <b>${fmt(t.mine)}</b> 盞，今天 <b>${fmt(t.mine_today)}</b> 盞。${t.mine > 0 ? '' : '賺到 1 片雪花就算參加！'}</p>
     ${got.has(2) ? `<label class="xhat"><input type="checkbox" data-snow-hat${hatOn() ? ' checked' : ''}> 寵物島的夥伴戴聖誕帽</label>` : ''}
-    <div class="row end">${look ? '<button type="button" class="btn go" data-look>去看大樹</button>' : '<button type="button" class="btn go" data-close>知道了</button>'}</div>
+    <div class="row end">${canCard() ? '<button type="button" class="ghost" data-card>寄聖誕卡給朋友</button>' : ''}${look ? '<button type="button" class="btn go" data-look>去看大樹</button>' : '<button type="button" class="btn go" data-close>知道了</button>'}</div>
   </div>`;
   document.body.appendChild(tveil);
   const shut = () => { tveil?.remove(); tveil = null; };
   tveil.addEventListener('click', (e) => { if (e.target === tveil || e.target.closest('[data-close]')) shut(); });
   tveil.querySelector('[data-look]')?.addEventListener('click', () => { shut(); look?.(); });
+  tveil.querySelector('[data-card]')?.addEventListener('click', () => { shut(); openCard(); });
   bindTree(tveil);
 }
 
