@@ -72,6 +72,8 @@ begin
   select l.id into v_id from public.park_play_log l
    where l.student_id = v_me and l.facility = v_fac and l.place = v_place
      and coalesce(l.ended_at, l.last_seen) > now() - interval '2 minutes'
+     -- 中間去過別的地方（寵物島→雪橇峰→寵物島）就開新的一筆，不然寵物島那筆會把滑雪的時間也算進去（2026-11-27）
+     and not exists (select 1 from public.park_play_log o where o.student_id = v_me and o.started_at > l.started_at)
    order by l.started_at desc limit 1;
   -- 同一個人在同一個遊戲同時只開一筆：別的收尾在最後一次心跳
   update public.park_play_log l set ended_at = l.last_seen
@@ -110,6 +112,16 @@ $$;
 --       save＝島嶼開拓者的舊存檔（遊玩紀錄上線前，只知道最後存檔時間）；stamp＝拿到勳章
 -- p_students 是 null＝全站（只給管理員用的函式叫）。
 
+-- 樂園裡（facility='park'）的地方，哪些算一個「遊戲」放進統計（2026-11-27 Chuck：寵物島、聖誕活動含雪橇峰也要納入管理員統計）
+--   pet＝寵物島；ski（雪橇峰）、advent（降臨月曆）＝聖誕活動 xmas；其他（地圖 gate）還是樂園大廳，不算遊戲時間
+create or replace function public.park_play_fac(p_facility text, p_place text)
+returns text language sql immutable set search_path = public, pg_temp as $$
+  select case when p_facility <> 'park' then p_facility
+              when p_place = 'pet' then 'pet'
+              when p_place in ('ski', 'advent') then 'xmas'
+              else 'park' end;
+$$;
+
 create or replace function public.park_activity_rows(p_since timestamptz, p_students uuid[])
 returns table (student_id uuid, kind text, facility text, place text, label text,
                started_at timestamptz, ended_at timestamptz, seconds int, note text)
@@ -117,7 +129,7 @@ language plpgsql stable security definer set search_path = public, pg_temp as $$
 begin
   -- 遊玩紀錄表；島嶼開拓者那一趟裡第一次過了幾步、有沒有過關，從時光幣紀錄看
   return query
-  select l.student_id, 'play'::text, l.facility, l.place,
+  select l.student_id, 'play'::text, public.park_play_fac(l.facility, l.place), l.place,
          coalesce(l.label, case when l.facility = 'island_pioneer' then public.park_island_label(l.place) end, l.place),
          l.started_at, coalesce(l.ended_at, l.last_seen),
          extract(epoch from coalesce(l.ended_at, l.last_seen) - l.started_at)::int,
@@ -179,10 +191,12 @@ begin
 end;
 $$;
 
--- 遊戲名字（樂園大廳不是設施）
+-- 遊戲名字（樂園大廳、寵物島、聖誕活動不是設施）
 create or replace function public.park_facility_name(p_code text)
 returns text language sql stable security definer set search_path = public, pg_temp as $$
   select case when p_code = 'park' then '樂園大廳'
+              when p_code = 'pet' then '寵物島'
+              when p_code = 'xmas' then '聖誕活動'
               else coalesce((select f.name from public.park_facilities f where f.code = p_code), p_code) end;
 $$;
 
@@ -407,19 +421,19 @@ begin
     'few', (select count(*) from per where d between 2 and 3),
     'many', (select count(*) from per where d >= 4),
     'trips', (select coalesce(jsonb_agg(jsonb_build_object('game', public.park_facility_name(t.facility), 'trips', t.n, 'avg', t.avg, 'median', t.med)), '[]') from (
-                select l.facility, count(*) n,
+                select public.park_play_fac(l.facility, l.place) facility, count(*) n,
                        round(avg(extract(epoch from coalesce(l.ended_at, l.last_seen) - l.started_at)) / 60.0, 1) avg,
                        round((percentile_cont(0.5) within group (order by extract(epoch from coalesce(l.ended_at, l.last_seen) - l.started_at)) / 60.0)::numeric, 1) med
                   from public.park_play_log l
-                 where l.started_at >= v_since and l.facility <> 'park' and l.place not in ('map', 'world')
-                 group by l.facility) t)) into v_habit;
+                 where l.started_at >= v_since and public.park_play_fac(l.facility, l.place) <> 'park' and l.place not in ('map', 'world')
+                 group by 1) t)) into v_habit;
 
   return jsonb_build_object('days', v_days, 'island', v_island, 'guardian', v_guard, 'words', v_words, 'habit', v_habit, 'animal', v_animal);
 end;
 $$;
 
 revoke all on function
-  public.park_island_label(text), public.park_activity_rows(timestamptz, uuid[]), public.park_facility_name(text),
+  public.park_island_label(text), public.park_activity_rows(timestamptz, uuid[]), public.park_facility_name(text), public.park_play_fac(text, text),
   public.park_play_start(text, text, text), public.park_play_beat(bigint, boolean),
   public.park_student_activity(uuid, int), public.park_class_last_play(text), public.park_admin_activity(int),
   public.park_class_days(text, int), public.park_admin_insights(int)
