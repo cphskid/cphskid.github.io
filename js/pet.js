@@ -558,6 +558,16 @@ function openScene({ select, say: first } = {}) {
     const { openSki } = await import('./ski.js');
     openSki({ pet: myPet() ?? petById(selected), onClose: paintSnowDock });
   });
+  // 寄聖誕卡：拍下現在看到的島，放進卡片（js/xcard.js）
+  $('[data-snow-card]', layer)?.addEventListener('click', async (e) => {
+    const b = e.currentTarget;
+    if (b.disabled) return;
+    b.disabled = true; b.classList.add('busy');
+    const { shootIsle } = await import('./xcard.js');
+    const photo = await shootIsle($('.pisle .ground', layer));
+    b.disabled = false; b.classList.remove('busy');
+    snow.openCard({ photo, openPet: null });
+  });
   // 「去看看」：來拜訪、留圖示的朋友，點了直接參觀他的島（從愛心面板來的，回去時再打開面板）
   $('.pisle', layer).addEventListener('click', (e) => {
     const b = e.target.closest('[data-fan]');

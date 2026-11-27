@@ -411,6 +411,7 @@ export const snow = {
   ski:     (got, dist) => ccall('park_snow_ski_done', { p_snow: got, p_dist: dist }),
   advent:  (day) => ccall('park_snow_advent_open', { p_day: day }),
   buy:     (code) => ccall('park_snow_buy', { p_code: code }),
+  card:    () => ccall('park_snow_card_done'),   // 第一次寄聖誕卡送 5 片（只一次）
 };
 
 // ---------- 公共交誼廳＋同伴圈（supabase/park_lounge.sql） ----------

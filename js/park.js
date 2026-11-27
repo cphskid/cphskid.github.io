@@ -780,6 +780,13 @@ function villageHtml() {
     <div class="fac"><h3>我的桌寵</h3><p>你的桌寵住在村莊旁邊的寵物島。照顧中的那隻會肚子餓，記得常回來餵牠、陪牠玩；在各島完成任務還會拿到牠最愛的點心。</p>
     <div class="row"><button type="button" class="btn go" data-open-pet>去看桌寵</button></div></div>`;
 }
+// 聖誕卡（js/xcard.js）：學生才能寄；暱稱預設不寫在卡上（孩子自己勾）
+snow.setCardCtx(() => {
+  const w = account.current();
+  if (w.kind !== 'student') return null;
+  const t = traveller.state();
+  return { nick: w.nickname, dollHtml: t?.created ? traveller.dollHtml(t.look) : '', openPet: () => pet.open() };
+});
 // 聖誕活動：村莊島上的全站大聖誕樹（js/snow.js）；學生才讀，讀不到（活動沒開、資料庫沒裝）就什麼都不畫
 let snowShown = '';
 // 雪山島：活動期間（park_snow_cfg 的 starts～ends，snow.on()）才出現在大地圖，點了直接開滑雪橇；活動結束自動收起
