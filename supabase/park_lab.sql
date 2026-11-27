@@ -45,7 +45,15 @@ returns table (item text, need text)
 language sql immutable as $$
   values ('x-forest', 'forest'), ('x-nest', 'nest'), ('x-harbor', 'harbor'), ('x-town', 'town'),
          ('x-sky', 'sky'), ('x-pond', 'pond'), ('x-beacon', 'beacon'), ('x-stage', 'stage'),
-         ('x-stars', 'stars'), ('x-storm', 'storm'), ('x-mirror', null), ('x-spray', null);
+         ('x-stars', 'stars'), ('x-storm', 'storm'), ('x-mirror', null), ('x-spray', null),
+         -- 2026-11-27 四年級先行包：一開始就能玩
+         ('x-circuit', null), ('x-tank', null), ('x-moon', null), ('x-bugcase', null);
+$$;
+-- 「實驗高手」勳章只算最早的 12 個（之後加的實驗不會讓已經拿到的孩子掉勳章）
+create or replace function public.lab_exp_core()
+returns setof text language sql immutable as $$
+  values ('x-forest'), ('x-nest'), ('x-harbor'), ('x-town'), ('x-sky'), ('x-pond'),
+         ('x-beacon'), ('x-stage'), ('x-stars'), ('x-storm'), ('x-mirror'), ('x-spray');
 $$;
 
 create or replace function public.lab_track(p_item text, p_stars int default 0)
@@ -119,8 +127,8 @@ returns setof text language sql stable security definer set search_path = public
                          where p.student_id = p_student and p.item = any (b.items) and p.stars = 3)
                      >= (select sum(cardinality(b.items)) from public.lab_books() b)
   union all
-  select 'exps' where (select count(*) from public.lab_progress p join public.lab_exps() e on e.item = p.item
-                        where p.student_id = p_student) >= (select count(*) from public.lab_exps())
+  select 'exps' where (select count(*) from public.lab_progress p
+                        where p.student_id = p_student and p.item in (select public.lab_exp_core())) >= 12
   union all
   select * from public.park_survey_stamps(p_student, 'time_lab');   -- 實驗室留言本（park_survey.sql）
 $$;
@@ -193,6 +201,6 @@ create trigger lab_trial_new_class after insert on public.classes
   for each row execute function public.lab_trial_new_class();
 
 -- ---------- 權限 ----------
-revoke all on function public.lab_books(), public.lab_exps(), public.lab_track(text, int), public.lab_me(),
+revoke all on function public.lab_books(), public.lab_exps(), public.lab_exp_core(), public.lab_track(text, int), public.lab_me(),
   public.lab_coin_sources(uuid), public.lab_earned_stamps(uuid), public.lab_survey_gate(uuid) from public, anon, authenticated;
 grant execute on function public.lab_track(text, int), public.lab_me() to authenticated;
