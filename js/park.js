@@ -190,7 +190,7 @@ news.init({
     const z = zones.get(String(link).replace(/^zone:/, ''));
     if (!z) return;
     const s = park.map.slots.find((x) => x.slot === z.slot);
-    if (s) setPan(s.left + s.width / 2 - 800);
+    focusSlot(s);
     openCard(z);
   },
 });
@@ -211,12 +211,13 @@ function goTo(code) {
   const z = zones.get(park.facilities.find((f) => f.code === code)?.zone);
   if (!z) return;
   const s = park.map.slots.find((x) => x.slot === z.slot);
-  if (s) setPan(s.left + s.width / 2 - 800);
+  focusSlot(s);
   openCard(z);
 }
 shop.init({ me: () => account.current(), toast: (t) => showToast(t, 4200), go: goTo });
 // ---------- 新手冒險手冊（js/starter.js）：新手期取代每日任務 ----------
 starter.init({
+  focus: focusIsle,
   me: () => account.current(), toast: (t) => showToast(t, 4200), go: goTo,
   isle: (code) => islesLayer.querySelector(`.isle[data-zone="${park.facilities.find((f) => f.code === code)?.zone}"]`),
 });
@@ -326,20 +327,94 @@ function tick(now) {
 }
 requestAnimationFrame(tick);
 
-// ---------- 舞台縮放、視差、地圖左右移動 ----------
+// ---------- 舞台縮放、視差、地圖鏡頭（放大縮小＋上下左右拖） ----------
+// 2026-11-27 Chuck：大地圖可以放大縮小、上下左右移動。
+// 最小＝原本進來看到的大小（高度剛好塞滿，左右滑）；放大以後上下左右都能拖。
+// 鏡頭只動 #map 一層的 transform（tx,ty 是舞台單位，z 是放大倍數），地圖裡的大圖層不要掛 filter/mask，
+// 不然 iPhone 會照放大後的尺寸整張重畫、分頁被砍（寵物島縮放閃退的教訓）。
 const world = $('#world'), stage = $('#stage'), mapEl = $('#map'), title = $('#title');
-let scale = 1, pan = 0;
-function panRange() {
-  const visible = innerWidth / scale;               // 畫面看得到幾個舞台單位寬
-  if (visible >= MAP_W) { const c = MAP_W / 2 - 800; return [c, c]; }
-  return [visible / 2 - 800, MAP_W - visible / 2 - 800];
+let scale = 1;
+const cam = { tx: 0, ty: 0, z: 1 };
+const appH = () => world.clientHeight || innerHeight;
+// 舞台左上角在螢幕上的位置
+const stageOrigin = () => [innerWidth / 2 - 800 * scale, appH() / 2 - 450 * scale];
+// 放大上限：島圖本身大約是兩倍解析度；手機照螢幕密度再壓一點，免得要畫的像素太多
+function zMax() {
+  return Math.max(1.4, Math.min(2.2, 3.6 / (scale * (devicePixelRatio || 1))));
 }
-function setPan(v) {
-  const [lo, hi] = panRange();
-  pan = Math.max(lo, Math.min(hi, v));
-  mapEl.style.setProperty('--pan', pan);
-  $('#pan-l').hidden = pan <= lo + 1;
-  $('#pan-r').hidden = pan >= hi - 1;
+// 放大後上下可以多拖一點：上面讓開木牌，下面讓開功能列（島才不會卡在功能列後面點不到）
+function edgePad() {
+  const dock = $('#dock');
+  const dockH = dock && dock.offsetParent ? innerHeight - dock.getBoundingClientRect().top + 8 : 24;
+  return [70, Math.max(24, dockH)];
+}
+function clampCam(c) {
+  const W = innerWidth, H = appH(), [X0, Y0] = stageOrigin();
+  c.z = Math.max(1, Math.min(zMax(), c.z));
+  // 左右：地圖比畫面窄就置中，比畫面寬就不能拖出邊
+  const mw = scale * c.z * MAP_W;
+  let left = X0 + scale * c.tx;
+  left = mw <= W ? (W - mw) / 2 : Math.max(W - mw, Math.min(0, left));
+  // 上下：沒放大時固定在原本的位置；放大多少就能多拖多少（再加上讓開木牌／功能列的空間）
+  const mh = scale * c.z * 900, mh0 = scale * 900;
+  const k = Math.min(1, (c.z - 1) / .25), [padT, padB] = edgePad();
+  let top = Y0 + scale * c.ty;
+  top = Math.max(Y0 - (mh - mh0) - k * padB, Math.min(Y0 + k * padT, top));
+  c.tx = (left - X0) / scale;
+  c.ty = (top - Y0) / scale;
+  return c;
+}
+function paintCam() {
+  clampCam(cam);
+  mapEl.style.setProperty('--tx', cam.tx.toFixed(2));
+  mapEl.style.setProperty('--ty', cam.ty.toFixed(2));
+  mapEl.style.setProperty('--z', cam.z.toFixed(4));
+  const W = innerWidth, [X0] = stageOrigin();
+  const left = X0 + scale * cam.tx, right = left + scale * cam.z * MAP_W;
+  $('#pan-l').hidden = left >= -1;
+  $('#pan-r').hidden = right <= W + 1;
+  const zoomed = cam.z > 1.02;
+  $('#zoom-out').disabled = !zoomed;
+  $('#zoom-in').disabled = cam.z >= zMax() - .01;
+  $('#zoom-all').hidden = !zoomed;
+  document.body.classList.toggle('map-zoomed', zoomed);
+}
+// 螢幕上 (px,py) 那一點不動，換成倍數 z
+function zoomAt(z, px = innerWidth / 2, py = appH() / 2, from = cam) {
+  const [X0, Y0] = stageOrigin();
+  const mx = (px - X0 - scale * from.tx) / (scale * from.z);
+  const my = (py - Y0 - scale * from.ty) / (scale * from.z);
+  const nz = Math.max(1, Math.min(zMax(), z));
+  cam.tx = (px - X0) / scale - nz * mx;
+  cam.ty = (py - Y0) / scale - nz * my;
+  cam.z = nz;
+  paintCam();
+}
+// 把地圖上 (mx,my) 移到畫面中間（倍數不變）：開島的介紹卡、新手箭頭指的島
+function focusMap(mx, my = 450) {
+  const [X0, Y0] = stageOrigin();
+  cam.tx = (innerWidth / 2 - X0) / scale - cam.z * mx;
+  cam.ty = (appH() / 2 - Y0) / scale - cam.z * my;
+  paintCam();
+}
+function focusSlot(s) {
+  if (s) focusMap(s.left + s.width / 2, cam.z > 1.02 ? s.top + s.width * .4 : 450);
+}
+// 某座島整個都在畫面裡嗎（新手箭頭指到看不到的島才移鏡頭）
+function isleOnScreen(el) {
+  const r = el.getBoundingClientRect();
+  return r.left >= 0 && r.right <= innerWidth && r.top >= 0 && r.bottom <= appH();
+}
+function focusIsle(el) {
+  if (!el || $('#select').hidden || isleOnScreen(el)) return;
+  focusMap(el.offsetLeft + el.offsetWidth / 2, cam.z > 1.02 ? el.offsetTop + el.offsetHeight / 2 : 450);
+}
+// 回到「看全部」：倍數回 1，左右停在原本看的地方
+function viewAll() {
+  const [X0] = stageOrigin();
+  const mx = (innerWidth / 2 - X0 - scale * cam.tx) / (scale * cam.z);
+  cam.z = 1; cam.ty = 0;
+  focusMap(mx);
 }
 // 手機、平板跳出鍵盤時畫面高度會變矮，照算會把整個舞台縮到看不見。
 // 正在打字而且寬度沒變（沒有轉向）就不重算，鍵盤收起來再算。
@@ -352,9 +427,14 @@ const ui = $('#ui');
 function fit() {
   if (typing() && innerWidth === fitW) return;
   fitW = innerWidth;
-  // 換縮放前記住地圖滑到哪（比例），換完放回同一個位置
-  const [lo0, hi0] = panRange();
-  const at = hi0 > lo0 ? (pan - lo0) / (hi0 - lo0) : 0;
+  // 換縮放前記住畫面中間是地圖的哪一點，換完放回中間
+  // 沒放大：照左右滑到的比例放回去（停在最左邊的還是最左邊）；放大中：畫面中間那一點放回中間
+  const [X0, Y0] = stageOrigin();
+  const mx = (innerWidth / 2 - X0 - scale * cam.tx) / (scale * cam.z);
+  const my = (appH() / 2 - Y0 - scale * cam.ty) / (scale * cam.z);
+  const span = () => Math.max(0, scale * MAP_W - innerWidth);
+  const flat = cam.z <= 1.02, sp0 = span();
+  const frac = sp0 > 0 ? Math.min(1, Math.max(0, -(X0 + scale * cam.tx) / sp0)) : 0;
   const portrait = innerHeight > innerWidth;
   if (!portrait) scale = Math.min(innerWidth / 1600, innerHeight / 900);
   else if (!title.hidden) scale = Math.min(innerWidth / 760, innerHeight / 900);
@@ -362,47 +442,93 @@ function fit() {
   stage.style.setProperty('--s', scale);
   ui.style.setProperty('--vw', innerWidth);
   ui.style.setProperty('--vh', innerHeight);
-  const [lo, hi] = panRange();
-  setPan(lo + at * (hi - lo));
+  if (!flat) return focusMap(mx, my);
+  cam.z = 1; cam.ty = 0;
+  cam.tx = (-frac * span() - stageOrigin()[0]) / scale;
+  paintCam();
 }
 addEventListener('resize', fit);
 addEventListener('focusout', () => setTimeout(() => { if (!typing()) fit(); }, 300));
 fit();
-setPan(panRange()[0]);
+cam.z = 1; cam.ty = 0; cam.tx = 1e6;   // 一開始停在最左邊（clamp 會拉回來）
+paintCam();
 world.addEventListener('pointermove', (e) => {
   world.style.setProperty('--px', ((e.clientX / innerWidth - .5) * 2).toFixed(3));
   world.style.setProperty('--py', ((e.clientY / innerHeight - .5) * 2).toFixed(3));
 });
 
-// 拖曳地圖（滑鼠或手指），移動超過一點點就不算點擊
-let drag = null, dragged = false;
+// 拖曳地圖（滑鼠或一根手指）、兩根手指捏合放大縮小；移動超過一點點就不算點擊
+const pts = new Map();
+let drag = null, pinch = null, dragged = false;
 const select = $('#select');
+const holding = (on) => mapEl.classList.toggle('dragging', on);
+function startDrag(p) { drag = { x: p.x, y: p.y, tx: cam.tx, ty: cam.ty }; }
+function startPinch() {
+  const [a, b] = [...pts.values()];
+  pinch = { d: Math.hypot(a.x - b.x, a.y - b.y) || 1, x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, from: { ...cam } };
+  drag = null; dragged = true; holding(true);
+}
 select.addEventListener('pointerdown', (e) => {
   if (e.target.closest('.topbar,.pan')) return;
-  drag = { x: e.clientX, pan, id: e.pointerId };
-  dragged = false;
+  pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (pts.size === 1) { dragged = false; startDrag(pts.get(e.pointerId)); }
+  else if (pts.size === 2) startPinch();
 });
 addEventListener('pointermove', (e) => {
-  if (!drag || e.pointerId !== drag.id) return;
-  const dx = e.clientX - drag.x;
-  if (!dragged && Math.abs(dx) > 8) { dragged = true; mapEl.classList.add('dragging'); }
-  if (dragged) setPan(drag.pan - dx / scale);
-});
-addEventListener('pointerup', () => {
+  const p = pts.get(e.pointerId);
+  if (!p) return;
+  p.x = e.clientX; p.y = e.clientY;
+  if (pinch && pts.size >= 2) {
+    const [a, b] = [...pts.values()];
+    const d = Math.hypot(a.x - b.x, a.y - b.y) || 1;
+    const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+    // 捏合的中心點跟著手指走：先照起點的倍數放大，再加上手指移動的距離
+    zoomAt(pinch.from.z * d / pinch.d, pinch.x, pinch.y, pinch.from);
+    cam.tx += (mx - pinch.x) / scale; cam.ty += (my - pinch.y) / scale;
+    paintCam();
+    return;
+  }
   if (!drag) return;
-  drag = null;
-  mapEl.classList.remove('dragging');
-  setTimeout(() => { dragged = false; }, 0);
+  const dx = p.x - drag.x, dy = p.y - drag.y;
+  if (!dragged && Math.hypot(dx, dy) > 8) { dragged = true; holding(true); }
+  if (dragged) { cam.tx = drag.tx + dx / scale; cam.ty = drag.ty + dy / scale; paintCam(); }
 });
+function endPointer(e) {
+  if (!pts.delete(e.pointerId)) return;
+  if (pts.size === 1) { pinch = null; startDrag([...pts.values()][0]); return; }   // 放開一根手指：剩下那根接著拖
+  if (pts.size) return;
+  drag = null; pinch = null;
+  holding(false);
+  setTimeout(() => { dragged = false; }, 0);
+}
+addEventListener('pointerup', endPointer);
+addEventListener('pointercancel', endPointer);
+// 滾輪＝放大縮小（以游標為中心）；觸控板兩指滑＝移動，觸控板捏合（瀏覽器會帶 ctrlKey）＝放大縮小
 select.addEventListener('wheel', (e) => {
-  const d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
-  mapEl.classList.add('dragging');
-  setPan(pan + d / scale);
+  e.preventDefault();
+  holding(true);
+  const mouseWheel = e.deltaMode === 1 || (e.deltaX === 0 && Math.abs(e.deltaY) >= 40 && Number.isInteger(e.deltaY));
+  if (e.ctrlKey) zoomAt(cam.z * Math.exp(-e.deltaY * .01), e.clientX, e.clientY);
+  else if (mouseWheel) zoomAt(cam.z * Math.exp(-Math.sign(e.deltaY) * .18), e.clientX, e.clientY);
+  else if (cam.z <= 1.02) {
+    // 沒放大時上下沒地方走：兩指上下滑也當左右滑（跟以前一樣）
+    const d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+    cam.tx -= d / scale; paintCam();
+  } else { cam.tx -= e.deltaX / scale; cam.ty -= e.deltaY / scale; paintCam(); }
   clearTimeout(select._w);
-  select._w = setTimeout(() => mapEl.classList.remove('dragging'), 120);
-}, { passive: true });
-$('#pan-l').addEventListener('click', () => setPan(pan - 600));
-$('#pan-r').addEventListener('click', () => setPan(pan + 600));
+  select._w = setTimeout(() => holding(false), 120);
+}, { passive: false });
+$('#pan-l').addEventListener('click', () => { cam.tx += 600; paintCam(); });
+$('#pan-r').addEventListener('click', () => { cam.tx -= 600; paintCam(); });
+$('#zoom-in').addEventListener('click', () => zoomAt(cam.z * 1.4));
+$('#zoom-out').addEventListener('click', () => zoomAt(cam.z / 1.4));
+$('#zoom-all').addEventListener('click', viewAll);
+addEventListener('keydown', (e) => {
+  if (select.hidden || typing() || !$('#veil').hidden) return;
+  if (e.key === '+' || e.key === '=') zoomAt(cam.z * 1.4);
+  else if (e.key === '-' || e.key === '_') zoomAt(cam.z / 1.4);
+  else if (e.key === '0') viewAll();
+});
 
 // ---------- 聲音（js/audio.js） ----------
 // 一般按鈕都「啵」一下；有自己聲音的（Start、島、關閉、滴答、進設施、喇叭）在各自的地方放
@@ -911,7 +1037,7 @@ if (route && me.kind === 'guest') {
   const z = route === 'map' && zones.get(zoneCode);
   if (z) {
     const s = park.map.slots.find((x) => x.slot === z.slot);
-    if (s) setPan(s.left + s.width / 2 - 800);
+    focusSlot(s);
     openCard(z);
   }
 } else {
