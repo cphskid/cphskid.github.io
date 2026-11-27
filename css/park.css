@@ -2283,3 +2283,7 @@ body.ski-on{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none
   .xc-cards{grid-template-columns:repeat(6,1fr);gap:4px}
 }
 @media (max-height:560px) and (min-width:641px){ .xc-prev{flex-basis:30%} }
+/* 大樹說明裡的「寄聖誕卡」：活動主打，用紅色聖誕按鈕（原本 .ghost 沒有共用樣式，看起來像系統預設鈕） */
+.xtree-help [data-card]{font:700 19px/1 var(--f-body);background:#d23b3b;color:#fff;border:0;border-radius:999px;padding:13px 20px;cursor:pointer;box-shadow:0 4px 0 #8e2020;margin-right:auto}
+.xtree-help [data-card]:hover,.xtree-help [data-card]:focus-visible{background:#e04848;outline:3px solid #ffd76a;outline-offset:2px}
+.xtree-help [data-card]::before{content:'💌 '}

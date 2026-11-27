@@ -1400,7 +1400,7 @@ const NEWS_KINDS = [
   { id: 'balloon', name: '🎈 熱氣球布條',   tip: '天上飄過一次，特別的事才用', admin: true },
   { id: 'letter',  name: '✉️ 信差來信',     tip: '信鴿送到信箱，點了才打開' },
 ];
-const NEWS_LINKS = [['', '不用'], ['shop-month', '商店本月限定'], ['shop-event', '商店活動分頁'], ['repair', '時光修理站'], ['wear', '換裝間'], ['pet', '寵物島']];
+const NEWS_LINKS = [['', '不用'], ['shop-month', '商店本月限定'], ['shop-event', '商店活動分頁'], ['repair', '時光修理站'], ['wear', '換裝間'], ['pet', '寵物島'], ['lab', '時光實驗室'], ['quiz', '時光試煉島'], ['xtree', '大聖誕樹（聖誕活動）']];
 // 只寄給大人時，按鈕帶去後台的哪一頁
 const STAFF_LINKS = [['', '不用'], ['tab:home', '後台：首頁'], ['tab:kids', '後台：孩子'], ['tab:kids/play', '後台：每天玩多久'], ['tab:quiz', '後台：測驗卷'], ['tab:settings', '後台：設定'], ['tab:guide', '後台：使用指南'], ['url:./#map', '樂園地圖'],
   ['tab:classes', '後台：我的班級（舊）'], ['tab:play', '後台：遊玩紀錄（舊）']];

@@ -187,6 +187,7 @@ news.init({
     if (link === 'repair') return repair.open();
     if (link === 'wear') return traveller.open();
     if (link === 'pet') return pet.open();
+    if (link === 'xtree') { lookTree(); return snow.openTree({ onLook: lookTree }); }
     if (link === 'shop-month') return shop.openShop(null, 'month');
     if (link === 'shop-event') return shop.openShop(null, 'event');
     const z = zones.get(String(link).replace(/^zone:/, ''));
@@ -792,6 +793,7 @@ let snowShown = '';
 // 雪山島：活動期間（park_snow_cfg 的 starts～ends，snow.on()）才出現在大地圖，點了直接開滑雪橇；活動結束自動收起
 const SNOW_NAME = '雪橇峰';   // 暫定名，Chuck 選定再換
 let snowIsle = null;
+function lookTree() { const el = $('.xtree-isle'); focusIsle(el); el?.classList.remove('ping'); void el?.offsetWidth; el?.classList.add('ping'); }
 function paintSnowIsle() {
   const want = snow.on() && account.current().kind === 'student' && park.map.snow_isle;
   if (!want) { snowIsle?.remove(); snowIsle = null; return; }
@@ -831,7 +833,7 @@ function paintSnow() {
   snow.paintMapTree(islesLayer.querySelector('.isle[data-zone="village"] .lift'), !!park.map.xtree_isle);
   // 大樹小島（位置在 data/park.json map.xtree_isle）＋木牌下的點燈進度條；「去看大樹」把鏡頭移過去
   snow.paintTreeIsle(islesLayer, park.map.xtree_isle, { canClick: () => !dragged });
-  snow.paintTreeBar($('#hud .sign'), { onLook: () => { const el = $('.xtree-isle'); focusIsle(el); el?.classList.remove('ping'); void el?.offsetWidth; el?.classList.add('ping'); } });
+  snow.paintTreeBar($('#hud .sign'), { onLook: lookTree });
   const msg = snow.freshText();
   if (msg && msg !== snowShown && !select.hidden) { snowShown = msg; say('cheer', msg); snd.sfx('SE-19'); }
 }
