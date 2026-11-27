@@ -15,7 +15,7 @@
     "_snow_isle": "聖誕活動「雪山滑雪橇」的雪山島（js/park.js；活動期間才出現，結束自動收起）放在哪裡；不占 slot，一進地圖就看得到",
     "snow_isle": { "left": 380, "top": 1260, "width": 300 },
     "_xtree_isle": "聖誕活動「全站大聖誕樹」小島（js/snow.js；活動期間才出現）放在哪裡；寬 240、樹高約 1.7 倍寬，村莊和城堡中間",
-    "xtree_isle": { "left": 600, "top": 470, "width": 240 },
+    "xtree_isle": { "left": 570, "top": 395, "width": 300 },
     "slots": [
       { "slot": 1, "left": 120,  "top": 790,  "width": 440 },
       { "slot": 2, "left": 900,  "top": 400,  "width": 420 },

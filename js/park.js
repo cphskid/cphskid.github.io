@@ -821,7 +821,10 @@ new MutationObserver(() => { if (snow.on()) snowArt(); }).observe(islesLayer, { 
 function paintSnow() {
   paintSnowIsle();
   snowArt();
-  snow.paintMapTree(islesLayer.querySelector('.isle[data-zone="village"] .lift'));
+  snow.paintMapTree(islesLayer.querySelector('.isle[data-zone="village"] .lift'), !!park.map.xtree_isle);
+  // 大樹小島（位置在 data/park.json map.xtree_isle）＋木牌下的點燈進度條；「去看大樹」把鏡頭移過去
+  snow.paintTreeIsle(islesLayer, park.map.xtree_isle, { canClick: () => !dragged });
+  snow.paintTreeBar($('#hud .sign'), { onLook: () => { const el = $('.xtree-isle'); focusIsle(el); el?.classList.remove('ping'); void el?.offsetWidth; el?.classList.add('ping'); } });
   const msg = snow.freshText();
   if (msg && msg !== snowShown && !select.hidden) { snowShown = msg; say('cheer', msg); snd.sfx('SE-19'); }
 }
