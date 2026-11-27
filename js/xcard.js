@@ -1,4 +1,4 @@
-// 聖誕卡分享（2026-11-27 Chuck：大聖誕樹那邊做圖卡分享，自己打字、6 張卡面、配時光旅人或寵物島照片、最下面一小列網址＋QR code）
+// 聖誕卡分享（2026-11-27 Chuck：大聖誕樹那邊做圖卡分享，自己打字、6 張卡面、配時光旅人、最下面一小列網址＋QR code；寵物島版 Chuck 看了說拿掉）
 // 卡片直接畫在 <canvas>（1080×1350），預覽就是成品；按「分享給朋友」用手機的分享選單（LINE 等），不支援就存成圖片。
 // 隱私：卡上不放真名、班級、學校；暱稱預設不寫，要自己勾；打字擋電話、網址、Email。
 // 活動期間第一次寄出（分享或存圖）送 5 片雪花（park_snow_card_done，只送一次）。
@@ -103,27 +103,14 @@ async function draw(cv, o) {
   }
   const bottom = H - FOOT;
   // 主角：時光旅人站左邊，或寵物島照片（拍立得框）
-  if (o.mode === 'pet' && o.photo) {
-    // 寵物島（去背的島）浮在卡片下半部，底下一圈柔柔的影子
-    const ph = await img(o.photo);
-    if (ph) {
-      const top = msg ? 420 : 300, maxW = 980, maxH = bottom - top - 30;
-      const sc = Math.min(maxW / ph.width, maxH / ph.height);
-      const w = ph.width * sc, h = ph.height * sc, x = (W - w) / 2, y = bottom - 30 - h;
-      ctx.save();
-      ctx.fillStyle = 'rgba(10,30,60,.28)';
-      ctx.beginPath(); ctx.ellipse(W / 2, bottom - 30, w * .42, 34, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.restore();
-      ctx.drawImage(ph, x, y, w, h);
-    }
-  } else if (o.doll?.length) {
+  if (o.doll?.length) {
     const dw = 470, dh = dw * 600 / 448;
     await drawDoll(ctx, o.doll, 40, bottom - dh - 10, dw, dh);
   }
   // 署名（勾了才寫暱稱）
   if (o.sign && o.nick) {
-    const pm = o.mode === 'pet' && o.photo;
-    ctx.textAlign = pm ? 'right' : 'left'; ctx.font = `900 50px ${FONT}`;
+    const pm = false;
+    ctx.textAlign = 'left'; ctx.font = `900 50px ${FONT}`;
     ctx.lineWidth = 10; ctx.strokeStyle = 'rgba(40,20,10,.75)';
     const t = `— ${o.nick}`;
     const x = pm ? W - 50 : 520, y = bottom - 30;
@@ -149,10 +136,10 @@ async function draw(cv, o) {
 const toBlob = (cv) => new Promise((ok) => { try { cv.toBlob(ok, 'image/png'); } catch { ok(null); } });
 
 let veil = null;
-// ctx：{ nick, dollHtml, photo（dataURL/blob URL，可無）, openPet()（去寵物島拍）, onSent()（第一次寄出送雪花，回傳拿到幾片）, cardDone（已經拿過） }
+// ctx：{ nick, dollHtml, onSent()（第一次寄出送雪花，回傳拿到幾片）, cardDone（已經拿過） }
 export function openCard(ctx = {}) {
   veil?.remove();
-  const o = { card: 1, mode: ctx.photo ? 'pet' : 'doll', text: WISHES[0], sign: false, nick: ctx.nick ?? '', photo: ctx.photo ?? null,
+  const o = { card: 1, mode: 'doll', text: WISHES[0], sign: false, nick: ctx.nick ?? '',
               doll: ctx.dollHtml ? dollLayers(ctx.dollHtml) : [] };
   veil = document.createElement('div');
   veil.className = 'snow-veil';
@@ -164,10 +151,7 @@ export function openCard(ctx = {}) {
       <div class="xc-ctl">
         <p class="lab">① 挑卡面</p>
         <div class="xc-cards">${CARDS.map((n) => `<button type="button" data-card="${n}" aria-label="卡面 ${n}" class="${n === 1 ? 'on' : ''}"><img src="img/xmas/card/c${n}-s.webp" alt=""></button>`).join('')}</div>
-        <p class="lab">② 卡片上放</p>
-        <div class="xc-seg"><button type="button" data-mode="doll">我的時光旅人</button><button type="button" data-mode="pet">我的寵物島</button></div>
-        <p class="xc-pethint" hidden>到寵物島按右邊的「寄卡片」，就會拍下你的島放進卡片。<button type="button" class="link" data-go-pet>去寵物島拍一張 ›</button></p>
-        <p class="lab">③ 想說的話（最多 ${MAX} 字）</p>
+        <p class="lab">② 想說的話（最多 ${MAX} 字）</p>
         <div class="xc-wish">${WISHES.map((w) => `<button type="button" data-wish="${esc(w)}">${esc(w)}</button>`).join('')}</div>
         <input class="xc-in" maxlength="${MAX}" value="${esc(o.text)}" aria-label="想說的話" autocomplete="off">
         <p class="xc-warn">不要寫真名、學校、電話喔！</p>
@@ -188,8 +172,6 @@ export function openCard(ctx = {}) {
   }
   function sync() {
     veil.querySelectorAll('[data-card]').forEach((b) => b.classList.toggle('on', +b.dataset.card === o.card));
-    veil.querySelectorAll('[data-mode]').forEach((b) => b.classList.toggle('on', b.dataset.mode === o.mode));
-    $('.xc-pethint', veil).hidden = !(o.mode === 'pet' && !o.photo);
     paint();
   }
   function say(text, kind = 'bad') { msgEl.hidden = !text; msgEl.className = `xc-msg ${kind}`; msgEl.textContent = text; }
@@ -199,9 +181,7 @@ export function openCard(ctx = {}) {
     const b = e.target.closest('button');
     if (!b) return;
     if (b.dataset.card) { o.card = +b.dataset.card; sfx('SE-03'); sync(); }
-    else if (b.dataset.mode) { o.mode = b.dataset.mode; sfx('SE-03'); sync(); }
     else if (b.dataset.wish) { o.text = b.dataset.wish; input.value = o.text; say(''); paint(); }
-    else if (b.hasAttribute('data-go-pet')) { shut(); ctx.openPet?.(); }
     else if (b.hasAttribute('data-save') || b.hasAttribute('data-share')) send(b.hasAttribute('data-share'));
   });
   input.addEventListener('input', () => {
@@ -213,7 +193,6 @@ export function openCard(ctx = {}) {
 
   async function send(share) {
     if (badText(input.value)) return say(badText(input.value));
-    if (o.mode === 'pet' && !o.photo) return say('先去寵物島拍一張照片，或改放你的時光旅人');
     await draw(cv, o);
     const blob = await toBlob(cv);
     if (!blob) return say('卡片做不出來，換一張卡面再試試');
@@ -238,59 +217,4 @@ export function openCard(ctx = {}) {
     } catch { /* 雪花沒發到也不影響卡片 */ }
   }
   sync();
-}
-
-// 寵物島拍一張（寄卡片用）：不是截整個畫面，而是把「島本身」重畫一次——地面（canvas.land）＋島上的樹、傢俱、夥伴，
-// 照畫面上的前後順序畫進新的畫布，再裁到島的範圍（外面透明）。按鈕、對話泡泡、名牌、海都不會進去。失敗回 null
-const SKIP = '.bub,.wish,.tag,.farm-tag,.fish-spot,.shadow';
-function flipped(el, stop) {
-  let neg = false;
-  for (let e = el; e && e !== stop; e = e.parentElement) {
-    const t = getComputedStyle(e).transform;
-    const m = t && t !== 'none' ? t.match(/matrix\(([^,]+)/) : null;
-    if (m && parseFloat(m[1]) < 0) neg = !neg;
-  }
-  return neg;
-}
-export async function shootIsle(ground) {
-  try {
-    const land = ground?.querySelector('canvas.land');
-    if (!land) return null;
-    const GW = parseFloat(ground.style.width) || land.width, GH = parseFloat(ground.style.height) || land.height;
-    const gr = ground.getBoundingClientRect();
-    const s = GW / gr.width, k = Math.min(1, 1400 / GW);
-    const c = document.createElement('canvas');
-    c.width = Math.round(GW * k); c.height = Math.round(GH * k);
-    const g = c.getContext('2d');
-    g.drawImage(land, 0, 0, c.width, c.height);
-    const zOf = (el) => { const h = el.closest('.actors > *'); return h ? (parseInt(h.style.zIndex, 10) || 0) : 0; };
-    const list = [...ground.querySelectorAll('.actors img')].filter((im) => im.complete && im.naturalWidth && !im.closest(SKIP)
-      && getComputedStyle(im).visibility !== 'hidden' && getComputedStyle(im).opacity !== '0');
-    const order = list.map((im, i) => ({ im, i, z: zOf(im) })).sort((a, b) => a.z - b.z || a.i - b.i);
-    for (const { im } of order) {
-      const r = im.getBoundingClientRect();
-      if (!r.width || !r.height) continue;
-      const x = (r.left - gr.left) * s * k, y = (r.top - gr.top) * s * k, w = r.width * s * k, h = r.height * s * k;
-      // object-fit: contain 的圖要照比例放在框中間
-      const ar = im.naturalWidth / im.naturalHeight;
-      let dw = w, dh = h;
-      if (getComputedStyle(im).objectFit === 'contain') { if (w / h > ar) dw = h * ar; else dh = w / ar; }
-      const dx = x + (w - dw) / 2, dy = y + (h - dh) / 2;
-      if (flipped(im, ground)) { g.save(); g.translate(dx + dw, dy); g.scale(-1, 1); g.drawImage(im, 0, 0, dw, dh); g.restore(); }
-      else g.drawImage(im, dx, dy, dw, dh);
-    }
-    // 裁到有東西的範圍（島外面是透明的）
-    const d = g.getImageData(0, 0, c.width, c.height).data;
-    let x0 = c.width, y0 = c.height, x1 = 0, y1 = 0;
-    for (let y = 0; y < c.height; y += 2) for (let x = 0; x < c.width; x += 2) {
-      if (d[(y * c.width + x) * 4 + 3] > 20) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
-    }
-    if (x1 <= x0 || y1 <= y0) return null;
-    const out = document.createElement('canvas');
-    out.width = x1 - x0 + 2; out.height = y1 - y0 + 2;
-    out.getContext('2d').drawImage(c, x0, y0, out.width, out.height, 0, 0, out.width, out.height);
-    const url = out.toDataURL('image/png');
-    c.width = c.height = out.width = out.height = 0;
-    return url;
-  } catch { return null; }
 }
