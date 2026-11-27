@@ -140,7 +140,7 @@ function setHat(v) { try { localStorage.setItem('park:snow-hat', v ? '1' : '0');
 // 地圖上村莊島的那棵樹（亮的部分從下往上長）
 function treeArt(cls = '') {
   const { lv, pct } = treeLevel();
-  return `<span class="xtree ${cls}${lv >= 5 ? ' full' : ''}" style="--lit:${(pct * 100).toFixed(1)}%">
+  return `<span class="xtree ${cls}${lv >= 5 ? ' lit-all' : ''}" style="--lit:${(pct * 100).toFixed(1)}%">
     <img class="xt-dim" src="img/xmas/tree-big.webp" alt=""><img class="xt-lit" src="img/xmas/tree-big.webp" alt="">${lv >= 5 ? '<i class="fw a"></i><i class="fw b"></i><i class="fw c"></i>' : ''}</span>`;
 }
 // 活動期間村莊換成下雪的樣子（img/l-01-xmas.webp）。大樹原本疊在村莊鐘塔右邊；2026-11-27 起改成獨立一座大樹小島（paintTreeIsle），
@@ -201,7 +201,7 @@ export function paintTreeIsle(layer, cfg, { canClick = () => true } = {}) {
     layer.appendChild(isle);
   }
   const { lv } = bulbState();
-  isle.classList.toggle('full', lv >= 5);
+  isle.classList.toggle('lit-all', lv >= 5);   // 不能叫 full：css 已經有全域 .full（滿額標籤）
   isle.setAttribute('aria-label', `全站大聖誕樹：${lv >= 5 ? '整棵都亮了' : `第 ${lv + 1} 層點燈中`}，點了看怎麼一起點燈`);
   isle.innerHTML = `<div class="bob"><div class="lift"><img class="tart" src="img/xmas/tree-isle.webp" alt="">
     <i class="xstar"></i>${bulbsHtml()}${lv >= 5 ? '<i class="fw a"></i><i class="fw b"></i><i class="fw c"></i>' : ''}</div></div>
