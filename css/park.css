@@ -758,6 +758,8 @@ aside.care .wish span img{width:40px;height:40px}
 .actor{transition:opacity .25s}
 .actor.up .shadow{opacity:0}
 .actor.inside{opacity:0;pointer-events:none}
+/* 裝扮的時候夥伴們先去睡午覺（藏起來、點不到），不會擋住要擺的格子；蛋還是要能搬，留著（回報 #93） */
+.pisle.decorating .actor:not(.egg-nest){opacity:0;pointer-events:none}
 .actor.sway .body{animation:petSway 1.8s ease-in-out infinite;transform-origin:50% -50%}
 .actor.wade .body{clip-path:inset(-40% -20% 24% -20%)}
 .actor.wade .shadow{bottom:22%;height:16%;left:4%;right:4%;background:rgba(255,255,255,.5);box-shadow:0 0 0 4px rgba(255,255,255,.25);animation:ripple 1.4s ease-in-out infinite}

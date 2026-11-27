@@ -1262,7 +1262,7 @@ function paintDeco() {
   const top = $('.deco-top', layer), box = $('.furn', layer);
   top.hidden = false;
   top.innerHTML = `${deco.back ? '<button type="button" class="ghost small" data-back>↶ 全部放回去</button>' : `<button type="button" class="ghost small" data-wipe>${deco.wipe ? '再按一次：全部收起來' : '📦 全部收起來'}</button>`}
-    <p class="msg">${deco.tool ? `${FURN_NAME[deco.tool]}：點空格擺上去、點擺好的收起來；按住不動一下再拖可以畫一整排（從擺好的開始拖＝收一整排）` : '按住東西拖到格子上；點一下跳出翻面、收起來'}</p>
+    <p class="msg">${deco.tool ? `${FURN_NAME[deco.tool]}：點空格擺上去、點擺好的收起來；按住不動一下再拖可以畫一整排（從擺好的開始拖＝收一整排）` : '按住東西拖到格子上；點一下跳出翻面、收起來。夥伴們先去睡午覺，按完成就回來'}</p>
     <span class="cnt">傢俱 ${furnCount()}/${W.FURN_MAX}・圍籬小路 ${buildCount()}/${W.BUILD_MAX}</span>
     <button type="button" class="btn small" data-done>完成</button>`;
   if (deco.back) $('[data-back]', top).onclick = () => {
@@ -1463,16 +1463,31 @@ function dragProp(o, e) {
   addEventListener('pointerup', up);
   addEventListener('pointercancel', up);
 }
+// 圍籬、小門的圖從格子中間往上畫，會蓋住後面那一格：點在圖上就算點到那根圍籬／那扇門的格子，
+// 不然點小門想收起來，會在後面那格又多擺一扇（回報 #92）；同一點蓋到好幾個時算最前面那個
+function pickCell(p) {
+  const c = W.cellOf(p.x, p.y), X = p.x * GW, Y = p.y * GH;
+  let best = null;
+  for (const [di, dj] of [[0, 0], [1, 0], [0, 1], [1, 1]]) {
+    const i = c.i + di, j = c.j + dj;
+    if (i < 0 || j < 0 || i >= N || j >= N) continue;
+    const k = occ.obj[j * N + i], kind = k && W.kindOf(items[k - 1].id);
+    if (kind !== 'fence' && kind !== 'gate') continue;
+    const m = W.center(i, j), hw = kind === 'gate' ? 24 : 12, h = kind === 'gate' ? 42 : 34;
+    if (Math.abs(X - m.x * GW) <= hw && Y <= m.y * GH + 4 && Y >= m.y * GH - h && (!best || i + j > best.i + best.j)) best = { i, j };
+  }
+  return best ?? c;
+}
 // 圍籬小路用畫的：按下去經過的格子都擺上去；從擺好的同一種開始畫＝一路收起來
 let painting = false;
 function paintStart(e) {
   if (!deco?.tool || painting) return false;
   painting = true;
-  const before = snapshot(), seen = new Set(), first = W.cellOf(toIsle(e).x, toIsle(e).y);
+  const before = snapshot(), seen = new Set(), first = pickCell(toIsle(e));
   const same = buildIdAt(first.i, first.j) === deco.tool;     // 點已經擺好的同一種：收起來
   let did = false;
   const step = (ev) => {
-    const p = toIsle(ev), { i, j } = W.cellOf(p.x, p.y);
+    const p = toIsle(ev), { i, j } = ev === e ? first : W.cellOf(p.x, p.y);
     if (seen.has(j * N + i)) return;
     seen.add(j * N + i);
     if (same ? buildIdAt(i, j) === deco.tool && eraseAt(i, j) : buildAt(deco.tool, i, j)) { did = true; rebuildWorld(); paintDeco(); }
@@ -1492,7 +1507,7 @@ function paintStart(e) {
 }
 // 選了工具時點一下：空格擺上去、擺好的同一種收起來
 function tapTool(e) {
-  const p = toIsle(e), { i, j } = W.cellOf(p.x, p.y), before = snapshot();
+  const p = toIsle(e), { i, j } = pickCell(p), before = snapshot();
   const did = buildIdAt(i, j) === deco.tool ? eraseAt(i, j) : buildAt(deco.tool, i, j);
   if (!did) return;
   pushUndo(before);
@@ -1526,7 +1541,7 @@ function buildIdAt(i, j) {
 }
 // 沒選工具時點圍籬小路：跟傢俱一樣跳出「收起來」；點空地就取消選取
 function tapBuild(e) {
-  const p = toIsle(e), { i, j } = W.cellOf(p.x, p.y);
+  const p = toIsle(e), { i, j } = pickCell(p);
   const id = buildIdAt(i, j);
   const it = id && items.find((o) => o.i === i && o.j === j && o.id === id);
   deco.sel = it && deco.sel !== it ? it : null;
