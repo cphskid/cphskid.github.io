@@ -2,8 +2,10 @@
   "_說明": "樂園地圖的資料。欄位照平台規劃書的 park_zones / park_facilities 設計，P2 會改成從資料庫讀，到時只換讀取的地方。新增一座島＝在 zones 加一座島、facilities 加一個設施，放進空的 slot，不用改程式。decor 是海上的小裝飾，只是好看。",
 
   "map": {
-    "width": 2200,
-    "height": 900,
+    "_layout": "2026-11-27 改成一大塊（Chuck 看過示意圖）：島上下左右分布、彼此拉開，不放大也能上下左右拖。最上面約 250 以內是天空（海的圖貼在地圖最上面跟著走），島不要放太上面。start＝一進地圖鏡頭對準的點（村莊、大樹、城堡附近）",
+    "width": 2000,
+    "height": 1700,
+    "start": { "x": 560, "y": 860 },
     "_pet_slot": "寵物島放在哪個 slot（主島桌寵，js/pet.js）；這個 slot 就不放雲霧",
     "pet_slot": 5,
     "_lab_slot": "時光實驗室（lab/，2026-11-06）放在哪個 slot；這個 slot 就不放雲霧",
@@ -11,28 +13,30 @@
     "_repair_slot": "時光修理站（改版紀錄＋小幫手牆，js/repair.js）放在哪個 slot；這個 slot 就不放雲霧",
     "repair_slot": 8,
     "_snow_isle": "聖誕活動「雪山滑雪橇」的雪山島（js/park.js；活動期間才出現，結束自動收起）放在哪裡；不占 slot，一進地圖就看得到",
-    "snow_isle": { "left": 410, "top": 650, "width": 260 },
+    "snow_isle": { "left": 380, "top": 1260, "width": 300 },
+    "_xtree_isle": "聖誕活動「全站大聖誕樹」小島（js/snow.js；活動期間才出現）放在哪裡；寬 240、樹高約 1.7 倍寬，村莊和城堡中間",
+    "xtree_isle": { "left": 600, "top": 470, "width": 240 },
     "slots": [
-      { "slot": 1, "left": 50,   "top": 330, "width": 430 },
-      { "slot": 2, "left": 600,  "top": 105, "width": 400 },
-      { "slot": 3, "left": 1085, "top": 310, "width": 470 },
-      { "slot": 4, "left": 660,  "top": 585, "width": 290 },
-      { "slot": 5, "left": 130,  "top": 125, "width": 240 },
-      { "slot": 6, "left": 1240, "top": 40,  "width": 260 },
-      { "slot": 7, "left": 1660, "top": 170, "width": 320 },
-      { "slot": 8, "left": 1700, "top": 560, "width": 300 }
+      { "slot": 1, "left": 120,  "top": 790,  "width": 440 },
+      { "slot": 2, "left": 900,  "top": 400,  "width": 420 },
+      { "slot": 3, "left": 1440, "top": 760,  "width": 480 },
+      { "slot": 4, "left": 900,  "top": 1120, "width": 360 },
+      { "slot": 5, "left": 130,  "top": 330,  "width": 230 },
+      { "slot": 6, "left": 400,  "top": 380,  "width": 210 },
+      { "slot": 7, "left": 1600, "top": 330,  "width": 220 },
+      { "slot": 8, "left": 1500, "top": 1260, "width": 240 }
     ]
   },
 
   "decor": [
-    { "img": "img/decor/lighthouse.webp", "left": 470,  "top": 230, "width": 110, "anim": "" },
-    { "img": "img/decor/buoy.webp",       "left": 545,  "top": 560, "width": 70,  "anim": "bob" },
-    { "img": "img/decor/whale-tail.webp", "left": 990,  "top": 650, "width": 120, "anim": "tail" },
-    { "img": "img/decor/dolphin.webp",    "left": 300,  "top": 770, "width": 110, "anim": "leap" },
-    { "img": "img/decor/rocks.webp",      "left": 1530, "top": 300, "width": 120, "anim": "" },
-    { "img": "img/decor/sandbar.webp",    "left": 2010, "top": 400, "width": 150, "anim": "" },
-    { "img": "img/decor/bottle.webp",     "left": 1580, "top": 470, "width": 64,  "anim": "bob" },
-    { "img": "img/decor/chest.webp",      "left": 1450, "top": 770, "width": 90,  "anim": "" }
+    { "img": "img/decor/lighthouse.webp", "left": 1340, "top": 560,  "width": 110, "anim": "" },
+    { "img": "img/decor/buoy.webp",       "left": 700,  "top": 1020, "width": 70,  "anim": "bob" },
+    { "img": "img/decor/whale-tail.webp", "left": 1340, "top": 1080, "width": 120, "anim": "tail" },
+    { "img": "img/decor/dolphin.webp",    "left": 150,  "top": 1260, "width": 110, "anim": "leap" },
+    { "img": "img/decor/rocks.webp",      "left": 1780, "top": 600,  "width": 120, "anim": "" },
+    { "img": "img/decor/sandbar.webp",    "left": 1720, "top": 1100, "width": 150, "anim": "" },
+    { "img": "img/decor/bottle.webp",     "left": 760,  "top": 1560, "width": 64,  "anim": "bob" },
+    { "img": "img/decor/chest.webp",      "left": 1180, "top": 1540, "width": 90,  "anim": "" }
   ],
 
   "zones": [
