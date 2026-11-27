@@ -900,6 +900,9 @@ body[data-scene="map"] #hud{display:block}
   #zoom{left:6px;top:calc(50% + 34px);gap:6px}
   /* 手機直拿：左邊常有島名牌，＋－ 放右邊（往右箭頭下面、滴答上面） */
   @media (orientation:portrait){#zoom{left:auto;right:6px;align-items:flex-end}}
+  /* 手機直拿：地圖改一大塊後島分布在整個畫面，畫面中間的左右箭頭一定壓到島（2026-11-27 Chuck iPhone 截圖：壓在鐘塔、城堡名牌）。
+     手指拖就能移動，箭頭收起來；邊邊被切到一半的島就是「還有東西」的提示 */
+  @media (orientation:portrait) and (hover:none){.pan{display:none!important}}
   #zoom button{width:44px;height:44px;font-size:24px;border-radius:12px}
   #zoom #zoom-all{min-width:44px;height:36px;padding:0 6px;font-size:13px}
   #tick{right:4px;bottom:2px;gap:2px}
