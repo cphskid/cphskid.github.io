@@ -260,7 +260,7 @@ const TABS = [
   { id: 'theme', name: '島的風格', tip: '把整座寵物島換個樣子，買了在寵物島按「裝扮」換上' },
   { id: 'month', name: '本月限定', tip: '這個月才買得到，下個月就下架；買到的會一直留著' },
   // 活動商品（park_shop_items 有 sale_from 的）：開賣前先預告，風格可以去寵物島試套；有活動商品才出現這個分頁
-  { id: 'event', name: '🎄 聖誕', tip: '聖誕活動 11/25～12/31：可以用時光幣買，也可以用雪花結晶換（麋鹿雪橇只能用雪花換）。還沒開賣的可以先看，島的風格去寵物島按「裝扮」試套；買到的會一直留著' },
+  { id: 'event', name: '🎄 聖誕', tip: '聖誕活動 11/25～12/31：可以用時光幣買，也可以用雪花結晶換（麋鹿雪橇、麋鹿角髮箍只能用雪花換）。旅人的聖誕衣服點一下可以先看穿起來的樣子。還沒開賣的可以先看，島的風格去寵物島按「裝扮」試套；買到的會一直留著' },
 ];
 let tab = 'wear';
 let shop = null;
@@ -313,7 +313,7 @@ function paintShop(msg = null) {
   layer.querySelector('.shop').dataset.cur = tab;   // 不能叫 data-tab：下面會把所有 [data-tab] 當分頁鈕綁 onclick
   if (keep) keep.forEach(([q, y]) => { const el = q ? layer.querySelector(q) : layer; if (el && y) el.scrollTop = y; });
   layer.querySelectorAll('[data-tab]').forEach((b) => { b.onclick = () => { tab = b.dataset.tab; pick = null; paintShop(); }; });
-  layer.querySelectorAll('[data-look]').forEach((c) => { c.onclick = (e) => { if (e.target.closest('[data-buy]')) return; pick = c.dataset.look; paintShop(); }; });
+  layer.querySelectorAll('[data-look]').forEach((c) => { c.onclick = (e) => { if (e.target.closest('[data-buy],[data-snowbuy]')) return; pick = c.dataset.look; paintShop(); }; });
   $('[data-wallet]', layer).onclick = () => openWallet();
   const ward = $('[data-ward]', layer);
   if (ward) ward.onclick = () => { close(); traveller.open(); };
@@ -327,8 +327,10 @@ function paintShop(msg = null) {
         shop = await auth.snow.buy(x.code);
         snow.set({ balance: shop.snow });
         sfx('SE-20');
+        if (x.kind === 'wear') { traveller.gotItem(x.code); pick = x.code; }
         dispatchEvent(new CustomEvent('park:shop', { detail: { kind: x.kind ?? x.cat, code: x.code } }));
-        paintShop(['ok', x.kind === 'theme' ? `換好了！去寵物島按「裝扮」，就能換成「${x.name}」。` : `換好了！「${x.name}」已經放進寵物島的傢俱裡。`]);
+        paintShop(['ok', x.kind === 'wear' ? `換好了！去換裝間把「${x.name}」穿上吧。`
+          : x.kind === 'theme' ? `換好了！去寵物島按「裝扮」，就能換成「${x.name}」。` : `換好了！「${x.name}」已經放進寵物島的傢俱裡。`]);
       } catch (err) { paintShop(['bad', err.message]); }
     };
   });
@@ -337,7 +339,7 @@ function paintShop(msg = null) {
       const x = shop.items.find((i) => i.code === b.dataset.buy);
       if (x.kind === 'wear') pick = x.code;
       if (!b.dataset.sure) {
-        layer.querySelectorAll('[data-sure]').forEach((o) => { delete o.dataset.sure; o.lastChild.textContent = shop.items.find((i) => i.code === o.dataset.buy).price; });
+        layer.querySelectorAll('[data-sure]').forEach((o) => { delete o.dataset.sure; const i = shop.items.find((i) => i.code === (o.dataset.buy ?? o.dataset.snowbuy)); if (i) o.lastChild.textContent = o.dataset.buy ? i.price : i.snow; });
         b.dataset.sure = '1';
         b.lastChild.textContent = `${x.price} 確定買？`;
         return;

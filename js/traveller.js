@@ -34,10 +34,25 @@ export const EVENT_SETS = [
   { code: 'witch',   name: '小巫師',   months: [10] },
   { code: 'pumpkin', name: '南瓜騎士', months: [10] },
   { code: 'vampire', name: '小吸血鬼', months: [10] },
+  { code: 'santa',    name: '聖誕老公公', months: [11, 12] },
+  { code: 'reindeer', name: '小麋鹿',     months: [11, 12] },
+  { code: 'elf',      name: '聖誕小精靈', months: [11, 12] },
+  { code: 'cozy',     name: '暖暖冬日',   months: [11, 12] },
 ];
+// 常駐商店套裝（不能當起始套裝，配寵物島的島嶼風格）
+export const SHOP_SETS = [
+  { code: 'ocean',  name: '海底探險家' },
+  { code: 'space',  name: '月球小隊員' },
+  { code: 'safari', name: '恐龍探險隊' },
+  { code: 'farm',   name: '小農夫' },
+];
+// 聖誕單品（不屬於套裝，也是 11～12 月限定）
+const XMAS = [11, 12];
 // 沒有套裝、也沒有價錢的才是人人都有的（臉型、髮型）；沒套裝但有價錢的是商店單賣（常駐頭飾）
-const I = (code, slot, name, set = null, price = null) => ({ code, slot, name, set, free: !set && price == null, price,
-  months: EVENT_SETS.find((s) => s.code === set)?.months ?? null });
+// snow＝聖誕活動也能用雪花結晶換（snowOnly＝只能用雪花換，時光幣買不到）
+const I = (code, slot, name, set = null, price = null, x = {}) => ({ code, slot, name, set, free: !set && price == null && !x.months, price,
+  months: x.months ?? EVENT_SETS.find((s) => s.code === set)?.months ?? null, snow: x.snow ?? null, snowOnly: !!x.snowOnly });
+const S = (snow, more = {}) => ({ snow, ...more });
 export const ITEMS = [
   I('face-girl', 'face', '女孩'), I('face-boy', 'face', '男孩'),
   I('hair-crop', 'hair', '紋理短髮'), I('hair-wolf', 'hair', '狼尾'), I('hair-wavy', 'hair', '長捲髮'), I('hair-pony', 'hair', '高馬尾'),
@@ -53,12 +68,23 @@ export const ITEMS = [
   I('hat-witch', 'hat', '星星巫師帽', 'witch', 80), I('top-witch', 'top', '星月巫師袍', 'witch', 120), I('hand-broom', 'hand', '小掃帚', 'witch', 70),
   I('hat-pumpkin', 'hat', '南瓜帽', 'pumpkin', 80), I('top-pumpkin', 'top', '南瓜騎士服', 'pumpkin', 120), I('hand-lantern', 'hand', '南瓜燈糖果桶', 'pumpkin', 70),
   I('top-vampire', 'top', '紅領披風禮服', 'vampire', 120), I('bottom-vampire', 'bottom', '黑長褲皮鞋', 'vampire', 90), I('back-bat', 'back', '蝙蝠翅膀', 'vampire', 100),
+  // 常駐商店套裝（2026-11-28）
+  I('hat-snorkel', 'hat', '浮潛蛙鏡', 'ocean', 60), I('top-ocean', 'top', '短袖潛水衣', 'ocean', 100), I('bottom-ocean', 'bottom', '潛水短褲配蛙鞋', 'ocean', 80), I('back-shell', 'back', '海龜殼背包', 'ocean', 100),
+  I('hat-antenna', 'hat', '星星天線髮箍', 'space', 60), I('top-space', 'top', '太空衣', 'space', 110), I('bottom-space', 'bottom', '太空褲月球靴', 'space', 90), I('back-jetpack', 'back', '小火箭背包', 'space', 120),
+  I('hat-safari', 'hat', '探險帽', 'safari', 60), I('top-safari', 'top', '探險背心', 'safari', 100), I('bottom-safari', 'bottom', '工作短褲登山靴', 'safari', 80), I('back-dinotail', 'back', '恐龍尾巴', 'safari', 120),
+  I('hat-bandana', 'hat', '紅花頭巾', 'farm', 50), I('top-farm', 'top', '格子襯衫吊帶褲', 'farm', 100), I('bottom-farm', 'bottom', '吊帶褲配雨鞋', 'farm', 80), I('hand-basket', 'hand', '一籃雞蛋', 'farm', 60),
+  // 聖誕（11～12 月限定；時光幣或雪花結晶）
+  I('hat-santa', 'hat', '聖誕帽', 'santa', 80, S(12)), I('top-santa', 'top', '聖誕老公公外套', 'santa', 120, S(18)), I('bottom-santa', 'bottom', '紅褲子毛邊靴', 'santa', 90, S(14)), I('back-sack', 'back', '一大袋禮物', 'santa', 100, S(15)),
+  I('hat-antler', 'hat', '麋鹿角髮箍', 'reindeer', 0, S(15, { snowOnly: true })), I('top-reindeer', 'top', '鈴鐺麋鹿毛衣', 'reindeer', 120, S(18)), I('bottom-reindeer', 'bottom', '麋鹿蹄毛毛靴', 'reindeer', 90, S(14)),
+  I('hat-elf', 'hat', '小精靈鈴鐺帽', 'elf', 80, S(12)), I('top-elf', 'top', '小精靈綠衣', 'elf', 120, S(18)), I('bottom-elf', 'bottom', '條紋褲襪捲捲鞋', 'elf', 90, S(14)), I('hand-cane', 'hand', '大拐杖糖', 'elf', 70, S(10)),
+  I('hat-beanie', 'hat', '雪花毛球帽', 'cozy', 80, S(12)), I('top-sweater', 'top', '聖誕毛衣配圍巾', 'cozy', 120, S(18)), I('bottom-boots', 'bottom', '牛仔褲配雪靴', 'cozy', 90, S(14)), I('hand-cocoa', 'hand', '熱可可', 'cozy', 70, S(10)),
+  I('hat-earmuff', 'hat', '毛毛耳罩', null, 60, S(9, { months: XMAS })), I('hand-gift', 'hand', '聖誕禮物盒', null, 60, S(9, { months: XMAS })), I('back-snowwing', 'back', '雪花結晶翅膀', null, 140, S(20, { months: XMAS })),
 ];
 const inSeason = (x) => !x.months || x.months.includes(new Date().getMonth() + 1);
 const item = (code) => ITEMS.find((x) => x.code === code);
 const HIDES_HAIR = new Set();   // 戴上會把頭髮整個蓋住的頭飾（之後的太空頭盔之類）
 // 蓋住頭頂的帽子：頭髮套 img/traveller/mask/<帽子>.webp，把凸出帽頂、帽簷以上的頭髮藏起來
-const HAIR_MASK = new Set(['hat-bucket', 'hat-cap', 'hat-straw', 'hat-witch', 'hat-pumpkin']);
+const HAIR_MASK = new Set(['hat-bucket', 'hat-cap', 'hat-straw', 'hat-witch', 'hat-pumpkin', 'hat-santa', 'hat-elf', 'hat-beanie', 'hat-safari', 'hat-bandana']);
 const EMPTY = Object.fromEntries(SLOTS.map((s) => [s.id, null]));
 const setLook = (setCode) => Object.fromEntries(ITEMS.filter((x) => x.set === setCode).map((x) => [x.slot, x.code]));
 
@@ -232,7 +258,7 @@ export function openWardrobe({ welcome = false } = {}) {
     return `<button type="button" class="opt${on ? ' on' : ''}${mine ? '' : ' locked'}" data-pick="${code ?? ''}" aria-pressed="${on}"
       aria-label="${esc(name)}${mine ? '' : '（還沒有，可以試穿）'}">
       ${t ? thumb(t) : '<span class="none">無</span>'}<span>${esc(name)}</span>
-      ${mine ? '' : `<i class="tag"><img src="img/ui/lock.webp" alt="">${it?.price ? `商店 ${it.price}` : '商店'}</i>`}</button>`;
+      ${mine ? '' : `<i class="tag"><img src="img/ui/lock.webp" alt="">${it?.snowOnly ? `❄️ ${it.snow}` : it?.price ? `商店 ${it.price}` : '商店'}</i>`}</button>`;
   };
 
   const paint = () => {
@@ -243,23 +269,26 @@ export function openWardrobe({ welcome = false } = {}) {
       ...list.map((x) => optHtml(x.code, x.name, x.code)),
     ].join('');
     const tri = trying();
-    const cost = tri.reduce((n, x) => n + (x.price ?? 0), 0);
+    const coinTri = tri.filter((x) => !x.snowOnly);   // 只能用雪花換的（麋鹿角）要去商店「🎄 聖誕」分頁換
+    const snowTri = tri.filter((x) => x.snowOnly);
+    const cost = coinTri.reduce((n, x) => n + (x.price ?? 0), 0);
     const msg = tri.length
-      ? ['try', `試穿中：${tri.map((x) => `「${x.name}」`).join('')}還不是你的，${local ? '樂園商店開張後可以用時光幣買。' : `買下來要 ${cost} 時光幣。`}`]
+      ? ['try', `試穿中：${tri.map((x) => `「${x.name}」`).join('')}還不是你的，${local ? '樂園商店開張後可以用時光幣買。'
+        : `${coinTri.length ? `買下來要 ${cost} 時光幣。` : ''}${snowTri.length ? `${snowTri.map((x) => `「${x.name}」`).join('')}只能到商店「🎄 聖誕」用雪花結晶換。` : ''}`}`]
       : note;
     show(`<div class="ward" role="dialog" aria-modal="true" aria-label="換裝間">
       <button class="x" data-close aria-label="關閉換裝間"></button>
       <div class="stage">${dollHtml(d, 'big')}<b class="who">${esc(w.nickname ?? '')}</b></div>
       <div class="pane">
         <h2>換裝間</h2>
-        <div class="sets row">${[...SETS, ...EVENT_SETS.filter((s) => s.months.includes(new Date().getMonth() + 1) || ITEMS.some((x) => x.set === s.code && owns(x.code)))].map((s) => `<button type="button" class="chipbtn" data-set="${s.code}">穿整套「${esc(s.name)}」</button>`).join('')}</div>
+        <div class="sets row">${[...SETS, ...SHOP_SETS, ...EVENT_SETS.filter((s) => s.months.includes(new Date().getMonth() + 1) || ITEMS.some((x) => x.set === s.code && owns(x.code)))].map((s) => `<button type="button" class="chipbtn" data-set="${s.code}">穿整套「${esc(s.name)}」</button>`).join('')}</div>
         <nav class="tabs" role="tablist" aria-label="換哪個位置">${SLOTS.map((s) => `<button type="button" role="tab" class="tab${s.id === tab ? ' on' : ''}" aria-selected="${s.id === tab}" data-tab="${s.id}">${esc(s.name)}</button>`).join('')}</nav>
         <div class="opts">${opts}</div>
         ${msg ? `<p class="note ${msg[0]}">${esc(msg[1])}</p>` : ''}
         ${local ? '<p class="tip">（測試中：換好的樣子先存在這台裝置）</p>' : ''}
         <div class="row end">
           ${tri.length ? '<button type="button" class="ghost" data-untry>脫掉試穿的</button>' : ''}
-          ${tri.length && !local ? `<button type="button" class="btn coin" data-buy><img src="img/ui/coin.webp" alt="">${cost} 買下來</button>` : ''}
+          ${coinTri.length && !local ? `<button type="button" class="btn coin" data-buy><img src="img/ui/coin.webp" alt="">${cost} 買下來</button>` : ''}
           <button type="button" class="ghost" data-close>${dirty() ? '不換了' : '關閉'}</button>
           <button type="button" class="btn go" data-save ${dirty() && !tri.length ? '' : 'disabled'}>換好了</button>
         </div>
@@ -280,9 +309,9 @@ export function openWardrobe({ welcome = false } = {}) {
       buy.disabled = true;
       let left = null;
       try {
-        for (const x of tri) { left = await auth.coins.buy('wear', x.code); gotItem(x.code); }
+        for (const x of coinTri) { left = await auth.coins.buy('wear', x.code); gotItem(x.code); }
         sfx('SE-20');
-        note = ['ok', `買好了！${tri.map((x) => `「${x.name}」`).join('')}是你的了，按「換好了」穿上。`];
+        note = ['ok', `買好了！${coinTri.map((x) => `「${x.name}」`).join('')}是你的了，按「換好了」穿上。`];
       } catch (err) {
         note = ['bad', err.message];
       }
