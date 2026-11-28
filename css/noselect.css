@@ -1,0 +1,9 @@
+/* 樂園介面設計原則：遊戲畫面不能被長按／右鍵反白、選取、叫出系統選單（2026-11-28 Chuck）
+   全站共用：樂園大門、試煉島、時光實驗室、時光祕境島都載這一份；島嶼開拓者、守護異世界各自放一份一樣的。
+   要打字的地方（輸入框、留言本、回報表單）照常可以選；要讓大人複製文字的區塊加 class="can-select"。
+   :where() 權重是 0，元件自己寫的 user-select 照樣有效。 */
+:where(html,body,body *){-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+:where(img,svg,canvas,video,a){-webkit-user-drag:none}
+input,textarea,select,[contenteditable]:not([contenteditable=false]),[contenteditable]:not([contenteditable=false]) *,
+.can-select,.can-select *,.tp,.tp *{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}
+input[type=button],input[type=submit],input[type=range],input[type=checkbox],input[type=radio]{-webkit-user-select:none;user-select:none}
