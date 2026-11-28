@@ -1079,7 +1079,8 @@ body[data-scene="map"] #hud{display:block}
 .ward .set:hover,.ward .set:focus-visible{border-color:var(--wood-2);outline:none}
 .ward .set.on{border-color:var(--gold);background:#fff4d0;box-shadow:0 0 0 3px rgba(255,194,61,.45)}
 /* 換裝間：整套按鈕、位置分頁 */
-.ward .sets.row{display:flex;gap:8px;margin:6px 0 4px}
+#wardrobe .sets.row{display:flex;flex-wrap:nowrap;gap:8px;margin:6px 0 4px;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin;-webkit-overflow-scrolling:touch}
+#wardrobe .sets.row .chipbtn{flex:none;white-space:nowrap}
 .ward .chipbtn{font:700 15px/1 var(--f-body);padding:8px 14px;border-radius:999px;border:2px solid var(--gold);background:#fff;color:#7a4d00;cursor:pointer}
 .ward .chipbtn:hover,.ward .chipbtn:focus-visible{background:#fff4d0;outline:none}
 .ward .tabs{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0}

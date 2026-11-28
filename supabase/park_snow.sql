@@ -322,10 +322,22 @@ $$;
 -- 用雪花換商店的東西（有 snow_price 的）；活動期間才能換
 create or replace function public.park_snow_buy(p_code text)
 returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
-declare v_me uuid := public.current_student_id(); v_si public.park_shop_items; c public.park_snow_cfg;
+declare v_me uuid := public.current_student_id(); v_si public.park_shop_items; c public.park_snow_cfg; v_wi public.park_wear_items;
 begin
   if v_me is null then raise exception '請先登入學生帳號'; end if;
   select * into c from public.park_snow_cfg where id = 1;
+  -- 旅人的聖誕衣服（park_traveller.sql 的 snow_price，2026-11-28）
+  select * into v_wi from public.park_wear_items where code = p_code and active and snow_price is not null;
+  if v_wi.code is not null then
+    if public.park_today() < c.starts then raise exception '「%」聖誕活動開始才能換', v_wi.name; end if;
+    if public.park_today() > c.ends then raise exception '聖誕活動結束了'; end if;
+    perform pg_advisory_xact_lock(hashtext('park_snow:' || v_me::text));
+    if public.park_wear_owns(v_me, p_code) then raise exception '你已經有「%」了', v_wi.name; end if;
+    if public.park_snow_balance(v_me) < v_wi.snow_price then raise exception '雪花結晶不夠，去滑雪或玩遊戲多收集一點吧'; end if;
+    insert into public.park_snow_ledger (student_id, source, kind, amount) values (v_me, 'buy:wear:' || p_code, 'buy', -v_wi.snow_price);
+    insert into public.park_student_wear (student_id, item, source) values (v_me, p_code, 'snow') on conflict do nothing;
+    return public.park_shop() || jsonb_build_object('bought', v_wi.name, 'snow', public.park_snow_balance(v_me));
+  end if;
   select * into v_si from public.park_shop_items where code = p_code and active and snow_price is not null;
   if v_si.code is null then raise exception '這個不能用雪花換'; end if;
   if public.park_today() < greatest(c.starts, coalesce(v_si.sale_from, c.starts)) then raise exception '「%」11/25 才能換', v_si.name; end if;

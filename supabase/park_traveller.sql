@@ -41,6 +41,9 @@ create table if not exists public.park_wear_items (
 );
 -- months：本月限定，只在那幾個月上架（1～12，null＝常駐）。下架後買過的照樣能穿。
 alter table public.park_wear_items add column if not exists months smallint[];
+-- 聖誕活動（2026-11-28）：snow_price＝也能用雪花結晶換（park_snow.sql 的 park_snow_buy）；snow_only＝只能用雪花換
+alter table public.park_wear_items add column if not exists snow_price int;
+alter table public.park_wear_items add column if not exists snow_only boolean not null default false;
 
 -- 學生的旅人：look＝現在穿什麼 {"face":null,"hair":"hair-crop","hat":null,...}
 create table if not exists public.park_travellers (
@@ -69,7 +72,17 @@ insert into public.park_wear_sets (code, name, blurb, starter, sort) values
   ('tw',     '台灣潮',   '黑熊棒球帽、客家花布襯衫、寬短褲配拖鞋，手上一杯黑糖珍奶。', true, 3),
   ('witch',   '小巫師',     '萬聖節限定：星星尖帽、星月巫師袍，再騎一支掃帚。', false, 11),
   ('pumpkin', '南瓜騎士',   '萬聖節限定：南瓜帽、南瓜騎士服，提一盞南瓜燈去要糖。', false, 12),
-  ('vampire', '小吸血鬼',   '萬聖節限定：紅領披風小禮服、黑皮鞋，背上一對蝙蝠翅膀。', false, 13)
+  ('vampire', '小吸血鬼',   '萬聖節限定：紅領披風小禮服、黑皮鞋，背上一對蝙蝠翅膀。', false, 13),
+  -- 常駐商店套裝（2026-11-28，配寵物島的島嶼風格）
+  ('ocean',   '海底探險家', '浮潛蛙鏡、潛水衣配蛙鞋，背一個海龜殼背包。', false, 21),
+  ('space',   '月球小隊員', '星星天線、太空衣配月球靴，再背一台小火箭背包。', false, 22),
+  ('safari',  '恐龍探險隊', '探險帽、多口袋背心配登山靴，後面還拖著一條恐龍尾巴。', false, 23),
+  ('farm',    '小農夫',     '紅頭巾、格子襯衫吊帶褲配雨鞋，提一籃新鮮雞蛋。', false, 24),
+  -- 聖誕（11～12 月限定，時光幣或雪花結晶都能換）
+  ('santa',    '聖誕老公公', '聖誕限定：聖誕帽、毛邊紅外套和靴子，背一大袋禮物。', false, 31),
+  ('reindeer', '小麋鹿',     '聖誕限定：麋鹿角髮箍、鈴鐺毛毛衣和麋鹿蹄靴。', false, 32),
+  ('elf',      '聖誕小精靈', '聖誕限定：鈴鐺尖帽、綠色小精靈服、條紋褲襪，拿一根大拐杖糖。', false, 33),
+  ('cozy',     '暖暖冬日',   '聖誕限定：毛球毛帽、聖誕毛衣配圍巾、雪靴，捧一杯熱可可。', false, 34)
 on conflict (code) do update set name = excluded.name, blurb = excluded.blurb, starter = excluded.starter, sort = excluded.sort;
 
 insert into public.park_wear_items (code, slot, name, set_code, free, price, sort) values
@@ -120,6 +133,51 @@ insert into public.park_wear_items (code, slot, name, set_code, free, price, mon
   ('back-bat',       'back',   '蝙蝠翅膀',     'vampire', false, 100, '{10}', 13)
 on conflict (code) do update set slot = excluded.slot, name = excluded.name, set_code = excluded.set_code,
   free = excluded.free, price = excluded.price, months = excluded.months, sort = excluded.sort;
+
+-- 常駐商店套裝（2026-11-28）
+insert into public.park_wear_items (code, slot, name, set_code, free, price, sort) values
+  ('hat-snorkel',     'hat',    '浮潛蛙鏡',       'ocean',  false, 60,  21),
+  ('top-ocean',       'top',    '短袖潛水衣',     'ocean',  false, 100, 21),
+  ('bottom-ocean',    'bottom', '潛水短褲配蛙鞋', 'ocean',  false, 80,  21),
+  ('back-shell',      'back',   '海龜殼背包',     'ocean',  false, 100, 21),
+  ('hat-antenna',     'hat',    '星星天線髮箍',   'space',  false, 60,  22),
+  ('top-space',       'top',    '太空衣',         'space',  false, 110, 22),
+  ('bottom-space',    'bottom', '太空褲月球靴',   'space',  false, 90,  22),
+  ('back-jetpack',    'back',   '小火箭背包',     'space',  false, 120, 22),
+  ('hat-safari',      'hat',    '探險帽',         'safari', false, 60,  23),
+  ('top-safari',      'top',    '探險背心',       'safari', false, 100, 23),
+  ('bottom-safari',   'bottom', '工作短褲登山靴', 'safari', false, 80,  23),
+  ('back-dinotail',   'back',   '恐龍尾巴',       'safari', false, 120, 23),
+  ('hat-bandana',     'hat',    '紅花頭巾',       'farm',   false, 50,  24),
+  ('top-farm',        'top',    '格子襯衫吊帶褲', 'farm',   false, 100, 24),
+  ('bottom-farm',     'bottom', '吊帶褲配雨鞋',   'farm',   false, 80,  24),
+  ('hand-basket',     'hand',   '一籃雞蛋',       'farm',   false, 60,  24)
+on conflict (code) do update set slot = excluded.slot, name = excluded.name, set_code = excluded.set_code,
+  free = excluded.free, price = excluded.price, sort = excluded.sort;
+
+-- 聖誕（11～12 月限定）：時光幣或雪花結晶都能換；麋鹿角只能用雪花換。過了 12 月沒買的就不出現，買過的照樣能穿
+insert into public.park_wear_items (code, slot, name, set_code, free, price, months, snow_price, snow_only, sort) values
+  ('hat-santa',       'hat',    '聖誕帽',         'santa',    false, 80,  '{11,12}', 12, false, 31),
+  ('top-santa',       'top',    '聖誕老公公外套', 'santa',    false, 120, '{11,12}', 18, false, 31),
+  ('bottom-santa',    'bottom', '紅褲子毛邊靴',   'santa',    false, 90,  '{11,12}', 14, false, 31),
+  ('back-sack',       'back',   '一大袋禮物',     'santa',    false, 100, '{11,12}', 15, false, 31),
+  ('hat-antler',      'hat',    '麋鹿角髮箍',     'reindeer', false, 0,   '{11,12}', 15, true,  32),
+  ('top-reindeer',    'top',    '鈴鐺麋鹿毛衣',   'reindeer', false, 120, '{11,12}', 18, false, 32),
+  ('bottom-reindeer', 'bottom', '麋鹿蹄毛毛靴',   'reindeer', false, 90,  '{11,12}', 14, false, 32),
+  ('hat-elf',         'hat',    '小精靈鈴鐺帽',   'elf',      false, 80,  '{11,12}', 12, false, 33),
+  ('top-elf',         'top',    '小精靈綠衣',     'elf',      false, 120, '{11,12}', 18, false, 33),
+  ('bottom-elf',      'bottom', '條紋褲襪捲捲鞋', 'elf',      false, 90,  '{11,12}', 14, false, 33),
+  ('hand-cane',       'hand',   '大拐杖糖',       'elf',      false, 70,  '{11,12}', 10, false, 33),
+  ('hat-beanie',      'hat',    '雪花毛球帽',     'cozy',     false, 80,  '{11,12}', 12, false, 34),
+  ('top-sweater',     'top',    '聖誕毛衣配圍巾', 'cozy',     false, 120, '{11,12}', 18, false, 34),
+  ('bottom-boots',    'bottom', '牛仔褲配雪靴',   'cozy',     false, 90,  '{11,12}', 14, false, 34),
+  ('hand-cocoa',      'hand',   '熱可可',         'cozy',     false, 70,  '{11,12}', 10, false, 34),
+  ('hat-earmuff',     'hat',    '毛毛耳罩',       null,       false, 60,  '{11,12}', 9,  false, 35),
+  ('hand-gift',       'hand',   '聖誕禮物盒',     null,       false, 60,  '{11,12}', 9,  false, 35),
+  ('back-snowwing',   'back',   '雪花結晶翅膀',   null,       false, 140, '{11,12}', 20, false, 35)
+on conflict (code) do update set slot = excluded.slot, name = excluded.name, set_code = excluded.set_code,
+  free = excluded.free, price = excluded.price, months = excluded.months,
+  snow_price = excluded.snow_price, snow_only = excluded.snow_only, sort = excluded.sort;
 
 -- -----------------------------------------------------------------------------
 -- 3. 讀取規則：目錄大家都看得到；自己的旅人和衣櫃只有本人看得到。寫入一律走函式。

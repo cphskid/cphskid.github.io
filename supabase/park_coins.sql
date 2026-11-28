@@ -618,8 +618,9 @@ begin
     'balance', case when v_me is null then 0 else public.park_coin_balance(v_me) end,
     'month', v_month,
     'items', coalesce((select jsonb_agg(x order by x ->> 'cat', (x ->> 'sort')::int) from (
-      select jsonb_build_object('cat', case when i.months is not null then 'month' else 'wear' end, 'kind', 'wear', 'code', i.code, 'name', i.name, 'art', 'img/traveller/thumb/' || i.code || '.webp',
+      select jsonb_build_object('cat', case when i.snow_price is not null then 'event' when i.months is not null then 'month' else 'wear' end, 'kind', 'wear', 'code', i.code, 'name', i.name, 'art', 'img/traveller/thumb/' || i.code || '.webp',
                'blurb', coalesce(s.name, ''), 'price', i.price, 'slot', i.slot, 'set', i.set_code, 'sort', coalesce(s.sort, 0) * 100 + i.sort,
+               'snow', i.snow_price, 'snow_only', i.snow_only,
                'owned', v_me is not null and public.park_wear_owns(v_me, i.code)) as x
         from public.park_wear_items i left join public.park_wear_sets s on s.code = i.set_code
        where i.active and not i.free and i.price is not null
@@ -656,6 +657,9 @@ begin
      where i.code = p_code and i.active and not i.free and i.price is not null
        and (i.months is null or v_month = any(i.months));
     if v_price is null then raise exception '商店沒有賣這件（可能下架了）'; end if;
+    if exists (select 1 from public.park_wear_items where code = p_code and snow_only) then
+      raise exception '「%」只能用雪花結晶換', v_name;
+    end if;
     if public.park_wear_owns(v_me, p_code) then raise exception '你已經有「%」了', v_name; end if;
     if public.park_coin_balance(v_me) < v_price then raise exception '時光幣不夠，再去冒險賺一點吧'; end if;
     insert into public.park_coin_ledger (student_id, source, amount, note)
