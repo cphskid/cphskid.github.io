@@ -102,7 +102,11 @@ returns jsonb language sql stable security definer set search_path = public, pg_
                  where a.student_id = public.current_student_id() and a.first_clear_at is not null), '[]'::jsonb) end,
     -- 2026-11-27 布置：成品擺在哪一格（沒存過＝null，前端自己把做過的成品擺上去）
     'deco', (select jsonb_build_object('slots', d.slots, 'stored', to_jsonb(d.stored), 'dark', d.dark, 'combos', to_jsonb(d.combos))
-               from public.lab_deco d where d.student_id = public.current_student_id()));
+               from public.lab_deco d where d.student_id = public.current_student_id()),
+    -- 2026-11-28 布置第二包：寵物夥伴進駐（照顧中的排第一；park_pet.sql 的 park_pets、park_pet_stage）
+    'pets', coalesce((select jsonb_agg(jsonb_build_object('id', p.id, 'species', p.species, 'name', p.name, 'active', p.active,
+                                                         'stage', public.park_pet_stage(p.xp)) order by p.active desc, p.id)
+                        from public.park_pets p where p.student_id = public.current_student_id()), '[]'::jsonb));
 $$;
 
 -- ---------- 時光幣 ----------
