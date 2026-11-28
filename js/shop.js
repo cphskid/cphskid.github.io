@@ -264,11 +264,15 @@ const TABS = [
 ];
 let tab = 'wear';
 let shop = null;
-let pick = null;     // 主角分頁：正在看哪一件（左邊的旅人會穿上）
+// 主角試穿：每個位置可以各試一件（slot → code），一次看整套搭起來的樣子；換分頁也留著，關掉商店才清掉
+let tryOn = {};
+let pick = null;     // 最後點的那件（「試穿整套」看它是哪一套）
+const wearOn = (x) => { tryOn = { ...tryOn, [x.slot]: x.code }; pick = x.code; };
 
 export async function openShop(msg = null, startTab = null) {
   if (!st) return;
   if (startTab) tab = startTab;
+  tryOn = {}; pick = null;
   show('<div class="shop loading" role="dialog" aria-modal="true" aria-label="商店"><p>商店開門中…</p></div>');
   try { [shop] = await Promise.all([auth.coins.shop(), snow.load()]); } catch (err) { show(`<div class="shop"><button class="x" data-close aria-label="關閉"></button><p class="note bad">${esc(err.message)}</p></div>`); return; }
   paintShop(msg);
@@ -280,14 +284,19 @@ function paintShop(msg = null) {
   const items = shop.items.filter((x) => catOf(x) === tab);
   const t = TABS.find((x) => x.id === tab);
   const look = traveller.state()?.look ?? null;
-  const it = pick && items.find((x) => x.code === pick);
-  const doll = items.some((x) => x.kind === 'wear') && look ? `<div class="try">${traveller.dollHtml({ ...look, ...(it ? { [it.slot]: it.code } : {}) }, 'big')}
-      <small>${it ? `穿上「${esc(it.name)}」的樣子` : '點一件看看穿起來的樣子'}</small></div>` : '';
+  const wearing = Object.values(tryOn).map((c) => shop.items.find((x) => x.kind === 'wear' && x.code === c)).filter(Boolean);
+  const last = pick && shop.items.find((x) => x.kind === 'wear' && x.code === pick);
+  const setItems = last?.set ? shop.items.filter((x) => x.kind === 'wear' && x.set === last.set) : [];
+  const setAll = setItems.length > 1 && !setItems.every((x) => tryOn[x.slot] === x.code);
+  const unpaid = wearing.filter((x) => !x.owned && !x.snow_only).reduce((n, x) => n + (x.price ?? 0), 0);
+  const doll = items.some((x) => x.kind === 'wear') && look ? `<div class="try">${traveller.dollHtml({ ...look, ...tryOn }, 'big')}
+      <div class="tryinfo"><small>${wearing.length ? `試穿中：${wearing.map((x) => esc(x.name)).join('、')}${unpaid ? `（還沒買的共 ${unpaid} 幣）` : ''}` : '點衣服就能試穿，可以一次穿好幾件，再點一次脫掉'}</small>
+      ${setAll || wearing.length ? `<span class="trybtns">${setAll ? `<button type="button" class="chipbtn" data-tryset>試穿整套「${esc(last.blurb || '這套')}」</button>` : ''}${wearing.length ? '<button type="button" class="chipbtn ghosty" data-tryoff>全部脫掉</button>' : ''}</span>` : ''}</div></div>` : '';
   const card = (x) => {
     const own = x.owned && x.kind !== 'pet';
     const art = x.kind === 'frame' ? passport.avatarHtml(look ?? undefined, x.ref, 'art')
       : `<img class="art" src="${esc(x.art)}" alt="" loading="lazy">`;
-    return `<div class="sitem${own ? ' own' : ''}${x.code === pick ? ' on' : ''}" ${x.kind === 'wear' ? `data-look="${esc(x.code)}"` : ''}>
+    return `<div class="sitem${own ? ' own' : ''}${x.kind === 'wear' && tryOn[x.slot] === x.code ? ' on' : ''}" ${x.kind === 'wear' ? `data-look="${esc(x.code)}"` : ''}>
       ${art}
       <b>${esc(x.name)}</b><small>${esc(x.blurb)}${x.qty ? `・背包裡有 ${x.qty} 個` : ''}</small>
       ${own ? '<span class="have">已經有了</span>'
@@ -312,8 +321,15 @@ function paintShop(msg = null) {
   </div>`);
   layer.querySelector('.shop').dataset.cur = tab;   // 不能叫 data-tab：下面會把所有 [data-tab] 當分頁鈕綁 onclick
   if (keep) keep.forEach(([q, y]) => { const el = q ? layer.querySelector(q) : layer; if (el && y) el.scrollTop = y; });
-  layer.querySelectorAll('[data-tab]').forEach((b) => { b.onclick = () => { tab = b.dataset.tab; pick = null; paintShop(); }; });
-  layer.querySelectorAll('[data-look]').forEach((c) => { c.onclick = (e) => { if (e.target.closest('[data-buy],[data-snowbuy]')) return; pick = c.dataset.look; paintShop(); }; });
+  layer.querySelectorAll('[data-tab]').forEach((b) => { b.onclick = () => { tab = b.dataset.tab; paintShop(); }; });
+  layer.querySelectorAll('[data-look]').forEach((c) => { c.onclick = (e) => { if (e.target.closest('[data-buy],[data-snowbuy]')) return;
+    const x = shop.items.find((i) => i.kind === 'wear' && i.code === c.dataset.look);
+    if (tryOn[x.slot] === x.code) { const { [x.slot]: _, ...rest } = tryOn; tryOn = rest; } else wearOn(x);
+    paintShop(); }; });
+  const ts = $('[data-tryset]', layer);
+  if (ts) ts.onclick = () => { const l = shop.items.find((x) => x.kind === 'wear' && x.code === pick); for (const x of shop.items) if (x.kind === 'wear' && x.set === l.set) tryOn = { ...tryOn, [x.slot]: x.code }; paintShop(); };
+  const tf = $('[data-tryoff]', layer);
+  if (tf) tf.onclick = () => { tryOn = {}; pick = null; paintShop(); };
   $('[data-wallet]', layer).onclick = () => openWallet();
   const ward = $('[data-ward]', layer);
   if (ward) ward.onclick = () => { close(); traveller.open(); };
@@ -327,7 +343,7 @@ function paintShop(msg = null) {
         shop = await auth.snow.buy(x.code);
         snow.set({ balance: shop.snow });
         sfx('SE-20');
-        if (x.kind === 'wear') { traveller.gotItem(x.code); pick = x.code; }
+        if (x.kind === 'wear') { traveller.gotItem(x.code); wearOn(x); }
         dispatchEvent(new CustomEvent('park:shop', { detail: { kind: x.kind ?? x.cat, code: x.code } }));
         paintShop(['ok', x.kind === 'wear' ? `換好了！去換裝間把「${x.name}」穿上吧。`
           : x.kind === 'theme' ? `換好了！去寵物島按「裝扮」，就能換成「${x.name}」。` : `換好了！「${x.name}」已經放進寵物島的傢俱裡。`]);
@@ -337,7 +353,7 @@ function paintShop(msg = null) {
   layer.querySelectorAll('[data-buy]').forEach((b) => {
     b.onclick = async () => {
       const x = shop.items.find((i) => i.code === b.dataset.buy);
-      if (x.kind === 'wear') pick = x.code;
+      if (x.kind === 'wear') wearOn(x);
       if (!b.dataset.sure) {
         layer.querySelectorAll('[data-sure]').forEach((o) => { delete o.dataset.sure; const i = shop.items.find((i) => i.code === (o.dataset.buy ?? o.dataset.snowbuy)); if (i) o.lastChild.textContent = o.dataset.buy ? i.price : i.snow; });
         b.dataset.sure = '1';

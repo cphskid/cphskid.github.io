@@ -1320,6 +1320,10 @@ button.stamp:hover,button.stamp:focus-visible{transform:translateY(-3px);outline
 .shop .try{position:sticky;top:0;display:grid;justify-items:center;gap:6px;padding:12px 8px;border-radius:22px;background:linear-gradient(#bfe3ff,#fff3d6 70%)}
 .shop .try .doll.big{--dw:200px}
 .shop .try small{font:700 14px/1.4 var(--f-body);color:#7a5a3a;text-align:center}
+.shop .tryinfo{display:grid;justify-items:center;gap:6px}
+.shop .trybtns{display:flex;flex-wrap:wrap;justify-content:center;gap:6px}
+.shop .trybtns .chipbtn{font:700 14px/1 var(--f-body);padding:7px 12px;border-radius:999px;border:2px solid var(--gold);background:#fff;color:#7a4d00;cursor:pointer}
+.shop .trybtns .chipbtn.ghosty{border-color:var(--cream-2);color:#7a5a3a}
 .shop .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
 .shop .sitem{display:grid;justify-items:center;align-content:start;gap:4px;padding:12px 8px;border-radius:18px;border:3px solid var(--cream-2);background:#fff;text-align:center}
 .shop .sitem[data-look]{cursor:pointer}
@@ -1347,7 +1351,11 @@ button.stamp:hover,button.stamp:focus-visible{transform:translateY(-3px);outline
   .shop .head .bal{font-size:20px}
   .shop .tab{font-size:16px;padding:9px 12px}
   .shop .body.with-doll{grid-template-columns:minmax(0,1fr)}
-  .shop .try{position:static;grid-template-columns:auto minmax(0,1fr);align-items:center;justify-items:start}
+  /* 手機：整個 .shop 在捲，試穿的旅人黏在上面，往下滑看衣服時一直看得到（Chuck 2026-11-28） */
+  .shop .try{position:sticky;top:-16px;z-index:5;grid-template-columns:auto minmax(0,1fr);align-items:center;justify-items:start;margin:0 -4px;box-shadow:0 6px 12px -8px rgba(90,60,20,.35)}
+  .shop .tryinfo{justify-items:start}
+  .shop .try small{text-align:left}
+  .shop .trybtns{justify-content:flex-start}
   .shop .try .doll.big{--dw:110px}
   .shop .grid{grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px}
   .shop .sitem .art{width:76px;height:76px}.shop .sitem .av.art{--av:76px}
@@ -1358,7 +1366,9 @@ button.stamp:hover,button.stamp:focus-visible{transform:translateY(-3px);outline
 }
 @media (max-height:560px) and (min-width:561px){
   .shop .body.with-doll{grid-template-columns:150px minmax(0,1fr)}
-  .shop .try{grid-template-columns:none;justify-items:center}
+  .shop .try{grid-template-columns:none;justify-items:center;top:-16px;align-self:start}
+  .shop .tryinfo{justify-items:center}
+  .shop .try small{text-align:center}
   .shop .try .doll.big{--dw:120px}
 }
 /* 電腦視窗矮、橫拿手機：小對話框（排行、時光幣、爸媽任務…）在畫面中間，叉叉跟著框走，
