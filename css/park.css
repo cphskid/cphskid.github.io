@@ -1356,6 +1356,9 @@ button.stamp:hover,button.stamp:focus-visible{transform:translateY(-3px);outline
   .shop .tryinfo{justify-items:start}
   .shop .try small{text-align:left}
   .shop .trybtns{justify-content:flex-start}
+  .shop .try{padding:8px 62px 8px 8px;gap:4px 10px}
+  .shop .try small{font-size:13px;line-height:1.35}
+  .shop .trybtns .chipbtn{font-size:13px;padding:6px 10px}
   .shop .try .doll.big{--dw:110px}
   .shop .grid{grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px}
   .shop .sitem .art{width:76px;height:76px}.shop .sitem .av.art{--av:76px}
