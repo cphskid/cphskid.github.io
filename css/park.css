@@ -1107,8 +1107,8 @@ body[data-scene="map"] #hud{display:block}
 #wardrobe .sets.row .chipbtn{flex:none;white-space:nowrap}
 .ward .chipbtn{font:700 15px/1 var(--f-body);padding:8px 14px;border-radius:999px;border:2px solid var(--gold);background:#fff;color:#7a4d00;cursor:pointer}
 .ward .chipbtn:hover,.ward .chipbtn:focus-visible{background:#fff4d0;outline:none}
-.ward .tabs{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0}
-.ward .tab{font:900 17px/1 var(--f-body);white-space:nowrap;padding:10px 14px;border-radius:14px;border:3px solid var(--cream-2);background:#fffaf0;color:var(--wood);cursor:pointer}
+.ward .tabs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;margin:12px 0}
+.ward .tab{font:900 17px/1 var(--f-body);white-space:nowrap;padding:10px 6px;text-align:center;border-radius:14px;border:3px solid var(--cream-2);background:#fffaf0;color:var(--wood);cursor:pointer}
 .ward .tab.on{background:var(--wood-2);border-color:var(--wood-2);color:#fff}
 .ward .tab:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
 .ward .note{margin:14px 0 0;padding:10px 14px;border-radius:14px;font:700 16px/1.5 var(--f-body)}
@@ -1133,7 +1133,8 @@ body[data-scene="map"] #hud{display:block}
   .ward .opt img,.ward .opt .none{width:64px;height:64px}
   .ward .sets{grid-template-columns:minmax(0,1fr)}
   .ward .set .doll.mini{--dw:64px}
-  .ward .tab{font-size:16px;padding:9px 12px}
+  .ward .tab{font-size:16px;padding:9px 4px}
+  .ward .tabs{grid-template-columns:repeat(3,minmax(0,1fr))}
   #wardrobe .btn.go{font-size:20px;padding:15px 28px 18px}
   #wardrobe .ghost{font-size:16px;padding:10px 16px}
   #wardrobe .row.end{justify-content:center}

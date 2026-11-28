@@ -30,7 +30,7 @@ create table if not exists public.park_wear_sets (
 -- hides_hair＝戴上時把頭髮藏起來（例如太空頭盔）。
 create table if not exists public.park_wear_items (
   code       text primary key check (code ~ '^[a-z][a-z0-9-]{1,30}$'),
-  slot       text not null check (slot in ('face', 'hair', 'hat', 'top', 'bottom', 'hand', 'back')),
+  slot       text not null check (slot in ('face', 'expr', 'hair', 'mask', 'hat', 'top', 'bottom', 'hand', 'back')),
   name       text not null,
   set_code   text references public.park_wear_sets(code) on update cascade on delete set null,
   free       boolean not null default false,
@@ -41,6 +41,10 @@ create table if not exists public.park_wear_items (
 );
 -- months：本月限定，只在那幾個月上架（1～12，null＝常駐）。下架後買過的照樣能穿。
 alter table public.park_wear_items add column if not exists months smallint[];
+-- 2026-11-28 加兩個位置：expr 表情（疊在臉上，免費）、mask 臉飾（面罩、面具，可以跟帽子一起戴）
+alter table public.park_wear_items drop constraint if exists park_wear_items_slot_check;
+alter table public.park_wear_items add constraint park_wear_items_slot_check
+  check (slot in ('face', 'expr', 'hair', 'mask', 'hat', 'top', 'bottom', 'hand', 'back'));
 -- 聖誕活動（2026-11-28）：snow_price＝也能用雪花結晶換（park_snow.sql 的 park_snow_buy）；snow_only＝只能用雪花換
 alter table public.park_wear_items add column if not exists snow_price int;
 alter table public.park_wear_items add column if not exists snow_only boolean not null default false;
@@ -179,6 +183,32 @@ on conflict (code) do update set slot = excluded.slot, name = excluded.name, set
   free = excluded.free, price = excluded.price, months = excluded.months,
   snow_price = excluded.snow_price, snow_only = excluded.snow_only, sort = excluded.sort;
 
+-- 2026-11-28 第二批臉和頭：髮型 7、表情 5（都免費）；臉飾 6、頭紗類 3（商店）
+insert into public.park_wear_items (code, slot, name, set_code, free, price, sort) values
+  ('hair-hime',       'hair', '公主切長直髮',   null, true,  null, 11),
+  ('hair-sidebraid',  'hair', '側邊單辮',       null, true,  null, 12),
+  ('hair-braids',     'hair', '雙麻花辮',       null, true,  null, 13),
+  ('hair-halfbun',    'hair', '半紮小丸子',     null, true,  null, 14),
+  ('hair-curly',      'hair', '蓬蓬自然捲',     null, true,  null, 15),
+  ('hair-midpart',    'hair', '中分瀏海',       null, true,  null, 16),
+  ('hair-fluffy',     'hair', '蓬鬆微捲',       null, true,  null, 17),
+  ('expr-grin',       'expr', '露齒大笑',       null, true,  null, 1),
+  ('expr-wink',       'expr', '眨眼',           null, true,  null, 2),
+  ('expr-shy',        'expr', '害羞臉紅',       null, true,  null, 3),
+  ('expr-wow',        'expr', '驚訝',           null, true,  null, 4),
+  ('expr-tongue',     'expr', '吐舌頭',         null, true,  null, 5),
+  ('mask-robot',      'mask', '機器人 LED 面罩', null, false, 90,  41),
+  ('mask-visor',      'mask', '機甲護目鏡',     null, false, 80,  42),
+  ('mask-hero',       'mask', '英雄眼罩',       null, false, 60,  43),
+  ('mask-butterfly',  'mask', '蝴蝶舞會面具',   null, false, 80,  44),
+  ('mask-cat',        'mask', '貓咪面具',       null, false, 80,  45),
+  ('mask-sparkle',    'mask', '星星亮片',       null, false, 60,  46),
+  ('hat-flowerveil',  'hat',  '花冠頭紗',       null, false, 90,  27),
+  ('hat-tiara',       'hat',  '公主小皇冠',     null, false, 80,  28),
+  ('hat-wreath',      'hat',  '小精靈花環',     null, false, 70,  29)
+on conflict (code) do update set slot = excluded.slot, name = excluded.name, set_code = excluded.set_code,
+  free = excluded.free, price = excluded.price, sort = excluded.sort;
+
 -- -----------------------------------------------------------------------------
 -- 3. 讀取規則：目錄大家都看得到；自己的旅人和衣櫃只有本人看得到。寫入一律走函式。
 -- -----------------------------------------------------------------------------
@@ -214,10 +244,10 @@ returns boolean language sql stable security definer set search_path = public, p
       or exists (select 1 from public.park_student_wear w where w.student_id = p_student and w.item = p_item);
 $$;
 
--- 檢查一套穿搭，回傳整理好的 look（七個位置都有 key，沒穿的是 null）。不合規就丟出看得懂的錯誤。
+-- 檢查一套穿搭，回傳整理好的 look（九個位置都有 key，沒穿的是 null）。不合規就丟出看得懂的錯誤。
 create or replace function public.park_wear_check(p_student uuid, p_look jsonb)
 returns jsonb language plpgsql stable security definer set search_path = public, pg_temp as $$
-declare v_out jsonb := '{"face":null,"hair":null,"hat":null,"top":null,"bottom":null,"hand":null,"back":null}';
+declare v_out jsonb := '{"face":null,"expr":null,"hair":null,"mask":null,"hat":null,"top":null,"bottom":null,"hand":null,"back":null}';
         k text; v text; v_slot text;
 begin
   if p_look is null or jsonb_typeof(p_look) <> 'object' then raise exception '穿搭的資料不對'; end if;

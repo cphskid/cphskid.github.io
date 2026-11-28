@@ -1,7 +1,7 @@
 // 時空旅人換裝（資料庫在 supabase/park_traveller.sql）。
 //
 // 每個學生有一個時空旅人：同一個身體，七個位置各疊一張圖（img/traveller/<code>.webp，448×600，全部對齊）。
-//   疊的順序：背後 → 身體 → 臉 → 褲子和鞋 → 上衣 → 頭髮 → 頭飾 → 手持。
+//   疊的順序：背後 → 身體 → 臉 → 表情 → 褲子和鞋 → 上衣 → 頭髮 → 臉飾 → 頭飾 → 手持。
 //   臉型、髮型人人都有；衣服配件是起始套裝送的那 4 件，其他的在樂園商店（或換裝間試穿後）用時光幣買。
 //   沒有的衣服可以「試穿」看看，買了才存得起來（存的時候資料庫會再檢查一次）。
 // 建角色：第一次進地圖時挑臉型、髮型和一套起始套裝。
@@ -14,14 +14,16 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '
 
 export const SLOTS = [
   { id: 'face',   name: '臉型',     none: '中性' },
+  { id: 'expr',   name: '表情',     none: '微笑' },
   { id: 'hair',   name: '髮型' },
+  { id: 'mask',   name: '臉飾',     none: '不戴' },
   { id: 'hat',    name: '頭飾',     none: '不戴' },
   { id: 'top',    name: '上衣',     none: '灰色 T 恤' },
   { id: 'bottom', name: '褲子和鞋', none: '短褲光腳' },
   { id: 'hand',   name: '手持',     none: '空手' },
   { id: 'back',   name: '背後',     none: '不背' },
 ];
-const ORDER = ['back', 'base', 'face', 'bottom', 'top', 'hair', 'hat', 'hand'];
+const ORDER = ['back', 'base', 'face', 'expr', 'bottom', 'top', 'hair', 'mask', 'hat', 'hand'];
 
 // 跟 park_traveller.sql 的初始資料一樣（資料庫負責檢查，這裡負責名字和畫圖）
 export const SETS = [
@@ -58,6 +60,12 @@ export const ITEMS = [
   I('hair-crop', 'hair', '紋理短髮'), I('hair-wolf', 'hair', '狼尾'), I('hair-wavy', 'hair', '長捲髮'), I('hair-pony', 'hair', '高馬尾'),
   I('hair-school', 'hair', '學生短髮'), I('hair-bob', 'hair', '妹妹頭'), I('hair-spiky', 'hair', '運動刺刺頭'), I('hair-twin', 'hair', '綁兩邊'),
   I('hair-comma', 'hair', '韓系逗號瀏海'), I('hair-buns', 'hair', '雙丸子頭'),
+  I('hair-hime', 'hair', '公主切長直髮'), I('hair-sidebraid', 'hair', '側邊單辮'), I('hair-braids', 'hair', '雙麻花辮'), I('hair-halfbun', 'hair', '半紮小丸子'),
+  I('hair-curly', 'hair', '蓬蓬自然捲'), I('hair-midpart', 'hair', '中分瀏海'), I('hair-fluffy', 'hair', '蓬鬆微捲'),
+  I('expr-grin', 'expr', '露齒大笑'), I('expr-wink', 'expr', '眨眼'), I('expr-shy', 'expr', '害羞臉紅'), I('expr-wow', 'expr', '驚訝'), I('expr-tongue', 'expr', '吐舌頭'),
+  I('mask-robot', 'mask', '機器人 LED 面罩', null, 90), I('mask-visor', 'mask', '機甲護目鏡', null, 80), I('mask-hero', 'mask', '英雄眼罩', null, 60),
+  I('mask-butterfly', 'mask', '蝴蝶舞會面具', null, 80), I('mask-cat', 'mask', '貓咪面具', null, 80), I('mask-sparkle', 'mask', '星星亮片', null, 60),
+  I('hat-flowerveil', 'hat', '花冠頭紗', null, 90), I('hat-tiara', 'hat', '公主小皇冠', null, 80), I('hat-wreath', 'hat', '小精靈花環', null, 70),
   I('hat-bucket', 'hat', '燈芯絨漁夫帽', 'street', 60), I('hat-visor', 'hat', 'AR 眼鏡', 'tech', 60), I('hat-cap', 'hat', '黑熊棒球帽', 'tw', 60),
   I('top-street', 'top', '牛仔外套配帽T', 'street', 100), I('top-tech', 'top', '發光機能外套', 'tech', 100), I('top-floral', 'top', '客家花布襯衫', 'tw', 100),
   I('bottom-wide', 'bottom', '工裝寬褲老爹鞋', 'street', 80), I('bottom-tech', 'bottom', '機能褲發光鞋', 'tech', 80), I('bottom-shorts', 'bottom', '寬短褲配拖鞋', 'tw', 80),
@@ -265,7 +273,7 @@ export function openWardrobe({ welcome = false } = {}) {
     const slot = SLOTS.find((s) => s.id === tab);
     const list = ITEMS.filter((x) => x.slot === tab && (inSeason(x) || owns(x.code)));
     const opts = [
-      ...(slot.none ? [optHtml(null, slot.none, tab === 'face' ? 'base' : null)] : []),
+      ...(slot.none ? [optHtml(null, slot.none, ['face', 'expr'].includes(tab) ? 'base' : null)] : []),
       ...list.map((x) => optHtml(x.code, x.name, x.code)),
     ].join('');
     const tri = trying();
